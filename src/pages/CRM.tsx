@@ -32,6 +32,7 @@ export default function CRM() {
   const [orderby, setOrderby] = useState("registered_date");
   const [order, setOrder] = useState("desc");
   const [customerType, setCustomerType] = useState<string>("all");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 500);
