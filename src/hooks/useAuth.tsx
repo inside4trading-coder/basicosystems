@@ -1,14 +1,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
 
-type AppRole = Database["public"]["Enums"]["app_role"];
+type ProfileRole = "admin" | "manager" | "partner";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  role: AppRole | null;
+  role: ProfileRole | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -21,29 +20,39 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
+const ROLE_ROUTES: Record<ProfileRole, string[]> = {
+  admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/campaigns", "/configuracion"],
+  manager: ["/dashboard", "/pedidos", "/crm", "/planning", "/campaigns"],
+  partner: ["/dashboard", "/planning"],
+};
+
+export function canAccessRoute(role: ProfileRole | null, path: string): boolean {
+  if (!role) return false;
+  const allowed = ROLE_ROUTES[role] || [];
+  return allowed.some((r) => path === r || path.startsWith(r + "/"));
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [role, setRole] = useState<AppRole | null>(null);
+  const [role, setRole] = useState<ProfileRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchRole = async (userId: string) => {
     const { data } = await supabase
-      .from("user_roles")
+      .from("profiles")
       .select("role")
-      .eq("user_id", userId)
+      .eq("id", userId)
       .maybeSingle();
-    setRole(data?.role ?? null);
+    setRole((data?.role as ProfileRole) ?? "partner");
   };
 
   useEffect(() => {
-    // Set up listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Defer role fetch to avoid Supabase deadlock
           setTimeout(() => fetchRole(session.user.id), 0);
         } else {
           setRole(null);
@@ -52,7 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Then check existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
