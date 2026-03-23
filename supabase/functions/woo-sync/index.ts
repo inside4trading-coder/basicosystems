@@ -57,7 +57,9 @@ serve(async (req) => {
     const allOrders: any[] = [];
     let page = 1;
     let totalPages = 1;
+    console.log(`Starting sync since ${since.toISOString()} (${sinceDays} days)`);
     while (page <= totalPages) {
+      console.log(`Fetching page ${page}/${totalPages}...`);
       const res = await wcFetch("/orders", {
         after: since.toISOString(),
         per_page: "100",
@@ -66,8 +68,14 @@ serve(async (req) => {
       });
       totalPages = res.totalPages;
       if (Array.isArray(res.body)) allOrders.push(...res.body);
+      else {
+        console.error("WC API returned non-array:", JSON.stringify(res.body).slice(0, 200));
+        break;
+      }
+      console.log(`Page ${page} done, got ${res.body?.length || 0} orders (total so far: ${allOrders.length})`);
       page++;
     }
+    console.log(`Total orders fetched: ${allOrders.length}`);
 
     // Fetch product_costs for matching
     const { data: costData } = await supabase.from("product_costs").select("sku, analytic_category, unit_cost_total");
