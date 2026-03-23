@@ -1,80 +1,280 @@
-import { Search } from "lucide-react";
+import { Search, Loader2, ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useCallback } from "react";
 
-const mockCustomers = [
-  { name: "María López", email: "maria@email.com", totalSpent: "€487.30", orders: 8, lastPurchase: "22 Mar 2026", segment: "VIP" },
-  { name: "Carlos Ruiz", email: "carlos@email.com", totalSpent: "€89.00", orders: 1, lastPurchase: "22 Mar 2026", segment: "Único" },
-  { name: "Ana García", email: "ana@email.com", totalSpent: "€245.60", orders: 4, lastPurchase: "15 Ene 2026", segment: "VIP" },
-  { name: "Luis Martín", email: "luis@email.com", totalSpent: "€124.80", orders: 3, lastPurchase: "10 Mar 2026", segment: "Activo" },
-  { name: "Sara Fernández", email: "sara@email.com", totalSpent: "€59.90", orders: 2, lastPurchase: "15 Oct 2025", segment: "Inactivo" },
-];
+interface Customer {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  avatar_url: string;
+  billing_company: string;
+  billing_city: string;
+  billing_country: string;
+  billing_phone: string;
+  orders_count: number;
+  total_spent: string;
+  date_created: string;
+  last_order_date: string | null;
+}
+
+type Segment = "Todos" | "VIP" | "Activo" | "Ocasional" | "Nuevo";
+
+function getSegment(c: Customer): string {
+  const spent = parseFloat(c.total_spent || "0");
+  if (spent >= 50000 || c.orders_count >= 10) return "VIP";
+  if (c.orders_count >= 3) return "Activo";
+  if (c.orders_count >= 1) return "Ocasional";
+  return "Nuevo";
+}
 
 const segmentClass: Record<string, string> = {
   VIP: "status-badge-error",
   Activo: "status-badge-success",
-  Inactivo: "status-badge-warning",
-  Único: "status-badge-inactive",
+  Ocasional: "status-badge-warning",
+  Nuevo: "status-badge-inactive",
 };
 
+const SEGMENTS: Segment[] = ["Todos", "VIP", "Activo", "Ocasional", "Nuevo"];
+
+const SORT_OPTIONS = [
+  { value: "registered_date", label: "Fecha de registro" },
+  { value: "id", label: "ID" },
+];
+
 export default function CRM() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
+  const [segmentFilter, setSegmentFilter] = useState<Segment>("Todos");
+  const [orderby, setOrderby] = useState("registered_date");
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 500);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const fetchCustomers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: "20",
+        orderby,
+        order: "desc",
+      });
+      if (searchDebounced) params.set("search", searchDebounced);
+
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/woo-customers?${params}`,
+        { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
+      );
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setCustomers(data.customers);
+      setTotalPages(data.totalPages);
+      setTotal(data.total);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, searchDebounced, orderby]);
+
+  useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
+  useEffect(() => { setPage(1); }, [searchDebounced, orderby]);
+
+  const filtered = segmentFilter === "Todos"
+    ? customers
+    : customers.filter((c) => getSegment(c) === segmentFilter);
+
+  const fmt = (val: string) => {
+    const num = parseFloat(val || "0");
+    try {
+      return new Intl.NumberFormat("es-ES", { style: "currency", currency: "VES" }).format(num);
+    } catch {
+      return `${num.toFixed(2)} Bs`;
+    }
+  };
+
+  const fmtDate = (d: string | null) => {
+    if (!d) return "—";
+    return new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+  };
+
+  // Segment counts from current page
+  const segmentCounts: Record<string, number> = { Todos: customers.length };
+  for (const c of customers) {
+    const seg = getSegment(c);
+    segmentCounts[seg] = (segmentCounts[seg] || 0) + 1;
+  }
+
   return (
     <div className="space-y-6 max-w-7xl">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-2xl font-black tracking-tight">CRM</h2>
-        <div className="flex items-center gap-3">
-          <div className="relative w-64">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-black tracking-tight">CRM</h2>
+          {!loading && (
+            <p className="text-sm text-muted-foreground mt-1">{total} clientes</p>
+          )}
+        </div>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64 sm:flex-none">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar cliente..." className="pl-9 bg-card" />
+            <Input
+              placeholder="Buscar cliente..."
+              className="pl-9 bg-card"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-          <Button variant="brand" size="sm">Crear segmento</Button>
+          <select
+            value={orderby}
+            onChange={(e) => setOrderby(e.target.value)}
+            className="text-xs border border-border rounded-md px-2 py-2 bg-card font-semibold"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
       {/* Segment filters */}
-      <div className="flex gap-2 flex-wrap">
-        {["Todos", "VIP", "Activo", "Inactivo", "Único"].map((seg) => (
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+        {SEGMENTS.map((seg) => (
           <button
             key={seg}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
-              seg === "Todos"
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card text-foreground border-border hover:border-primary/50"
+            onClick={() => setSegmentFilter(seg)}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${
+              segmentFilter === seg
+                ? "bg-primary text-primary-foreground"
+                : "bg-card border border-border text-muted-foreground hover:text-foreground"
             }`}
           >
             {seg}
+            {segmentCounts[seg] !== undefined && (
+              <span className="ml-1 opacity-70">({segmentCounts[seg] || 0})</span>
+            )}
           </button>
         ))}
       </div>
 
-      <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/50">
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Nombre</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Email</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Total gastado</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Pedidos</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Última compra</th>
-              <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Segmento</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockCustomers.map((c) => (
-              <tr key={c.email} className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors">
-                <td className="px-4 py-3 font-bold">{c.name}</td>
-                <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{c.email}</td>
-                <td className="px-4 py-3 font-bold">{c.totalSpent}</td>
-                <td className="px-4 py-3 hidden lg:table-cell">{c.orders}</td>
-                <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{c.lastPurchase}</td>
-                <td className="px-4 py-3">
-                  <span className={segmentClass[c.segment]}>{c.segment}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Loading */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-3 text-sm text-muted-foreground font-semibold">Cargando clientes…</span>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && !loading && (
+        <div className="bg-status-error/10 border border-status-error/20 rounded-lg p-4">
+          <p className="text-sm font-bold text-status-error">{error}</p>
+          <button onClick={fetchCustomers} className="mt-2 text-xs font-semibold text-primary hover:underline">
+            Reintentar
+          </button>
+        </div>
+      )}
+
+      {/* Table */}
+      {!loading && !error && (
+        <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Cliente</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Email</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Total gastado</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Pedidos</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Ciudad</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">Registro</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Segmento</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                      No se encontraron clientes
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((c) => {
+                    const seg = getSegment(c);
+                    return (
+                      <tr
+                        key={c.id}
+                        className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="font-semibold">
+                            {c.first_name} {c.last_name}
+                          </div>
+                          {c.billing_company && (
+                            <div className="text-xs text-muted-foreground">{c.billing_company}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs">{c.email}</td>
+                        <td className="px-4 py-3 font-bold">{fmt(c.total_spent)}</td>
+                        <td className="px-4 py-3 hidden lg:table-cell">{c.orders_count}</td>
+                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell text-xs">
+                          {c.billing_city || "—"}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground hidden xl:table-cell text-xs whitespace-nowrap">
+                          {fmtDate(c.date_created)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={segmentClass[seg] || "status-badge-inactive"}>{seg}</span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/30">
+              <span className="text-xs text-muted-foreground">
+                Página {page} de {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="p-1.5 rounded-md border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="p-1.5 rounded-md border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
