@@ -97,8 +97,10 @@ serve(async (req) => {
       upserted += batch.length;
     }
 
+    const nextPage = endPage < totalPages ? endPage + 1 : null;
+
     return new Response(
-      JSON.stringify({ success: true, total_woo: total, synced: upserted, pages_fetched: maxPages }),
+      JSON.stringify({ success: true, total_woo: total, synced: upserted, pages_fetched: endPage - startPage + 1, next_page: nextPage }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
