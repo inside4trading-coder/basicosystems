@@ -16,26 +16,36 @@ serve(async (req) => {
   const auth = `key=${API_KEY}&token=${TOKEN}`;
 
   try {
-    const boardsRes = await fetch(`https://api.trello.com/1/organizations/${WORKSPACE_ID}/boards?${auth}&fields=name,url,dateLastActivity`);
-    const boards = await boardsRes.json();
+    // First: test auth with member info
+    const meRes = await fetch(`https://api.trello.com/1/members/me?${auth}&fields=fullName,username`);
+    const meText = await meRes.text();
+    let me;
+    try { me = JSON.parse(meText); } catch { me = meText; }
 
-    let lists: any = null;
-    let cards: any = null;
+    // Then boards
+    const boardsRes = await fetch(`https://api.trello.com/1/organizations/${WORKSPACE_ID}/boards?${auth}&fields=name,url,dateLastActivity`);
+    const boardsText = await boardsRes.text();
+    let boards;
+    try { boards = JSON.parse(boardsText); } catch { boards = boardsText; }
+
+    let lists = null, cards = null;
     if (Array.isArray(boards) && boards.length > 0) {
       const boardId = boards[0].id;
       const [listsRes, cardsRes] = await Promise.all([
         fetch(`https://api.trello.com/1/boards/${boardId}/lists?${auth}&fields=name,pos`),
         fetch(`https://api.trello.com/1/boards/${boardId}/cards?${auth}&fields=name,desc,due,dueComplete,labels,idList,idMembers&members=true&member_fields=fullName,avatarUrl`),
       ]);
-      lists = await listsRes.json();
-      cards = await cardsRes.json();
+      const listsText = await listsRes.text();
+      const cardsText = await cardsRes.text();
+      try { lists = JSON.parse(listsText); } catch { lists = listsText; }
+      try { cards = JSON.parse(cardsText); } catch { cards = cardsText; }
     }
 
-    return new Response(JSON.stringify({ boards, lists, cards }, null, 2), {
+    return new Response(JSON.stringify({ me, boards, lists, cards }, null, 2), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error.message, stack: error.stack }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

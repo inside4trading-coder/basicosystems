@@ -13,20 +13,37 @@ serve(async (req) => {
   const WC_KEY = Deno.env.get("WC_CONSUMER_KEY")!;
   const WC_SECRET = Deno.env.get("WC_CONSUMER_SECRET")!;
   const base = "https://basicoclothes.es/wp-json/wc/v3";
-  const auth = `consumer_key=${WC_KEY}&consumer_secret=${WC_SECRET}`;
+  const authHeader = "Basic " + btoa(`${WC_KEY}:${WC_SECRET}`);
+  const headers = { "Authorization": authHeader };
 
   try {
-    const [ordersRes, customersRes, productsRes] = await Promise.all([
-      fetch(`${base}/orders?per_page=1&${auth}`),
-      fetch(`${base}/customers?per_page=1&${auth}`),
-      fetch(`${base}/products?per_page=1&${auth}`),
-    ]);
+    // First test: check if WC API root is accessible
+    const rootRes = await fetch("https://basicoclothes.es/wp-json/wc/v3", { headers });
+    const rootText = await rootRes.text();
+    
+    let orders, customers, products;
+    try {
+      const [ordersRes, customersRes, productsRes] = await Promise.all([
+        fetch(`${base}/orders?per_page=1`, { headers }),
+        fetch(`${base}/customers?per_page=1`, { headers }),
+        fetch(`${base}/products?per_page=1`, { headers }),
+      ]);
+      orders = { status: ordersRes.status, body: await ordersRes.json().catch(() => ordersRes.statusText) };
+      customers = { status: customersRes.status, body: await customersRes.json().catch(() => customersRes.statusText) };
+      products = { status: productsRes.status, body: await productsRes.json().catch(() => productsRes.statusText) };
+    } catch (e) {
+      orders = customers = products = { error: e.message };
+    }
 
-    const orders = await ordersRes.json();
-    const customers = await customersRes.json();
-    const products = await productsRes.json();
+    // Also try query param auth as fallback
+    const fallbackRes = await fetch(`${base}/orders?per_page=1&consumer_key=${WC_KEY}&consumer_secret=${WC_SECRET}`);
+    const fallbackBody = await fallbackRes.text();
 
-    return new Response(JSON.stringify({ orders, customers, products }, null, 2), {
+    return new Response(JSON.stringify({
+      root: { status: rootRes.status, body: rootText.substring(0, 500) },
+      orders, customers, products,
+      fallback: { status: fallbackRes.status, body: fallbackBody.substring(0, 500) },
+    }, null, 2), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
