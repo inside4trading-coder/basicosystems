@@ -108,9 +108,6 @@ serve(async (req) => {
       }
     }
 
-    // Fetch exchange rate for VES conversion
-    const vesRate = await getExchangeRate();
-
     let syncedOrders = 0;
     let syncedItems = 0;
     let syncedPayments = 0;
@@ -119,32 +116,37 @@ serve(async (req) => {
     for (let i = 0; i < allOrders.length; i += 50) {
       const batch = allOrders.slice(i, i + 50);
 
-      const orderRows = batch.map((o: any) => ({
-        order_id: o.id,
-        order_number: String(o.number || o.id),
-        order_datetime: o.date_created_gmt ? o.date_created_gmt + "Z" : o.date_created,
-        order_date: (o.date_created_gmt || o.date_created || "").split("T")[0] || null,
-        order_status: o.status,
-        sale_channel: extractSaleChannel(o.meta_data),
-        billing_state: o.billing?.state || null,
-        subtotal_amount: parseFloat(o.discount_total || "0") > 0
-          ? parseFloat(o.total || "0") + parseFloat(o.discount_total || "0") - parseFloat(o.shipping_total || "0") - parseFloat(o.total_tax || "0")
-          : parseFloat(o.total || "0") - parseFloat(o.shipping_total || "0") - parseFloat(o.total_tax || "0"),
-        discount_amount: parseFloat(o.discount_total || "0"),
-        shipping_amount: parseFloat(o.shipping_total || "0"),
-        tax_amount: parseFloat(o.total_tax || "0"),
-        refunded_amount: Math.abs(parseFloat(o.total_refunded || "0")),
-        total_amount: parseFloat(o.total || "0"),
-        total_amount_usd: (o.currency || "USD") === "USD" 
-          ? parseFloat(o.total || "0") 
-          : parseFloat(o.total || "0") / vesRate,
-        exchange_rate: (o.currency || "USD") === "USD" ? 1 : vesRate,
-        order_currency: o.currency || "USD",
-        customer_email: o.billing?.email || null,
-        customer_phone: o.billing?.phone || null,
-        payment_method: o.payment_method_title || o.payment_method || null,
-        synced_at: new Date().toISOString(),
-      }));
+      const orderRows = batch.map((o: any) => {
+        const rate = getOrderExchangeRate(o);
+        const currency = getOrderCurrency(o);
+        const total = parseFloat(o.total || "0");
+        const totalUsd = currency === "USD" ? total : (rate > 0 ? total / rate : total);
+
+        return {
+          order_id: o.id,
+          order_number: String(o.number || o.id),
+          order_datetime: o.date_created_gmt ? o.date_created_gmt + "Z" : o.date_created,
+          order_date: (o.date_created_gmt || o.date_created || "").split("T")[0] || null,
+          order_status: o.status,
+          sale_channel: extractSaleChannel(o.meta_data),
+          billing_state: o.billing?.state || null,
+          subtotal_amount: parseFloat(o.discount_total || "0") > 0
+            ? total + parseFloat(o.discount_total || "0") - parseFloat(o.shipping_total || "0") - parseFloat(o.total_tax || "0")
+            : total - parseFloat(o.shipping_total || "0") - parseFloat(o.total_tax || "0"),
+          discount_amount: parseFloat(o.discount_total || "0"),
+          shipping_amount: parseFloat(o.shipping_total || "0"),
+          tax_amount: parseFloat(o.total_tax || "0"),
+          refunded_amount: Math.abs(parseFloat(o.total_refunded || "0")),
+          total_amount: total,
+          total_amount_usd: totalUsd,
+          exchange_rate: rate,
+          order_currency: currency,
+          customer_email: o.billing?.email || null,
+          customer_phone: o.billing?.phone || null,
+          payment_method: o.payment_method_title || o.payment_method || null,
+          synced_at: new Date().toISOString(),
+        };
+      });
 
       const { error: ordErr } = await supabase.from("orders").upsert(orderRows, { onConflict: "order_id" });
       if (ordErr) console.error("Orders upsert error:", ordErr.message);
