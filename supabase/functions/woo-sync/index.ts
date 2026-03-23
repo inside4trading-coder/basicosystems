@@ -131,7 +131,7 @@ serve(async (req) => {
       if (Array.isArray(res.body)) {
         for (const p of res.body) {
           const cats = (p.categories || []).map((c: any) => c.name).filter(Boolean);
-          if (cats.length > 0) productCategoryMap.set(p.id, cats[0]);
+          if (cats.length > 0) productCategoryMap.set(p.id, cats.join(" › "));
         }
       }
     }
