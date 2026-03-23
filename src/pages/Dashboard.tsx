@@ -40,21 +40,31 @@ export default function Dashboard() {
   const { data, loading, error, refetch } = useDashboardData(period);
   const [syncing, setSyncing] = useState(false);
 
-  const handleSync = async () => {
+  const handleSync = async (days = 30) => {
     setSyncing(true);
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 55000);
       const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/woo-sync?days=365`,
-        { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
+        `https://${projectId}.supabase.co/functions/v1/woo-sync?days=${days}`,
+        { 
+          headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey },
+          signal: controller.signal,
+        }
       );
+      clearTimeout(timeout);
       const json = await res.json();
       if (json.error) throw new Error(json.error);
-      toast.success(`Sincronización completada: ${json.synced?.orders || 0} pedidos`);
+      toast.success(`Sincronización completada: ${json.synced?.orders || 0} pedidos, ${json.synced?.items || 0} items`);
       refetch();
     } catch (e: any) {
-      toast.error(e.message || "Error al sincronizar");
+      if (e.name === "AbortError") {
+        toast.error("La sincronización tardó demasiado. Intenta con un período más corto.");
+      } else {
+        toast.error(e.message || "Error al sincronizar");
+      }
     } finally {
       setSyncing(false);
     }
