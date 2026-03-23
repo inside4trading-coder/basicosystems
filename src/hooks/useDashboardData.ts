@@ -123,7 +123,7 @@ export function useDashboardData(period: Period) {
       const dailyMap: Record<string, number> = {};
       for (const o of paid) {
         const d = o.order_date || "";
-        dailyMap[d] = (dailyMap[d] || 0) + (o.total_amount || 0);
+        dailyMap[d] = (dailyMap[d] || 0) + (o.total_amount_usd || o.total_amount || 0);
       }
       const dailyRevenue = Object.entries(dailyMap).sort(([a], [b]) => a.localeCompare(b))
         .map(([date, revenue]) => ({ date, revenue: Math.round(revenue * 100) / 100 }));
