@@ -203,7 +203,7 @@ export function useDashboardData(period: Period) {
       const catMap: Record<string, { revenue: number; quantity: number }> = {};
       for (const item of items) {
         if (!paidIds.has(item.order_id)) continue;
-        const cat = item.analytic_category || "Sin categoría";
+        const cat = item.product_category || item.analytic_category || "Sin categoría";
         if (!catMap[cat]) catMap[cat] = { revenue: 0, quantity: 0 };
         const oc = orderCurrencyMap.get(item.order_id);
         const lineTotal = item.line_total || 0;
