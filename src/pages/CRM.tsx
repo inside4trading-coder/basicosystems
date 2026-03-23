@@ -66,14 +66,10 @@ export default function CRM() {
       const params = new URLSearchParams({
         page: String(page),
         per_page: "20",
+        mode: viewMode,
       });
 
-      if (viewMode === "buyers") {
-        // Oldest customers first → they have order history
-        params.set("orderby", "id");
-        params.set("order", "asc");
-      } else {
-        // Newest registrations first
+      if (viewMode === "all") {
         params.set("orderby", "registered_date");
         params.set("order", "desc");
       }
