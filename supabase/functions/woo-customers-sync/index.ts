@@ -33,20 +33,23 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // First request to get total pages
-    const first = await wcFetch("/customers", { page: "1", per_page: String(PER_PAGE), orderby: "registered_date", order: "desc" });
+    // Get starting page from query param (for resumable sync)
+    const url = new URL(req.url);
+    const startPage = parseInt(url.searchParams.get("start_page") || "1");
+    const maxPagesParam = parseInt(url.searchParams.get("max_pages") || "20");
+
+    const first = await wcFetch("/customers", { page: String(startPage), per_page: String(PER_PAGE), orderby: "registered_date", order: "desc" });
     const totalPages = first.totalPages;
     const total = first.total;
 
     let allCustomers: any[] = Array.isArray(first.body) ? first.body : [];
     
-    // Fetch remaining pages (up to 80 pages = 8000 customers per sync, to avoid timeout)
-    const maxPages = Math.min(totalPages, 80);
+    const endPage = Math.min(startPage + maxPagesParam - 1, totalPages);
     
-    // Fetch in batches of 5 concurrent requests
-    for (let batch = 1; batch < maxPages; batch += 5) {
+    // Fetch remaining pages in batches of 3
+    for (let batch = startPage + 1; batch <= endPage; batch += 3) {
       const promises = [];
-      for (let p = batch + 1; p <= Math.min(batch + 5, maxPages); p++) {
+      for (let p = batch; p <= Math.min(batch + 2, endPage); p++) {
         promises.push(
           wcFetch("/customers", { page: String(p), per_page: String(PER_PAGE), orderby: "registered_date", order: "desc" })
         );
