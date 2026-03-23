@@ -1,4 +1,4 @@
-import { Search, Loader2, ChevronLeft, ChevronRight, Filter, Users, ShoppingBag } from "lucide-react";
+import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useCallback } from "react";
 
@@ -19,27 +19,6 @@ interface Customer {
   last_order_date: string | null;
 }
 
-type Segment = "Todos" | "VIP" | "Activo" | "Ocasional" | "Nuevo";
-
-function getSegment(c: Customer): string {
-  const spent = parseFloat(c.total_spent || "0");
-  if (spent >= 500 || c.orders_count >= 10) return "VIP";
-  if (c.orders_count >= 3) return "Activo";
-  if (c.orders_count >= 1) return "Ocasional";
-  return "Nuevo";
-}
-
-const segmentClass: Record<string, string> = {
-  VIP: "status-badge-error",
-  Activo: "status-badge-success",
-  Ocasional: "status-badge-warning",
-  Nuevo: "status-badge-inactive",
-};
-
-const SEGMENTS: Segment[] = ["Todos", "VIP", "Activo", "Ocasional", "Nuevo"];
-
-type ViewMode = "buyers" | "all";
-
 export default function CRM() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,8 +28,8 @@ export default function CRM() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
-  const [segmentFilter, setSegmentFilter] = useState<Segment>("Todos");
-  const [viewMode, setViewMode] = useState<ViewMode>("buyers");
+  const [orderby, setOrderby] = useState("registered_date");
+  const [order, setOrder] = useState("desc");
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 500);
@@ -66,14 +45,9 @@ export default function CRM() {
       const params = new URLSearchParams({
         page: String(page),
         per_page: "20",
-        mode: viewMode,
+        orderby,
+        order,
       });
-
-      if (viewMode === "all") {
-        params.set("orderby", "registered_date");
-        params.set("order", "desc");
-      }
-
       if (searchDebounced) params.set("search", searchDebounced);
 
       const res = await fetch(
@@ -91,31 +65,15 @@ export default function CRM() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchDebounced, viewMode]);
+  }, [page, searchDebounced, orderby, order]);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
-  useEffect(() => { setPage(1); }, [searchDebounced, viewMode]);
-
-  const filtered = segmentFilter === "Todos"
-    ? customers
-    : customers.filter((c) => getSegment(c) === segmentFilter);
-
-  const fmt = (val: string) => {
-    const num = parseFloat(val || "0");
-    return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
+  useEffect(() => { setPage(1); }, [searchDebounced, orderby, order]);
 
   const fmtDate = (d: string | null) => {
     if (!d) return "—";
     return new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
   };
-
-  // Segment counts from current page
-  const segmentCounts: Record<string, number> = { Todos: customers.length };
-  for (const c of customers) {
-    const seg = getSegment(c);
-    segmentCounts[seg] = (segmentCounts[seg] || 0) + 1;
-  }
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -124,7 +82,7 @@ export default function CRM() {
         <div>
           <h2 className="text-2xl font-black tracking-tight">CRM</h2>
           {!loading && (
-            <p className="text-sm text-muted-foreground mt-1">{total.toLocaleString()} clientes</p>
+            <p className="text-sm text-muted-foreground mt-1">{total.toLocaleString()} clientes registrados</p>
           )}
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -137,54 +95,21 @@ export default function CRM() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-        </div>
-      </div>
-
-      {/* View mode toggle */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setViewMode("buyers")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-colors ${
-            viewMode === "buyers"
-              ? "bg-primary text-primary-foreground"
-              : "bg-card border border-border text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <ShoppingBag className="h-3.5 w-3.5" />
-          Compradores
-        </button>
-        <button
-          onClick={() => setViewMode("all")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-colors ${
-            viewMode === "all"
-              ? "bg-primary text-primary-foreground"
-              : "bg-card border border-border text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Users className="h-3.5 w-3.5" />
-          Registros recientes
-        </button>
-      </div>
-
-      {/* Segment filters */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-        {SEGMENTS.map((seg) => (
-          <button
-            key={seg}
-            onClick={() => setSegmentFilter(seg)}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${
-              segmentFilter === seg
-                ? "bg-primary text-primary-foreground"
-                : "bg-card border border-border text-muted-foreground hover:text-foreground"
-            }`}
+          <select
+            value={`${orderby}:${order}`}
+            onChange={(e) => {
+              const [ob, od] = e.target.value.split(":");
+              setOrderby(ob);
+              setOrder(od);
+            }}
+            className="text-xs border border-border rounded-md px-2 py-2 bg-card font-semibold"
           >
-            {seg}
-            {segmentCounts[seg] !== undefined && (
-              <span className="ml-1 opacity-70">({segmentCounts[seg] || 0})</span>
-            )}
-          </button>
-        ))}
+            <option value="registered_date:desc">Más recientes</option>
+            <option value="registered_date:asc">Más antiguos</option>
+            <option value="name:asc">Nombre A-Z</option>
+            <option value="name:desc">Nombre Z-A</option>
+          </select>
+        </div>
       </div>
 
       {/* Loading */}
@@ -213,57 +138,47 @@ export default function CRM() {
               <thead>
                 <tr className="border-b border-border bg-muted/50">
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Cliente</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Email</th>
-                  <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Total gastado</th>
-                  <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Pedidos</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Teléfono</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Teléfono</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">País</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">Registro</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Segmento</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {customers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
                       No se encontraron clientes
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((c) => {
-                    const seg = getSegment(c);
-                    const spent = parseFloat(c.total_spent || "0");
-                    return (
-                      <tr
-                        key={c.id}
-                        className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
-                      >
-                        <td className="px-4 py-3">
-                          <div className="font-semibold">
-                            {c.first_name || c.last_name
-                              ? `${c.first_name} ${c.last_name}`.trim()
-                              : c.username || "Sin nombre"}
-                          </div>
-                          {c.billing_company && (
-                            <div className="text-xs text-muted-foreground">{c.billing_company}</div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs">{c.email}</td>
-                        <td className="px-4 py-3 font-bold text-right tabular-nums">
-                          {spent > 0 ? fmt(c.total_spent) : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-center tabular-nums">{c.orders_count}</td>
-                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell text-xs">
-                          {c.billing_phone || "—"}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground hidden xl:table-cell text-xs whitespace-nowrap">
-                          {fmtDate(c.date_created)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={segmentClass[seg] || "status-badge-inactive"}>{seg}</span>
-                        </td>
-                      </tr>
-                    );
-                  })
+                  customers.map((c) => (
+                    <tr
+                      key={c.id}
+                      className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="font-semibold">
+                          {c.first_name || c.last_name
+                            ? `${c.first_name} ${c.last_name}`.trim()
+                            : c.username || "Sin nombre"}
+                        </div>
+                        {c.billing_company && (
+                          <div className="text-xs text-muted-foreground">{c.billing_company}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{c.email}</td>
+                      <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs">
+                        {c.billing_phone || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell text-xs">
+                        {c.billing_country || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground hidden xl:table-cell text-xs whitespace-nowrap">
+                        {fmtDate(c.date_created)}
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
