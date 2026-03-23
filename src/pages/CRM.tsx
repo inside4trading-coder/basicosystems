@@ -66,10 +66,14 @@ export default function CRM() {
       const params = new URLSearchParams({
         page: String(page),
         per_page: "20",
-        mode: viewMode,
       });
 
-      if (viewMode === "all") {
+      if (viewMode === "buyers") {
+        // Oldest customers first → they have order history
+        params.set("orderby", "id");
+        params.set("order", "asc");
+      } else {
+        // Newest registrations first
         params.set("orderby", "registered_date");
         params.set("order", "desc");
       }
@@ -124,7 +128,7 @@ export default function CRM() {
         <div>
           <h2 className="text-2xl font-black tracking-tight">CRM</h2>
           {!loading && (
-            <p className="text-sm text-muted-foreground mt-1">{total} clientes</p>
+            <p className="text-sm text-muted-foreground mt-1">{total.toLocaleString()} clientes</p>
           )}
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -162,7 +166,7 @@ export default function CRM() {
           }`}
         >
           <Users className="h-3.5 w-3.5" />
-          Todos los registros
+          Registros recientes
         </button>
       </div>
 
@@ -191,9 +195,7 @@ export default function CRM() {
       {loading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-3 text-sm text-muted-foreground font-semibold">
-            {viewMode === "buyers" ? "Analizando compradores…" : "Cargando clientes…"}
-          </span>
+          <span className="ml-3 text-sm text-muted-foreground font-semibold">Cargando clientes…</span>
         </div>
       )}
 
