@@ -101,8 +101,8 @@ export function useDashboardData(period: Period) {
       const paid = all.filter(o => !EXCLUDED.has(o.order_status || ""));
       const prevPaid = (prevOrders || []).filter(o => !EXCLUDED.has(o.order_status || ""));
 
-      const revenue = paid.reduce((s, o) => s + (o.total_amount || 0), 0);
-      const prevRevenue = prevPaid.reduce((s, o) => s + (o.total_amount || 0), 0);
+      const revenue = paid.reduce((s, o) => s + (o.total_amount_usd || o.total_amount || 0), 0);
+      const prevRevenue = prevPaid.reduce((s, o) => s + (o.total_amount_usd || o.total_amount || 0), 0);
       const totalOrders = paid.length;
       const prevTotalOrders = prevPaid.length;
       const avgTicket = totalOrders > 0 ? revenue / totalOrders : 0;
