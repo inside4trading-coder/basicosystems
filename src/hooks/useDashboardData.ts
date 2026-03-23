@@ -175,19 +175,29 @@ export function useDashboardData(period: Period) {
         count: hourMap[i] || 0,
       }));
 
-      // Top products from items
-      const prodMap: Record<string, { name: string; qty: number }> = {};
-      const paidIds = new Set(paid.map(o => o.order_id));
+      // Top products from items (with revenue in USD)
+      const orderCurrencyMap = new Map<number, { rate: number; currency: string }>();
+      for (const o of paid) {
+        orderCurrencyMap.set(o.order_id, { 
+          rate: o.exchange_rate || 1, 
+          currency: o.order_currency || "USD" 
+        });
+      }
+      const prodMap: Record<string, { name: string; qty: number; rev: number }> = {};
       for (const item of items) {
         if (!paidIds.has(item.order_id)) continue;
         const key = item.product_name || item.sku || "unknown";
-        if (!prodMap[key]) prodMap[key] = { name: key, qty: 0 };
+        if (!prodMap[key]) prodMap[key] = { name: key, qty: 0, rev: 0 };
         prodMap[key].qty += item.quantity || 0;
+        const oc = orderCurrencyMap.get(item.order_id);
+        const lineTotal = item.line_total || 0;
+        const lineUsd = oc && oc.currency !== "USD" && oc.rate > 1 ? lineTotal / oc.rate : lineTotal;
+        prodMap[key].rev += lineUsd;
       }
       const topProducts = Object.values(prodMap)
         .sort((a, b) => b.qty - a.qty)
         .slice(0, 10)
-        .map(p => ({ name: p.name, quantity: p.qty }));
+        .map(p => ({ name: p.name, quantity: p.qty, revenue: Math.round(p.rev * 100) / 100 }));
 
       // Category breakdown
       const catMap: Record<string, { revenue: number; quantity: number }> = {};
@@ -195,11 +205,14 @@ export function useDashboardData(period: Period) {
         if (!paidIds.has(item.order_id)) continue;
         const cat = item.analytic_category || "Sin categoría";
         if (!catMap[cat]) catMap[cat] = { revenue: 0, quantity: 0 };
-        catMap[cat].revenue += item.line_total || 0;
+        const oc = orderCurrencyMap.get(item.order_id);
+        const lineTotal = item.line_total || 0;
+        const lineUsd = oc && oc.currency !== "USD" && oc.rate > 1 ? lineTotal / oc.rate : lineTotal;
+        catMap[cat].revenue += lineUsd;
         catMap[cat].quantity += item.quantity || 0;
       }
       const categoryBreakdown = Object.entries(catMap)
-        .map(([category, v]) => ({ category, ...v }))
+        .map(([category, v]) => ({ category, revenue: Math.round(v.revenue * 100) / 100, quantity: v.quantity }))
         .sort((a, b) => b.revenue - a.revenue);
 
       setData({
@@ -208,10 +221,12 @@ export function useDashboardData(period: Period) {
           orders: { value: totalOrders, change: pct(totalOrders, prevTotalOrders) },
           avgTicket: { value: avgTicket, change: pct(avgTicket, prevAvgTicket) },
           newCustomers: { value: newCustomers, change: pct(newCustomers, prevNewCustomers) },
+          productsSold: { value: productsSold, change: pct(productsSold, prevProductsSold) },
         },
         statuses,
         topProducts,
         dailyRevenue,
+        dailyOrders,
         revenueByState,
         revenueByPayment,
         hourlyDistribution,
