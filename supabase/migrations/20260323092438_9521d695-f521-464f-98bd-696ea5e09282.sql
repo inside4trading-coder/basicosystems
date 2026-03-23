@@ -1,0 +1,2 @@
+UPDATE orders SET total_amount_usd = total_amount, exchange_rate = 1 WHERE order_currency = 'USD' AND total_amount_usd IS NULL;
+UPDATE orders SET total_amount_usd = total_amount / 55, exchange_rate = 55 WHERE order_currency = 'VES' AND total_amount_usd IS NULL;
