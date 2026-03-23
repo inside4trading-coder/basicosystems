@@ -139,6 +139,24 @@ export default function CRM() {
         </div>
       </div>
 
+      {/* Customer type filters */}
+      <div className="flex flex-wrap gap-2">
+        {customerTypes.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setCustomerType(t.value)}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+              customerType === t.value
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground border-border hover:border-primary/50"
+            }`}
+          >
+            {t.label}
+            {t.desc && <span className="ml-1 opacity-70">({t.desc})</span>}
+          </button>
+        ))}
+      </div>
+
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-20">
