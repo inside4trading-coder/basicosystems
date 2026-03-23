@@ -80,7 +80,7 @@ export default function Dashboard() {
     fetchData(period);
   }, [period, fetchData]);
 
-  const fmt = (n: number) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n);
+  const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
   const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
 
   const chartData = data
