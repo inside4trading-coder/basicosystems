@@ -202,6 +202,7 @@ export type Database = {
           line_total: number | null
           order_id: number
           parent_sku: string | null
+          product_category: string | null
           product_name: string | null
           quantity: number | null
           size: string | null
@@ -217,6 +218,7 @@ export type Database = {
           line_total?: number | null
           order_id: number
           parent_sku?: string | null
+          product_category?: string | null
           product_name?: string | null
           quantity?: number | null
           size?: string | null
@@ -232,6 +234,7 @@ export type Database = {
           line_total?: number | null
           order_id?: number
           parent_sku?: string | null
+          product_category?: string | null
           product_name?: string | null
           quantity?: number | null
           size?: string | null
