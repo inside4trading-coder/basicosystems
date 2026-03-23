@@ -232,8 +232,10 @@ export default function CRM() {
                       </td>
                     </tr>
                   ))
-                )
+                )}
+              </tbody>
             </table>
+          </div>
           </div>
 
           {/* Pagination */}
