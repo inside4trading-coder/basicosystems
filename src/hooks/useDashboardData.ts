@@ -120,18 +120,27 @@ export function useDashboardData(period: Period) {
 
       const pct = (c: number, p: number) => p === 0 ? (c > 0 ? 100 : 0) : ((c - p) / p) * 100;
 
+      const curEmails = new Set(paid.map(o => o.customer_email?.toLowerCase()).filter(Boolean));
+      const prevEmails = new Set(prevPaid.map(o => o.customer_email?.toLowerCase()).filter(Boolean));
+      const newCustomers = [...curEmails].filter(e => !prevEmails.has(e)).length;
+      const prevNewCustomers = prevEmails.size;
+
       // Statuses
       const statuses: Record<string, number> = {};
       for (const o of all) statuses[o.order_status || "unknown"] = (statuses[o.order_status || "unknown"] || 0) + 1;
 
       // Daily revenue
       const dailyMap: Record<string, number> = {};
+      const dailyCountMap: Record<string, number> = {};
       for (const o of paid) {
         const d = o.order_date || "";
-        dailyMap[d] = (dailyMap[d] || 0) + (o.total_amount_usd || o.total_amount || 0);
+        dailyMap[d] = (dailyMap[d] || 0) + getUsd(o);
+        dailyCountMap[d] = (dailyCountMap[d] || 0) + 1;
       }
       const dailyRevenue = Object.entries(dailyMap).sort(([a], [b]) => a.localeCompare(b))
         .map(([date, revenue]) => ({ date, revenue: Math.round(revenue * 100) / 100 }));
+      const dailyOrders = Object.entries(dailyCountMap).sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, count]) => ({ date, count }));
 
       // Revenue by state
       const stateMap: Record<string, number> = {};
