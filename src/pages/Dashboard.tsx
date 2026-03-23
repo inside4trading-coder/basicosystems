@@ -46,14 +46,6 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const { data: result, error: fnError } = await supabase.functions.invoke("woo-dashboard", {
-        body: null,
-        headers: { "Content-Type": "application/json" },
-        method: "GET",
-      });
-
-      // supabase.functions.invoke doesn't support query params, so we use the body workaround
-      // Actually let's call it directly
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const res = await fetch(
