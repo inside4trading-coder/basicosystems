@@ -21,6 +21,10 @@ const statusLabels: Record<string, { label: string; className: string }> = {
   cancelled: { label: "Cancelado", className: "status-badge-error" },
   refunded: { label: "Reembolsado", className: "status-badge-error" },
   failed: { label: "Fallido", className: "status-badge-error" },
+  "pedido-listo-para": { label: "Listo para envío", className: "status-badge-success" },
+  "pedido-recibido-p": { label: "Recibido", className: "status-badge-inactive" },
+  "tu-pago-fue-confi": { label: "Pago confirmado", className: "status-badge-success" },
+  "tu-pedido-ha-sido": { label: "Pedido enviado", className: "status-badge-success" },
 };
 
 interface DashboardData {
