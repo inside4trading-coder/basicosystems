@@ -113,9 +113,14 @@ export default function Pedidos() {
     setPage(1);
   }, [statusFilter, searchDebounced]);
 
-  const fmt = (val: string) =>
-    new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(parseFloat(val || "0"));
-
+  const fmt = (val: string, currency: string) => {
+    const num = parseFloat(val || "0");
+    try {
+      return new Intl.NumberFormat("es-ES", { style: "currency", currency: currency || "USD" }).format(num);
+    } catch {
+      return `${num.toFixed(2)} ${currency}`;
+    }
+  };
   const fmtDate = (d: string) => {
     const date = new Date(d);
     return date.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
