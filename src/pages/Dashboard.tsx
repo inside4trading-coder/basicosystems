@@ -40,24 +40,48 @@ export default function Dashboard() {
   const { data, loading, error, refetch } = useDashboardData(period);
   const [syncing, setSyncing] = useState(false);
 
-  const handleSync = async (days = 30) => {
+  const handleSync = async (totalDays = 7) => {
     setSyncing(true);
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 55000);
-      const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/woo-sync?days=${days}`,
-        { 
-          headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey },
-          signal: controller.signal,
+      
+      // For periods > 10 days, split into batches of 7 days
+      const batchSize = 7;
+      const batches = totalDays <= 10 ? [totalDays] : [];
+      if (totalDays > 10) {
+        for (let d = totalDays; d > 0; d -= batchSize) {
+          batches.push(Math.min(d, batchSize));
         }
-      );
-      clearTimeout(timeout);
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-      toast.success(`Sincronización completada: ${json.synced?.orders || 0} pedidos, ${json.synced?.items || 0} items`);
+      }
+      
+      let totalSynced = { orders: 0, items: 0, payments: 0 };
+      
+      for (let i = 0; i < batches.length; i++) {
+        const days = batches[i];
+        // For multi-batch, calculate the offset
+        const offsetDays = totalDays > 10 ? totalDays - (i * batchSize) : days;
+        const sinceDays = totalDays > 10 ? offsetDays : days;
+        
+        toast.info(`Sincronizando lote ${i + 1}/${batches.length}...`);
+        
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 55000);
+        const res = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/woo-sync?days=${sinceDays}`,
+          { 
+            headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey },
+            signal: controller.signal,
+          }
+        );
+        clearTimeout(timeout);
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        totalSynced.orders += json.synced?.orders || 0;
+        totalSynced.items += json.synced?.items || 0;
+      }
+      
+      toast.success(`Sincronización completada: ${totalSynced.orders} pedidos, ${totalSynced.items} items`);
       refetch();
     } catch (e: any) {
       if (e.name === "AbortError") {
