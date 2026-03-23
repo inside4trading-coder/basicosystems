@@ -1,5 +1,4 @@
 import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
 import { useState, useCallback, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
