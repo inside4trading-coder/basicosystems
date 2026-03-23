@@ -142,7 +142,7 @@ export function useDashboardData(period: Period) {
       const payMap: Record<string, number> = {};
       for (const o of paid) {
         const m = o.payment_method || "Otro";
-        payMap[m] = (payMap[m] || 0) + (o.total_amount || 0);
+        payMap[m] = (payMap[m] || 0) + (o.total_amount_usd || o.total_amount || 0);
       }
       const revenueByPayment = Object.entries(payMap)
         .map(([method, revenue]) => ({ method, revenue: Math.round(revenue * 100) / 100 }))
