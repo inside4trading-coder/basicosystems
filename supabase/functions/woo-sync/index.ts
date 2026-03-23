@@ -106,6 +106,9 @@ serve(async (req) => {
       }
     }
 
+    // Fetch exchange rate for VES conversion
+    const vesRate = await getExchangeRate();
+
     let syncedOrders = 0;
     let syncedItems = 0;
     let syncedPayments = 0;
