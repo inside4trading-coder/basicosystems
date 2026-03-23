@@ -1,6 +1,7 @@
 import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useCallback } from "react";
+import { CustomerOrdersDialog } from "@/components/crm/CustomerOrdersDialog";
 
 interface Customer {
   id: number;
@@ -31,6 +32,7 @@ export default function CRM() {
   const [orderby, setOrderby] = useState("registered_date");
   const [order, setOrder] = useState("desc");
   const [customerType, setCustomerType] = useState<string>("all");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 500);
@@ -202,7 +204,8 @@ export default function CRM() {
                   filtered.map((c) => (
                     <tr
                       key={c.id}
-                      className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                      onClick={() => setSelectedCustomer(c)}
+                      className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
                     >
                       <td className="px-4 py-3">
                         <div className="font-semibold">
@@ -263,6 +266,11 @@ export default function CRM() {
           )}
         </div>
       )}
+      <CustomerOrdersDialog
+        customer={selectedCustomer}
+        open={!!selectedCustomer}
+        onOpenChange={(open) => !open && setSelectedCustomer(null)}
+      />
     </div>
   );
 }
