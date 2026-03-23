@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw, ChevronDown } from "lucide-react";
+import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -79,9 +79,10 @@ export default function Dashboard() {
         if (json.error) throw new Error(json.error);
         totalSynced.orders += json.synced?.orders || 0;
         totalSynced.items += json.synced?.items || 0;
+        totalSynced.payments += json.synced?.payments || 0;
       }
       
-      toast.success(`Sincronización completada: ${totalSynced.orders} pedidos, ${totalSynced.items} items`);
+      toast.success(`Sincronización completada: ${totalSynced.orders} pedidos, ${totalSynced.items} items, ${totalSynced.payments} pagos`);
       refetch();
     } catch (e: any) {
       if (e.name === "AbortError") {
@@ -116,12 +117,21 @@ export default function Dashboard() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleSync(7)}
+              onClick={() => handleSync(1)}
               disabled={syncing}
               className="gap-2 rounded-r-none"
             >
               <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Sincronizando…" : "Sync 7d"}
+              {syncing ? "Sincronizando…" : "Sync Hoy"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSync(7)}
+              disabled={syncing}
+              className="rounded-none border-l-0 px-2 text-xs"
+            >
+              7d
             </Button>
             <Button
               variant="outline"
