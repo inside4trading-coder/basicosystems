@@ -166,13 +166,21 @@ export default function CRM() {
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/woo-customers-sync`,
-        { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
-      );
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || "Sync failed");
-      toast.success(`${data.synced} clientes sincronizados`);
+      let startPage = 1;
+      let totalSynced = 0;
+
+      while (startPage) {
+        const res = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/woo-customers-sync?start_page=${startPage}&max_pages=15`,
+          { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
+        );
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error || "Sync failed");
+        totalSynced += data.synced;
+        startPage = data.next_page;
+      }
+
+      toast.success(`${totalSynced} clientes sincronizados`);
       if (customerType !== "all") fetchCustomers();
     } catch (e: any) {
       toast.error(`Error sincronizando: ${e.message}`);
