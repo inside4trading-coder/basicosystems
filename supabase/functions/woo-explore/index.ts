@@ -18,7 +18,7 @@ serve(async (req) => {
 
   try {
     // First test: check if WC API root is accessible
-    const rootRes = await fetch("https://basicoclothes.es/wp-json/wc/v3", { headers });
+    const rootRes = await fetch("https://basicoclothes.com/wp-json/wc/v3", { headers });
     const rootText = await rootRes.text();
     
     let orders, customers, products;
