@@ -192,6 +192,202 @@ export type Database = {
         }
         Relationships: []
       }
+      order_items: {
+        Row: {
+          analytic_category: string | null
+          color: string | null
+          id: string
+          item_cost: number | null
+          line_item_id: number | null
+          line_total: number | null
+          order_id: number
+          parent_sku: string | null
+          product_name: string | null
+          quantity: number | null
+          size: string | null
+          sku: string | null
+          unit_price: number | null
+        }
+        Insert: {
+          analytic_category?: string | null
+          color?: string | null
+          id?: string
+          item_cost?: number | null
+          line_item_id?: number | null
+          line_total?: number | null
+          order_id: number
+          parent_sku?: string | null
+          product_name?: string | null
+          quantity?: number | null
+          size?: string | null
+          sku?: string | null
+          unit_price?: number | null
+        }
+        Update: {
+          analytic_category?: string | null
+          color?: string | null
+          id?: string
+          item_cost?: number | null
+          line_item_id?: number | null
+          line_total?: number | null
+          order_id?: number
+          parent_sku?: string | null
+          product_name?: string | null
+          quantity?: number | null
+          size?: string | null
+          sku?: string | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["order_id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          billing_state: string | null
+          customer_email: string | null
+          customer_phone: string | null
+          discount_amount: number | null
+          exchange_rate: number | null
+          order_currency: string | null
+          order_date: string | null
+          order_datetime: string | null
+          order_id: number
+          order_number: string | null
+          order_status: string | null
+          payment_method: string | null
+          refunded_amount: number | null
+          sale_channel: string | null
+          shipping_amount: number | null
+          subtotal_amount: number | null
+          synced_at: string | null
+          tax_amount: number | null
+          total_amount: number | null
+          total_amount_usd: number | null
+        }
+        Insert: {
+          billing_state?: string | null
+          customer_email?: string | null
+          customer_phone?: string | null
+          discount_amount?: number | null
+          exchange_rate?: number | null
+          order_currency?: string | null
+          order_date?: string | null
+          order_datetime?: string | null
+          order_id: number
+          order_number?: string | null
+          order_status?: string | null
+          payment_method?: string | null
+          refunded_amount?: number | null
+          sale_channel?: string | null
+          shipping_amount?: number | null
+          subtotal_amount?: number | null
+          synced_at?: string | null
+          tax_amount?: number | null
+          total_amount?: number | null
+          total_amount_usd?: number | null
+        }
+        Update: {
+          billing_state?: string | null
+          customer_email?: string | null
+          customer_phone?: string | null
+          discount_amount?: number | null
+          exchange_rate?: number | null
+          order_currency?: string | null
+          order_date?: string | null
+          order_datetime?: string | null
+          order_id?: number
+          order_number?: string | null
+          order_status?: string | null
+          payment_method?: string | null
+          refunded_amount?: number | null
+          sale_channel?: string | null
+          shipping_amount?: number | null
+          subtotal_amount?: number | null
+          synced_at?: string | null
+          tax_amount?: number | null
+          total_amount?: number | null
+          total_amount_usd?: number | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          id: string
+          order_id: number
+          payment_amount: number | null
+          payment_bank: string | null
+          payment_currency: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          payment_slot: number | null
+        }
+        Insert: {
+          id?: string
+          order_id: number
+          payment_amount?: number | null
+          payment_bank?: string | null
+          payment_currency?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          payment_slot?: number | null
+        }
+        Update: {
+          id?: string
+          order_id?: number
+          payment_amount?: number | null
+          payment_bank?: string | null
+          payment_currency?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          payment_slot?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["order_id"]
+          },
+        ]
+      }
+      product_costs: {
+        Row: {
+          analytic_category: string | null
+          collection: string | null
+          product_name: string | null
+          sku: string
+          suggested_price: number | null
+          unit_cost_total: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          analytic_category?: string | null
+          collection?: string | null
+          product_name?: string | null
+          sku: string
+          suggested_price?: number | null
+          unit_cost_total?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          analytic_category?: string | null
+          collection?: string | null
+          product_name?: string | null
+          sku?: string
+          suggested_price?: number | null
+          unit_cost_total?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
