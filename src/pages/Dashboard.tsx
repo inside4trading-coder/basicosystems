@@ -205,10 +205,10 @@ export default function Dashboard() {
             })}
           </div>
 
-          {/* Row 1: Daily revenue + Revenue by state */}
+          {/* Row 1: Ventas netas + Pedidos por día (matching WooCommerce layout) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.35s" }}>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Revenue diario</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Ventas netas</h3>
               {data.dailyRevenue.length > 0 ? (
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={data.dailyRevenue}>
@@ -216,7 +216,7 @@ export default function Dashboard() {
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))"
                       tickFormatter={(v) => new Date(v).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} />
                     <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}`} />
-                    <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]}
+                    <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Ventas"]}
                       contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                     <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -227,16 +227,17 @@ export default function Dashboard() {
             </div>
 
             <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.4s" }}>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Revenue por estado</h3>
-              {data.revenueByState.length > 0 ? (
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Pedidos por día</h3>
+              {data.dailyOrders.length > 0 ? (
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={data.revenueByState} layout="vertical">
+                  <BarChart data={data.dailyOrders}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}`} />
-                    <YAxis type="category" dataKey="state" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={80} />
-                    <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]}
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))"
+                      tickFormatter={(v) => new Date(v).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} />
+                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip formatter={(v: number) => [v, "Pedidos"]}
                       contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="count" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
