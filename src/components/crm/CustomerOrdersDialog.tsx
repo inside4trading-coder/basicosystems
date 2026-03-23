@@ -5,17 +5,17 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface Customer {
   id: number;
-  email: string;
-  first_name: string;
-  last_name: string;
-  username: string;
-  billing_company: string;
-  billing_city: string;
-  billing_country: string;
-  billing_phone: string;
-  orders_count: number;
-  total_spent: string;
-  date_created: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  billing_company: string | null;
+  billing_city: string | null;
+  billing_country: string | null;
+  billing_phone: string | null;
+  orders_count: number | null;
+  total_spent: number | string | null;
+  date_created: string | null;
 }
 
 interface Order {
