@@ -110,6 +110,33 @@ serve(async (req) => {
       }
     }
 
+    // Collect unique product IDs to fetch categories from WC
+    const productIdSet = new Set<number>();
+    for (const o of allOrders) {
+      for (const li of (o.line_items || [])) {
+        if (li.product_id) productIdSet.add(li.product_id);
+      }
+    }
+    const productCategoryMap = new Map<number, string>();
+    const productIds = [...productIdSet];
+    console.log(`Fetching categories for ${productIds.length} unique products...`);
+    // Fetch products in batches of 100
+    for (let i = 0; i < productIds.length; i += 100) {
+      const chunk = productIds.slice(i, i + 100);
+      const res = await wcFetch("/products", {
+        include: chunk.join(","),
+        per_page: "100",
+        _fields: "id,categories",
+      });
+      if (Array.isArray(res.body)) {
+        for (const p of res.body) {
+          const cats = (p.categories || []).map((c: any) => c.name).filter(Boolean);
+          if (cats.length > 0) productCategoryMap.set(p.id, cats[0]);
+        }
+      }
+    }
+    console.log(`Fetched categories for ${productCategoryMap.size} products`);
+
     let syncedOrders = 0;
     let syncedItems = 0;
     let syncedPayments = 0;
@@ -172,7 +199,7 @@ serve(async (req) => {
             item_cost: costInfo?.cost || null,
             size: extractVariation(li.meta_data, "talla") || extractVariation(li.meta_data, "size") || extractVariation(li.meta_data, "pa_talla"),
             color: extractVariation(li.meta_data, "color") || extractVariation(li.meta_data, "pa_color"),
-            analytic_category: costInfo?.category || null,
+            analytic_category: costInfo?.category || productCategoryMap.get(li.product_id) || null,
           });
         }
       }
