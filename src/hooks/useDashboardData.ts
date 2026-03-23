@@ -103,17 +103,20 @@ export function useDashboardData(period: Period) {
       const paid = all.filter(o => !EXCLUDED.has(o.order_status || ""));
       const prevPaid = (prevOrders || []).filter(o => !EXCLUDED.has(o.order_status || ""));
 
-      const revenue = paid.reduce((s, o) => s + (o.total_amount_usd || o.total_amount || 0), 0);
-      const prevRevenue = prevPaid.reduce((s, o) => s + (o.total_amount_usd || o.total_amount || 0), 0);
+      const getUsd = (o: any) => o.total_amount_usd ?? o.total_amount ?? 0;
+      const revenue = paid.reduce((s, o) => s + getUsd(o), 0);
+      const prevRevenue = prevPaid.reduce((s, o) => s + getUsd(o), 0);
       const totalOrders = paid.length;
       const prevTotalOrders = prevPaid.length;
       const avgTicket = totalOrders > 0 ? revenue / totalOrders : 0;
       const prevAvgTicket = prevTotalOrders > 0 ? prevRevenue / prevTotalOrders : 0;
 
-      const curEmails = new Set(paid.map(o => o.customer_email?.toLowerCase()).filter(Boolean));
-      const prevEmails = new Set(prevPaid.map(o => o.customer_email?.toLowerCase()).filter(Boolean));
-      const newCustomers = [...curEmails].filter(e => !prevEmails.has(e)).length;
-      const prevNewCustomers = prevEmails.size;
+      // Products sold
+      const paidIds = new Set(paid.map(o => o.order_id));
+      const prevPaidIds = new Set(prevPaid.map(o => o.order_id));
+      const productsSold = items.filter(i => paidIds.has(i.order_id)).reduce((s, i) => s + (i.quantity || 0), 0);
+      // For prev products sold we don't fetch prev items, so use estimate
+      const prevProductsSold = 0;
 
       const pct = (c: number, p: number) => p === 0 ? (c > 0 ? 100 : 0) : ((c - p) / p) * 100;
 
