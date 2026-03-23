@@ -53,6 +53,51 @@ function extractVariation(meta: any[], key: string): string | null {
   return found?.value || found?.display_value || null;
 }
 
+const POS_META_NORMALIZE: Record<string, string> = {
+  "pago móvil": "Pago Móvil (Bs)",
+  "cashea": "Cashea",
+  "efectivo usd": "Efectivo USD",
+  "punto de venta (bs)": "Punto de venta (Bs)",
+  "binance": "Binance / USDT",
+  "zelle": "Zelle",
+  "paypal": "PayPal",
+};
+
+const TITLE_NORMALIZE: Record<string, string> = {
+  "pago móvil": "Pago Móvil (Bs)",
+  "cashea": "Cashea",
+  "paga con zelle": "Zelle",
+  "paga con binance pay / usdt": "Binance / USDT",
+  "paypal": "PayPal",
+};
+
+function normalizePaymentMethod(o: any): string | null {
+  const meta = o.meta_data;
+  const posKeys = [
+    "_basico_pago_metodo",
+    "_basico_pago_metodo_2",
+    "_basico_pago_metodo_3",
+    "_basico_pago_metodo_4",
+  ];
+
+  const posValues = posKeys
+    .map(k => getMetaValue(meta, k))
+    .map(v => (v ? v.trim() : ""))
+    .filter(v => v.length > 0)
+    .map(v => POS_META_NORMALIZE[v.toLowerCase()] || v);
+
+  if (posValues.length > 0) {
+    return posValues.join(" + ");
+  }
+
+  const title = (o.payment_method_title || "").trim();
+  if (!title || title.toUpperCase() === "PAGO POS") {
+    return null;
+  }
+
+  return TITLE_NORMALIZE[title.toLowerCase()] || title;
+}
+
 function extractSaleChannel(meta: any[]): string {
   if (!Array.isArray(meta)) return "web";
   const ch = meta.find((m: any) =>
