@@ -133,6 +133,10 @@ serve(async (req) => {
         tax_amount: parseFloat(o.total_tax || "0"),
         refunded_amount: Math.abs(parseFloat(o.total_refunded || "0")),
         total_amount: parseFloat(o.total || "0"),
+        total_amount_usd: (o.currency || "USD") === "USD" 
+          ? parseFloat(o.total || "0") 
+          : parseFloat(o.total || "0") / vesRate,
+        exchange_rate: (o.currency || "USD") === "USD" ? 1 : vesRate,
         order_currency: o.currency || "USD",
         customer_email: o.billing?.email || null,
         customer_phone: o.billing?.phone || null,
