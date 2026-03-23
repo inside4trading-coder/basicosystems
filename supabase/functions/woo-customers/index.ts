@@ -43,9 +43,8 @@ function mapCustomer(c: any) {
 async function fetchBuyersFromOrders(page: number, perPage: number, search: string) {
   // Fetch 1 page of 100 orders (WooCommerce API is slow, keep it fast)
   const res1 = await wcFetch("/orders", {
-    per_page: "50",
+    per_page: "25",
     page: "1",
-    status: "completed,processing,on-hold",
   });
 
   const allOrders = Array.isArray(res1.body) ? res1.body : [];
