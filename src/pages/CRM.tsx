@@ -76,6 +76,32 @@ export default function CRM() {
     return new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
   };
 
+  const customerTypes = [
+    { value: "all", label: "Todos" },
+    { value: "new", label: "Nuevos", desc: "0 compras" },
+    { value: "first", label: "Primera compra", desc: "1 compra" },
+    { value: "returning", label: "Recurrentes", desc: "2-5 compras" },
+    { value: "loyal", label: "Fieles", desc: "6-15 compras" },
+    { value: "vip", label: "VIP", desc: "16+ compras" },
+  ];
+
+  const filterByType = (list: Customer[]) => {
+    if (customerType === "all") return list;
+    return list.filter((c) => {
+      const count = c.orders_count ?? 0;
+      switch (customerType) {
+        case "new": return count === 0;
+        case "first": return count === 1;
+        case "returning": return count >= 2 && count <= 5;
+        case "loyal": return count >= 6 && count <= 15;
+        case "vip": return count >= 16;
+        default: return true;
+      }
+    });
+  };
+
+  const filtered = filterByType(customers);
+
   return (
     <div className="space-y-6 max-w-7xl">
       {/* Header */}
