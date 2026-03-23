@@ -8,6 +8,26 @@ const corsHeaders = {
 
 const WC_BASE = "https://basicoclothes.com/wp-json/wc/v3";
 
+async function getExchangeRate(): Promise<number> {
+  try {
+    // Try to get BCV rate for VES/USD
+    const res = await fetch("https://pydolarve.org/api/v2/dollar?monitor=bcv");
+    if (res.ok) {
+      const data = await res.json();
+      const rate = data?.price || data?.monitors?.bcv?.price;
+      if (rate && rate > 0) {
+        console.log(`Exchange rate VES/USD: ${rate}`);
+        return rate;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to fetch exchange rate:", e);
+  }
+  // Fallback rate
+  console.log("Using fallback exchange rate: 55");
+  return 55;
+}
+
 async function wcFetch(path: string, params: Record<string, string> = {}) {
   const key = Deno.env.get("WC_CONSUMER_KEY")!;
   const secret = Deno.env.get("WC_CONSUMER_SECRET")!;
