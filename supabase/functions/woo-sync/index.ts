@@ -274,16 +274,54 @@ serve(async (req) => {
         syncedItems += itemRows.length;
       }
 
-      // Payments
-      const paymentRows = batch.map((o: any) => ({
-        order_id: o.id,
-        payment_slot: 1,
-        payment_method: o.payment_method_title || o.payment_method || "unknown",
-        payment_bank: null,
-        payment_amount: parseFloat(o.total || "0"),
-        payment_currency: o.currency || "USD",
-        payment_reference: o.transaction_id || null,
-      }));
+      // Payments - create rows per POS payment slot
+      const paymentRows: any[] = [];
+      for (const o of batch) {
+        const posKeys = [
+          "_basico_pago_metodo",
+          "_basico_pago_metodo_2",
+          "_basico_pago_metodo_3",
+          "_basico_pago_metodo_4",
+        ];
+        const posAmountKeys = [
+          "_basico_pago_monto",
+          "_basico_pago_monto_2",
+          "_basico_pago_monto_3",
+          "_basico_pago_monto_4",
+        ];
+        const posMethods = posKeys
+          .map((k, i) => ({
+            method: (getMetaValue(o.meta_data, k) || "").trim(),
+            amount: parseFloat(getMetaValue(o.meta_data, posAmountKeys[i]) || "0"),
+            slot: i + 1,
+          }))
+          .filter(p => p.method.length > 0);
+
+        if (posMethods.length > 0) {
+          for (const p of posMethods) {
+            paymentRows.push({
+              order_id: o.id,
+              payment_slot: p.slot,
+              payment_method: POS_META_NORMALIZE[p.method.toLowerCase()] || p.method,
+              payment_bank: null,
+              payment_amount: p.amount || parseFloat(o.total || "0") / posMethods.length,
+              payment_currency: o.currency || "USD",
+              payment_reference: o.transaction_id || null,
+            });
+          }
+        } else {
+          const normalized = normalizePaymentMethod(o);
+          paymentRows.push({
+            order_id: o.id,
+            payment_slot: 1,
+            payment_method: normalized || "unknown",
+            payment_bank: null,
+            payment_amount: parseFloat(o.total || "0"),
+            payment_currency: o.currency || "USD",
+            payment_reference: o.transaction_id || null,
+          });
+        }
+      }
 
       const paymentOrderIds = batch.map((o: any) => o.id);
       await supabase.from("payments").delete().in("order_id", paymentOrderIds);
