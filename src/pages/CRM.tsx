@@ -1,6 +1,7 @@
 import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useCallback } from "react";
+import { CustomerOrdersDialog } from "@/components/crm/CustomerOrdersDialog";
 
 interface Customer {
   id: number;
