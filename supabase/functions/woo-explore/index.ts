@@ -12,7 +12,7 @@ serve(async (req) => {
 
   const WC_KEY = Deno.env.get("WC_CONSUMER_KEY")!;
   const WC_SECRET = Deno.env.get("WC_CONSUMER_SECRET")!;
-  const base = "https://basicoclothes.es/wp-json/wc/v3";
+  const base = "https://basicoclothes.com/wp-json/wc/v3";
   const authHeader = "Basic " + btoa(`${WC_KEY}:${WC_SECRET}`);
   const headers = { "Authorization": authHeader };
 
