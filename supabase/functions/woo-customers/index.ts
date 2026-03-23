@@ -39,78 +39,6 @@ function mapCustomer(c: any) {
   };
 }
 
-async function fetchBuyers(page: number, perPage: number, search: string) {
-  // Fetch 3 pages of 100 orders in parallel to find unique buyers fast
-  const orderFetches = [1, 2, 3].map(p =>
-    wcFetch("/orders", {
-      per_page: "100",
-      page: String(p),
-      orderby: "date",
-      order: "desc",
-      status: "completed,processing,on-hold",
-    })
-  );
-
-  const orderResults = await Promise.all(orderFetches);
-  
-  const customerIds = new Set<number>();
-  for (const res of orderResults) {
-    const orders = Array.isArray(res.body) ? res.body : [];
-    for (const o of orders) {
-      if (o.customer_id && o.customer_id > 0) {
-        customerIds.add(o.customer_id);
-      }
-    }
-  }
-
-  console.log(`Found ${customerIds.size} unique buyer IDs from orders`);
-
-  if (customerIds.size === 0) {
-    return { customers: [], total: 0, totalPages: 0, page };
-  }
-
-  // Fetch customer details - up to 100 at a time
-  const allIds = Array.from(customerIds);
-  const batches: Promise<any>[] = [];
-  for (let i = 0; i < allIds.length; i += 100) {
-    const batchIds = allIds.slice(i, i + 100);
-    batches.push(wcFetch("/customers", {
-      include: batchIds.join(","),
-      per_page: "100",
-    }));
-  }
-
-  const batchResults = await Promise.all(batches);
-  const allCustomers: any[] = [];
-  for (const res of batchResults) {
-    const custs = Array.isArray(res.body) ? res.body : [];
-    allCustomers.push(...custs);
-  }
-
-  let mapped = allCustomers.map(mapCustomer);
-
-  // Filter by search if needed
-  if (search) {
-    const s = search.toLowerCase();
-    mapped = mapped.filter(c =>
-      c.first_name.toLowerCase().includes(s) ||
-      c.last_name.toLowerCase().includes(s) ||
-      c.email.toLowerCase().includes(s) ||
-      c.billing_company.toLowerCase().includes(s)
-    );
-  }
-
-  // Sort by total_spent desc
-  mapped.sort((a, b) => parseFloat(b.total_spent) - parseFloat(a.total_spent));
-
-  const total = mapped.length;
-  const totalPages = Math.ceil(total / perPage);
-  const start = (page - 1) * perPage;
-  const paginated = mapped.slice(start, start + perPage);
-
-  return { customers: paginated, total, totalPages, page };
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -118,24 +46,15 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const page = parseInt(url.searchParams.get("page") || "1");
-    const perPage = parseInt(url.searchParams.get("per_page") || "20");
+    const page = url.searchParams.get("page") || "1";
+    const perPage = url.searchParams.get("per_page") || "20";
     const search = url.searchParams.get("search") || "";
     const orderby = url.searchParams.get("orderby") || "registered_date";
     const order = url.searchParams.get("order") || "desc";
-    const mode = url.searchParams.get("mode") || "all";
 
-    if (mode === "buyers") {
-      const result = await fetchBuyers(page, perPage, search);
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Default: standard WooCommerce customer list
     const params: Record<string, string> = {
-      page: String(page),
-      per_page: String(perPage),
+      page,
+      per_page: perPage,
       orderby,
       order,
     };
@@ -148,7 +67,7 @@ serve(async (req) => {
       customers,
       total: parseInt(res.total),
       totalPages: parseInt(res.totalPages),
-      page,
+      page: parseInt(page),
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
