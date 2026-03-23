@@ -236,7 +236,6 @@ export default function CRM() {
               </tbody>
             </table>
           </div>
-          </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
