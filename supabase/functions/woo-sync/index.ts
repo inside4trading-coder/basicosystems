@@ -199,7 +199,7 @@ serve(async (req) => {
             item_cost: costInfo?.cost || null,
             size: extractVariation(li.meta_data, "talla") || extractVariation(li.meta_data, "size") || extractVariation(li.meta_data, "pa_talla"),
             color: extractVariation(li.meta_data, "color") || extractVariation(li.meta_data, "pa_color"),
-            analytic_category: costInfo?.category || null,
+            analytic_category: costInfo?.category || productCategoryMap.get(li.product_id) || null,
           });
         }
       }
