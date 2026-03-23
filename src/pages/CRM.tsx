@@ -23,7 +23,7 @@ type Segment = "Todos" | "VIP" | "Activo" | "Ocasional" | "Nuevo";
 
 function getSegment(c: Customer): string {
   const spent = parseFloat(c.total_spent || "0");
-  if (spent >= 50000 || c.orders_count >= 10) return "VIP";
+  if (spent >= 500 || c.orders_count >= 10) return "VIP";
   if (c.orders_count >= 3) return "Activo";
   if (c.orders_count >= 1) return "Ocasional";
   return "Nuevo";
