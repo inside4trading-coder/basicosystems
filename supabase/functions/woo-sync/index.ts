@@ -231,7 +231,7 @@ serve(async (req) => {
           order_currency: currency,
           customer_email: o.billing?.email || null,
           customer_phone: o.billing?.phone || null,
-          payment_method: o.payment_method_title || o.payment_method || null,
+          payment_method: normalizePaymentMethod(o),
           synced_at: new Date().toISOString(),
         };
       });
