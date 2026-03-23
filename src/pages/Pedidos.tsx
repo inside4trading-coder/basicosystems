@@ -226,7 +226,7 @@ export default function Pedidos() {
                           {order.line_items.map((li) => `${li.name} x${li.quantity}`).join(", ")}
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-bold">{fmt(order.total)}</td>
+                      <td className="px-4 py-3 font-bold">{fmt(order.total, order.currency)}</td>
                       <td className="px-4 py-3">
                         <span className={statusClass[order.status] || "status-badge-inactive"}>
                           {statusLabel[order.status] || order.status}
