@@ -250,8 +250,13 @@ export type Database = {
       }
       orders: {
         Row: {
+          billing_address: string | null
+          billing_city: string | null
+          billing_country: string | null
+          billing_name: string | null
           billing_state: string | null
           customer_email: string | null
+          customer_note: string | null
           customer_phone: string | null
           discount_amount: number | null
           exchange_rate: number | null
@@ -264,7 +269,12 @@ export type Database = {
           payment_method: string | null
           refunded_amount: number | null
           sale_channel: string | null
+          shipping_address: string | null
           shipping_amount: number | null
+          shipping_city: string | null
+          shipping_country: string | null
+          shipping_method: string | null
+          shipping_name: string | null
           subtotal_amount: number | null
           synced_at: string | null
           tax_amount: number | null
@@ -272,8 +282,13 @@ export type Database = {
           total_amount_usd: number | null
         }
         Insert: {
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_country?: string | null
+          billing_name?: string | null
           billing_state?: string | null
           customer_email?: string | null
+          customer_note?: string | null
           customer_phone?: string | null
           discount_amount?: number | null
           exchange_rate?: number | null
@@ -286,7 +301,12 @@ export type Database = {
           payment_method?: string | null
           refunded_amount?: number | null
           sale_channel?: string | null
+          shipping_address?: string | null
           shipping_amount?: number | null
+          shipping_city?: string | null
+          shipping_country?: string | null
+          shipping_method?: string | null
+          shipping_name?: string | null
           subtotal_amount?: number | null
           synced_at?: string | null
           tax_amount?: number | null
@@ -294,8 +314,13 @@ export type Database = {
           total_amount_usd?: number | null
         }
         Update: {
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_country?: string | null
+          billing_name?: string | null
           billing_state?: string | null
           customer_email?: string | null
+          customer_note?: string | null
           customer_phone?: string | null
           discount_amount?: number | null
           exchange_rate?: number | null
@@ -308,7 +333,12 @@ export type Database = {
           payment_method?: string | null
           refunded_amount?: number | null
           sale_channel?: string | null
+          shipping_address?: string | null
           shipping_amount?: number | null
+          shipping_city?: string | null
+          shipping_country?: string | null
+          shipping_method?: string | null
+          shipping_name?: string | null
           subtotal_amount?: number | null
           synced_at?: string | null
           tax_amount?: number | null
