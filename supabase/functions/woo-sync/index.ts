@@ -151,6 +151,9 @@ serve(async (req) => {
         const total = parseFloat(o.total || "0");
         const totalUsd = currency === "USD" ? total : (rate > 0 ? total / rate : total);
 
+        const shippingLines = o.shipping_lines || [];
+        const shippingMethodTitle = shippingLines.map((s: any) => s.method_title).filter(Boolean).join(", ") || null;
+
         return {
           order_id: o.id,
           order_number: String(o.number || o.id),
@@ -159,6 +162,16 @@ serve(async (req) => {
           order_status: o.status,
           sale_channel: extractSaleChannel(o.meta_data),
           billing_state: o.billing?.state || null,
+          billing_name: [o.billing?.first_name, o.billing?.last_name].filter(Boolean).join(" ") || null,
+          billing_address: [o.billing?.address_1, o.billing?.address_2].filter(Boolean).join(", ") || null,
+          billing_city: o.billing?.city || null,
+          billing_country: o.billing?.country || null,
+          shipping_name: [o.shipping?.first_name, o.shipping?.last_name].filter(Boolean).join(" ") || null,
+          shipping_address: [o.shipping?.address_1, o.shipping?.address_2].filter(Boolean).join(", ") || null,
+          shipping_city: o.shipping?.city || null,
+          shipping_country: o.shipping?.country || null,
+          shipping_method: shippingMethodTitle,
+          customer_note: o.customer_note || null,
           subtotal_amount: parseFloat(o.discount_total || "0") > 0
             ? total + parseFloat(o.discount_total || "0") - parseFloat(o.shipping_total || "0") - parseFloat(o.total_tax || "0")
             : total - parseFloat(o.shipping_total || "0") - parseFloat(o.total_tax || "0"),
