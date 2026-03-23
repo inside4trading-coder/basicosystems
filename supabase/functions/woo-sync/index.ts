@@ -24,9 +24,11 @@ function getOrderExchangeRate(o: any): number {
 }
 
 function getOrderCurrency(o: any): string {
-  return getMetaValue(o.meta_data, "_order_currency")
-    || getMetaValue(o.meta_data, "_woocs_order_base_currency")
-    || o.currency
+  // o.currency from WC API = actual order currency (e.g. VES, USD)
+  // _order_currency meta often returns base currency (USD), NOT the order currency
+  // _woocs_order_base_currency = store base currency (always USD) — never use for order currency
+  return o.currency
+    || getMetaValue(o.meta_data, "_order_currency")
     || "USD";
 }
 

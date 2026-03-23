@@ -14,10 +14,12 @@ export interface DashboardData {
     orders: KPI;
     avgTicket: KPI;
     newCustomers: KPI;
+    productsSold: KPI;
   };
   statuses: Record<string, number>;
-  topProducts: { name: string; quantity: number }[];
+  topProducts: { name: string; quantity: number; revenue: number }[];
   dailyRevenue: { date: string; revenue: number }[];
+  dailyOrders: { date: string; count: number }[];
   revenueByState: { state: string; revenue: number }[];
   revenueByPayment: { method: string; revenue: number }[];
   hourlyDistribution: { hour: number; count: number }[];
@@ -101,19 +103,27 @@ export function useDashboardData(period: Period) {
       const paid = all.filter(o => !EXCLUDED.has(o.order_status || ""));
       const prevPaid = (prevOrders || []).filter(o => !EXCLUDED.has(o.order_status || ""));
 
-      const revenue = paid.reduce((s, o) => s + (o.total_amount_usd || o.total_amount || 0), 0);
-      const prevRevenue = prevPaid.reduce((s, o) => s + (o.total_amount_usd || o.total_amount || 0), 0);
+      const getUsd = (o: any) => o.total_amount_usd ?? o.total_amount ?? 0;
+      const revenue = paid.reduce((s, o) => s + getUsd(o), 0);
+      const prevRevenue = prevPaid.reduce((s, o) => s + getUsd(o), 0);
       const totalOrders = paid.length;
       const prevTotalOrders = prevPaid.length;
       const avgTicket = totalOrders > 0 ? revenue / totalOrders : 0;
       const prevAvgTicket = prevTotalOrders > 0 ? prevRevenue / prevTotalOrders : 0;
 
+      // Products sold
+      const paidIds = new Set(paid.map(o => o.order_id));
+      const prevPaidIds = new Set(prevPaid.map(o => o.order_id));
+      const productsSold = items.filter(i => paidIds.has(i.order_id)).reduce((s, i) => s + (i.quantity || 0), 0);
+      // For prev products sold we don't fetch prev items, so use estimate
+      const prevProductsSold = 0;
+
+      const pct = (c: number, p: number) => p === 0 ? (c > 0 ? 100 : 0) : ((c - p) / p) * 100;
+
       const curEmails = new Set(paid.map(o => o.customer_email?.toLowerCase()).filter(Boolean));
       const prevEmails = new Set(prevPaid.map(o => o.customer_email?.toLowerCase()).filter(Boolean));
       const newCustomers = [...curEmails].filter(e => !prevEmails.has(e)).length;
       const prevNewCustomers = prevEmails.size;
-
-      const pct = (c: number, p: number) => p === 0 ? (c > 0 ? 100 : 0) : ((c - p) / p) * 100;
 
       // Statuses
       const statuses: Record<string, number> = {};
@@ -121,18 +131,22 @@ export function useDashboardData(period: Period) {
 
       // Daily revenue
       const dailyMap: Record<string, number> = {};
+      const dailyCountMap: Record<string, number> = {};
       for (const o of paid) {
         const d = o.order_date || "";
-        dailyMap[d] = (dailyMap[d] || 0) + (o.total_amount_usd || o.total_amount || 0);
+        dailyMap[d] = (dailyMap[d] || 0) + getUsd(o);
+        dailyCountMap[d] = (dailyCountMap[d] || 0) + 1;
       }
       const dailyRevenue = Object.entries(dailyMap).sort(([a], [b]) => a.localeCompare(b))
         .map(([date, revenue]) => ({ date, revenue: Math.round(revenue * 100) / 100 }));
+      const dailyOrders = Object.entries(dailyCountMap).sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, count]) => ({ date, count }));
 
       // Revenue by state
       const stateMap: Record<string, number> = {};
       for (const o of paid) {
         const s = o.billing_state || "Sin estado";
-        stateMap[s] = (stateMap[s] || 0) + (o.total_amount_usd || o.total_amount || 0);
+        stateMap[s] = (stateMap[s] || 0) + getUsd(o);
       }
       const revenueByState = Object.entries(stateMap)
         .map(([state, revenue]) => ({ state, revenue: Math.round(revenue * 100) / 100 }))
@@ -142,7 +156,7 @@ export function useDashboardData(period: Period) {
       const payMap: Record<string, number> = {};
       for (const o of paid) {
         const m = o.payment_method || "Otro";
-        payMap[m] = (payMap[m] || 0) + (o.total_amount_usd || o.total_amount || 0);
+        payMap[m] = (payMap[m] || 0) + getUsd(o);
       }
       const revenueByPayment = Object.entries(payMap)
         .map(([method, revenue]) => ({ method, revenue: Math.round(revenue * 100) / 100 }))
@@ -161,19 +175,29 @@ export function useDashboardData(period: Period) {
         count: hourMap[i] || 0,
       }));
 
-      // Top products from items
-      const prodMap: Record<string, { name: string; qty: number }> = {};
-      const paidIds = new Set(paid.map(o => o.order_id));
+      // Top products from items (with revenue in USD)
+      const orderCurrencyMap = new Map<number, { rate: number; currency: string }>();
+      for (const o of paid) {
+        orderCurrencyMap.set(o.order_id, { 
+          rate: o.exchange_rate || 1, 
+          currency: o.order_currency || "USD" 
+        });
+      }
+      const prodMap: Record<string, { name: string; qty: number; rev: number }> = {};
       for (const item of items) {
         if (!paidIds.has(item.order_id)) continue;
         const key = item.product_name || item.sku || "unknown";
-        if (!prodMap[key]) prodMap[key] = { name: key, qty: 0 };
+        if (!prodMap[key]) prodMap[key] = { name: key, qty: 0, rev: 0 };
         prodMap[key].qty += item.quantity || 0;
+        const oc = orderCurrencyMap.get(item.order_id);
+        const lineTotal = item.line_total || 0;
+        const lineUsd = oc && oc.currency !== "USD" && oc.rate > 1 ? lineTotal / oc.rate : lineTotal;
+        prodMap[key].rev += lineUsd;
       }
       const topProducts = Object.values(prodMap)
         .sort((a, b) => b.qty - a.qty)
         .slice(0, 10)
-        .map(p => ({ name: p.name, quantity: p.qty }));
+        .map(p => ({ name: p.name, quantity: p.qty, revenue: Math.round(p.rev * 100) / 100 }));
 
       // Category breakdown
       const catMap: Record<string, { revenue: number; quantity: number }> = {};
@@ -181,11 +205,14 @@ export function useDashboardData(period: Period) {
         if (!paidIds.has(item.order_id)) continue;
         const cat = item.analytic_category || "Sin categoría";
         if (!catMap[cat]) catMap[cat] = { revenue: 0, quantity: 0 };
-        catMap[cat].revenue += item.line_total || 0;
+        const oc = orderCurrencyMap.get(item.order_id);
+        const lineTotal = item.line_total || 0;
+        const lineUsd = oc && oc.currency !== "USD" && oc.rate > 1 ? lineTotal / oc.rate : lineTotal;
+        catMap[cat].revenue += lineUsd;
         catMap[cat].quantity += item.quantity || 0;
       }
       const categoryBreakdown = Object.entries(catMap)
-        .map(([category, v]) => ({ category, ...v }))
+        .map(([category, v]) => ({ category, revenue: Math.round(v.revenue * 100) / 100, quantity: v.quantity }))
         .sort((a, b) => b.revenue - a.revenue);
 
       setData({
@@ -194,10 +221,12 @@ export function useDashboardData(period: Period) {
           orders: { value: totalOrders, change: pct(totalOrders, prevTotalOrders) },
           avgTicket: { value: avgTicket, change: pct(avgTicket, prevAvgTicket) },
           newCustomers: { value: newCustomers, change: pct(newCustomers, prevNewCustomers) },
+          productsSold: { value: productsSold, change: pct(productsSold, prevProductsSold) },
         },
         statuses,
         topProducts,
         dailyRevenue,
+        dailyOrders,
         revenueByState,
         revenueByPayment,
         hourlyDistribution,

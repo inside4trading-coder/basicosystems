@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -100,8 +100,9 @@ export default function Dashboard() {
 
   const kpiCards = data
     ? [
-        { label: "Revenue", value: fmt(data.kpis.revenue.value), change: data.kpis.revenue.change, icon: DollarSign },
-        { label: "Total Pedidos", value: String(data.kpis.orders.value), change: data.kpis.orders.change, icon: ShoppingBag },
+        { label: "Total Sales", value: fmt(data.kpis.revenue.value), change: data.kpis.revenue.change, icon: DollarSign },
+        { label: "Pedidos", value: String(data.kpis.orders.value), change: data.kpis.orders.change, icon: ShoppingBag },
+        { label: "Products Sold", value: String(data.kpis.productsSold.value), change: data.kpis.productsSold.change, icon: ShoppingCart },
         { label: "Ticket Medio", value: fmt(data.kpis.avgTicket.value), change: data.kpis.avgTicket.change, icon: Package },
         { label: "Clientes Nuevos", value: String(data.kpis.newCustomers.value), change: data.kpis.newCustomers.change, icon: Users },
       ]
@@ -180,7 +181,7 @@ export default function Dashboard() {
       {data && !loading && (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {kpiCards.map((kpi, i) => (
               <div key={kpi.label} className="kpi-card animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                 <div className="flex items-center justify-between mb-3">
@@ -204,10 +205,10 @@ export default function Dashboard() {
             })}
           </div>
 
-          {/* Row 1: Daily revenue + Revenue by state */}
+          {/* Row 1: Ventas netas + Pedidos por día (matching WooCommerce layout) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.35s" }}>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Revenue diario</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Ventas netas</h3>
               {data.dailyRevenue.length > 0 ? (
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={data.dailyRevenue}>
@@ -215,7 +216,7 @@ export default function Dashboard() {
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))"
                       tickFormatter={(v) => new Date(v).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} />
                     <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}`} />
-                    <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]}
+                    <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Ventas"]}
                       contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                     <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -226,16 +227,17 @@ export default function Dashboard() {
             </div>
 
             <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.4s" }}>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Revenue por estado</h3>
-              {data.revenueByState.length > 0 ? (
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Pedidos por día</h3>
+              {data.dailyOrders.length > 0 ? (
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={data.revenueByState} layout="vertical">
+                  <BarChart data={data.dailyOrders}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}`} />
-                    <YAxis type="category" dataKey="state" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={80} />
-                    <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]}
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))"
+                      tickFormatter={(v) => new Date(v).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} />
+                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip formatter={(v: number) => [v, "Pedidos"]}
                       contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="count" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -291,51 +293,63 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Row 3: Top products + Categories */}
+          {/* Row 3: Top categories + Top products (matching WooCommerce layout) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.55s" }}>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Top 10 productos</h3>
-              {data.topProducts.length > 0 ? (
-                <div className="space-y-2.5">
-                  {data.topProducts.map((p, i) => (
-                    <div key={p.name} className="flex items-center gap-3">
-                      <span className="text-xs font-black text-muted-foreground w-5 tabular-nums">{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary rounded-full"
-                            style={{ width: `${(p.quantity / data.topProducts[0].quantity) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                      <span className="text-xs font-semibold truncate max-w-[140px]">{p.name}</span>
-                      <span className="text-xs font-bold text-muted-foreground tabular-nums whitespace-nowrap">{p.quantity} uds</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
-              )}
-            </div>
-
-            <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.6s" }}>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Categorías analíticas</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Top categorías — Items sold</h3>
               {data.categoryBreakdown.length > 0 ? (
-                <div className="space-y-4">
-                  {data.categoryBreakdown.map((c) => (
-                    <div key={c.category} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-semibold capitalize">{c.category}</span>
-                        <span className="font-bold tabular-nums">{fmt(c.revenue)}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">{c.quantity} unidades</div>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 text-xs font-bold uppercase text-muted-foreground">Categoría</th>
+                        <th className="text-right py-2 text-xs font-bold uppercase text-muted-foreground">Items sold</th>
+                        <th className="text-right py-2 text-xs font-bold uppercase text-muted-foreground">Net sales</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.categoryBreakdown.map((c) => (
+                        <tr key={c.category} className="border-b border-border/50">
+                          <td className="py-2 font-semibold capitalize">{c.category}</td>
+                          <td className="py-2 text-right tabular-nums">{c.quantity}</td>
+                          <td className="py-2 text-right tabular-nums font-semibold">{fmt(c.revenue)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
                   Sube un CSV de costos para ver categorías
                 </div>
+              )}
+            </div>
+
+            <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.6s" }}>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Top productos — Items sold</h3>
+              {data.topProducts.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 text-xs font-bold uppercase text-muted-foreground">Producto</th>
+                        <th className="text-right py-2 text-xs font-bold uppercase text-muted-foreground">Items sold</th>
+                        <th className="text-right py-2 text-xs font-bold uppercase text-muted-foreground">Net sales</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.topProducts.map((p) => (
+                        <tr key={p.name} className="border-b border-border/50">
+                          <td className="py-2 font-semibold truncate max-w-[200px]">{p.name}</td>
+                          <td className="py-2 text-right tabular-nums">{p.quantity}</td>
+                          <td className="py-2 text-right tabular-nums font-semibold">{fmt(p.revenue)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
               )}
             </div>
           </div>
