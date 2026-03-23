@@ -77,7 +77,7 @@ export function useDashboardData(period: Period) {
       // Fetch previous period orders
       const { data: prevOrders, error: pErr } = await supabase
         .from("orders")
-        .select("order_id, total_amount, order_status, customer_email")
+        .select("order_id, total_amount, total_amount_usd, order_status, customer_email")
         .gte("order_date", prev.start.toISOString().split("T")[0])
         .lt("order_date", prev.end.toISOString().split("T")[0]);
       if (pErr) throw new Error(pErr.message);
