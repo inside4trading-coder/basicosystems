@@ -2,131 +2,107 @@ import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useCallback } from "react";
 import { CustomerOrdersDialog } from "@/components/crm/CustomerOrdersDialog";
-import { supabase } from "@/integrations/supabase/client";
 
 interface Customer {
   id: number;
-  email: string | null;
-  first_name: string | null;
-  last_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-  billing_company: string | null;
-  billing_city: string | null;
-  billing_country: string | null;
-  billing_phone: string | null;
-  orders_count: number | null;
-  total_spent: number | null;
-  date_created: string | null;
+  email: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  avatar_url: string;
+  billing_company: string;
+  billing_city: string;
+  billing_country: string;
+  billing_phone: string;
+  orders_count: number;
+  total_spent: string;
+  date_created: string;
   last_order_date: string | null;
-}
-
-type CustomerType = "all" | "new" | "first" | "returning" | "loyal" | "vip";
-
-const CUSTOMER_TYPES: { value: CustomerType; label: string; desc?: string }[] = [
-  { value: "all", label: "Todos" },
-  { value: "new", label: "Nuevos", desc: "0 compras" },
-  { value: "first", label: "Primera compra", desc: "1 compra" },
-  { value: "returning", label: "Recurrentes", desc: "2-5 compras" },
-  { value: "loyal", label: "Fieles", desc: "6-15 compras" },
-  { value: "vip", label: "VIP", desc: "16+ compras" },
-];
-
-const PER_PAGE = 25;
-
-function buildTypeFilter(query: any, type: CustomerType) {
-  switch (type) {
-    case "new": return query.eq("orders_count", 0);
-    case "first": return query.eq("orders_count", 1);
-    case "returning": return query.gte("orders_count", 2).lte("orders_count", 5);
-    case "loyal": return query.gte("orders_count", 6).lte("orders_count", 15);
-    case "vip": return query.gte("orders_count", 16);
-    default: return query;
-  }
 }
 
 export default function CRM() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
-  const [orderby, setOrderby] = useState("date_created");
-  const [ascending, setAscending] = useState(false);
-  const [customerType, setCustomerType] = useState<CustomerType>("all");
+  const [orderby, setOrderby] = useState("registered_date");
+  const [order, setOrder] = useState("desc");
+  const [customerType, setCustomerType] = useState<string>("all");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [counts, setCounts] = useState<Record<CustomerType, number>>({
-    all: 0, new: 0, first: 0, returning: 0, loyal: 0, vip: 0,
-  });
 
   useEffect(() => {
-    const t = setTimeout(() => setSearchDebounced(search), 400);
+    const t = setTimeout(() => setSearchDebounced(search), 500);
     return () => clearTimeout(t);
   }, [search]);
-
-  // Fetch category counts once on mount
-  useEffect(() => {
-    async function fetchCounts() {
-      const { count: allCount } = await supabase.from("customers_cache").select("*", { count: "exact", head: true });
-      const { count: newCount } = await supabase.from("customers_cache").select("*", { count: "exact", head: true }).eq("orders_count", 0);
-      const { count: firstCount } = await supabase.from("customers_cache").select("*", { count: "exact", head: true }).eq("orders_count", 1);
-      const { count: retCount } = await supabase.from("customers_cache").select("*", { count: "exact", head: true }).gte("orders_count", 2).lte("orders_count", 5);
-      const { count: loyalCount } = await supabase.from("customers_cache").select("*", { count: "exact", head: true }).gte("orders_count", 6).lte("orders_count", 15);
-      const { count: vipCount } = await supabase.from("customers_cache").select("*", { count: "exact", head: true }).gte("orders_count", 16);
-      setCounts({
-        all: allCount || 0,
-        new: newCount || 0,
-        first: firstCount || 0,
-        returning: retCount || 0,
-        loyal: loyalCount || 0,
-        vip: vipCount || 0,
-      });
-    }
-    fetchCounts();
-  }, []);
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      let query = supabase
-        .from("customers_cache")
-        .select("*", { count: "exact" });
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: "20",
+        orderby,
+        order,
+      });
+      if (searchDebounced) params.set("search", searchDebounced);
 
-      query = buildTypeFilter(query, customerType);
-
-      if (searchDebounced) {
-        query = query.or(
-          `email.ilike.%${searchDebounced}%,first_name.ilike.%${searchDebounced}%,last_name.ilike.%${searchDebounced}%,billing_phone.ilike.%${searchDebounced}%`
-        );
-      }
-
-      query = query
-        .order(orderby, { ascending })
-        .range(page * PER_PAGE, (page + 1) * PER_PAGE - 1);
-
-      const { data, error: qErr, count } = await query;
-      if (qErr) throw new Error(qErr.message);
-      setCustomers(data || []);
-      setTotal(count || 0);
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/woo-customers?${params}`,
+        { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
+      );
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setCustomers(data.customers);
+      setTotalPages(data.totalPages);
+      setTotal(data.total);
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [page, searchDebounced, orderby, ascending, customerType]);
+  }, [page, searchDebounced, orderby, order]);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
-  useEffect(() => { setPage(0); }, [searchDebounced, orderby, ascending, customerType]);
+  useEffect(() => { setPage(1); }, [searchDebounced, orderby, order]);
 
   const fmtDate = (d: string | null) => {
     if (!d) return "—";
     return new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
   };
 
-  const totalPages = Math.ceil(total / PER_PAGE);
+  const customerTypes = [
+    { value: "all", label: "Todos" },
+    { value: "new", label: "Nuevos", desc: "0 compras" },
+    { value: "first", label: "Primera compra", desc: "1 compra" },
+    { value: "returning", label: "Recurrentes", desc: "2-5 compras" },
+    { value: "loyal", label: "Fieles", desc: "6-15 compras" },
+    { value: "vip", label: "VIP", desc: "16+ compras" },
+  ];
+
+  const filterByType = (list: Customer[]) => {
+    if (customerType === "all") return list;
+    return list.filter((c) => {
+      const count = c.orders_count ?? 0;
+      switch (customerType) {
+        case "new": return count === 0;
+        case "first": return count === 1;
+        case "returning": return count >= 2 && count <= 5;
+        case "loyal": return count >= 6 && count <= 15;
+        case "vip": return count >= 16;
+        default: return true;
+      }
+    });
+  };
+
+  const filtered = filterByType(customers);
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -135,7 +111,7 @@ export default function CRM() {
         <div>
           <h2 className="text-2xl font-black tracking-tight">CRM</h2>
           {!loading && (
-            <p className="text-sm text-muted-foreground mt-1">{total.toLocaleString()} clientes</p>
+            <p className="text-sm text-muted-foreground mt-1">{total.toLocaleString()} clientes registrados</p>
           )}
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -149,27 +125,25 @@ export default function CRM() {
             />
           </div>
           <select
-            value={`${orderby}:${ascending ? "asc" : "desc"}`}
+            value={`${orderby}:${order}`}
             onChange={(e) => {
-              const [ob, dir] = e.target.value.split(":");
+              const [ob, od] = e.target.value.split(":");
               setOrderby(ob);
-              setAscending(dir === "asc");
+              setOrder(od);
             }}
             className="text-xs border border-border rounded-md px-2 py-2 bg-card font-semibold"
           >
-            <option value="date_created:desc">Más recientes</option>
-            <option value="date_created:asc">Más antiguos</option>
-            <option value="first_name:asc">Nombre A-Z</option>
-            <option value="first_name:desc">Nombre Z-A</option>
-            <option value="total_spent:desc">Mayor gasto</option>
-            <option value="orders_count:desc">Más pedidos</option>
+            <option value="registered_date:desc">Más recientes</option>
+            <option value="registered_date:asc">Más antiguos</option>
+            <option value="name:asc">Nombre A-Z</option>
+            <option value="name:desc">Nombre Z-A</option>
           </select>
         </div>
       </div>
 
-      {/* Customer type filters with counts */}
+      {/* Customer type filters */}
       <div className="flex flex-wrap gap-2">
-        {CUSTOMER_TYPES.map((t) => (
+        {customerTypes.map((t) => (
           <button
             key={t.value}
             onClick={() => setCustomerType(t.value)}
@@ -180,7 +154,7 @@ export default function CRM() {
             }`}
           >
             {t.label}
-            <span className="ml-1 opacity-70">({counts[t.value].toLocaleString()})</span>
+            {t.desc && <span className="ml-1 opacity-70">({t.desc})</span>}
           </button>
         ))}
       </div>
@@ -220,30 +194,30 @@ export default function CRM() {
                 </tr>
               </thead>
               <tbody>
-                {customers.length === 0 ? (
+                {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                       No se encontraron clientes
                     </td>
                   </tr>
                 ) : (
-                  customers.map((c) => (
+                  filtered.map((c) => (
                     <tr
                       key={c.id}
-                      onClick={() => setSelectedCustomer(c as any)}
+                      onClick={() => setSelectedCustomer(c)}
                       className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
                     >
                       <td className="px-4 py-3">
                         <div className="font-semibold">
                           {c.first_name || c.last_name
-                            ? `${c.first_name || ""} ${c.last_name || ""}`.trim()
+                            ? `${c.first_name} ${c.last_name}`.trim()
                             : c.username || "Sin nombre"}
                         </div>
                         {c.billing_company && (
                           <div className="text-xs text-muted-foreground">{c.billing_company}</div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{c.email || "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{c.email}</td>
                       <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs">
                         {c.billing_phone || "—"}
                       </td>
@@ -251,7 +225,7 @@ export default function CRM() {
                         {c.orders_count ?? 0}
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell text-xs font-semibold">
-                        ${(c.total_spent ?? 0).toFixed(2)}
+                        ${parseFloat(c.total_spent || "0").toFixed(2)}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground hidden xl:table-cell text-xs">
                         {c.billing_country || "—"}
@@ -270,19 +244,19 @@ export default function CRM() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/30">
               <span className="text-xs text-muted-foreground">
-                Página {page + 1} de {totalPages}
+                Página {page} de {totalPages}
               </span>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page <= 0}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
                   className="p-1.5 rounded-md border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
                   className="p-1.5 rounded-md border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight className="h-4 w-4" />
