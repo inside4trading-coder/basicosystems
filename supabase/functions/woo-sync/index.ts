@@ -8,24 +8,26 @@ const corsHeaders = {
 
 const WC_BASE = "https://basicoclothes.com/wp-json/wc/v3";
 
-async function getExchangeRate(): Promise<number> {
-  try {
-    // Try to get BCV rate for VES/USD
-    const res = await fetch("https://pydolarve.org/api/v2/dollar?monitor=bcv");
-    if (res.ok) {
-      const data = await res.json();
-      const rate = data?.price || data?.monitors?.bcv?.price;
-      if (rate && rate > 0) {
-        console.log(`Exchange rate VES/USD: ${rate}`);
-        return rate;
-      }
-    }
-  } catch (e) {
-    console.error("Failed to fetch exchange rate:", e);
+function getMetaValue(meta: any[], key: string): string | null {
+  if (!Array.isArray(meta)) return null;
+  const found = meta.find((m: any) => m.key === key);
+  return found?.value || null;
+}
+
+function getOrderExchangeRate(o: any): number {
+  const rate = getMetaValue(o.meta_data, "_woocs_order_rate");
+  if (rate) {
+    const parsed = parseFloat(rate);
+    if (parsed > 0) return parsed;
   }
-  // Fallback rate
-  console.log("Using fallback exchange rate: 55");
-  return 55;
+  return 1;
+}
+
+function getOrderCurrency(o: any): string {
+  return getMetaValue(o.meta_data, "_order_currency")
+    || getMetaValue(o.meta_data, "_woocs_order_base_currency")
+    || o.currency
+    || "USD";
 }
 
 async function wcFetch(path: string, params: Record<string, string> = {}) {
