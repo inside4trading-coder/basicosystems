@@ -1,7 +1,9 @@
-import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Loader2, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useCallback } from "react";
 import { CustomerOrdersDialog } from "@/components/crm/CustomerOrdersDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Customer {
   id: number;
@@ -20,6 +22,28 @@ interface Customer {
   last_order_date: string | null;
 }
 
+const PER_PAGE = 20;
+
+const customerTypes = [
+  { value: "all", label: "Todos" },
+  { value: "new", label: "Nuevos", desc: "0 compras" },
+  { value: "first", label: "Primera compra", desc: "1 compra" },
+  { value: "returning", label: "Recurrentes", desc: "2-5 compras" },
+  { value: "loyal", label: "Fieles", desc: "6-15 compras" },
+  { value: "vip", label: "VIP", desc: "16+ compras" },
+];
+
+function ordersCountFilter(type: string): [number, number] | null {
+  switch (type) {
+    case "new": return [0, 0];
+    case "first": return [1, 1];
+    case "returning": return [2, 5];
+    case "loyal": return [6, 15];
+    case "vip": return [16, 999999];
+    default: return null;
+  }
+}
+
 export default function CRM() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,76 +57,142 @@ export default function CRM() {
   const [order, setOrder] = useState("desc");
   const [customerType, setCustomerType] = useState<string>("all");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 500);
     return () => clearTimeout(t);
   }, [search]);
 
+  // Fetch from WooCommerce API (for "all" filter)
+  const fetchFromWoo = useCallback(async () => {
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const params = new URLSearchParams({
+      page: String(page),
+      per_page: String(PER_PAGE),
+      orderby,
+      order,
+    });
+    if (searchDebounced) params.set("search", searchDebounced);
+
+    const res = await fetch(
+      `https://${projectId}.supabase.co/functions/v1/woo-customers?${params}`,
+      { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
+    );
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    setCustomers(data.customers);
+    setTotalPages(data.totalPages);
+    setTotal(data.total);
+  }, [page, searchDebounced, orderby, order]);
+
+  // Fetch from customers_cache (for type filters)
+  const fetchFromCache = useCallback(async () => {
+    const range = ordersCountFilter(customerType);
+    if (!range) return;
+    const [min, max] = range;
+
+    let query = supabase
+      .from("customers_cache")
+      .select("*", { count: "exact" });
+
+    query = query.gte("orders_count", min).lte("orders_count", max);
+
+    if (searchDebounced) {
+      query = query.or(
+        `first_name.ilike.%${searchDebounced}%,last_name.ilike.%${searchDebounced}%,email.ilike.%${searchDebounced}%`
+      );
+    }
+
+    // Map orderby
+    const colMap: Record<string, string> = {
+      registered_date: "date_created",
+      name: "first_name",
+    };
+    const col = colMap[orderby] || "date_created";
+    query = query.order(col, { ascending: order === "asc" });
+
+    const from = (page - 1) * PER_PAGE;
+    query = query.range(from, from + PER_PAGE - 1);
+
+    const { data, count, error: err } = await query;
+    if (err) throw err;
+
+    const mapped: Customer[] = (data || []).map((c) => ({
+      id: c.id,
+      email: c.email || "",
+      first_name: c.first_name || "",
+      last_name: c.last_name || "",
+      username: c.username || "",
+      avatar_url: c.avatar_url || "",
+      billing_company: c.billing_company || "",
+      billing_city: c.billing_city || "",
+      billing_country: c.billing_country || "",
+      billing_phone: c.billing_phone || "",
+      orders_count: c.orders_count ?? 0,
+      total_spent: String(c.total_spent ?? "0.00"),
+      date_created: c.date_created || "",
+      last_order_date: c.last_order_date || null,
+    }));
+
+    setCustomers(mapped);
+    setTotal(count ?? 0);
+    setTotalPages(Math.ceil((count ?? 0) / PER_PAGE));
+  }, [page, searchDebounced, orderby, order, customerType]);
+
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const params = new URLSearchParams({
-        page: String(page),
-        per_page: "20",
-        orderby,
-        order,
-      });
-      if (searchDebounced) params.set("search", searchDebounced);
-
-      const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/woo-customers?${params}`,
-        { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
-      );
-      if (!res.ok) throw new Error(`Error ${res.status}`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setCustomers(data.customers);
-      setTotalPages(data.totalPages);
-      setTotal(data.total);
+      if (customerType === "all") {
+        await fetchFromWoo();
+      } else {
+        await fetchFromCache();
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [page, searchDebounced, orderby, order]);
+  }, [customerType, fetchFromWoo, fetchFromCache]);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
-  useEffect(() => { setPage(1); }, [searchDebounced, orderby, order]);
+  useEffect(() => { setPage(1); }, [searchDebounced, orderby, order, customerType]);
+
+  const syncCustomers = async () => {
+    setSyncing(true);
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      let startPage = 1;
+      let totalSynced = 0;
+
+      while (startPage) {
+        const res = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/woo-customers-sync?start_page=${startPage}&max_pages=15`,
+          { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
+        );
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error || "Sync failed");
+        totalSynced += data.synced;
+        startPage = data.next_page;
+      }
+
+      toast.success(`${totalSynced} clientes sincronizados`);
+      if (customerType !== "all") fetchCustomers();
+    } catch (e: any) {
+      toast.error(`Error sincronizando: ${e.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const fmtDate = (d: string | null) => {
     if (!d) return "—";
     return new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
   };
-
-  const customerTypes = [
-    { value: "all", label: "Todos" },
-    { value: "new", label: "Nuevos", desc: "0 compras" },
-    { value: "first", label: "Primera compra", desc: "1 compra" },
-    { value: "returning", label: "Recurrentes", desc: "2-5 compras" },
-    { value: "loyal", label: "Fieles", desc: "6-15 compras" },
-    { value: "vip", label: "VIP", desc: "16+ compras" },
-  ];
-
-  const filterByType = (list: Customer[]) => {
-    if (customerType === "all") return list;
-    return list.filter((c) => {
-      const count = c.orders_count ?? 0;
-      switch (customerType) {
-        case "new": return count === 0;
-        case "first": return count === 1;
-        case "returning": return count >= 2 && count <= 5;
-        case "loyal": return count >= 6 && count <= 15;
-        case "vip": return count >= 16;
-        default: return true;
-      }
-    });
-  };
-
-  const filtered = filterByType(customers);
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -111,10 +201,18 @@ export default function CRM() {
         <div>
           <h2 className="text-2xl font-black tracking-tight">CRM</h2>
           {!loading && (
-            <p className="text-sm text-muted-foreground mt-1">{total.toLocaleString()} clientes registrados</p>
+            <p className="text-sm text-muted-foreground mt-1">{total.toLocaleString()} clientes{customerType !== "all" ? " en este segmento" : " registrados"}</p>
           )}
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
+          <button
+            onClick={syncCustomers}
+            disabled={syncing}
+            className="p-2 rounded-md border border-border bg-card hover:bg-muted transition-colors disabled:opacity-50"
+            title="Sincronizar clientes"
+          >
+            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+          </button>
           <div className="relative flex-1 sm:w-64 sm:flex-none">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -194,14 +292,16 @@ export default function CRM() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {customers.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
-                      No se encontraron clientes
+                      {customerType !== "all"
+                        ? "No hay clientes en este segmento. Pulsa ↻ para sincronizar."
+                        : "No se encontraron clientes"}
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((c) => (
+                  customers.map((c) => (
                     <tr
                       key={c.id}
                       onClick={() => setSelectedCustomer(c)}
