@@ -39,6 +39,109 @@ function mapCustomer(c: any) {
   };
 }
 
+// Build customer stats from orders (since WooCommerce customer fields are empty)
+async function fetchBuyersFromOrders(page: number, perPage: number, search: string) {
+  // Fetch 2 pages of 100 orders in parallel for speed
+  const [res1, res2] = await Promise.all([
+    wcFetch("/orders", { per_page: "100", page: "1", status: "completed,processing,on-hold,pedido-recibido-p" }),
+    wcFetch("/orders", { per_page: "100", page: "2", status: "completed,processing,on-hold,pedido-recibido-p" }),
+  ]);
+
+  const allOrders = [
+    ...(Array.isArray(res1.body) ? res1.body : []),
+    ...(Array.isArray(res2.body) ? res2.body : []),
+  ];
+
+  // Aggregate by customer_id or billing email
+  const customerMap = new Map<string, {
+    customer_id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+    phone: string;
+    city: string;
+    country: string;
+    orders_count: number;
+    total_spent: number;
+    last_order_date: string;
+  }>();
+
+  for (const order of allOrders) {
+    const email = order.billing?.email || "";
+    const custId = order.customer_id || 0;
+    // Use customer_id if available, otherwise email
+    const key = custId > 0 ? `id:${custId}` : (email ? `email:${email}` : null);
+    if (!key) continue;
+
+    const existing = customerMap.get(key);
+    if (existing) {
+      existing.orders_count += 1;
+      existing.total_spent += parseFloat(order.total || "0");
+      if (order.date_created > existing.last_order_date) {
+        existing.last_order_date = order.date_created;
+      }
+    } else {
+      customerMap.set(key, {
+        customer_id: custId,
+        email,
+        first_name: order.billing?.first_name || "",
+        last_name: order.billing?.last_name || "",
+        phone: order.billing?.phone || "",
+        city: order.shipping?.city || order.billing?.city || "",
+        country: order.shipping?.country || order.billing?.country || "",
+        orders_count: 1,
+        total_spent: parseFloat(order.total || "0"),
+        last_order_date: order.date_created || "",
+      });
+    }
+  }
+
+  // Convert to array and sort by total_spent desc
+  let buyers = Array.from(customerMap.values()).map(b => ({
+    id: b.customer_id,
+    email: b.email,
+    first_name: b.first_name,
+    last_name: b.last_name,
+    username: "",
+    avatar_url: "",
+    billing_company: "",
+    billing_city: b.city,
+    billing_state: "",
+    billing_country: b.country,
+    billing_phone: b.phone,
+    orders_count: b.orders_count,
+    total_spent: b.total_spent.toFixed(2),
+    date_created: "",
+    last_order_date: b.last_order_date,
+  }));
+
+  // Apply search filter
+  if (search) {
+    const s = search.toLowerCase();
+    buyers = buyers.filter(c =>
+      c.first_name.toLowerCase().includes(s) ||
+      c.last_name.toLowerCase().includes(s) ||
+      c.email.toLowerCase().includes(s)
+    );
+  }
+
+  // Sort by total spent descending
+  buyers.sort((a, b) => parseFloat(b.total_spent) - parseFloat(a.total_spent));
+
+  const total = buyers.length;
+  const totalPages = Math.ceil(total / perPage);
+  const start = (page - 1) * perPage;
+  const paginated = buyers.slice(start, start + perPage);
+
+  return {
+    customers: paginated,
+    total,
+    totalPages,
+    page,
+    totalOrders: parseInt(res1.total),
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -46,15 +149,25 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const page = url.searchParams.get("page") || "1";
-    const perPage = url.searchParams.get("per_page") || "20";
+    const page = parseInt(url.searchParams.get("page") || "1");
+    const perPage = parseInt(url.searchParams.get("per_page") || "20");
     const search = url.searchParams.get("search") || "";
     const orderby = url.searchParams.get("orderby") || "registered_date";
     const order = url.searchParams.get("order") || "desc";
+    const mode = url.searchParams.get("mode") || "all";
 
+    // Buyers mode: aggregate from orders
+    if (mode === "buyers") {
+      const result = await fetchBuyersFromOrders(page, perPage, search);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // All mode: standard WooCommerce customer list
     const params: Record<string, string> = {
-      page,
-      per_page: perPage,
+      page: String(page),
+      per_page: String(perPage),
       orderby,
       order,
     };
@@ -67,7 +180,7 @@ serve(async (req) => {
       customers,
       total: parseInt(res.total),
       totalPages: parseInt(res.totalPages),
-      page: parseInt(page),
+      page,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
