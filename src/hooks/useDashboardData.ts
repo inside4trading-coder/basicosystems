@@ -132,7 +132,7 @@ export function useDashboardData(period: Period) {
       const stateMap: Record<string, number> = {};
       for (const o of paid) {
         const s = o.billing_state || "Sin estado";
-        stateMap[s] = (stateMap[s] || 0) + (o.total_amount || 0);
+        stateMap[s] = (stateMap[s] || 0) + (o.total_amount_usd || o.total_amount || 0);
       }
       const revenueByState = Object.entries(stateMap)
         .map(([state, revenue]) => ({ state, revenue: Math.round(revenue * 100) / 100 }))
