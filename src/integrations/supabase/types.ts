@@ -514,6 +514,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      refresh_customers_order_stats: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "manager" | "partner"
