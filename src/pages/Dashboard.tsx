@@ -293,51 +293,63 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Row 3: Top products + Categories */}
+          {/* Row 3: Top categories + Top products (matching WooCommerce layout) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.55s" }}>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Top 10 productos</h3>
-              {data.topProducts.length > 0 ? (
-                <div className="space-y-2.5">
-                  {data.topProducts.map((p, i) => (
-                    <div key={p.name} className="flex items-center gap-3">
-                      <span className="text-xs font-black text-muted-foreground w-5 tabular-nums">{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary rounded-full"
-                            style={{ width: `${(p.quantity / data.topProducts[0].quantity) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                      <span className="text-xs font-semibold truncate max-w-[140px]">{p.name}</span>
-                      <span className="text-xs font-bold text-muted-foreground tabular-nums whitespace-nowrap">{p.quantity} uds</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
-              )}
-            </div>
-
-            <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.6s" }}>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Categorías analíticas</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Top categorías — Items sold</h3>
               {data.categoryBreakdown.length > 0 ? (
-                <div className="space-y-4">
-                  {data.categoryBreakdown.map((c) => (
-                    <div key={c.category} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-semibold capitalize">{c.category}</span>
-                        <span className="font-bold tabular-nums">{fmt(c.revenue)}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">{c.quantity} unidades</div>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 text-xs font-bold uppercase text-muted-foreground">Categoría</th>
+                        <th className="text-right py-2 text-xs font-bold uppercase text-muted-foreground">Items sold</th>
+                        <th className="text-right py-2 text-xs font-bold uppercase text-muted-foreground">Net sales</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.categoryBreakdown.map((c) => (
+                        <tr key={c.category} className="border-b border-border/50">
+                          <td className="py-2 font-semibold capitalize">{c.category}</td>
+                          <td className="py-2 text-right tabular-nums">{c.quantity}</td>
+                          <td className="py-2 text-right tabular-nums font-semibold">{fmt(c.revenue)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
                   Sube un CSV de costos para ver categorías
                 </div>
+              )}
+            </div>
+
+            <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.6s" }}>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Top productos — Items sold</h3>
+              {data.topProducts.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 text-xs font-bold uppercase text-muted-foreground">Producto</th>
+                        <th className="text-right py-2 text-xs font-bold uppercase text-muted-foreground">Items sold</th>
+                        <th className="text-right py-2 text-xs font-bold uppercase text-muted-foreground">Net sales</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.topProducts.map((p) => (
+                        <tr key={p.name} className="border-b border-border/50">
+                          <td className="py-2 font-semibold truncate max-w-[200px]">{p.name}</td>
+                          <td className="py-2 text-right tabular-nums">{p.quantity}</td>
+                          <td className="py-2 text-right tabular-nums font-semibold">{fmt(p.revenue)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
               )}
             </div>
           </div>
