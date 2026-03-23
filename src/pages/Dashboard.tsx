@@ -1,16 +1,16 @@
-import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle } from "lucide-react";
-import { useState, useCallback, useEffect } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
+import { Button } from "@/components/ui/button";
+import { useDashboardData, type Period } from "@/hooks/useDashboardData";
+import { toast } from "sonner";
 
-const periods = ["Hoy", "Esta semana", "Este mes", "Este año"] as const;
-type Period = typeof periods[number];
-
-const periodMap: Record<Period, string> = {
-  "Hoy": "today",
-  "Esta semana": "week",
-  "Este mes": "month",
-  "Este año": "year",
-};
+const periods: { key: Period; label: string }[] = [
+  { key: "today", label: "Hoy" },
+  { key: "week", label: "Esta semana" },
+  { key: "month", label: "Este mes" },
+  { key: "year", label: "Este año" },
+];
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   pending: { label: "Pendiente", className: "status-badge-warning" },
@@ -26,71 +26,42 @@ const statusLabels: Record<string, { label: string; className: string }> = {
   "tu-pedido-ha-sido": { label: "Pedido enviado", className: "status-badge-success" },
 };
 
-interface DashboardData {
-  kpis: {
-    revenue: { value: number; change: number };
-    orders: { value: number; change: number };
-    avgTicket: { value: number; change: number };
-    newCustomers: { value: number; change: number };
-  };
-  statuses: Record<string, number>;
-  topProducts: { name: string; product_id: number; quantity: number }[];
-  lowStock: { name: string; stock: number; id: number }[];
-  dailyRevenue: Record<string, number>;
-}
+const PIE_COLORS = [
+  "hsl(354, 100%, 44%)",
+  "hsl(142, 71%, 45%)",
+  "hsl(45, 93%, 47%)",
+  "hsl(200, 70%, 50%)",
+  "hsl(280, 60%, 55%)",
+  "hsl(0, 0%, 50%)",
+];
 
 export default function Dashboard() {
-  const [period, setPeriod] = useState<Period>("Hoy");
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<Period>("month");
+  const { data, loading, error, refetch } = useDashboardData(period);
+  const [syncing, setSyncing] = useState(false);
 
-  const fetchData = useCallback(async (p: Period) => {
-    setLoading(true);
-    setError(null);
+  const handleSync = async () => {
+    setSyncing(true);
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/woo-dashboard?period=${periodMap[p]}`,
-        {
-          headers: {
-            "Authorization": `Bearer ${anonKey}`,
-            "apikey": anonKey,
-          },
-        }
+        `https://${projectId}.supabase.co/functions/v1/woo-sync?days=365`,
+        { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
       );
-
-      if (!res.ok) {
-        const errBody = await res.text();
-        throw new Error(`Error ${res.status}: ${errBody.substring(0, 200)}`);
-      }
-
       const json = await res.json();
       if (json.error) throw new Error(json.error);
-      setData(json);
+      toast.success(`Sincronización completada: ${json.synced?.orders || 0} pedidos`);
+      refetch();
     } catch (e: any) {
-      setError(e.message || "Error al cargar datos");
+      toast.error(e.message || "Error al sincronizar");
     } finally {
-      setLoading(false);
+      setSyncing(false);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchData(period);
-  }, [period, fetchData]);
+  };
 
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
   const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
-
-  const chartData = data
-    ? Object.entries(data.dailyRevenue)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([date, value]) => ({
-          date: new Date(date).toLocaleDateString("es-ES", { day: "2-digit", month: "short" }),
-          revenue: Math.round(value * 100) / 100,
-        }))
-    : [];
 
   const kpiCards = data
     ? [
@@ -103,61 +74,62 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 max-w-7xl">
-      {/* Period selector */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-black tracking-tight">Dashboard</h2>
-        <div className="flex gap-1 bg-card rounded-lg border border-border p-1">
-          {periods.map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                period === p
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {p}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSync}
+            disabled={syncing}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Sincronizando…" : "Sincronizar"}
+          </Button>
+          <div className="flex gap-1 bg-card rounded-lg border border-border p-1">
+            {periods.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setPeriod(p.key)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  period === p.key
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-3 text-sm text-muted-foreground font-semibold">Cargando datos de WooCommerce…</span>
+          <span className="ml-3 text-sm text-muted-foreground font-semibold">Cargando datos…</span>
         </div>
       )}
 
-      {/* Error */}
       {error && !loading && (
         <div className="bg-status-error/10 border border-status-error/20 rounded-lg p-4">
           <p className="text-sm font-bold text-status-error flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" /> {error}
           </p>
-          <button onClick={() => fetchData(period)} className="mt-2 text-xs font-semibold text-primary hover:underline">
-            Reintentar
-          </button>
+          <button onClick={refetch} className="mt-2 text-xs font-semibold text-primary hover:underline">Reintentar</button>
         </div>
       )}
 
-      {/* Data loaded */}
       {data && !loading && (
         <>
-          {/* KPI Cards */}
+          {/* KPIs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {kpiCards.map((kpi, i) => (
-              <div
-                key={kpi.label}
-                className="kpi-card animate-fade-in"
-                style={{ animationDelay: `${i * 80}ms` }}
-              >
+              <div key={kpi.label} className="kpi-card animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    {kpi.label}
-                  </span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{kpi.label}</span>
                   <kpi.icon className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div className="text-2xl font-black tracking-tight">{kpi.value}</div>
@@ -169,74 +141,145 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Order statuses */}
+          {/* Status badges */}
           <div className="flex flex-wrap gap-3 animate-fade-in" style={{ animationDelay: "0.3s" }}>
             {Object.entries(data.statuses).map(([status, count]) => {
               const info = statusLabels[status] || { label: status, className: "status-badge-inactive" };
-              return (
-                <span key={status} className={info.className}>
-                  {info.label}: {count}
-                </span>
-              );
+              return <span key={status} className={info.className}>{info.label}: {count}</span>;
             })}
           </div>
 
-          {/* Low stock alerts */}
-          {data.lowStock.length > 0 && (
-            <div className="bg-status-error/10 border border-status-error/20 rounded-lg p-4 animate-fade-in" style={{ animationDelay: "0.35s" }}>
-              {data.lowStock.map((p) => (
-                <p key={p.id} className="text-sm font-bold text-status-error">
-                  ⚠ Stock bajo: "{p.name}" tiene solo {p.stock} unidades
-                </p>
-              ))}
-            </div>
-          )}
-
-          {/* Chart + top products */}
+          {/* Row 1: Daily revenue + Revenue by state */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.4s" }}>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">
-                Revenue diario
-              </h3>
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={chartData}>
+            <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.35s" }}>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Revenue diario</h3>
+              {data.dailyRevenue.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={data.dailyRevenue}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}`} />
-                    <Tooltip
-                      formatter={(value: number) => [`$${value.toFixed(2)}`, "Revenue"]}
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                    />
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))"
+                      tickFormatter={(v) => new Date(v).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} />
+                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}`} />
+                    <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                     <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
-                  Sin datos de revenue para este período
-                </div>
+                <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
               )}
             </div>
 
+            <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.4s" }}>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Revenue por estado</h3>
+              {data.revenueByState.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={data.revenueByState} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}`} />
+                    <YAxis type="category" dataKey="state" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={80} />
+                    <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                    <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2: Payment methods + Hourly distribution */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.45s" }}>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">
-                Top 5 productos
-              </h3>
-              {data.topProducts.length > 0 ? (
-                <div className="space-y-3">
-                  {data.topProducts.map((p, i) => (
-                    <div key={p.product_id} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-black text-muted-foreground w-5">{i + 1}</span>
-                        <span className="text-sm font-semibold">{p.name}</span>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Métodos de pago</h3>
+              {data.revenueByPayment.length > 0 ? (
+                <div className="flex items-center gap-6">
+                  <ResponsiveContainer width="50%" height={180}>
+                    <PieChart>
+                      <Pie data={data.revenueByPayment} dataKey="revenue" nameKey="method" cx="50%" cy="50%" outerRadius={70} strokeWidth={2}>
+                        {data.revenueByPayment.map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => `$${v.toFixed(2)}`}
+                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-2 flex-1">
+                    {data.revenueByPayment.map((p, i) => (
+                      <div key={p.method} className="flex items-center gap-2 text-xs">
+                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                        <span className="font-semibold truncate">{p.method}</span>
+                        <span className="ml-auto text-muted-foreground tabular-nums">${p.revenue.toLocaleString()}</span>
                       </div>
-                      <span className="text-sm font-bold text-muted-foreground">{p.quantity} uds</span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
+              )}
+            </div>
+
+            <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.5s" }}>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Pedidos por hora</h3>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={data.hourlyDistribution}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="hour" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${v}h`} />
+                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip formatter={(v: number) => [v, "Pedidos"]} labelFormatter={(l) => `${l}:00 - ${l}:59`}
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="count" fill="hsl(var(--secondary))" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Row 3: Top products + Categories */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.55s" }}>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Top 10 productos</h3>
+              {data.topProducts.length > 0 ? (
+                <div className="space-y-2.5">
+                  {data.topProducts.map((p, i) => (
+                    <div key={p.name} className="flex items-center gap-3">
+                      <span className="text-xs font-black text-muted-foreground w-5 tabular-nums">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full"
+                            style={{ width: `${(p.quantity / data.topProducts[0].quantity) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold truncate max-w-[140px]">{p.name}</span>
+                      <span className="text-xs font-bold text-muted-foreground tabular-nums whitespace-nowrap">{p.quantity} uds</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
+              )}
+            </div>
+
+            <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.6s" }}>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Categorías analíticas</h3>
+              {data.categoryBreakdown.length > 0 ? (
+                <div className="space-y-4">
+                  {data.categoryBreakdown.map((c) => (
+                    <div key={c.category} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-semibold capitalize">{c.category}</span>
+                        <span className="font-bold tabular-nums">{fmt(c.revenue)}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">{c.quantity} unidades</div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
-                  Sin datos de productos para este período
+                  Sube un CSV de costos para ver categorías
                 </div>
               )}
             </div>
