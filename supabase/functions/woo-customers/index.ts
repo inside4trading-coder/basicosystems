@@ -39,62 +39,57 @@ function mapCustomer(c: any) {
   };
 }
 
-// Fetch customers with orders by looking at recent orders and collecting unique customer IDs
-async function fetchTopCustomers(page: number, perPage: number, search: string) {
-  // Strategy: fetch a large batch of orders to find active customers
-  // Then fetch those customer details
-  const orderParams: Record<string, string> = {
-    per_page: "100",
-    page: "1",
-    orderby: "date",
-    order: "desc",
-    status: "completed,processing,on-hold",
-  };
+async function fetchBuyers(page: number, perPage: number, search: string) {
+  // Fetch 3 pages of 100 orders in parallel to find unique buyers fast
+  const orderFetches = [1, 2, 3].map(p =>
+    wcFetch("/orders", {
+      per_page: "100",
+      page: String(p),
+      orderby: "date",
+      order: "desc",
+      status: "completed,processing,on-hold",
+    })
+  );
 
-  // Collect unique customer IDs from recent orders across multiple pages
+  const orderResults = await Promise.all(orderFetches);
+  
   const customerIds = new Set<number>();
-  let orderPage = 1;
-  const maxOrderPages = 10; // fetch up to 1000 orders
-
-  while (orderPage <= maxOrderPages) {
-    orderParams.page = String(orderPage);
-    const ordersRes = await wcFetch("/orders", orderParams);
-    const orders = Array.isArray(ordersRes.body) ? ordersRes.body : [];
-    if (orders.length === 0) break;
-
+  for (const res of orderResults) {
+    const orders = Array.isArray(res.body) ? res.body : [];
     for (const o of orders) {
       if (o.customer_id && o.customer_id > 0) {
         customerIds.add(o.customer_id);
       }
     }
-
-    if (orderPage >= parseInt(ordersRes.totalPages)) break;
-    orderPage++;
   }
+
+  console.log(`Found ${customerIds.size} unique buyer IDs from orders`);
 
   if (customerIds.size === 0) {
     return { customers: [], total: 0, totalPages: 0, page };
   }
 
-  // Now fetch customer details for these IDs
+  // Fetch customer details - up to 100 at a time
   const allIds = Array.from(customerIds);
-
-  // Fetch in batches of 100
-  const allCustomers: any[] = [];
+  const batches: Promise<any>[] = [];
   for (let i = 0; i < allIds.length; i += 100) {
     const batchIds = allIds.slice(i, i + 100);
-    const custRes = await wcFetch("/customers", {
+    batches.push(wcFetch("/customers", {
       include: batchIds.join(","),
       per_page: "100",
-    });
-    const custs = Array.isArray(custRes.body) ? custRes.body : [];
+    }));
+  }
+
+  const batchResults = await Promise.all(batches);
+  const allCustomers: any[] = [];
+  for (const res of batchResults) {
+    const custs = Array.isArray(res.body) ? res.body : [];
     allCustomers.push(...custs);
   }
 
-  // Map and sort by total_spent descending
   let mapped = allCustomers.map(mapCustomer);
 
-  // Apply search filter if needed
+  // Filter by search if needed
   if (search) {
     const s = search.toLowerCase();
     mapped = mapped.filter(c =>
@@ -128,11 +123,10 @@ serve(async (req) => {
     const search = url.searchParams.get("search") || "";
     const orderby = url.searchParams.get("orderby") || "registered_date";
     const order = url.searchParams.get("order") || "desc";
-    const mode = url.searchParams.get("mode") || "all"; // "all" or "buyers"
+    const mode = url.searchParams.get("mode") || "all";
 
-    // If mode=buyers, use the order-based approach to find active customers
     if (mode === "buyers") {
-      const result = await fetchTopCustomers(page, perPage, search);
+      const result = await fetchBuyers(page, perPage, search);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -148,10 +142,7 @@ serve(async (req) => {
     if (search) params.search = search;
 
     const res = await wcFetch("/customers", params);
-
-    const customers = Array.isArray(res.body)
-      ? res.body.map(mapCustomer)
-      : [];
+    const customers = Array.isArray(res.body) ? res.body.map(mapCustomer) : [];
 
     return new Response(JSON.stringify({
       customers,
@@ -162,6 +153,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    console.error("woo-customers error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
