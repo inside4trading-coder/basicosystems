@@ -30,6 +30,7 @@ export default function CRM() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [orderby, setOrderby] = useState("registered_date");
   const [order, setOrder] = useState("desc");
+  const [customerType, setCustomerType] = useState<string>("all");
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 500);
@@ -75,6 +76,32 @@ export default function CRM() {
     return new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
   };
 
+  const customerTypes = [
+    { value: "all", label: "Todos" },
+    { value: "new", label: "Nuevos", desc: "0 compras" },
+    { value: "first", label: "Primera compra", desc: "1 compra" },
+    { value: "returning", label: "Recurrentes", desc: "2-5 compras" },
+    { value: "loyal", label: "Fieles", desc: "6-15 compras" },
+    { value: "vip", label: "VIP", desc: "16+ compras" },
+  ];
+
+  const filterByType = (list: Customer[]) => {
+    if (customerType === "all") return list;
+    return list.filter((c) => {
+      const count = c.orders_count ?? 0;
+      switch (customerType) {
+        case "new": return count === 0;
+        case "first": return count === 1;
+        case "returning": return count >= 2 && count <= 5;
+        case "loyal": return count >= 6 && count <= 15;
+        case "vip": return count >= 16;
+        default: return true;
+      }
+    });
+  };
+
+  const filtered = filterByType(customers);
+
   return (
     <div className="space-y-6 max-w-7xl">
       {/* Header */}
@@ -112,6 +139,24 @@ export default function CRM() {
         </div>
       </div>
 
+      {/* Customer type filters */}
+      <div className="flex flex-wrap gap-2">
+        {customerTypes.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setCustomerType(t.value)}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+              customerType === t.value
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground border-border hover:border-primary/50"
+            }`}
+          >
+            {t.label}
+            {t.desc && <span className="ml-1 opacity-70">({t.desc})</span>}
+          </button>
+        ))}
+      </div>
+
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-20">
@@ -140,19 +185,21 @@ export default function CRM() {
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Cliente</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Teléfono</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">País</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Pedidos</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Gastado</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">País</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">Registro</th>
                 </tr>
               </thead>
               <tbody>
-                {customers.length === 0 ? (
+                {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                       No se encontraron clientes
                     </td>
                   </tr>
                 ) : (
-                  customers.map((c) => (
+                  filtered.map((c) => (
                     <tr
                       key={c.id}
                       className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
@@ -171,7 +218,13 @@ export default function CRM() {
                       <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs">
                         {c.billing_phone || "—"}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell text-xs">
+                      <td className="px-4 py-3 hidden lg:table-cell text-xs font-semibold">
+                        {c.orders_count ?? 0}
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell text-xs font-semibold">
+                        ${parseFloat(c.total_spent || "0").toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground hidden xl:table-cell text-xs">
                         {c.billing_country || "—"}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground hidden xl:table-cell text-xs whitespace-nowrap">
