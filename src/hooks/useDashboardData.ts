@@ -14,10 +14,12 @@ export interface DashboardData {
     orders: KPI;
     avgTicket: KPI;
     newCustomers: KPI;
+    productsSold: KPI;
   };
   statuses: Record<string, number>;
-  topProducts: { name: string; quantity: number }[];
+  topProducts: { name: string; quantity: number; revenue: number }[];
   dailyRevenue: { date: string; revenue: number }[];
+  dailyOrders: { date: string; count: number }[];
   revenueByState: { state: string; revenue: number }[];
   revenueByPayment: { method: string; revenue: number }[];
   hourlyDistribution: { hour: number; count: number }[];
