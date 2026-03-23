@@ -105,6 +105,13 @@ export default function Pedidos() {
   };
 
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
+  const toUsd = (amount: number | null | undefined, order: any) => {
+    const value = Number(amount || 0);
+    if ((order?.order_currency || "USD") === "USD") return value;
+    const rate = Number(order?.exchange_rate || 0);
+    if (rate > 0) return value / rate;
+    return value;
+  };
   const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" }) : "";
   const totalPages = Math.ceil(total / PER_PAGE);
 
@@ -179,7 +186,7 @@ export default function Pedidos() {
                           <div className="font-semibold text-xs">{o.customer_email || "—"}</div>
                           {o.billing_state && <div className="text-xs text-muted-foreground">{o.billing_state}</div>}
                         </td>
-                        <td className="px-4 py-3 font-bold tabular-nums">{fmt(o.total_amount)}</td>
+                        <td className="px-4 py-3 font-bold tabular-nums">{fmt(o.total_amount_usd ?? toUsd(o.total_amount, o))}</td>
                         <td className="px-4 py-3">
                           <span className={statusClass[o.order_status] || "status-badge-inactive"}>
                             {statusLabel[o.order_status] || o.order_status}
@@ -193,10 +200,10 @@ export default function Pedidos() {
                         <tr key={`${o.order_id}-items`} className="bg-muted/20">
                           <td colSpan={8} className="px-6 py-4">
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3 text-xs">
-                              <div><span className="text-muted-foreground">Subtotal:</span> <span className="font-semibold">{fmt(o.subtotal_amount)}</span></div>
-                              <div><span className="text-muted-foreground">Descuento:</span> <span className="font-semibold">{fmt(o.discount_amount)}</span></div>
-                              <div><span className="text-muted-foreground">Envío:</span> <span className="font-semibold">{fmt(o.shipping_amount)}</span></div>
-                              <div><span className="text-muted-foreground">Impuestos:</span> <span className="font-semibold">{fmt(o.tax_amount)}</span></div>
+                              <div><span className="text-muted-foreground">Subtotal:</span> <span className="font-semibold">{fmt(toUsd(o.subtotal_amount, o))}</span></div>
+                              <div><span className="text-muted-foreground">Descuento:</span> <span className="font-semibold">{fmt(toUsd(o.discount_amount, o))}</span></div>
+                              <div><span className="text-muted-foreground">Envío:</span> <span className="font-semibold">{fmt(toUsd(o.shipping_amount, o))}</span></div>
+                              <div><span className="text-muted-foreground">Impuestos:</span> <span className="font-semibold">{fmt(toUsd(o.tax_amount, o))}</span></div>
                             </div>
                             {orderItems[o.order_id] ? (
                               <table className="w-full text-xs">
