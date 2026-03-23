@@ -100,8 +100,9 @@ export default function Dashboard() {
 
   const kpiCards = data
     ? [
-        { label: "Revenue", value: fmt(data.kpis.revenue.value), change: data.kpis.revenue.change, icon: DollarSign },
-        { label: "Total Pedidos", value: String(data.kpis.orders.value), change: data.kpis.orders.change, icon: ShoppingBag },
+        { label: "Total Sales", value: fmt(data.kpis.revenue.value), change: data.kpis.revenue.change, icon: DollarSign },
+        { label: "Pedidos", value: String(data.kpis.orders.value), change: data.kpis.orders.change, icon: ShoppingBag },
+        { label: "Products Sold", value: String(data.kpis.productsSold.value), change: data.kpis.productsSold.change, icon: ShoppingCart },
         { label: "Ticket Medio", value: fmt(data.kpis.avgTicket.value), change: data.kpis.avgTicket.change, icon: Package },
         { label: "Clientes Nuevos", value: String(data.kpis.newCustomers.value), change: data.kpis.newCustomers.change, icon: Users },
       ]
