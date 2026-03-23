@@ -7,9 +7,6 @@ const corsHeaders = {
 
 const BASE = "https://basicoclothes.com/wp-json/wc/v3";
 
-// Statuses that represent a paid/valid order (exclude cancelled, failed, refunded, trash)
-const EXCLUDED_STATUSES = new Set(["cancelled", "failed", "refunded", "trash"]);
-
 async function wcFetch(path: string, params: Record<string, string> = {}) {
   const WC_KEY = Deno.env.get("WC_CONSUMER_KEY")!;
   const WC_SECRET = Deno.env.get("WC_CONSUMER_SECRET")!;
@@ -22,81 +19,62 @@ async function wcFetch(path: string, params: Record<string, string> = {}) {
   return { body, headers };
 }
 
-function dateRange(period: string): { after: string; before: string } {
-  const now = new Date();
-  let after: Date;
-
-  switch (period) {
-    case "today": {
-      after = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      break;
-    }
-    case "week": {
-      const day = now.getDay() || 7; // Monday=1 ... Sunday=7
-      after = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
-      break;
-    }
-    case "month": {
-      after = new Date(now.getFullYear(), now.getMonth(), 1);
-      break;
-    }
-    case "year": {
-      after = new Date(now.getFullYear(), 0, 1);
-      break;
-    }
-    default:
-      after = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  }
-
-  return {
-    after: after.toISOString(),
-    before: now.toISOString(),
-  };
+function formatDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function prevDateRange(period: string): { after: string; before: string } {
+function getDateRanges(period: string) {
   const now = new Date();
-  let after: Date, before: Date;
+  let currentStart: Date;
+  let prevStart: Date;
+  let prevEnd: Date;
 
   switch (period) {
     case "today": {
-      before = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      after = new Date(before);
-      after.setDate(after.getDate() - 1);
+      currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      prevEnd = new Date(currentStart);
+      prevEnd.setDate(prevEnd.getDate() - 1);
+      prevStart = new Date(prevEnd);
       break;
     }
     case "week": {
       const day = now.getDay() || 7;
-      before = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
-      after = new Date(before);
-      after.setDate(after.getDate() - 7);
+      currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
+      prevEnd = new Date(currentStart);
+      prevEnd.setDate(prevEnd.getDate() - 1);
+      prevStart = new Date(prevEnd);
+      prevStart.setDate(prevStart.getDate() - 6);
       break;
     }
     case "month": {
-      before = new Date(now.getFullYear(), now.getMonth(), 1);
-      after = new Date(before);
-      after.setMonth(after.getMonth() - 1);
+      currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      prevEnd = new Date(currentStart);
+      prevEnd.setDate(prevEnd.getDate() - 1);
+      prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), 1);
       break;
     }
     case "year": {
-      before = new Date(now.getFullYear(), 0, 1);
-      after = new Date(before);
-      after.setFullYear(after.getFullYear() - 1);
+      currentStart = new Date(now.getFullYear(), 0, 1);
+      prevEnd = new Date(currentStart);
+      prevEnd.setDate(prevEnd.getDate() - 1);
+      prevStart = new Date(prevEnd.getFullYear(), 0, 1);
       break;
     }
     default: {
-      before = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      after = new Date(before);
-      after.setDate(after.getDate() - 1);
+      currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      prevEnd = new Date(currentStart);
+      prevEnd.setDate(prevEnd.getDate() - 1);
+      prevStart = new Date(prevEnd);
     }
   }
 
-  return { after: after.toISOString(), before: before.toISOString() };
+  return {
+    current: { start: formatDate(currentStart), end: formatDate(now) },
+    prev: { start: formatDate(prevStart), end: formatDate(prevEnd) },
+  };
 }
 
-function isPaidOrder(order: any): boolean {
-  return !EXCLUDED_STATUSES.has(order.status);
-}
+const EXCLUDED_STATUSES = new Set(["cancelled", "failed", "refunded", "trash"]);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -106,18 +84,40 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const period = url.searchParams.get("period") || "today";
-    const { after, before } = dateRange(period);
-    const prev = prevDateRange(period);
+    const ranges = getDateRanges(period);
 
-    // Fetch all orders for a date range (paginated)
-    const fetchAllOrders = async (afterDate: string, beforeDate: string) => {
+    // Use WooCommerce Reports API for accurate sales data
+    const [currentReport, prevReport] = await Promise.all([
+      wcFetch("/reports/sales", { date_min: ranges.current.start, date_max: ranges.current.end }),
+      wcFetch("/reports/sales", { date_min: ranges.prev.start, date_max: ranges.prev.end }),
+    ]);
+
+    const cur = Array.isArray(currentReport.body) && currentReport.body.length > 0 ? currentReport.body[0] : {};
+    const prv = Array.isArray(prevReport.body) && prevReport.body.length > 0 ? prevReport.body[0] : {};
+
+    const revenue = parseFloat(cur.total_sales || "0");
+    const prevRevenue = parseFloat(prv.total_sales || "0");
+    const totalOrders = parseInt(cur.total_orders || "0");
+    const prevTotalOrders = parseInt(prv.total_orders || "0");
+    const avgTicket = totalOrders > 0 ? revenue / totalOrders : 0;
+    const prevAvgTicket = prevTotalOrders > 0 ? prevRevenue / prevTotalOrders : 0;
+    const newCustomers = parseInt(cur.total_customers || "0");
+    const prevNewCustomers = parseInt(prv.total_customers || "0");
+
+    const pctChange = (curr: number, prev: number) => {
+      if (prev === 0) return curr > 0 ? 100 : 0;
+      return ((curr - prev) / prev) * 100;
+    };
+
+    // Fetch orders for status breakdown and top products
+    const fetchAllOrders = async (dateMin: string, dateMax: string) => {
       const orders: any[] = [];
       let page = 1;
       let totalPages = 1;
       while (page <= totalPages) {
         const res = await wcFetch("/orders", {
-          after: afterDate,
-          before: beforeDate,
+          after: new Date(dateMin).toISOString(),
+          before: new Date(dateMax + "T23:59:59").toISOString(),
           per_page: "100",
           page: String(page),
           status: "any",
@@ -129,48 +129,22 @@ serve(async (req) => {
       return orders;
     };
 
-    // Fetch current and previous period orders + low stock products in parallel
-    const [currentOrders, prevOrders, lowStockRes] = await Promise.all([
-      fetchAllOrders(after, before),
-      fetchAllOrders(prev.after, prev.before),
+    const [currentOrders, lowStockRes] = await Promise.all([
+      fetchAllOrders(ranges.current.start, ranges.current.end),
       wcFetch("/products", { per_page: "50", orderby: "date", stock_status: "instock" }),
     ]);
 
-    // Filter to paid orders (exclude cancelled/failed/refunded)
-    const currentPaid = currentOrders.filter(isPaidOrder);
-    const prevPaid = prevOrders.filter(isPaidOrder);
-
-    // KPIs
-    const revenue = currentPaid.reduce((sum: number, o: any) => sum + parseFloat(o.total || "0"), 0);
-    const prevRevenue = prevPaid.reduce((sum: number, o: any) => sum + parseFloat(o.total || "0"), 0);
-
-    const totalOrders = currentPaid.length;
-    const prevTotalOrders = prevPaid.length;
-
-    const avgTicket = totalOrders > 0 ? revenue / totalOrders : 0;
-    const prevAvgTicket = prevTotalOrders > 0 ? prevRevenue / prevTotalOrders : 0;
-
-    // New customers: unique billing emails in current period not seen in previous
-    const currentEmails = new Set(currentPaid.map((o: any) => o.billing?.email?.toLowerCase()).filter(Boolean));
-    const prevEmails = new Set(prevPaid.map((o: any) => o.billing?.email?.toLowerCase()).filter(Boolean));
-    const newCustomers = [...currentEmails].filter(e => !prevEmails.has(e)).length;
-    const prevNewCustomers = prevEmails.size;
-
-    const pctChange = (curr: number, prev: number) => {
-      if (prev === 0) return curr > 0 ? 100 : 0;
-      return ((curr - prev) / prev) * 100;
-    };
-
-    // Order statuses (all orders, not just paid)
+    // Status breakdown
     const statusCounts: Record<string, number> = {};
     for (const o of currentOrders) {
       const s = o.status || "unknown";
       statusCounts[s] = (statusCounts[s] || 0) + 1;
     }
 
-    // Top products: aggregate from line items of paid orders
+    // Top products from paid orders
+    const paidOrders = currentOrders.filter((o: any) => !EXCLUDED_STATUSES.has(o.status));
     const prodMap: Record<number, { name: string; qty: number }> = {};
-    for (const o of currentPaid) {
+    for (const o of paidOrders) {
       for (const item of (o.line_items || [])) {
         const pid = item.product_id;
         if (!prodMap[pid]) prodMap[pid] = { name: item.name, qty: 0 };
@@ -182,7 +156,7 @@ serve(async (req) => {
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 5);
 
-    // Low stock products
+    // Low stock
     const lowStock = Array.isArray(lowStockRes.body)
       ? lowStockRes.body
           .filter((p: any) => p.manage_stock && p.stock_quantity !== null && p.stock_quantity <= 5 && p.stock_quantity > 0)
@@ -190,13 +164,21 @@ serve(async (req) => {
           .slice(0, 5)
       : [];
 
-    // Daily revenue breakdown using date_created_gmt for consistency
+    // Daily revenue from report totals array
     const dailyRevenue: Record<string, number> = {};
-    for (const o of currentPaid) {
-      // Use date_created_gmt if available, fallback to date_created
-      const dateStr = o.date_created_gmt || o.date_created || "";
-      const day = dateStr.split("T")[0];
-      if (day) dailyRevenue[day] = (dailyRevenue[day] || 0) + parseFloat(o.total || "0");
+    const totals = cur.totals || {};
+    for (const [day, info] of Object.entries(totals)) {
+      const sales = parseFloat((info as any)?.sales || "0");
+      if (sales > 0) dailyRevenue[day] = sales;
+    }
+
+    // If no totals breakdown, fallback to order-based daily revenue
+    if (Object.keys(dailyRevenue).length === 0) {
+      for (const o of paidOrders) {
+        const dateStr = o.date_created_gmt || o.date_created || "";
+        const day = dateStr.split("T")[0];
+        if (day) dailyRevenue[day] = (dailyRevenue[day] || 0) + parseFloat(o.total || "0");
+      }
     }
 
     const result = {
@@ -211,7 +193,7 @@ serve(async (req) => {
       lowStock,
       dailyRevenue,
       period,
-      dateRange: { after, before },
+      currency: "USD",
     };
 
     return new Response(JSON.stringify(result), {
