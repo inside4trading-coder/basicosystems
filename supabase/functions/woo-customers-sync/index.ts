@@ -97,6 +97,9 @@ serve(async (req) => {
       upserted += batch.length;
     }
 
+    // Recalculate orders_count and total_spent from orders table
+    await supabase.rpc("refresh_customers_order_stats");
+
     const nextPage = endPage < totalPages ? endPage + 1 : null;
 
     return new Response(
