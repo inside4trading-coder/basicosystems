@@ -1,8 +1,9 @@
-import { Navigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth, canAccessRoute } from "@/hooks/useAuth";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -14,6 +15,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Role-based route guard
+  if (role && !canAccessRoute(role, location.pathname)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

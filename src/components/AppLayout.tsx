@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export function AppLayout() {
   const { role } = useAuth();
-  const userRole = role || "partner";
+  const userRole = role ?? "partner";
 
   return (
     <SidebarProvider>
