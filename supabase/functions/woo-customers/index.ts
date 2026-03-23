@@ -41,16 +41,14 @@ function mapCustomer(c: any) {
 
 // Build customer stats from orders (since WooCommerce customer fields are empty)
 async function fetchBuyersFromOrders(page: number, perPage: number, search: string) {
-  // Fetch 2 pages of 100 orders in parallel for speed
-  const [res1, res2] = await Promise.all([
-    wcFetch("/orders", { per_page: "100", page: "1", status: "completed,processing,on-hold,pedido-recibido-p" }),
-    wcFetch("/orders", { per_page: "100", page: "2", status: "completed,processing,on-hold,pedido-recibido-p" }),
-  ]);
+  // Fetch 1 page of 100 orders (WooCommerce API is slow, keep it fast)
+  const res1 = await wcFetch("/orders", {
+    per_page: "100",
+    page: "1",
+    status: "completed,processing,on-hold,pedido-recibido-p",
+  });
 
-  const allOrders = [
-    ...(Array.isArray(res1.body) ? res1.body : []),
-    ...(Array.isArray(res2.body) ? res2.body : []),
-  ];
+  const allOrders = Array.isArray(res1.body) ? res1.body : [];
 
   // Aggregate by customer_id or billing email
   const customerMap = new Map<string, {
