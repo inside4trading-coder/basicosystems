@@ -1,10 +1,11 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Outlet } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 export function AppLayout() {
-  // TODO: get userRole from auth context
-  const userRole = "admin";
+  const { role } = useAuth();
+  const userRole = role || "partner";
 
   return (
     <SidebarProvider>

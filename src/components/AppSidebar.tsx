@@ -1,6 +1,7 @@
 import { BarChart3, Package, Users, ClipboardList, Mail, Settings, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import basicoLogo from "@/assets/basico-logo.png";
 
 import {
@@ -30,12 +31,18 @@ const adminItems = [
 export function AppSidebar({ userRole }: { userRole?: string }) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
 
   const showAdmin = userRole === "admin";
   const visibleItems = userRole === "partner"
     ? mainItems.filter(i => ["/dashboard", "/planning"].includes(i.url))
     : mainItems;
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -96,7 +103,10 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="hover:bg-sidebar-accent/50 rounded-md text-sidebar-foreground/70">
+            <SidebarMenuButton
+              onClick={handleLogout}
+              className="hover:bg-sidebar-accent/50 rounded-md text-sidebar-foreground/70"
+            >
               <LogOut className="mr-3 h-4 w-4 shrink-0" />
               {!collapsed && <span>Cerrar sesión</span>}
             </SidebarMenuButton>
