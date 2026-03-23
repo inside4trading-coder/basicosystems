@@ -102,7 +102,7 @@ export default function CRM() {
 
   const fmt = (val: string) => {
     const num = parseFloat(val || "0");
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(num);
+    return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const fmtDate = (d: string | null) => {
