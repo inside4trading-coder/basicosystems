@@ -91,7 +91,7 @@ export default function Dashboard() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleSync}
+            onClick={() => handleSync(30)}
             disabled={syncing}
             className="gap-2"
           >
