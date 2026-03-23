@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -40,21 +40,55 @@ export default function Dashboard() {
   const { data, loading, error, refetch } = useDashboardData(period);
   const [syncing, setSyncing] = useState(false);
 
-  const handleSync = async () => {
+  const handleSync = async (totalDays = 7) => {
     setSyncing(true);
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/woo-sync?days=365`,
-        { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
-      );
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-      toast.success(`Sincronización completada: ${json.synced?.orders || 0} pedidos`);
+      
+      // For periods > 10 days, split into batches of 7 days
+      const batchSize = 7;
+      const batches = totalDays <= 10 ? [totalDays] : [];
+      if (totalDays > 10) {
+        for (let d = totalDays; d > 0; d -= batchSize) {
+          batches.push(Math.min(d, batchSize));
+        }
+      }
+      
+      let totalSynced = { orders: 0, items: 0, payments: 0 };
+      
+      for (let i = 0; i < batches.length; i++) {
+        const days = batches[i];
+        // For multi-batch, calculate the offset
+        const offsetDays = totalDays > 10 ? totalDays - (i * batchSize) : days;
+        const sinceDays = totalDays > 10 ? offsetDays : days;
+        
+        toast.info(`Sincronizando lote ${i + 1}/${batches.length}...`);
+        
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 55000);
+        const res = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/woo-sync?days=${sinceDays}`,
+          { 
+            headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey },
+            signal: controller.signal,
+          }
+        );
+        clearTimeout(timeout);
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        totalSynced.orders += json.synced?.orders || 0;
+        totalSynced.items += json.synced?.items || 0;
+      }
+      
+      toast.success(`Sincronización completada: ${totalSynced.orders} pedidos, ${totalSynced.items} items`);
       refetch();
     } catch (e: any) {
-      toast.error(e.message || "Error al sincronizar");
+      if (e.name === "AbortError") {
+        toast.error("La sincronización tardó demasiado. Intenta con un período más corto.");
+      } else {
+        toast.error(e.message || "Error al sincronizar");
+      }
     } finally {
       setSyncing(false);
     }
@@ -78,16 +112,27 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-black tracking-tight">Dashboard</h2>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSync}
-            disabled={syncing}
-            className="gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Sincronizando…" : "Sincronizar"}
-          </Button>
+          <div className="flex items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSync(7)}
+              disabled={syncing}
+              className="gap-2 rounded-r-none"
+            >
+              <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Sincronizando…" : "Sync 7d"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSync(30)}
+              disabled={syncing}
+              className="rounded-l-none border-l-0 px-2 text-xs"
+            >
+              30d
+            </Button>
+          </div>
           <div className="flex gap-1 bg-card rounded-lg border border-border p-1">
             {periods.map((p) => (
               <button

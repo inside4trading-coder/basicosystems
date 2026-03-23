@@ -77,7 +77,7 @@ export function useDashboardData(period: Period) {
       // Fetch previous period orders
       const { data: prevOrders, error: pErr } = await supabase
         .from("orders")
-        .select("order_id, total_amount, order_status, customer_email")
+        .select("order_id, total_amount, total_amount_usd, order_status, customer_email")
         .gte("order_date", prev.start.toISOString().split("T")[0])
         .lt("order_date", prev.end.toISOString().split("T")[0]);
       if (pErr) throw new Error(pErr.message);
@@ -101,8 +101,8 @@ export function useDashboardData(period: Period) {
       const paid = all.filter(o => !EXCLUDED.has(o.order_status || ""));
       const prevPaid = (prevOrders || []).filter(o => !EXCLUDED.has(o.order_status || ""));
 
-      const revenue = paid.reduce((s, o) => s + (o.total_amount || 0), 0);
-      const prevRevenue = prevPaid.reduce((s, o) => s + (o.total_amount || 0), 0);
+      const revenue = paid.reduce((s, o) => s + (o.total_amount_usd || o.total_amount || 0), 0);
+      const prevRevenue = prevPaid.reduce((s, o) => s + (o.total_amount_usd || o.total_amount || 0), 0);
       const totalOrders = paid.length;
       const prevTotalOrders = prevPaid.length;
       const avgTicket = totalOrders > 0 ? revenue / totalOrders : 0;
@@ -123,7 +123,7 @@ export function useDashboardData(period: Period) {
       const dailyMap: Record<string, number> = {};
       for (const o of paid) {
         const d = o.order_date || "";
-        dailyMap[d] = (dailyMap[d] || 0) + (o.total_amount || 0);
+        dailyMap[d] = (dailyMap[d] || 0) + (o.total_amount_usd || o.total_amount || 0);
       }
       const dailyRevenue = Object.entries(dailyMap).sort(([a], [b]) => a.localeCompare(b))
         .map(([date, revenue]) => ({ date, revenue: Math.round(revenue * 100) / 100 }));
@@ -132,7 +132,7 @@ export function useDashboardData(period: Period) {
       const stateMap: Record<string, number> = {};
       for (const o of paid) {
         const s = o.billing_state || "Sin estado";
-        stateMap[s] = (stateMap[s] || 0) + (o.total_amount || 0);
+        stateMap[s] = (stateMap[s] || 0) + (o.total_amount_usd || o.total_amount || 0);
       }
       const revenueByState = Object.entries(stateMap)
         .map(([state, revenue]) => ({ state, revenue: Math.round(revenue * 100) / 100 }))
@@ -142,7 +142,7 @@ export function useDashboardData(period: Period) {
       const payMap: Record<string, number> = {};
       for (const o of paid) {
         const m = o.payment_method || "Otro";
-        payMap[m] = (payMap[m] || 0) + (o.total_amount || 0);
+        payMap[m] = (payMap[m] || 0) + (o.total_amount_usd || o.total_amount || 0);
       }
       const revenueByPayment = Object.entries(payMap)
         .map(([method, revenue]) => ({ method, revenue: Math.round(revenue * 100) / 100 }))

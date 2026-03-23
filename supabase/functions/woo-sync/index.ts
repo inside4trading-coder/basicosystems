@@ -8,6 +8,26 @@ const corsHeaders = {
 
 const WC_BASE = "https://basicoclothes.com/wp-json/wc/v3";
 
+async function getExchangeRate(): Promise<number> {
+  try {
+    // Try to get BCV rate for VES/USD
+    const res = await fetch("https://pydolarve.org/api/v2/dollar?monitor=bcv");
+    if (res.ok) {
+      const data = await res.json();
+      const rate = data?.price || data?.monitors?.bcv?.price;
+      if (rate && rate > 0) {
+        console.log(`Exchange rate VES/USD: ${rate}`);
+        return rate;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to fetch exchange rate:", e);
+  }
+  // Fallback rate
+  console.log("Using fallback exchange rate: 55");
+  return 55;
+}
+
 async function wcFetch(path: string, params: Record<string, string> = {}) {
   const key = Deno.env.get("WC_CONSUMER_KEY")!;
   const secret = Deno.env.get("WC_CONSUMER_SECRET")!;
@@ -57,7 +77,9 @@ serve(async (req) => {
     const allOrders: any[] = [];
     let page = 1;
     let totalPages = 1;
+    console.log(`Starting sync since ${since.toISOString()} (${sinceDays} days)`);
     while (page <= totalPages) {
+      console.log(`Fetching page ${page}/${totalPages}...`);
       const res = await wcFetch("/orders", {
         after: since.toISOString(),
         per_page: "100",
@@ -66,8 +88,14 @@ serve(async (req) => {
       });
       totalPages = res.totalPages;
       if (Array.isArray(res.body)) allOrders.push(...res.body);
+      else {
+        console.error("WC API returned non-array:", JSON.stringify(res.body).slice(0, 200));
+        break;
+      }
+      console.log(`Page ${page} done, got ${res.body?.length || 0} orders (total so far: ${allOrders.length})`);
       page++;
     }
+    console.log(`Total orders fetched: ${allOrders.length}`);
 
     // Fetch product_costs for matching
     const { data: costData } = await supabase.from("product_costs").select("sku, analytic_category, unit_cost_total");
@@ -77,6 +105,9 @@ serve(async (req) => {
         costMap.set(c.sku, { category: c.analytic_category, cost: c.unit_cost_total });
       }
     }
+
+    // Fetch exchange rate for VES conversion
+    const vesRate = await getExchangeRate();
 
     let syncedOrders = 0;
     let syncedItems = 0;
@@ -102,6 +133,10 @@ serve(async (req) => {
         tax_amount: parseFloat(o.total_tax || "0"),
         refunded_amount: Math.abs(parseFloat(o.total_refunded || "0")),
         total_amount: parseFloat(o.total || "0"),
+        total_amount_usd: (o.currency || "USD") === "USD" 
+          ? parseFloat(o.total || "0") 
+          : parseFloat(o.total || "0") / vesRate,
+        exchange_rate: (o.currency || "USD") === "USD" ? 1 : vesRate,
         order_currency: o.currency || "USD",
         customer_email: o.billing?.email || null,
         customer_phone: o.billing?.phone || null,

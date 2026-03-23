@@ -28,10 +28,14 @@ Basico Systems — panel de gestión para Basico Clothes (basicoclothes.es)
 - product_costs populated via CSV upload in Configuración
 - analytic_category: superior, inferior, accesorios
 
+## Currency & Exchange Rate
+- USD is default display currency
+- VES orders converted using exchange_rate (fallback: 55 VES/USD)
+- total_amount_usd used for all KPIs and charts
+- Exchange rate API: pydolarve.org (may fail in edge runtime, fallback used)
+- woo-sync timeout: 7 days works, 30 days may timeout
+
 ## Secrets
 - WC_CONSUMER_KEY, WC_CONSUMER_SECRET (WooCommerce)
 - TRELLO_API_KEY, TRELLO_TOKEN, TRELLO_WORKSPACE_ID
 - BREVO_API_KEY (pending)
-
-## Currency
-- USD is default display currency
