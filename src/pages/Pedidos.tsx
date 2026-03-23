@@ -199,45 +199,8 @@ export default function Pedidos() {
                       </tr>
                       {expandedOrder === o.order_id && (
                         <tr key={`${o.order_id}-items`} className="bg-muted/20">
-                          <td colSpan={8} className="px-6 py-4">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3 text-xs">
-                              <div><span className="text-muted-foreground">Subtotal:</span> <span className="font-semibold">{fmt(toUsd(o.subtotal_amount, o))}</span></div>
-                              <div><span className="text-muted-foreground">Descuento:</span> <span className="font-semibold">{fmt(toUsd(o.discount_amount, o))}</span></div>
-                              <div><span className="text-muted-foreground">Envío:</span> <span className="font-semibold">{fmt(toUsd(o.shipping_amount, o))}</span></div>
-                              <div><span className="text-muted-foreground">Impuestos:</span> <span className="font-semibold">{fmt(toUsd(o.tax_amount, o))}</span></div>
-                            </div>
-                            {orderItems[o.order_id] ? (
-                              <table className="w-full text-xs">
-                                <thead>
-                                  <tr className="border-b border-border/50">
-                                    <th className="text-left py-1.5 font-bold text-muted-foreground">Producto</th>
-                                    <th className="text-left py-1.5 font-bold text-muted-foreground">SKU</th>
-                                    <th className="text-left py-1.5 font-bold text-muted-foreground">Talla</th>
-                                    <th className="text-left py-1.5 font-bold text-muted-foreground">Color</th>
-                                    <th className="text-right py-1.5 font-bold text-muted-foreground">Cant</th>
-                                    <th className="text-right py-1.5 font-bold text-muted-foreground">Total</th>
-                                    <th className="text-left py-1.5 font-bold text-muted-foreground">Categoría</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {orderItems[o.order_id].map((item: any) => (
-                                    <tr key={item.id} className="border-b border-border/30 last:border-0">
-                                      <td className="py-1.5 font-semibold">{item.product_name}</td>
-                                      <td className="py-1.5 text-muted-foreground">{item.sku || "—"}</td>
-                                      <td className="py-1.5">{item.size || "—"}</td>
-                                      <td className="py-1.5">{item.color || "—"}</td>
-                                      <td className="py-1.5 text-right tabular-nums">{item.quantity}</td>
-                                      <td className="py-1.5 text-right tabular-nums font-semibold">{fmt(item.line_total)}</td>
-                                      <td className="py-1.5 capitalize">{item.analytic_category || "—"}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            ) : (
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <Loader2 className="h-3 w-3 animate-spin" /> Cargando items…
-                              </div>
-                            )}
+                          <td colSpan={8} className="px-4 py-4">
+                            <OrderExpandedDetails order={o} items={orderItems[o.order_id]} fmt={fmt} toUsd={toUsd} />
                           </td>
                         </tr>
                       )}
