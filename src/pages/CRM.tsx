@@ -266,6 +266,11 @@ export default function CRM() {
           )}
         </div>
       )}
+      <CustomerOrdersDialog
+        customer={selectedCustomer}
+        open={!!selectedCustomer}
+        onOpenChange={(open) => !open && setSelectedCustomer(null)}
+      />
     </div>
   );
 }
