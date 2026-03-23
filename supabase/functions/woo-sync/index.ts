@@ -53,51 +53,6 @@ function extractVariation(meta: any[], key: string): string | null {
   return found?.value || found?.display_value || null;
 }
 
-const POS_META_NORMALIZE: Record<string, string> = {
-  "pago móvil": "Pago Móvil (Bs)",
-  "cashea": "Cashea",
-  "efectivo usd": "Efectivo USD",
-  "punto de venta (bs)": "Punto de venta (Bs)",
-  "binance": "Binance / USDT",
-  "zelle": "Zelle",
-  "paypal": "PayPal",
-};
-
-const TITLE_NORMALIZE: Record<string, string> = {
-  "pago móvil": "Pago Móvil (Bs)",
-  "cashea": "Cashea",
-  "paga con zelle": "Zelle",
-  "paga con binance pay / usdt": "Binance / USDT",
-  "paypal": "PayPal",
-};
-
-function normalizePaymentMethod(o: any): string | null {
-  const meta = o.meta_data;
-  const posKeys = [
-    "_basico_pago_metodo",
-    "_basico_pago_metodo_2",
-    "_basico_pago_metodo_3",
-    "_basico_pago_metodo_4",
-  ];
-
-  const posValues = posKeys
-    .map(k => getMetaValue(meta, k))
-    .map(v => (v ? v.trim() : ""))
-    .filter(v => v.length > 0)
-    .map(v => POS_META_NORMALIZE[v.toLowerCase()] || v);
-
-  if (posValues.length > 0) {
-    return posValues.join(" + ");
-  }
-
-  const title = (o.payment_method_title || "").trim();
-  if (!title || title.toUpperCase() === "PAGO POS") {
-    return null;
-  }
-
-  return TITLE_NORMALIZE[title.toLowerCase()] || title;
-}
-
 function extractSaleChannel(meta: any[]): string {
   if (!Array.isArray(meta)) return "web";
   const ch = meta.find((m: any) =>
@@ -231,7 +186,7 @@ serve(async (req) => {
           order_currency: currency,
           customer_email: o.billing?.email || null,
           customer_phone: o.billing?.phone || null,
-          payment_method: normalizePaymentMethod(o),
+          payment_method: o.payment_method_title || o.payment_method || null,
           synced_at: new Date().toISOString(),
         };
       });
@@ -274,54 +229,16 @@ serve(async (req) => {
         syncedItems += itemRows.length;
       }
 
-      // Payments - create rows per POS payment slot
-      const paymentRows: any[] = [];
-      for (const o of batch) {
-        const posKeys = [
-          "_basico_pago_metodo",
-          "_basico_pago_metodo_2",
-          "_basico_pago_metodo_3",
-          "_basico_pago_metodo_4",
-        ];
-        const posAmountKeys = [
-          "_basico_pago_monto",
-          "_basico_pago_monto_2",
-          "_basico_pago_monto_3",
-          "_basico_pago_monto_4",
-        ];
-        const posMethods = posKeys
-          .map((k, i) => ({
-            method: (getMetaValue(o.meta_data, k) || "").trim(),
-            amount: parseFloat(getMetaValue(o.meta_data, posAmountKeys[i]) || "0"),
-            slot: i + 1,
-          }))
-          .filter(p => p.method.length > 0);
-
-        if (posMethods.length > 0) {
-          for (const p of posMethods) {
-            paymentRows.push({
-              order_id: o.id,
-              payment_slot: p.slot,
-              payment_method: POS_META_NORMALIZE[p.method.toLowerCase()] || p.method,
-              payment_bank: null,
-              payment_amount: p.amount || parseFloat(o.total || "0") / posMethods.length,
-              payment_currency: o.currency || "USD",
-              payment_reference: o.transaction_id || null,
-            });
-          }
-        } else {
-          const normalized = normalizePaymentMethod(o);
-          paymentRows.push({
-            order_id: o.id,
-            payment_slot: 1,
-            payment_method: normalized || "unknown",
-            payment_bank: null,
-            payment_amount: parseFloat(o.total || "0"),
-            payment_currency: o.currency || "USD",
-            payment_reference: o.transaction_id || null,
-          });
-        }
-      }
+      // Payments
+      const paymentRows = batch.map((o: any) => ({
+        order_id: o.id,
+        payment_slot: 1,
+        payment_method: o.payment_method_title || o.payment_method || "unknown",
+        payment_bank: null,
+        payment_amount: parseFloat(o.total || "0"),
+        payment_currency: o.currency || "USD",
+        payment_reference: o.transaction_id || null,
+      }));
 
       const paymentOrderIds = batch.map((o: any) => o.id);
       await supabase.from("payments").delete().in("order_id", paymentOrderIds);
