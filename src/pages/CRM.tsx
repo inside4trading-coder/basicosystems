@@ -1,4 +1,4 @@
-import { Search, Loader2, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import { Search, Loader2, ChevronLeft, ChevronRight, Filter, Users, ShoppingBag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useCallback } from "react";
 
@@ -38,10 +38,7 @@ const segmentClass: Record<string, string> = {
 
 const SEGMENTS: Segment[] = ["Todos", "VIP", "Activo", "Ocasional", "Nuevo"];
 
-const SORT_OPTIONS = [
-  { value: "registered_date", label: "Fecha de registro" },
-  { value: "id", label: "ID" },
-];
+type ViewMode = "buyers" | "all";
 
 export default function CRM() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -53,7 +50,7 @@ export default function CRM() {
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [segmentFilter, setSegmentFilter] = useState<Segment>("Todos");
-  const [orderby, setOrderby] = useState("registered_date");
+  const [viewMode, setViewMode] = useState<ViewMode>("buyers");
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 500);
@@ -69,9 +66,14 @@ export default function CRM() {
       const params = new URLSearchParams({
         page: String(page),
         per_page: "20",
-        orderby,
-        order: "desc",
+        mode: viewMode,
       });
+
+      if (viewMode === "all") {
+        params.set("orderby", "registered_date");
+        params.set("order", "desc");
+      }
+
       if (searchDebounced) params.set("search", searchDebounced);
 
       const res = await fetch(
@@ -89,10 +91,10 @@ export default function CRM() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchDebounced, orderby]);
+  }, [page, searchDebounced, viewMode]);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
-  useEffect(() => { setPage(1); }, [searchDebounced, orderby]);
+  useEffect(() => { setPage(1); }, [searchDebounced, viewMode]);
 
   const filtered = segmentFilter === "Todos"
     ? customers
@@ -101,9 +103,9 @@ export default function CRM() {
   const fmt = (val: string) => {
     const num = parseFloat(val || "0");
     try {
-      return new Intl.NumberFormat("es-ES", { style: "currency", currency: "VES" }).format(num);
+      return new Intl.NumberFormat("es-VE", { style: "currency", currency: "VES", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
     } catch {
-      return `${num.toFixed(2)} Bs`;
+      return `${num.toFixed(0)} Bs`;
     }
   };
 
@@ -139,16 +141,33 @@ export default function CRM() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <select
-            value={orderby}
-            onChange={(e) => setOrderby(e.target.value)}
-            className="text-xs border border-border rounded-md px-2 py-2 bg-card font-semibold"
-          >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
         </div>
+      </div>
+
+      {/* View mode toggle */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setViewMode("buyers")}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-colors ${
+            viewMode === "buyers"
+              ? "bg-primary text-primary-foreground"
+              : "bg-card border border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <ShoppingBag className="h-3.5 w-3.5" />
+          Compradores
+        </button>
+        <button
+          onClick={() => setViewMode("all")}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-colors ${
+            viewMode === "all"
+              ? "bg-primary text-primary-foreground"
+              : "bg-card border border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Users className="h-3.5 w-3.5" />
+          Todos los registros
+        </button>
       </div>
 
       {/* Segment filters */}
@@ -176,7 +195,9 @@ export default function CRM() {
       {loading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-3 text-sm text-muted-foreground font-semibold">Cargando clientes…</span>
+          <span className="ml-3 text-sm text-muted-foreground font-semibold">
+            {viewMode === "buyers" ? "Analizando compradores…" : "Cargando clientes…"}
+          </span>
         </div>
       )}
 
@@ -199,9 +220,9 @@ export default function CRM() {
                 <tr className="border-b border-border bg-muted/50">
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Cliente</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Email</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Total gastado</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Pedidos</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Ciudad</th>
+                  <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Total gastado</th>
+                  <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Pedidos</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Teléfono</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">Registro</th>
                   <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Segmento</th>
                 </tr>
@@ -216,6 +237,7 @@ export default function CRM() {
                 ) : (
                   filtered.map((c) => {
                     const seg = getSegment(c);
+                    const spent = parseFloat(c.total_spent || "0");
                     return (
                       <tr
                         key={c.id}
@@ -223,17 +245,21 @@ export default function CRM() {
                       >
                         <td className="px-4 py-3">
                           <div className="font-semibold">
-                            {c.first_name} {c.last_name}
+                            {c.first_name || c.last_name
+                              ? `${c.first_name} ${c.last_name}`.trim()
+                              : c.username || "Sin nombre"}
                           </div>
                           {c.billing_company && (
                             <div className="text-xs text-muted-foreground">{c.billing_company}</div>
                           )}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs">{c.email}</td>
-                        <td className="px-4 py-3 font-bold">{fmt(c.total_spent)}</td>
-                        <td className="px-4 py-3 hidden lg:table-cell">{c.orders_count}</td>
+                        <td className="px-4 py-3 font-bold text-right tabular-nums">
+                          {spent > 0 ? fmt(c.total_spent) : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-center tabular-nums">{c.orders_count}</td>
                         <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell text-xs">
-                          {c.billing_city || "—"}
+                          {c.billing_phone || "—"}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground hidden xl:table-cell text-xs whitespace-nowrap">
                           {fmtDate(c.date_created)}
