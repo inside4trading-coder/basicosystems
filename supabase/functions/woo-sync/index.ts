@@ -131,7 +131,7 @@ serve(async (req) => {
       if (Array.isArray(res.body)) {
         for (const p of res.body) {
           const cats = (p.categories || []).map((c: any) => c.name).filter(Boolean);
-          if (cats.length > 0) productCategoryMap.set(p.id, cats[0]);
+          if (cats.length > 0) productCategoryMap.set(p.id, cats.join(" › "));
         }
       }
     }
@@ -200,6 +200,7 @@ serve(async (req) => {
         for (const li of (o.line_items || [])) {
           const sku = li.sku || null;
           const costInfo = sku ? costMap.get(sku) : null;
+          const wcCategory = productCategoryMap.get(li.product_id) || null;
           itemRows.push({
             order_id: o.id,
             line_item_id: li.id,
@@ -212,7 +213,8 @@ serve(async (req) => {
             item_cost: costInfo?.cost || null,
             size: extractVariation(li.meta_data, "talla") || extractVariation(li.meta_data, "size") || extractVariation(li.meta_data, "pa_talla"),
             color: extractVariation(li.meta_data, "color") || extractVariation(li.meta_data, "pa_color"),
-            analytic_category: costInfo?.category || productCategoryMap.get(li.product_id) || null,
+            analytic_category: costInfo?.category || wcCategory || null,
+            product_category: wcCategory,
           });
         }
       }
