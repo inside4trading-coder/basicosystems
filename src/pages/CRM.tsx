@@ -123,17 +123,13 @@ export default function CRM() {
     setLoading(true);
     setError(null);
     try {
-      if (customerType === "all") {
-        await fetchFromWoo();
-      } else {
-        await fetchFromCache();
-      }
+      await fetchFromCache();
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [customerType, fetchFromWoo, fetchFromCache]);
+  }, [fetchFromCache]);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
   useEffect(() => { setPage(1); }, [searchDebounced, orderby, order, customerType]);
