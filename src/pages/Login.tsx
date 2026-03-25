@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { toast } from "sonner";
 import basicoLogo from "@/assets/basico-logo.png";
+import bgVideo from "@/assets/aibuilders.mp4";
 
 export default function Login() {
   const [email, setEmail] = useState("");
