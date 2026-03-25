@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { toast } from "sonner";
 import basicoLogo from "@/assets/basico-logo.png";
+import bgVideo from "@/assets/aibuilders.mp4";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -63,12 +64,22 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-secondary">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+        src={bgVideo}
+      />
+      <div className="absolute inset-0 bg-black/40" />
+
       <div
-        className="w-full max-w-sm animate-fade-in"
+        className="w-full max-w-sm animate-fade-in relative z-10"
         style={{ animationDelay: "0.1s" }}
       >
-        <div className="bg-card rounded-lg shadow-xl p-8 border border-border">
+        <div className="rounded-lg shadow-2xl p-8 border border-white/10 bg-black/30 backdrop-blur-xl">
           <div className="flex justify-center mb-8">
             <img src={basicoLogo} alt="Basico" className="h-14 w-auto" />
           </div>
@@ -77,7 +88,7 @@ export default function Login() {
             type="button"
             variant="outline"
             size="lg"
-            className="w-full mb-6 gap-3"
+            className="w-full mb-6 gap-3 bg-white/10 border-white/20 text-white hover:bg-white/20"
             onClick={handleGoogleLogin}
             disabled={loading}
           >
@@ -92,16 +103,16 @@ export default function Login() {
 
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
+              <span className="w-full border-t border-white/20" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">o</span>
+              <span className="bg-transparent px-2 text-white/50">o</span>
             </div>
           </div>
 
           <form onSubmit={handleEmailLogin} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-white/60">
                 Email
               </Label>
               <Input
@@ -111,12 +122,12 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@basicoclothes.es"
                 required
-                className="bg-background"
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus-visible:ring-white/30"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wider text-white/60">
                 Contraseña
               </Label>
               <Input
@@ -127,7 +138,7 @@ export default function Login() {
                 placeholder="••••••••"
                 required
                 minLength={6}
-                className="bg-background"
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus-visible:ring-white/30"
               />
             </div>
 
@@ -149,14 +160,14 @@ export default function Login() {
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
-            className="w-full text-center text-xs text-muted-foreground mt-4 hover:text-foreground transition-colors"
+            className="w-full text-center text-xs text-white/50 mt-4 hover:text-white transition-colors"
           >
             {isSignUp
               ? "¿Ya tienes cuenta? Inicia sesión"
               : "¿No tienes cuenta? Regístrate"}
           </button>
 
-          <p className="text-center text-xs text-muted-foreground mt-6">
+          <p className="text-center text-xs text-white/40 mt-6">
             Basico Systems — Panel de gestión
           </p>
         </div>
