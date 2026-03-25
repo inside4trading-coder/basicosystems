@@ -76,6 +76,8 @@ serve(async (req) => {
       shipping_city: c.shipping?.city || null,
       shipping_state: c.shipping?.state || null,
       shipping_country: c.shipping?.country || null,
+      woo_orders_count: c.orders_count ?? 0,
+      woo_total_spent: parseFloat(c.total_spent || "0"),
       orders_count: c.orders_count ?? 0,
       total_spent: parseFloat(c.total_spent || "0"),
       date_created: c.date_created_gmt ? `${c.date_created_gmt}Z` : null,
