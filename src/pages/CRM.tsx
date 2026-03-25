@@ -64,41 +64,18 @@ export default function CRM() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Fetch from WooCommerce API (for "all" filter)
-  const fetchFromWoo = useCallback(async () => {
-    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    const params = new URLSearchParams({
-      page: String(page),
-      per_page: String(PER_PAGE),
-      orderby,
-      order,
-    });
-    if (searchDebounced) params.set("search", searchDebounced);
-
-    const res = await fetch(
-      `https://${projectId}.supabase.co/functions/v1/woo-customers?${params}`,
-      { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
-    );
-    if (!res.ok) throw new Error(`Error ${res.status}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    setCustomers(data.customers);
-    setTotalPages(data.totalPages);
-    setTotal(data.total);
-  }, [page, searchDebounced, orderby, order]);
-
-  // Fetch from customers_cache (for type filters)
+  // Fetch from customers_cache (for all filters)
   const fetchFromCache = useCallback(async () => {
-    const range = ordersCountFilter(customerType);
-    if (!range) return;
-    const [min, max] = range;
-
     let query = supabase
       .from("customers_cache")
       .select("*", { count: "exact" });
 
-    query = query.gte("orders_count", min).lte("orders_count", max);
+    // Apply orders_count filter only for non-"all" types
+    const range = ordersCountFilter(customerType);
+    if (range) {
+      const [min, max] = range;
+      query = query.gte("orders_count", min).lte("orders_count", max);
+    }
 
     if (searchDebounced) {
       query = query.or(
@@ -146,17 +123,13 @@ export default function CRM() {
     setLoading(true);
     setError(null);
     try {
-      if (customerType === "all") {
-        await fetchFromWoo();
-      } else {
-        await fetchFromCache();
-      }
+      await fetchFromCache();
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [customerType, fetchFromWoo, fetchFromCache]);
+  }, [fetchFromCache]);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
   useEffect(() => { setPage(1); }, [searchDebounced, orderby, order, customerType]);
