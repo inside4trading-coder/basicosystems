@@ -141,6 +141,8 @@ export type Database = {
           synced_at: string | null
           total_spent: number | null
           username: string | null
+          woo_orders_count: number | null
+          woo_total_spent: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -165,6 +167,8 @@ export type Database = {
           synced_at?: string | null
           total_spent?: number | null
           username?: string | null
+          woo_orders_count?: number | null
+          woo_total_spent?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -189,6 +193,8 @@ export type Database = {
           synced_at?: string | null
           total_spent?: number | null
           username?: string | null
+          woo_orders_count?: number | null
+          woo_total_spent?: number | null
         }
         Relationships: []
       }
