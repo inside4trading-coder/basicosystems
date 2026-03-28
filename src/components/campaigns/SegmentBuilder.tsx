@@ -338,9 +338,10 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
     setSaving(true);
     try {
       const filter: SegmentFilter = { conditions, exclusions, logic: "AND" };
+      const insertPayload: any = { name: saveName, filters: filter, customer_count: matchCount ?? 0 };
       const { data, error } = await supabase
         .from("segments")
-        .insert({ name: saveName, filters: filter as any, customer_count: matchCount ?? 0 })
+        .insert(insertPayload)
         .select("id, name, filters")
         .single();
       if (error) throw error;
