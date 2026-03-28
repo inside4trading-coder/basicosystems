@@ -12,6 +12,8 @@ import Pedidos from "./pages/Pedidos";
 import CRM from "./pages/CRM";
 import Planning from "./pages/Planning";
 import Campaigns from "./pages/Campaigns";
+import CampaignWizard from "./pages/CampaignWizard";
+import CampaignDetail from "./pages/CampaignDetail";
 import Configuracion from "./pages/Configuracion";
 import NotFound from "./pages/NotFound";
 
