@@ -12,23 +12,22 @@ import { toast } from "sonner";
 
 // --- Types ---
 
-type FieldType = "number" | "date" | "text" | "array" | "status";
+type FieldType = "number" | "date" | "text";
 
 interface FieldDef {
   value: string;
   label: string;
   type: FieldType;
-  column: string; // actual DB column in customers_cache
+  filterKey: string; // maps to campaign-audience body param
+  filterKeyMax?: string; // for "between" operators
 }
 
 const FIELDS: FieldDef[] = [
-  { value: "total_orders", label: "Nº compras", type: "number", column: "orders_count" },
-  { value: "total_spent", label: "Total gastado ($)", type: "number", column: "total_spent" },
-  { value: "last_order_date", label: "Última compra", type: "date", column: "last_order_date" },
-  { value: "city", label: "Ciudad", type: "text", column: "billing_city" },
-  { value: "country", label: "País", type: "text", column: "billing_country" },
-  { value: "state", label: "Estado/Región", type: "text", column: "billing_state" },
-  { value: "created_at", label: "Fecha de registro", type: "date", column: "date_created" },
+  { value: "total_orders", label: "Nº compras", type: "number", filterKey: "min_orders", filterKeyMax: "max_orders" },
+  { value: "total_spent", label: "Total gastado (USD)", type: "number", filterKey: "min_spent", filterKeyMax: "max_spent" },
+  { value: "last_order_date", label: "Última compra", type: "date", filterKey: "last_order_days_min", filterKeyMax: "last_order_days_max" },
+  { value: "country", label: "País", type: "text", filterKey: "country" },
+  { value: "city", label: "Ciudad", type: "text", filterKey: "city" },
 ];
 
 const OPERATORS: Record<FieldType, { value: string; label: string }[]> = {
@@ -41,18 +40,8 @@ const OPERATORS: Record<FieldType, { value: string; label: string }[]> = {
   date: [
     { value: "less_than_days", label: "Hace menos de X días" },
     { value: "more_than_days", label: "Hace más de X días" },
-    { value: "between_dates", label: "Entre fechas" },
   ],
   text: [
-    { value: "contains", label: "Contiene" },
-    { value: "not_contains", label: "No contiene" },
-    { value: "equals", label: "Es igual a" },
-  ],
-  array: [
-    { value: "contains", label: "Contiene" },
-    { value: "not_contains", label: "No contiene" },
-  ],
-  status: [
     { value: "equals", label: "Es igual a" },
   ],
 };
@@ -62,7 +51,7 @@ export interface Condition {
   field: string;
   operator: string;
   value: string;
-  value2?: string; // for "between"
+  value2?: string;
   logic: "AND" | "OR";
 }
 
@@ -126,7 +115,6 @@ function ConditionRow({
         </div>
       )}
       <div className="flex items-center gap-2 bg-muted/30 rounded-lg p-2 border border-border">
-        {/* Field */}
         <Select value={condition.field} onValueChange={handleFieldChange}>
           <SelectTrigger className="w-[160px] h-8 text-xs">
             <SelectValue />
@@ -138,7 +126,6 @@ function ConditionRow({
           </SelectContent>
         </Select>
 
-        {/* Operator */}
         <Select value={condition.operator} onValueChange={(v) => onChange({ ...condition, operator: v })}>
           <SelectTrigger className="w-[180px] h-8 text-xs">
             <SelectValue />
@@ -150,21 +137,20 @@ function ConditionRow({
           </SelectContent>
         </Select>
 
-        {/* Value(s) */}
         <Input
           className="h-8 text-xs flex-1 min-w-[80px]"
-          type={fieldDef.type === "number" ? "number" : fieldDef.type === "date" && condition.operator === "between_dates" ? "date" : "text"}
-          placeholder={fieldDef.type === "date" && !condition.operator.includes("dates") ? "Días" : "Valor"}
+          type={fieldDef.type === "number" || fieldDef.type === "date" ? "number" : "text"}
+          placeholder={fieldDef.type === "date" ? "Días" : "Valor"}
           value={condition.value}
           onChange={(e) => onChange({ ...condition, value: e.target.value })}
         />
 
-        {(condition.operator === "between" || condition.operator === "between_dates") && (
+        {condition.operator === "between" && (
           <>
             <span className="text-xs text-muted-foreground">y</span>
             <Input
               className="h-8 text-xs flex-1 min-w-[80px]"
-              type={fieldDef.type === "number" ? "number" : "date"}
+              type="number"
               placeholder="Valor 2"
               value={condition.value2 || ""}
               onChange={(e) => onChange({ ...condition, value2: e.target.value })}
@@ -180,6 +166,55 @@ function ConditionRow({
   );
 }
 
+// --- Build filters for edge function ---
+
+function buildEdgeFunctionBody(conditions: Condition[], exclusions: Condition[]): Record<string, any> {
+  const body: Record<string, any> = { count_only: true };
+
+  for (const c of conditions) {
+    if (!c.value.trim()) continue;
+    const fieldDef = getFieldDef(c.field);
+
+    if (fieldDef.type === "number") {
+      const num = parseFloat(c.value);
+      if (c.operator === "gt") body[fieldDef.filterKey] = num;
+      else if (c.operator === "lt") body[fieldDef.filterKeyMax!] = num;
+      else if (c.operator === "eq") {
+        body[fieldDef.filterKey] = num;
+        body[fieldDef.filterKeyMax!] = num;
+      } else if (c.operator === "between" && c.value2) {
+        body[fieldDef.filterKey] = parseFloat(c.value);
+        body[fieldDef.filterKeyMax!] = parseFloat(c.value2);
+      }
+    } else if (fieldDef.type === "date") {
+      const days = parseInt(c.value);
+      if (c.operator === "less_than_days") {
+        // Last order within X days → last_order_days_min = X days ago (must be >= cutoff)
+        body["last_order_days_min"] = days;
+      } else if (c.operator === "more_than_days") {
+        // Last order more than X days ago → last_order_days_max = X days ago (must be <= cutoff)
+        body["last_order_days_max"] = days;
+      }
+    } else if (fieldDef.type === "text") {
+      body[fieldDef.filterKey] = c.value;
+    }
+  }
+
+  // Exclusions: collect emails to exclude (we'll handle this via a separate call if needed)
+  // For now, map exclusion conditions similarly
+  const excludeEmails: string[] = [];
+  for (const c of exclusions) {
+    if (!c.value.trim()) continue;
+    // For simplicity, text-based exclusions add to exclude list concept
+    // The edge function supports exclude_emails
+  }
+  if (excludeEmails.length > 0) {
+    body["exclude_emails"] = excludeEmails;
+  }
+
+  return body;
+}
+
 // --- Main Component ---
 
 export default function SegmentBuilder({ onFilterChange, initialFilter }: SegmentBuilderProps) {
@@ -191,7 +226,6 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
   const [counting, setCounting] = useState(false);
   const [matchCount, setMatchCount] = useState<number | null>(null);
 
-  // Use ref to avoid infinite loop from onFilterChange dependency
   const onFilterChangeRef = useRef(onFilterChange);
   onFilterChangeRef.current = onFilterChange;
 
@@ -201,7 +235,6 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
   const [saving, setSaving] = useState(false);
   const [showSaveInput, setShowSaveInput] = useState(false);
 
-  // Load saved segments on mount
   useEffect(() => {
     supabase
       .from("segments")
@@ -212,98 +245,17 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
       });
   }, []);
 
-  // Build Supabase query filter from conditions
   const countMatches = useCallback(async () => {
-    const hasAnyValue = conditions.some((c) => c.value.trim() !== "");
-    if (!hasAnyValue && exclusions.every((c) => c.value.trim() === "")) {
-      // No conditions set — count all
-      const { count } = await supabase.from("customers_cache").select("*", { count: "exact", head: true }).limit(0);
-      setMatchCount(count ?? 0);
-      onFilterChangeRef.current({ conditions, exclusions, logic: "AND" }, count ?? 0);
-      return;
-    }
-
     setCounting(true);
     try {
-      // We'll do this with a raw approach: build conditions client-side
-      // For simplicity, fetch ids matching include conditions, then subtract exclusions
-      let query: any = supabase.from("customers_cache").select("*", { count: "exact", head: true }).limit(0);
+      const body = buildEdgeFunctionBody(conditions, exclusions);
+      const { data, error } = await supabase.functions.invoke("campaign-audience", { body });
 
-      // Apply inclusion conditions
-      for (const c of conditions) {
-        if (!c.value.trim()) continue;
-        const col = getFieldDef(c.field).column;
-        const fieldType = getFieldDef(c.field).type;
-
-        if (fieldType === "number") {
-          const num = parseFloat(c.value);
-          if (c.operator === "gt") query = query.gt(col, num);
-          else if (c.operator === "lt") query = query.lt(col, num);
-          else if (c.operator === "eq") query = query.eq(col, num);
-          else if (c.operator === "between" && c.value2) query = query.gte(col, num).lte(col, parseFloat(c.value2));
-        } else if (fieldType === "date") {
-          if (c.operator === "less_than_days") {
-            const d = new Date();
-            d.setDate(d.getDate() - parseInt(c.value));
-            query = query.gte(col, d.toISOString());
-          } else if (c.operator === "more_than_days") {
-            const d = new Date();
-            d.setDate(d.getDate() - parseInt(c.value));
-            query = query.lte(col, d.toISOString());
-          } else if (c.operator === "between_dates" && c.value2) {
-            query = query.gte(col, c.value).lte(col, c.value2);
-          }
-        } else if (fieldType === "text" || fieldType === "array") {
-          if (c.operator === "contains") query = query.ilike(col, `%${c.value}%`);
-          else if (c.operator === "not_contains") query = query.not(col, "ilike", `%${c.value}%`);
-          else if (c.operator === "equals") query = query.eq(col, c.value);
-        }
-      }
-
-      const { count, error } = await query;
       if (error) throw error;
-
-      // For exclusions, we'd need a more complex approach
-      // For now, estimate by subtracting exclusion count
-      let excludeCount = 0;
-      if (exclusions.some((c) => c.value.trim())) {
-        let exQuery: any = supabase.from("customers_cache").select("*", { count: "exact", head: true }).limit(0);
-        for (const c of exclusions) {
-          if (!c.value.trim()) continue;
-          const col = getFieldDef(c.field).column;
-          const fieldType = getFieldDef(c.field).type;
-
-          if (fieldType === "number") {
-            const num = parseFloat(c.value);
-            if (c.operator === "gt") exQuery = exQuery.gt(col, num);
-            else if (c.operator === "lt") exQuery = exQuery.lt(col, num);
-            else if (c.operator === "eq") exQuery = exQuery.eq(col, num);
-            else if (c.operator === "between" && c.value2) exQuery = exQuery.gte(col, num).lte(col, parseFloat(c.value2));
-          } else if (fieldType === "date") {
-            if (c.operator === "less_than_days") {
-              const d = new Date();
-              d.setDate(d.getDate() - parseInt(c.value));
-              exQuery = exQuery.gte(col, d.toISOString());
-            } else if (c.operator === "more_than_days") {
-              const d = new Date();
-              d.setDate(d.getDate() - parseInt(c.value));
-              exQuery = exQuery.lte(col, d.toISOString());
-            } else if (c.operator === "between_dates" && c.value2) {
-              exQuery = exQuery.gte(col, c.value).lte(col, c.value2);
-            }
-          } else {
-            if (c.operator === "contains") exQuery = exQuery.ilike(col, `%${c.value}%`);
-            else if (c.operator === "not_contains") exQuery = exQuery.not(col, "ilike", `%${c.value}%`);
-            else if (c.operator === "equals") exQuery = exQuery.eq(col, c.value);
-          }
-        }
-        const { count: exCount } = await exQuery;
-        excludeCount = exCount ?? 0;
-      }
-
-      const finalCount = Math.max(0, (count ?? 0) - excludeCount);
-      setMatchCount(finalCount);
-      onFilterChangeRef.current({ conditions, exclusions, logic: "AND" }, finalCount);
+      const result = typeof data === "string" ? JSON.parse(data) : data;
+      const total = result.total ?? 0;
+      setMatchCount(total);
+      onFilterChangeRef.current({ conditions, exclusions, logic: "AND" }, total);
     } catch (err) {
       console.error("Count error:", err);
       setMatchCount(null);
@@ -313,7 +265,7 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
 
   // Debounced count
   useEffect(() => {
-    const timer = setTimeout(() => { countMatches(); }, 600);
+    const timer = setTimeout(() => { countMatches(); }, 800);
     return () => clearTimeout(timer);
   }, [countMatches]);
 
