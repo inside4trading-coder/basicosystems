@@ -98,7 +98,11 @@ serve(async (req) => {
     }
 
     // Recalculate orders_count and total_spent from orders table
-    await supabase.rpc("refresh_customers_order_stats");
+    try {
+      await supabase.rpc("refresh_customers_order_stats");
+    } catch (e) {
+      console.warn("refresh_customers_order_stats failed, skipping:", e);
+    }
 
     const nextPage = endPage < totalPages ? endPage + 1 : null;
 
