@@ -10,17 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Check, Send, Loader2, Monitor, Smartphone, Eye } from "lucide-react";
 import { toast } from "sonner";
+import SegmentBuilder, { type SegmentFilter } from "@/components/campaigns/SegmentBuilder";
 
 const STEPS = ["Configuración", "Audiencia", "Contenido", "Envío"];
 
-const segmentOptions = [
-  { value: "all", label: "Todos los contactos", filter: { type: "all" } },
-  { value: "new", label: "Nuevos (0 compras)", filter: { type: "orders_count", min: 0, max: 0 } },
-  { value: "first", label: "Primera compra (1)", filter: { type: "orders_count", min: 1, max: 1 } },
-  { value: "recurring", label: "Recurrentes (2-4)", filter: { type: "orders_count", min: 2, max: 4 } },
-  { value: "loyal", label: "Fieles (5-9)", filter: { type: "orders_count", min: 5, max: 9 } },
-  { value: "vip", label: "VIP (10+)", filter: { type: "orders_count", min: 10, max: 999999 } },
-];
+// Removed old segmentOptions - now using SegmentBuilder
 
 interface EmailBlock {
   id: string;
@@ -43,7 +37,7 @@ export default function CampaignWizard() {
   const [senderEmail, setSenderEmail] = useState("hola@basicoclothes.com");
 
   // Step 2
-  const [segment, setSegment] = useState("all");
+  const [segmentFilter, setSegmentFilter] = useState<SegmentFilter | null>(null);
   const [contactCount, setContactCount] = useState<number | null>(null);
   const [listId, setListId] = useState<number | null>(null);
 
@@ -59,7 +53,7 @@ export default function CampaignWizard() {
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("10:00");
 
-  const selectedSegment = segmentOptions.find((s) => s.value === segment)!;
+  const segmentLabel = segmentFilter?.conditions?.length ? `${segmentFilter.conditions.length} condición(es)` : "Todos los contactos";
 
   const canAdvance = () => {
     if (step === 0) return name.trim() && subject.trim();
@@ -73,8 +67,8 @@ export default function CampaignWizard() {
     try {
       const { data, error } = await supabase.functions.invoke("brevo-sync-contacts", {
         body: {
-          segmentFilter: selectedSegment.filter,
-          listName: `Basico_${segment}_${Date.now()}`,
+          segmentFilter: segmentFilter || { type: "all" },
+          listName: `Basico_segment_${Date.now()}`,
         },
       });
 
@@ -146,7 +140,7 @@ export default function CampaignWizard() {
           senderEmail,
           content: buildHtml(),
           listId,
-          segmentFilter: selectedSegment.filter,
+          segmentFilter: segmentFilter || { type: "all" },
           recipientCount: contactCount,
           scheduledAt,
           sendNow: sendMode === "now",
@@ -231,40 +225,35 @@ export default function CampaignWizard() {
             </div>
           )}
 
-          {/* Step 2: Audience */}
+          {/* Step 2: Audience - Segment Builder */}
           {step === 1 && (
             <div className="space-y-4">
-              <div>
-                <Label className="text-xs font-bold uppercase tracking-wider">Segmento de contactos</Label>
-                <Select value={segment} onValueChange={(v) => { setSegment(v); setContactCount(null); setListId(null); }}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {segmentOptions.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SegmentBuilder
+                onFilterChange={(filter, count) => {
+                  setSegmentFilter(filter);
+                  setContactCount(count);
+                  setListId(null);
+                }}
+                initialFilter={segmentFilter || undefined}
+              />
 
-              {contactCount !== null && (
-                <div className="p-4 bg-muted/50 rounded-lg flex items-center justify-between">
-                  <div>
-                    <p className="font-bold">{contactCount.toLocaleString()} contactos seleccionados</p>
-                    <p className="text-xs text-muted-foreground">Sincronizados con Brevo</p>
-                  </div>
-                  <Badge variant="outline" className="bg-[hsl(var(--status-success))]/15 text-[hsl(var(--status-success))]">
-                    <Check className="h-3 w-3 mr-1" /> Listo
-                  </Badge>
-                </div>
-              )}
-
-              {!listId && (
+              {contactCount !== null && contactCount > 0 && !listId && (
                 <Button onClick={syncContacts} disabled={syncingContacts} className="w-full" variant="outline">
                   {syncingContacts ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                   {syncingContacts ? "Sincronizando..." : "Sincronizar contactos con Brevo"}
                 </Button>
+              )}
+
+              {listId && (
+                <div className="p-4 bg-muted/50 rounded-lg flex items-center justify-between">
+                  <div>
+                    <p className="font-bold">{contactCount?.toLocaleString()} contactos sincronizados</p>
+                    <p className="text-xs text-muted-foreground">Listos para enviar en Brevo</p>
+                  </div>
+                  <Badge variant="outline" className="bg-primary/10 text-primary">
+                    <Check className="h-3 w-3 mr-1" /> Listo
+                  </Badge>
+                </div>
               )}
             </div>
           )}
@@ -401,7 +390,7 @@ export default function CampaignWizard() {
                   <div className="flex justify-between"><span className="text-muted-foreground">Nombre</span><span className="font-bold">{name}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Asunto</span><span className="font-bold">{subject}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Remitente</span><span>{senderName} &lt;{senderEmail}&gt;</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Segmento</span><span>{selectedSegment.label}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Segmento</span><span>{segmentLabel}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Contactos</span><span className="font-bold">{contactCount?.toLocaleString() || "—"}</span></div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Envío</span>
