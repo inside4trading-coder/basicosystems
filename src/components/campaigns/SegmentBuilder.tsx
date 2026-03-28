@@ -219,7 +219,7 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
       // No conditions set — count all
       const { count } = await supabase.from("customers_cache").select("id", { count: "exact", head: true });
       setMatchCount(count ?? 0);
-      onFilterChange({ conditions, exclusions, logic: "AND" }, count ?? 0);
+      onFilterChangeRef.current({ conditions, exclusions, logic: "AND" }, count ?? 0);
       return;
     }
 
