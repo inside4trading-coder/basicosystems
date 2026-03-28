@@ -41,6 +41,8 @@ const App = () => (
               <Route path="/crm" element={<CRM />} />
               <Route path="/planning" element={<Planning />} />
               <Route path="/campaigns" element={<Campaigns />} />
+              <Route path="/campaigns/new" element={<CampaignWizard />} />
+              <Route path="/campaigns/:id" element={<CampaignDetail />} />
               <Route path="/configuracion" element={<Configuracion />} />
             </Route>
             <Route path="*" element={<NotFound />} />
