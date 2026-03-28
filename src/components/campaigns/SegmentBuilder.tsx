@@ -223,7 +223,7 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
     try {
       // We'll do this with a raw approach: build conditions client-side
       // For simplicity, fetch ids matching include conditions, then subtract exclusions
-      let query = supabase.from("customers_cache").select("id", { count: "exact", head: true });
+      let query: any = supabase.from("customers_cache").select("id", { count: "exact", head: true });
 
       // Apply inclusion conditions
       for (const c of conditions) {
