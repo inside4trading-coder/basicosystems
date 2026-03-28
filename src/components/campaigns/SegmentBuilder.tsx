@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -191,6 +191,10 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
   const [counting, setCounting] = useState(false);
   const [matchCount, setMatchCount] = useState<number | null>(null);
 
+  // Use ref to avoid infinite loop from onFilterChange dependency
+  const onFilterChangeRef = useRef(onFilterChange);
+  onFilterChangeRef.current = onFilterChange;
+
   // Saved segments
   const [savedSegments, setSavedSegments] = useState<{ id: string; name: string; filters: any }[]>([]);
   const [saveName, setSaveName] = useState("");
@@ -215,7 +219,7 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
       // No conditions set — count all
       const { count } = await supabase.from("customers_cache").select("id", { count: "exact", head: true });
       setMatchCount(count ?? 0);
-      onFilterChange({ conditions, exclusions, logic: "AND" }, count ?? 0);
+      onFilterChangeRef.current({ conditions, exclusions, logic: "AND" }, count ?? 0);
       return;
     }
 
@@ -299,13 +303,13 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
 
       const finalCount = Math.max(0, (count ?? 0) - excludeCount);
       setMatchCount(finalCount);
-      onFilterChange({ conditions, exclusions, logic: "AND" }, finalCount);
+      onFilterChangeRef.current({ conditions, exclusions, logic: "AND" }, finalCount);
     } catch (err) {
       console.error("Count error:", err);
       setMatchCount(null);
     }
     setCounting(false);
-  }, [conditions, exclusions, onFilterChange]);
+  }, [conditions, exclusions]);
 
   // Debounced count
   useEffect(() => {
