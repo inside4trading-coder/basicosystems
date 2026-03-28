@@ -37,7 +37,7 @@ export default function CampaignWizard() {
   const [senderEmail, setSenderEmail] = useState("hola@basicoclothes.com");
 
   // Step 2
-  const [segment, setSegment] = useState("all");
+  const [segmentFilter, setSegmentFilter] = useState<SegmentFilter | null>(null);
   const [contactCount, setContactCount] = useState<number | null>(null);
   const [listId, setListId] = useState<number | null>(null);
 
