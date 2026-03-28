@@ -67,8 +67,8 @@ export default function CampaignWizard() {
     try {
       const { data, error } = await supabase.functions.invoke("brevo-sync-contacts", {
         body: {
-          segmentFilter: selectedSegment.filter,
-          listName: `Basico_${segment}_${Date.now()}`,
+          segmentFilter: segmentFilter || { type: "all" },
+          listName: `Basico_segment_${Date.now()}`,
         },
       });
 
