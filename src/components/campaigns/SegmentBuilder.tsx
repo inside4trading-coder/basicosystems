@@ -217,7 +217,7 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
     const hasAnyValue = conditions.some((c) => c.value.trim() !== "");
     if (!hasAnyValue && exclusions.every((c) => c.value.trim() === "")) {
       // No conditions set — count all
-      const { count } = await supabase.from("customers_cache").select("id", { count: "exact", head: true });
+      const { count } = await supabase.from("customers_cache").select("*", { count: "exact", head: true }).limit(0);
       setMatchCount(count ?? 0);
       onFilterChangeRef.current({ conditions, exclusions, logic: "AND" }, count ?? 0);
       return;
@@ -227,7 +227,7 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
     try {
       // We'll do this with a raw approach: build conditions client-side
       // For simplicity, fetch ids matching include conditions, then subtract exclusions
-      let query: any = supabase.from("customers_cache").select("id", { count: "exact", head: true });
+      let query: any = supabase.from("customers_cache").select("*", { count: "exact", head: true }).limit(0);
 
       // Apply inclusion conditions
       for (const c of conditions) {
@@ -267,7 +267,7 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
       // For now, estimate by subtracting exclusion count
       let excludeCount = 0;
       if (exclusions.some((c) => c.value.trim())) {
-        let exQuery: any = supabase.from("customers_cache").select("id", { count: "exact", head: true });
+        let exQuery: any = supabase.from("customers_cache").select("*", { count: "exact", head: true }).limit(0);
         for (const c of exclusions) {
           if (!c.value.trim()) continue;
           const col = getFieldDef(c.field).column;
