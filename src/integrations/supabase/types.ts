@@ -66,6 +66,7 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          brevo_campaign_id: number | null
           content: string | null
           created_at: string | null
           created_by: string | null
@@ -73,13 +74,18 @@ export type Database = {
           name: string
           recipient_count: number | null
           scheduled_at: string | null
+          segment_filter: Json | null
           segment_id: string | null
+          sender_email: string | null
+          sender_name: string | null
           sent_at: string | null
+          stats_json: Json | null
           status: string
           subject: string | null
           updated_at: string | null
         }
         Insert: {
+          brevo_campaign_id?: number | null
           content?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -87,13 +93,18 @@ export type Database = {
           name: string
           recipient_count?: number | null
           scheduled_at?: string | null
+          segment_filter?: Json | null
           segment_id?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
           sent_at?: string | null
+          stats_json?: Json | null
           status?: string
           subject?: string | null
           updated_at?: string | null
         }
         Update: {
+          brevo_campaign_id?: number | null
           content?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -101,8 +112,12 @@ export type Database = {
           name?: string
           recipient_count?: number | null
           scheduled_at?: string | null
+          segment_filter?: Json | null
           segment_id?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
           sent_at?: string | null
+          stats_json?: Json | null
           status?: string
           subject?: string | null
           updated_at?: string | null
