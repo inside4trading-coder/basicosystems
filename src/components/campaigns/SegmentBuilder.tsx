@@ -303,7 +303,7 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
 
       const finalCount = Math.max(0, (count ?? 0) - excludeCount);
       setMatchCount(finalCount);
-      onFilterChange({ conditions, exclusions, logic: "AND" }, finalCount);
+      onFilterChangeRef.current({ conditions, exclusions, logic: "AND" }, finalCount);
     } catch (err) {
       console.error("Count error:", err);
       setMatchCount(null);
