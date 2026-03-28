@@ -14,14 +14,7 @@ import SegmentBuilder, { type SegmentFilter } from "@/components/campaigns/Segme
 
 const STEPS = ["Configuración", "Audiencia", "Contenido", "Envío"];
 
-const segmentOptions = [
-  { value: "all", label: "Todos los contactos", filter: { type: "all" } },
-  { value: "new", label: "Nuevos (0 compras)", filter: { type: "orders_count", min: 0, max: 0 } },
-  { value: "first", label: "Primera compra (1)", filter: { type: "orders_count", min: 1, max: 1 } },
-  { value: "recurring", label: "Recurrentes (2-4)", filter: { type: "orders_count", min: 2, max: 4 } },
-  { value: "loyal", label: "Fieles (5-9)", filter: { type: "orders_count", min: 5, max: 9 } },
-  { value: "vip", label: "VIP (10+)", filter: { type: "orders_count", min: 10, max: 999999 } },
-];
+// Removed old segmentOptions - now using SegmentBuilder
 
 interface EmailBlock {
   id: string;
