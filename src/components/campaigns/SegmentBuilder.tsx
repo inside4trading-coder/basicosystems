@@ -191,6 +191,10 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
   const [counting, setCounting] = useState(false);
   const [matchCount, setMatchCount] = useState<number | null>(null);
 
+  // Use ref to avoid infinite loop from onFilterChange dependency
+  const onFilterChangeRef = useRef(onFilterChange);
+  onFilterChangeRef.current = onFilterChange;
+
   // Saved segments
   const [savedSegments, setSavedSegments] = useState<{ id: string; name: string; filters: any }[]>([]);
   const [saveName, setSaveName] = useState("");
