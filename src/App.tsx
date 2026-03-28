@@ -12,6 +12,8 @@ import Pedidos from "./pages/Pedidos";
 import CRM from "./pages/CRM";
 import Planning from "./pages/Planning";
 import Campaigns from "./pages/Campaigns";
+import CampaignWizard from "./pages/CampaignWizard";
+import CampaignDetail from "./pages/CampaignDetail";
 import Configuracion from "./pages/Configuracion";
 import NotFound from "./pages/NotFound";
 
@@ -39,6 +41,8 @@ const App = () => (
               <Route path="/crm" element={<CRM />} />
               <Route path="/planning" element={<Planning />} />
               <Route path="/campaigns" element={<Campaigns />} />
+              <Route path="/campaigns/new" element={<CampaignWizard />} />
+              <Route path="/campaigns/:id" element={<CampaignDetail />} />
               <Route path="/configuracion" element={<Configuracion />} />
             </Route>
             <Route path="*" element={<NotFound />} />
