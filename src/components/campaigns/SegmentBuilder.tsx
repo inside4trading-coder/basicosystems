@@ -217,7 +217,7 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
     const hasAnyValue = conditions.some((c) => c.value.trim() !== "");
     if (!hasAnyValue && exclusions.every((c) => c.value.trim() === "")) {
       // No conditions set — count all
-      const { count } = await supabase.from("customers_cache").select("id", { count: "exact", head: true });
+      const { count } = await supabase.from("customers_cache").select("*", { count: "exact", head: true }).limit(0);
       setMatchCount(count ?? 0);
       onFilterChangeRef.current({ conditions, exclusions, logic: "AND" }, count ?? 0);
       return;
