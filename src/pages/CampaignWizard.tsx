@@ -53,7 +53,7 @@ export default function CampaignWizard() {
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("10:00");
 
-  const selectedSegment = segmentOptions.find((s) => s.value === segment)!;
+  const segmentLabel = segmentFilter?.conditions?.length ? `${segmentFilter.conditions.length} condición(es)` : "Todos los contactos";
 
   const canAdvance = () => {
     if (step === 0) return name.trim() && subject.trim();
