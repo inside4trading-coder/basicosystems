@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Check, Send, Loader2, Monitor, Smartphone, Eye } from "lucide-react";
 import { toast } from "sonner";
+import SegmentBuilder, { type SegmentFilter } from "@/components/campaigns/SegmentBuilder";
 
 const STEPS = ["Configuración", "Audiencia", "Contenido", "Envío"];
 
