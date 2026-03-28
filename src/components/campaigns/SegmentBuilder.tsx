@@ -263,7 +263,7 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
       // For now, estimate by subtracting exclusion count
       let excludeCount = 0;
       if (exclusions.some((c) => c.value.trim())) {
-        let exQuery = supabase.from("customers_cache").select("id", { count: "exact", head: true });
+        let exQuery: any = supabase.from("customers_cache").select("id", { count: "exact", head: true });
         for (const c of exclusions) {
           if (!c.value.trim()) continue;
           const col = getFieldDef(c.field).column;
