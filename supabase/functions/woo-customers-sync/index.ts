@@ -78,8 +78,6 @@ serve(async (req) => {
       shipping_country: c.shipping?.country || null,
       woo_orders_count: c.orders_count ?? 0,
       woo_total_spent: parseFloat(c.total_spent || "0"),
-      orders_count: c.orders_count ?? 0,
-      total_spent: parseFloat(c.total_spent || "0"),
       date_created: c.date_created_gmt ? `${c.date_created_gmt}Z` : null,
       date_modified: c.date_modified_gmt ? `${c.date_modified_gmt}Z` : null,
       last_order_id: c.last_order?.id || null,
@@ -100,7 +98,11 @@ serve(async (req) => {
     }
 
     // Recalculate orders_count and total_spent from orders table
-    await supabase.rpc("refresh_customers_order_stats");
+    try {
+      await supabase.rpc("refresh_customers_order_stats");
+    } catch (e) {
+      console.warn("refresh_customers_order_stats failed, skipping:", e);
+    }
 
     const nextPage = endPage < totalPages ? endPage + 1 : null;
 
