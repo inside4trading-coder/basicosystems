@@ -309,7 +309,7 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
       setMatchCount(null);
     }
     setCounting(false);
-  }, [conditions, exclusions, onFilterChange]);
+  }, [conditions, exclusions]);
 
   // Debounced count
   useEffect(() => {
