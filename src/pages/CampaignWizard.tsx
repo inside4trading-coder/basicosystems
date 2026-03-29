@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,18 +23,48 @@ interface EmailBlock {
   url?: string;
 }
 
+interface BrevoSender {
+  id: number;
+  name: string;
+  email: string;
+}
+
 export default function CampaignWizard() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [sending, setSending] = useState(false);
   const [syncingContacts, setSyncingContacts] = useState(false);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [senders, setSenders] = useState<BrevoSender[]>([]);
+  const [loadingSenders, setLoadingSenders] = useState(true);
 
   // Step 1
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
-  const [senderName, setSenderName] = useState("Basico");
-  const [senderEmail, setSenderEmail] = useState("hola@basicoclothes.com");
+  const [senderName, setSenderName] = useState("");
+  const [senderEmail, setSenderEmail] = useState("");
+
+  // Fetch valid senders from Brevo on mount
+  useEffect(() => {
+    const fetchSenders = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("brevo-campaigns", {
+          body: { action: "get_senders" },
+        });
+        if (error) throw error;
+        const list = Array.isArray(data) ? data : [];
+        setSenders(list);
+        if (list.length > 0) {
+          setSenderName(list[0].name);
+          setSenderEmail(list[0].email);
+        }
+      } catch (err) {
+        console.error("Failed to fetch senders:", err);
+      }
+      setLoadingSenders(false);
+    };
+    fetchSenders();
+  }, []);
 
   // Step 2
   const [segmentFilter, setSegmentFilter] = useState<SegmentFilter | null>(null);
