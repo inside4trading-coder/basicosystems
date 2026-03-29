@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,39 +14,25 @@ serve(async (req) => {
     const BREVO_API_KEY = Deno.env.get("BREVO_API_KEY");
     if (!BREVO_API_KEY) throw new Error("BREVO_API_KEY not configured");
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const { contacts, listName } = await req.json();
 
-    const { segmentFilter, listName } = await req.json();
-
-    // 1. Build query for customers_cache based on segment filter
-    let query = supabase.from("customers_cache").select("email, first_name, last_name, billing_phone");
-
-    if (segmentFilter) {
-      if (segmentFilter.type === "orders_count") {
-        if (segmentFilter.min !== undefined) query = query.gte("orders_count", segmentFilter.min);
-        if (segmentFilter.max !== undefined) query = query.lte("orders_count", segmentFilter.max);
-      }
-      if (segmentFilter.type === "all") {
-        // no filter
-      }
-    }
-
-    // Filter only contacts with email
-    query = query.not("email", "is", null).neq("email", "");
-
-    const { data: contacts, error: dbErr } = await query.limit(10000);
-    if (dbErr) throw dbErr;
-
-    if (!contacts || contacts.length === 0) {
-      return new Response(JSON.stringify({ listId: null, contactCount: 0, message: "No contacts found" }), {
+    // contacts: array of { email, first_name, last_name, billing_phone? }
+    if (!contacts || !Array.isArray(contacts) || contacts.length === 0) {
+      return new Response(JSON.stringify({ listId: null, contactCount: 0, message: "No contacts provided" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 2. Create or get list in Brevo
+    // Filter only contacts with valid email
+    const validContacts = contacts.filter((c: any) => c.email && c.email.includes("@"));
+
+    if (validContacts.length === 0) {
+      return new Response(JSON.stringify({ listId: null, contactCount: 0, message: "No valid emails" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Create or get list in Brevo
     const safeListName = listName || `Basico_${Date.now()}`;
 
     const listRes = await fetch(`${BREVO_BASE}/contacts/lists`, {
@@ -61,7 +46,6 @@ serve(async (req) => {
       const listData = await listRes.json();
       listId = listData.id;
     } else {
-      // If list already exists, find it
       const listsRes = await fetch(`${BREVO_BASE}/contacts/lists?limit=50&offset=0`, {
         headers: { "api-key": BREVO_API_KEY },
       });
@@ -75,12 +59,12 @@ serve(async (req) => {
       }
     }
 
-    // 3. Sync contacts to Brevo in batches of 150
+    // Sync contacts to Brevo in batches of 150
     const batchSize = 150;
     let synced = 0;
-    for (let i = 0; i < contacts.length; i += batchSize) {
-      const batch = contacts.slice(i, i + batchSize);
-      const jsonContacts = batch.map((c) => ({
+    for (let i = 0; i < validContacts.length; i += batchSize) {
+      const batch = validContacts.slice(i, i + batchSize);
+      const jsonContacts = batch.map((c: any) => ({
         email: c.email,
         attributes: {
           FIRSTNAME: c.first_name || "",

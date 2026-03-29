@@ -7,7 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card } from "@/components/ui/card";
-import { Plus, Trash2, Loader2, Save, ChevronDown, Users, Filter, Ban } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Plus, Trash2, Loader2, Save, ChevronDown, Users, Filter, Ban, Eye, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 // --- Types ---
@@ -18,8 +20,8 @@ interface FieldDef {
   value: string;
   label: string;
   type: FieldType;
-  filterKey: string; // maps to campaign-audience body param
-  filterKeyMax?: string; // for "between" operators
+  filterKey: string;
+  filterKeyMax?: string;
 }
 
 const FIELDS: FieldDef[] = [
@@ -61,8 +63,19 @@ export interface SegmentFilter {
   logic: "AND" | "OR";
 }
 
+export interface SelectedContact {
+  email: string;
+  first_name: string;
+  last_name: string;
+  orders_count: number;
+  total_spent: number;
+  billing_city: string;
+  isManual?: boolean;
+}
+
 interface SegmentBuilderProps {
   onFilterChange: (filter: SegmentFilter, count: number | null) => void;
+  onSelectedContactsChange?: (contacts: SelectedContact[]) => void;
   initialFilter?: SegmentFilter;
 }
 
@@ -168,8 +181,8 @@ function ConditionRow({
 
 // --- Build filters for edge function ---
 
-function buildEdgeFunctionBody(conditions: Condition[], exclusions: Condition[]): Record<string, any> {
-  const body: Record<string, any> = { count_only: true };
+function buildEdgeFunctionBody(conditions: Condition[], exclusions: Condition[], countOnly: boolean): Record<string, any> {
+  const body: Record<string, any> = { count_only: countOnly };
 
   for (const c of conditions) {
     if (!c.value.trim()) continue;
@@ -189,10 +202,8 @@ function buildEdgeFunctionBody(conditions: Condition[], exclusions: Condition[])
     } else if (fieldDef.type === "date") {
       const days = parseInt(c.value);
       if (c.operator === "less_than_days") {
-        // Last order within X days → last_order_days_min = X days ago (must be >= cutoff)
         body["last_order_days_min"] = days;
       } else if (c.operator === "more_than_days") {
-        // Last order more than X days ago → last_order_days_max = X days ago (must be <= cutoff)
         body["last_order_days_max"] = days;
       }
     } else if (fieldDef.type === "text") {
@@ -200,14 +211,10 @@ function buildEdgeFunctionBody(conditions: Condition[], exclusions: Condition[])
     }
   }
 
-  // Exclusions: collect emails to exclude (we'll handle this via a separate call if needed)
-  // For now, map exclusion conditions similarly
+  // Collect exclusion emails from exclusion conditions
+  // (exclusions are applied server-side via exclude_emails if text-based,
+  //  or by subtracting results client-side)
   const excludeEmails: string[] = [];
-  for (const c of exclusions) {
-    if (!c.value.trim()) continue;
-    // For simplicity, text-based exclusions add to exclude list concept
-    // The edge function supports exclude_emails
-  }
   if (excludeEmails.length > 0) {
     body["exclude_emails"] = excludeEmails;
   }
@@ -217,7 +224,7 @@ function buildEdgeFunctionBody(conditions: Condition[], exclusions: Condition[])
 
 // --- Main Component ---
 
-export default function SegmentBuilder({ onFilterChange, initialFilter }: SegmentBuilderProps) {
+export default function SegmentBuilder({ onFilterChange, onSelectedContactsChange, initialFilter }: SegmentBuilderProps) {
   const [conditions, setConditions] = useState<Condition[]>(
     initialFilter?.conditions?.length ? initialFilter.conditions : [createCondition()]
   );
@@ -226,8 +233,18 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
   const [counting, setCounting] = useState(false);
   const [matchCount, setMatchCount] = useState<number | null>(null);
 
+  // Contact table state
+  const [contacts, setContacts] = useState<SelectedContact[]>([]);
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  const [showContacts, setShowContacts] = useState(false);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [manualEmail, setManualEmail] = useState("");
+  const [manualContacts, setManualContacts] = useState<SelectedContact[]>([]);
+
   const onFilterChangeRef = useRef(onFilterChange);
   onFilterChangeRef.current = onFilterChange;
+  const onSelectedContactsChangeRef = useRef(onSelectedContactsChange);
+  onSelectedContactsChangeRef.current = onSelectedContactsChange;
 
   // Saved segments
   const [savedSegments, setSavedSegments] = useState<{ id: string; name: string; filters: any }[]>([]);
@@ -245,16 +262,28 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
       });
   }, []);
 
+  // Notify parent of selected contacts changes
+  useEffect(() => {
+    if (!showContacts) return;
+    const allContacts = [...contacts, ...manualContacts];
+    const selected = allContacts.filter((c) => selectedEmails.has(c.email));
+    onSelectedContactsChangeRef.current?.(selected);
+  }, [selectedEmails, contacts, manualContacts, showContacts]);
+
   const countMatches = useCallback(async () => {
     setCounting(true);
     try {
-      const body = buildEdgeFunctionBody(conditions, exclusions);
+      const body = buildEdgeFunctionBody(conditions, exclusions, true);
       const { data, error } = await supabase.functions.invoke("campaign-audience", { body });
 
       if (error) throw error;
       const result = typeof data === "string" ? JSON.parse(data) : data;
       const total = result.total ?? 0;
       setMatchCount(total);
+      // Reset contact table when filters change
+      setShowContacts(false);
+      setContacts([]);
+      setSelectedEmails(new Set());
       onFilterChangeRef.current({ conditions, exclusions, logic: "AND" }, total);
     } catch (err) {
       console.error("Count error:", err);
@@ -268,6 +297,86 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
     const timer = setTimeout(() => { countMatches(); }, 800);
     return () => clearTimeout(timer);
   }, [countMatches]);
+
+  const loadContacts = async () => {
+    setLoadingContacts(true);
+    try {
+      const body = buildEdgeFunctionBody(conditions, exclusions, false);
+      const { data, error } = await supabase.functions.invoke("campaign-audience", { body });
+      if (error) throw error;
+      const result = typeof data === "string" ? JSON.parse(data) : data;
+      const contactList: SelectedContact[] = (result.contacts || []).map((c: any) => ({
+        email: c.email,
+        first_name: c.first_name || "",
+        last_name: c.last_name || "",
+        orders_count: c.orders_count || 0,
+        total_spent: c.total_spent || 0,
+        billing_city: c.billing_city || "",
+      }));
+      setContacts(contactList);
+      // Select all by default
+      const allEmails = new Set([...contactList.map((c) => c.email), ...manualContacts.map((c) => c.email)]);
+      setSelectedEmails(allEmails);
+      setShowContacts(true);
+    } catch (err) {
+      console.error("Load contacts error:", err);
+      toast.error("Error cargando contactos");
+    }
+    setLoadingContacts(false);
+  };
+
+  const toggleContact = (email: string) => {
+    setSelectedEmails((prev) => {
+      const next = new Set(prev);
+      if (next.has(email)) next.delete(email);
+      else next.add(email);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    const allContacts = [...contacts, ...manualContacts];
+    if (selectedEmails.size === allContacts.length) {
+      setSelectedEmails(new Set());
+    } else {
+      setSelectedEmails(new Set(allContacts.map((c) => c.email)));
+    }
+  };
+
+  const addManualEmail = () => {
+    const email = manualEmail.trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      toast.error("Email inválido");
+      return;
+    }
+    const allEmails = [...contacts, ...manualContacts].map((c) => c.email.toLowerCase());
+    if (allEmails.includes(email)) {
+      toast.error("Este email ya está en la lista");
+      return;
+    }
+    const manual: SelectedContact = {
+      email,
+      first_name: "",
+      last_name: "",
+      orders_count: 0,
+      total_spent: 0,
+      billing_city: "",
+      isManual: true,
+    };
+    setManualContacts((prev) => [...prev, manual]);
+    setSelectedEmails((prev) => new Set([...prev, email]));
+    setManualEmail("");
+    toast.success("Email añadido");
+  };
+
+  const removeManualContact = (email: string) => {
+    setManualContacts((prev) => prev.filter((c) => c.email !== email));
+    setSelectedEmails((prev) => {
+      const next = new Set(prev);
+      next.delete(email);
+      return next;
+    });
+  };
 
   const updateCondition = (id: string, updated: Condition, list: "include" | "exclude") => {
     if (list === "include") setConditions((prev) => prev.map((c) => (c.id === id ? updated : c)));
@@ -310,6 +419,9 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
     }
     setSaving(false);
   };
+
+  const allContacts = [...contacts, ...manualContacts];
+  const selectedCount = selectedEmails.size;
 
   return (
     <div className="space-y-4">
@@ -376,13 +488,107 @@ export default function SegmentBuilder({ onFilterChange, initialFilter }: Segmen
               </span>
             )}
           </div>
-          {matchCount !== null && !counting && (
-            <Badge variant="outline" className="bg-primary/10 text-primary text-xs">
-              {matchCount.toLocaleString()}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {matchCount !== null && !counting && (
+              <>
+                <Badge variant="outline" className="bg-primary/10 text-primary text-xs">
+                  {showContacts ? `${selectedCount} seleccionados` : matchCount.toLocaleString()}
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadContacts}
+                  disabled={loadingContacts}
+                >
+                  {loadingContacts ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                  ) : (
+                    <Eye className="h-3.5 w-3.5 mr-1" />
+                  )}
+                  {showContacts ? "Recargar" : "Ver contactos"}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </Card>
+
+      {/* Contacts table */}
+      {showContacts && (
+        <div className="space-y-3">
+          <div className="border border-border rounded-lg overflow-hidden">
+            <div className="max-h-[400px] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[40px]">
+                      <Checkbox
+                        checked={allContacts.length > 0 && selectedEmails.size === allContacts.length}
+                        onCheckedChange={toggleAll}
+                      />
+                    </TableHead>
+                    <TableHead className="text-xs">Email</TableHead>
+                    <TableHead className="text-xs">Nombre</TableHead>
+                    <TableHead className="text-xs text-right">Compras</TableHead>
+                    <TableHead className="text-xs text-right">Gastado</TableHead>
+                    <TableHead className="text-xs">Ciudad</TableHead>
+                    <TableHead className="w-[60px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allContacts.map((c) => (
+                    <TableRow key={c.email} className={!selectedEmails.has(c.email) ? "opacity-40" : ""}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedEmails.has(c.email)}
+                          onCheckedChange={() => toggleContact(c.email)}
+                        />
+                      </TableCell>
+                      <TableCell className="text-xs font-mono">
+                        {c.email}
+                        {c.isManual && (
+                          <Badge variant="outline" className="ml-2 text-[9px] bg-accent/20">Manual</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">{c.first_name} {c.last_name}</TableCell>
+                      <TableCell className="text-xs text-right">{c.orders_count}</TableCell>
+                      <TableCell className="text-xs text-right">${c.total_spent.toLocaleString()}</TableCell>
+                      <TableCell className="text-xs">{c.billing_city}</TableCell>
+                      <TableCell>
+                        {c.isManual && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeManualContact(c.email)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* Manual email input */}
+          <div className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Input
+              className="h-8 text-xs flex-1"
+              placeholder="Agregar email manualmente..."
+              type="email"
+              value={manualEmail}
+              onChange={(e) => setManualEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addManualEmail()}
+            />
+            <Button size="sm" variant="outline" onClick={addManualEmail}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Agregar
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {selectedCount} de {allContacts.length} contactos seleccionados
+          </p>
+        </div>
+      )}
 
       {/* Exclusions */}
       <Collapsible open={showExclusions} onOpenChange={setShowExclusions}>
