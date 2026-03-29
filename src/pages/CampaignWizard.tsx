@@ -250,6 +250,10 @@ export default function CampaignWizard() {
                   setContactCount(count);
                   setListId(null);
                 }}
+                onSelectedContactsChange={(contacts) => {
+                  setSelectedContacts(contacts);
+                  setListId(null);
+                }}
                 initialFilter={segmentFilter || undefined}
               />
 
