@@ -14,7 +14,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -28,18 +28,8 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        toast.success("Revisa tu email para confirmar tu cuenta");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
     } catch (err: any) {
       toast.error(err.message || "Error de autenticación");
     } finally {
@@ -149,23 +139,10 @@ export default function Login() {
               className="w-full"
               disabled={loading}
             >
-              {loading
-                ? "Cargando..."
-                : isSignUp
-                ? "Crear cuenta"
-                : "Iniciar sesión"}
+              {loading ? "Cargando..." : "Iniciar sesión"}
             </Button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="w-full text-center text-xs text-white/50 mt-4 hover:text-white transition-colors"
-          >
-            {isSignUp
-              ? "¿Ya tienes cuenta? Inicia sesión"
-              : "¿No tienes cuenta? Regístrate"}
-          </button>
 
           <p className="text-center text-xs text-white/40 mt-6">
             Basico Systems — Panel de gestión
