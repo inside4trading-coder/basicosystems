@@ -258,15 +258,37 @@ export default function CampaignWizard() {
                 <Label className="text-xs font-bold uppercase tracking-wider">Asunto del email</Label>
                 <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Ej: ¡Descubre la nueva colección!" className="mt-1" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs font-bold uppercase tracking-wider">Nombre remitente</Label>
-                  <Input value={senderName} onChange={(e) => setSenderName(e.target.value)} className="mt-1" />
-                </div>
-                <div>
-                  <Label className="text-xs font-bold uppercase tracking-wider">Email remitente</Label>
-                  <Input value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} className="mt-1" />
-                </div>
+              <div>
+                <Label className="text-xs font-bold uppercase tracking-wider">Remitente</Label>
+                {loadingSenders ? (
+                  <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Cargando remitentes...
+                  </div>
+                ) : senders.length > 0 ? (
+                  <Select
+                    value={senderEmail}
+                    onValueChange={(email) => {
+                      const sender = senders.find((s) => s.email === email);
+                      if (sender) {
+                        setSenderName(sender.name);
+                        setSenderEmail(sender.email);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {senders.map((s) => (
+                        <SelectItem key={s.id} value={s.email}>
+                          {s.name} &lt;{s.email}&gt;
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm text-destructive mt-1">No hay remitentes validados en Brevo. Configura uno en tu cuenta.</p>
+                )}
               </div>
             </div>
           )}
