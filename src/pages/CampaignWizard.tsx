@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,18 +23,48 @@ interface EmailBlock {
   url?: string;
 }
 
+interface BrevoSender {
+  id: number;
+  name: string;
+  email: string;
+}
+
 export default function CampaignWizard() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [sending, setSending] = useState(false);
   const [syncingContacts, setSyncingContacts] = useState(false);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [senders, setSenders] = useState<BrevoSender[]>([]);
+  const [loadingSenders, setLoadingSenders] = useState(true);
 
   // Step 1
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
-  const [senderName, setSenderName] = useState("Basico");
-  const [senderEmail, setSenderEmail] = useState("hola@basicoclothes.com");
+  const [senderName, setSenderName] = useState("");
+  const [senderEmail, setSenderEmail] = useState("");
+
+  // Fetch valid senders from Brevo on mount
+  useEffect(() => {
+    const fetchSenders = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("brevo-campaigns", {
+          body: { action: "get_senders" },
+        });
+        if (error) throw error;
+        const list = Array.isArray(data) ? data : [];
+        setSenders(list);
+        if (list.length > 0) {
+          setSenderName(list[0].name);
+          setSenderEmail(list[0].email);
+        }
+      } catch (err) {
+        console.error("Failed to fetch senders:", err);
+      }
+      setLoadingSenders(false);
+    };
+    fetchSenders();
+  }, []);
 
   // Step 2
   const [segmentFilter, setSegmentFilter] = useState<SegmentFilter | null>(null);
@@ -228,15 +258,37 @@ export default function CampaignWizard() {
                 <Label className="text-xs font-bold uppercase tracking-wider">Asunto del email</Label>
                 <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Ej: ¡Descubre la nueva colección!" className="mt-1" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs font-bold uppercase tracking-wider">Nombre remitente</Label>
-                  <Input value={senderName} onChange={(e) => setSenderName(e.target.value)} className="mt-1" />
-                </div>
-                <div>
-                  <Label className="text-xs font-bold uppercase tracking-wider">Email remitente</Label>
-                  <Input value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} className="mt-1" />
-                </div>
+              <div>
+                <Label className="text-xs font-bold uppercase tracking-wider">Remitente</Label>
+                {loadingSenders ? (
+                  <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Cargando remitentes...
+                  </div>
+                ) : senders.length > 0 ? (
+                  <Select
+                    value={senderEmail}
+                    onValueChange={(email) => {
+                      const sender = senders.find((s) => s.email === email);
+                      if (sender) {
+                        setSenderName(sender.name);
+                        setSenderEmail(sender.email);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {senders.map((s) => (
+                        <SelectItem key={s.id} value={s.email}>
+                          {s.name} &lt;{s.email}&gt;
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm text-destructive mt-1">No hay remitentes validados en Brevo. Configura uno en tu cuenta.</p>
+                )}
               </div>
             </div>
           )}
