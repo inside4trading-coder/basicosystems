@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type Period = "today" | "week" | "month" | "year";
+export type Period = "today" | "week" | "month" | "year" | "custom";
 
 interface KPI {
   value: number;
@@ -26,7 +26,10 @@ export interface DashboardData {
   categoryBreakdown: { category: string; revenue: number; quantity: number }[];
 }
 
-function getDateRange(period: Period): { start: Date; end: Date } {
+function getDateRange(period: Period, customRange?: { start: Date; end: Date }): { start: Date; end: Date } {
+  if (period === "custom" && customRange) {
+    return { start: customRange.start, end: customRange.end };
+  }
   const now = new Date();
   let start: Date;
   switch (period) {
@@ -44,6 +47,8 @@ function getDateRange(period: Period): { start: Date; end: Date } {
     case "year":
       start = new Date(now.getFullYear(), 0, 1);
       break;
+    default:
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }
   return { start, end: now };
 }
@@ -56,7 +61,7 @@ function getPrevDateRange(period: Period): { start: Date; end: Date } {
 
 const EXCLUDED = new Set(["cancelled", "failed", "refunded", "trash"]);
 
-export function useDashboardData(period: Period) {
+export function useDashboardData(period: Period, customRange?: { start: Date; end: Date }) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
