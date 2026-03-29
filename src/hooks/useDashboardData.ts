@@ -152,6 +152,15 @@ export function useDashboardData(period: Period) {
         .map(([state, revenue]) => ({ state, revenue: Math.round(revenue * 100) / 100 }))
         .sort((a, b) => b.revenue - a.revenue).slice(0, 10);
 
+      // Build currency map (used by payments and products)
+      const orderCurrencyMap = new Map<number, { rate: number; currency: string }>();
+      for (const o of paid) {
+        orderCurrencyMap.set(o.order_id, { 
+          rate: o.exchange_rate || 1, 
+          currency: o.order_currency || "USD" 
+        });
+      }
+
       // Revenue by payment — use payments table for accuracy
       const paidOrderIds = paid.map(o => o.order_id);
       let paymentRows: any[] = [];
@@ -198,13 +207,6 @@ export function useDashboardData(period: Period) {
       }));
 
       // Top products from items (with revenue in USD)
-      const orderCurrencyMap = new Map<number, { rate: number; currency: string }>();
-      for (const o of paid) {
-        orderCurrencyMap.set(o.order_id, { 
-          rate: o.exchange_rate || 1, 
-          currency: o.order_currency || "USD" 
-        });
-      }
       const prodMap: Record<string, { name: string; qty: number; rev: number }> = {};
       for (const item of items) {
         if (!paidIds.has(item.order_id)) continue;
