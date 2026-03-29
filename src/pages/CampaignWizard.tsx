@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Check, Send, Loader2, Monitor, Smartphone, Eye } from "lucide-react";
 import { toast } from "sonner";
-import SegmentBuilder, { type SegmentFilter } from "@/components/campaigns/SegmentBuilder";
+import SegmentBuilder, { type SegmentFilter, type SelectedContact } from "@/components/campaigns/SegmentBuilder";
 
 const STEPS = ["Configuración", "Audiencia", "Contenido", "Envío"];
 
@@ -40,6 +40,7 @@ export default function CampaignWizard() {
   const [segmentFilter, setSegmentFilter] = useState<SegmentFilter | null>(null);
   const [contactCount, setContactCount] = useState<number | null>(null);
   const [listId, setListId] = useState<number | null>(null);
+  const [selectedContacts, setSelectedContacts] = useState<SelectedContact[]>([]);
 
   // Step 3
   const [blocks, setBlocks] = useState<EmailBlock[]>([
@@ -65,9 +66,24 @@ export default function CampaignWizard() {
   const syncContacts = async () => {
     setSyncingContacts(true);
     try {
+      // Send the exact selected contacts to Brevo
+      const contactsToSync = selectedContacts.length > 0
+        ? selectedContacts
+        : [];
+
+      if (contactsToSync.length === 0) {
+        toast.error("No hay contactos seleccionados para sincronizar");
+        setSyncingContacts(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("brevo-sync-contacts", {
         body: {
-          segmentFilter: segmentFilter || { type: "all" },
+          contacts: contactsToSync.map((c) => ({
+            email: c.email,
+            first_name: c.first_name,
+            last_name: c.last_name,
+          })),
           listName: `Basico_segment_${Date.now()}`,
         },
       });
@@ -232,6 +248,10 @@ export default function CampaignWizard() {
                 onFilterChange={(filter, count) => {
                   setSegmentFilter(filter);
                   setContactCount(count);
+                  setListId(null);
+                }}
+                onSelectedContactsChange={(contacts) => {
+                  setSelectedContacts(contacts);
                   setListId(null);
                 }}
                 initialFilter={segmentFilter || undefined}
