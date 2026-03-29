@@ -1,9 +1,7 @@
-import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw, ShoppingCart, Calendar } from "lucide-react";
+import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDashboardData, type Period } from "@/hooks/useDashboardData";
 import { toast } from "sonner";
 
@@ -11,7 +9,6 @@ const periods: { key: Period; label: string }[] = [
   { key: "today", label: "Hoy" },
   { key: "week", label: "Esta semana" },
   { key: "month", label: "Este mes" },
-  { key: "year", label: "Este año" },
 ];
 
 const statusLabels: Record<string, { label: string; className: string }> = {
@@ -39,10 +36,7 @@ const PIE_COLORS = [
 
 export default function Dashboard() {
   const [period, setPeriod] = useState<Period>("month");
-  const [customRange, setCustomRange] = useState<{ start: Date; end: Date } | undefined>();
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
-  const { data, loading, error, refetch } = useDashboardData(period, customRange);
+  const { data, loading, error, refetch } = useDashboardData(period);
   const [syncing, setSyncing] = useState(false);
 
   const handleSync = async (totalDays = 7) => {
@@ -125,16 +119,16 @@ export default function Dashboard() {
               {syncing ? "Sincronizando…" : "Sync Hoy"}
             </Button>
             <Button variant="outline" size="sm" onClick={() => handleSync(7)} disabled={syncing} className="rounded-none border-l-0 px-2 text-xs">7d</Button>
-            <Button variant="outline" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="rounded-none border-l-0 px-2 text-xs">30d</Button>
-            <Button variant="outline" size="sm" onClick={() => handleSync(365)} disabled={syncing} className="rounded-l-none border-l-0 px-2 text-xs">1 año</Button>
+            <Button variant="outline" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="rounded-l-none border-l-0 px-2 text-xs">30d</Button>
+            <Button variant="outline" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="rounded-l-none border-l-0 px-2 text-xs">30d</Button>
           </div>
           <div className="flex gap-1 bg-card rounded-lg border border-border p-1">
             {periods.map((p) => (
               <button
                 key={p.key}
-                onClick={() => { setPeriod(p.key); setCustomRange(undefined); }}
+                onClick={() => setPeriod(p.key)}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                  period === p.key && !customRange
+                  period === p.key
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
@@ -142,47 +136,6 @@ export default function Dashboard() {
                 {p.label}
               </button>
             ))}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1 ${
-                  period === "custom" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                }`}>
-                  <Calendar className="h-3 w-3" /> Personalizado
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-3 space-y-3" align="end">
-                <div className="flex items-center gap-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground">Desde</label>
-                    <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="h-8 text-xs" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">Hasta</label>
-                    <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="h-8 text-xs" />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" className="flex-1 text-xs" disabled={!customFrom || !customTo} onClick={() => {
-                    const start = new Date(customFrom + "T00:00:00");
-                    const end = new Date(customTo + "T23:59:59");
-                    if (end < start) { toast.error("La fecha final debe ser posterior a la inicial"); return; }
-                    setCustomRange({ start, end });
-                    setPeriod("custom");
-                  }}>Aplicar</Button>
-                  <Button size="sm" variant="outline" className="text-xs gap-1" disabled={!customFrom || !customTo || syncing} onClick={() => {
-                    const start = new Date(customFrom + "T00:00:00");
-                    const end = new Date(customTo + "T23:59:59");
-                    if (end < start) { toast.error("La fecha final debe ser posterior a la inicial"); return; }
-                    setCustomRange({ start, end });
-                    setPeriod("custom");
-                    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                    handleSync(days);
-                  }}>
-                    <RefreshCw className="h-3 w-3" /> Sync
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
           </div>
         </div>
       </div>
