@@ -1,45 +1,52 @@
 
 
-## Plan: Tabla de contactos con seleccion manual en el Segment Builder
+## Análisis: Consistencia de datos del Dashboard
 
-### Problema actual
-1. El Segment Builder calcula 63 contactos correctamente, pero al sincronizar con Brevo, la Edge Function `brevo-sync-contacts` ignora los filtros del segmento y sincroniza TODOS los clientes de `customers_cache` (la funcion solo entiende `segmentFilter.type === "all"` o `"orders_count"`, no el formato de condiciones actual)
-2. No hay forma de ver que contactos coinciden ni de agregar emails manualmente
+### Hallazgo principal
 
-### Solucion
+Después de analizar la base de datos y el código, **los cálculos son matemáticamente consistentes**: tanto Total Sales como la suma de Métodos de Pago usan exactamente la misma fuente de datos y los mismos filtros.
 
-**1. Mostrar tabla de contactos que coinciden**
-- Despues del contador "63 contactos coinciden", mostrar una tabla con los contactos resultantes (email, nombre, orders_count, total_spent, ciudad)
-- Llamar a `campaign-audience` con `count_only: false` cuando el usuario quiera ver los contactos
-- Boton "Ver contactos" que carga y muestra la tabla
-- Checkboxes para seleccionar/deseleccionar contactos individuales
-- Select all / deselect all
+**Datos actuales del mes (Marzo 2026):**
+- Total de órdenes: 246 (215 pagadas + 31 excluidas)
+- Total Sales: $6,191.55
+- Suma métodos de pago: $6,191.55 (idéntico)
 
-**2. Agregar emails manuales**
-- Input con boton "Agregar email" debajo de la tabla
-- Los emails manuales se agregan a la lista de contactos seleccionados
-- Se muestran en la tabla con un badge "Manual"
+### Cómo funciona cada KPI
 
-**3. Arreglar `brevo-sync-contacts` para respetar los filtros**
-- En vez de que `brevo-sync-contacts` re-consulte `customers_cache` con su propia logica rota, enviarle directamente la lista de emails seleccionados desde el frontend
-- El wizard llama a `campaign-audience` (sin count_only) para obtener los contactos, luego pasa esos contactos + los manuales a `brevo-sync-contacts`
-- Modificar `brevo-sync-contacts` para aceptar un array `contacts` directo ademas del `segmentFilter`
+| KPI | Fuente | Lógica |
+|-----|--------|--------|
+| **Total Sales** | `orders` filtradas por `order_date` en rango, excluyendo cancelled/failed/refunded/trash | `SUM(total_amount_usd ?? total_amount)` |
+| **Pedidos** | Misma lista filtrada | `COUNT` |
+| **Products Sold** | `order_items` de esos pedidos | `SUM(quantity)` |
+| **Ticket Medio** | Total Sales / Pedidos | Calculado |
+| **Clientes Nuevos** | Emails únicos del periodo actual que NO aparecen en el periodo anterior | Set difference |
+| **Métodos de Pago** | Misma lista filtrada, agrupada por `payment_method` | `SUM(total_amount_usd)` por grupo |
+
+### Hallazgos relevantes
+
+1. **No hay inconsistencia numérica real** — ambas métricas iteran el mismo array `paid` con la misma función `getUsd()`. La suma de las partes siempre iguala el total.
+
+2. **80 órdenes tienen `payment_method = NULL`** — aparecen como "Otro" en el gráfico con $1,431.39. Esto no causa inconsistencia pero sí dificulta el análisis de métodos de pago.
+
+3. **5 órdenes `yith_pos_cash_gateway` tienen total = $0** — probablemente aperturas/cierres de caja POS. Inflan el conteo de pedidos sin aportar revenue.
+
+4. **Si la percepción de inconsistencia viene de comparar en distintos momentos**, es porque la fecha `end` es `new Date()` (ahora), y cada carga del dashboard puede incluir órdenes nuevas.
+
+### Propuesta de mejoras
+
+**1. Resolver los 80 pedidos sin método de pago** 
+Consultar la tabla `payments` para enriquecer `orders.payment_method` cuando es NULL. O usar la tabla `payments` directamente para el gráfico de métodos de pago, ya que ahí se registra el método real por cada pago.
+
+**2. Excluir órdenes POS de total $0**
+Filtrar órdenes con `total_amount_usd = 0` (o `total_amount = 0`) del conteo de pedidos y del gráfico de métodos de pago, ya que no son ventas reales.
+
+**3. Mostrar total en el gráfico de métodos de pago**
+Agregar una fila "Total" al final de la leyenda del pie chart para que el usuario pueda verificar visualmente que coincide con Total Sales.
 
 ### Archivos a modificar
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/campaigns/SegmentBuilder.tsx` | Agregar tabla de contactos, checkboxes, input de email manual. Exponer contactos seleccionados via callback |
-| `src/pages/CampaignWizard.tsx` | Pasar contactos seleccionados a `brevo-sync-contacts` en vez de solo el filtro |
-| `supabase/functions/brevo-sync-contacts/index.ts` | Aceptar array `contacts` directo; si viene, usarlo en vez de consultar DB |
-
-### Flujo resultante
-
-```text
-1. Usuario configura condiciones → contador muestra "63 contactos"
-2. Click "Ver contactos" → tabla con 63 filas (todos seleccionados por defecto)
-3. Usuario puede deseleccionar algunos o agregar emails manuales
-4. Click "Sincronizar con Brevo" → envia solo los contactos seleccionados
-5. Brevo recibe exactamente esos contactos, sin re-consultar la DB
-```
+| `src/hooks/useDashboardData.ts` | Usar tabla `payments` para desglose por método de pago. Filtrar órdenes $0 del conteo. |
+| `src/pages/Dashboard.tsx` | Agregar total en leyenda del pie chart |
 
