@@ -1,9 +1,7 @@
-import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw, ShoppingCart, Calendar } from "lucide-react";
+import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDashboardData, type Period } from "@/hooks/useDashboardData";
 import { toast } from "sonner";
 
@@ -11,7 +9,6 @@ const periods: { key: Period; label: string }[] = [
   { key: "today", label: "Hoy" },
   { key: "week", label: "Esta semana" },
   { key: "month", label: "Este mes" },
-  { key: "year", label: "Este año" },
 ];
 
 const statusLabels: Record<string, { label: string; className: string }> = {
@@ -39,10 +36,7 @@ const PIE_COLORS = [
 
 export default function Dashboard() {
   const [period, setPeriod] = useState<Period>("month");
-  const [customRange, setCustomRange] = useState<{ start: Date; end: Date } | undefined>();
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
-  const { data, loading, error, refetch } = useDashboardData(period, customRange);
+  const { data, loading, error, refetch } = useDashboardData(period);
   const [syncing, setSyncing] = useState(false);
 
   const handleSync = async (totalDays = 7) => {
@@ -125,8 +119,8 @@ export default function Dashboard() {
               {syncing ? "Sincronizando…" : "Sync Hoy"}
             </Button>
             <Button variant="outline" size="sm" onClick={() => handleSync(7)} disabled={syncing} className="rounded-none border-l-0 px-2 text-xs">7d</Button>
-            <Button variant="outline" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="rounded-none border-l-0 px-2 text-xs">30d</Button>
-            <Button variant="outline" size="sm" onClick={() => handleSync(365)} disabled={syncing} className="rounded-l-none border-l-0 px-2 text-xs">1 año</Button>
+            <Button variant="outline" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="rounded-l-none border-l-0 px-2 text-xs">30d</Button>
+            <Button variant="outline" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="rounded-l-none border-l-0 px-2 text-xs">30d</Button>
           </div>
           <div className="flex gap-1 bg-card rounded-lg border border-border p-1">
             {periods.map((p) => (
