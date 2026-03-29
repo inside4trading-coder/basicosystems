@@ -53,8 +53,8 @@ function getDateRange(period: Period, customRange?: { start: Date; end: Date }):
   return { start, end: now };
 }
 
-function getPrevDateRange(period: Period): { start: Date; end: Date } {
-  const { start, end } = getDateRange(period);
+function getPrevDateRange(period: Period, customRange?: { start: Date; end: Date }): { start: Date; end: Date } {
+  const { start, end } = getDateRange(period, customRange);
   const diff = end.getTime() - start.getTime();
   return { start: new Date(start.getTime() - diff), end: start };
 }
@@ -70,8 +70,8 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
     setLoading(true);
     setError(null);
     try {
-      const { start, end } = getDateRange(period);
-      const prev = getPrevDateRange(period);
+      const { start, end } = getDateRange(period, customRange);
+      const prev = getPrevDateRange(period, customRange);
 
       // Fetch current orders
       const { data: currentOrders, error: cErr } = await supabase
@@ -266,7 +266,7 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, customRange?.start?.getTime(), customRange?.end?.getTime()]);
 
   useEffect(() => {
     fetchData();
