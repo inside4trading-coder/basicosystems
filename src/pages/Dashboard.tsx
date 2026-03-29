@@ -39,7 +39,10 @@ const PIE_COLORS = [
 
 export default function Dashboard() {
   const [period, setPeriod] = useState<Period>("month");
-  const { data, loading, error, refetch } = useDashboardData(period);
+  const [customRange, setCustomRange] = useState<{ start: Date; end: Date } | undefined>();
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const { data, loading, error, refetch } = useDashboardData(period, customRange);
   const [syncing, setSyncing] = useState(false);
 
   const handleSync = async (totalDays = 7) => {
