@@ -24,6 +24,19 @@ serve(async (req) => {
     const body = req.method !== "GET" ? await req.json() : {};
     const action = body.action || url.searchParams.get("action") || "list";
 
+    // ---- GET SENDERS ----
+    if (action === "get_senders") {
+      const res = await fetch(`${BREVO_BASE}/senders`, {
+        headers: { "api-key": BREVO_API_KEY },
+      });
+      if (!res.ok) throw new Error("Failed to fetch senders from Brevo");
+      const data = await res.json();
+      const activeSenders = (data.senders || []).filter((s: any) => s.active);
+      return new Response(JSON.stringify(activeSenders), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // ---- LIST campaigns ----
     if (action === "list") {
       const { data, error } = await supabase
