@@ -37,8 +37,15 @@ async function wcFetch(path: string, params: Record<string, string> = {}) {
   const secret = Deno.env.get("WC_CONSUMER_SECRET")!;
   const qs = new URLSearchParams({ consumer_key: key, consumer_secret: secret, ...params });
   const res = await fetch(`${WC_BASE}${path}?${qs}`);
+  const text = await res.text();
+  let body;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    throw new Error(`WooCommerce returned invalid response (status ${res.status}). The site may be temporarily unavailable.`);
+  }
   return {
-    body: await res.json(),
+    body,
     totalPages: parseInt(res.headers.get("X-WP-TotalPages") || "1"),
   };
 }
