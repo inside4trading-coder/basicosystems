@@ -92,13 +92,18 @@ serve(async (req) => {
     if (action === "create") {
       const { name, subject, senderName, senderEmail, content, listId, segmentFilter, scheduledAt, recipientCount, sendNow } = body;
 
+      // Sanitize content: escape invalid Brevo template tags ({{ ... }} that aren't valid params)
+      const safeContent = (content || "").replace(/\{\{(?!params\.|contact\.|mirror}})([^}]*)\}\}/g, (match: string) => {
+        return match.replace(/\{\{/g, "{ {").replace(/\}\}/g, "} }");
+      });
+
       // Create in Brevo
       const brevoPayload: any = {
         name,
         subject,
-        sender: { name: senderName || "Basico", email: senderEmail || "hola@basicoclothes.com" },
+        sender: { name: senderName || "Basico", email: senderEmail || "crew@basicoclothes.com" },
         type: "classic",
-        htmlContent: content || "<html><body>{{params.BODY}}</body></html>",
+        htmlContent: safeContent || "<html><body></body></html>",
         recipients: listId ? { listIds: [listId] } : undefined,
       };
 
