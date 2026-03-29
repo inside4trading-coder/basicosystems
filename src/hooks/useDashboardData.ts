@@ -100,7 +100,7 @@ export function useDashboardData(period: Period) {
       }
 
       const all = currentOrders || [];
-      const paid = all.filter(o => !EXCLUDED.has(o.order_status || ""));
+      const paid = all.filter(o => !EXCLUDED.has(o.order_status || "") && (o.total_amount_usd ?? o.total_amount ?? 0) > 0);
       const prevPaid = (prevOrders || []).filter(o => !EXCLUDED.has(o.order_status || ""));
 
       const getUsd = (o: any) => o.total_amount_usd ?? o.total_amount ?? 0;
@@ -152,11 +152,42 @@ export function useDashboardData(period: Period) {
         .map(([state, revenue]) => ({ state, revenue: Math.round(revenue * 100) / 100 }))
         .sort((a, b) => b.revenue - a.revenue).slice(0, 10);
 
-      // Revenue by payment
-      const payMap: Record<string, number> = {};
+      // Build currency map (used by payments and products)
+      const orderCurrencyMap = new Map<number, { rate: number; currency: string }>();
       for (const o of paid) {
-        const m = o.payment_method || "Otro";
-        payMap[m] = (payMap[m] || 0) + getUsd(o);
+        orderCurrencyMap.set(o.order_id, { 
+          rate: o.exchange_rate || 1, 
+          currency: o.order_currency || "USD" 
+        });
+      }
+
+      // Revenue by payment — use payments table for accuracy
+      const paidOrderIds = paid.map(o => o.order_id);
+      let paymentRows: any[] = [];
+      if (paidOrderIds.length > 0) {
+        for (let i = 0; i < paidOrderIds.length; i += 200) {
+          const chunk = paidOrderIds.slice(i, i + 200);
+          const { data: pData } = await supabase
+            .from("payments")
+            .select("order_id, payment_method, payment_amount, payment_currency")
+            .in("order_id", chunk);
+          if (pData) paymentRows.push(...pData);
+        }
+      }
+      const payMap: Record<string, number> = {};
+      for (const p of paymentRows) {
+        const m = p.payment_method || "Otro";
+        const orderInfo = orderCurrencyMap.get(p.order_id);
+        const amt = p.payment_amount || 0;
+        const amtUsd = orderInfo && orderInfo.currency !== "USD" && orderInfo.rate > 1 ? amt / orderInfo.rate : amt;
+        payMap[m] = (payMap[m] || 0) + amtUsd;
+      }
+      // Fallback: if no payments rows, use orders table
+      if (paymentRows.length === 0) {
+        for (const o of paid) {
+          const m = o.payment_method || "Otro";
+          payMap[m] = (payMap[m] || 0) + getUsd(o);
+        }
       }
       const revenueByPayment = Object.entries(payMap)
         .map(([method, revenue]) => ({ method, revenue: Math.round(revenue * 100) / 100 }))
@@ -176,13 +207,6 @@ export function useDashboardData(period: Period) {
       }));
 
       // Top products from items (with revenue in USD)
-      const orderCurrencyMap = new Map<number, { rate: number; currency: string }>();
-      for (const o of paid) {
-        orderCurrencyMap.set(o.order_id, { 
-          rate: o.exchange_rate || 1, 
-          currency: o.order_currency || "USD" 
-        });
-      }
       const prodMap: Record<string, { name: string; qty: number; rev: number }> = {};
       for (const item of items) {
         if (!paidIds.has(item.order_id)) continue;

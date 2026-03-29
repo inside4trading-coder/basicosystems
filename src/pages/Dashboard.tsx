@@ -271,6 +271,13 @@ export default function Dashboard() {
                         <span className="ml-auto text-muted-foreground tabular-nums">${p.revenue.toLocaleString()}</span>
                       </div>
                     ))}
+                    <div className="flex items-center gap-2 text-xs border-t border-border pt-2 mt-2">
+                      <div className="w-3 h-3 shrink-0" />
+                      <span className="font-black">Total</span>
+                      <span className="ml-auto font-black tabular-nums">
+                        ${data.revenueByPayment.reduce((s, p) => s + p.revenue, 0).toLocaleString()}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ) : (
