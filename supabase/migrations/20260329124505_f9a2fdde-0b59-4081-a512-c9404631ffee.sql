@@ -1,0 +1,1 @@
+UPDATE payments SET payment_method = 'Pago en tienda (Bs)' WHERE payment_method = 'unknown' AND payment_currency = 'VES'; UPDATE payments SET payment_method = 'Otro' WHERE payment_method = 'unknown';
