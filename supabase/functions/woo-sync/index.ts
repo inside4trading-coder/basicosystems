@@ -233,7 +233,7 @@ serve(async (req) => {
       const paymentRows = batch.map((o: any) => ({
         order_id: o.id,
         payment_slot: 1,
-        payment_method: o.payment_method_title || o.payment_method || "unknown",
+        payment_method: o.payment_method_title || o.payment_method || (o.currency === "VES" ? "Pago en tienda (Bs)" : "Otro"),
         payment_bank: null,
         payment_amount: parseFloat(o.total || "0"),
         payment_currency: o.currency || "USD",
