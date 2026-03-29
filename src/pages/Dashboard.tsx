@@ -126,9 +126,9 @@ export default function Dashboard() {
             {periods.map((p) => (
               <button
                 key={p.key}
-                onClick={() => { setPeriod(p.key); setCustomRange(undefined); }}
+                onClick={() => setPeriod(p.key)}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                  period === p.key && !customRange
+                  period === p.key
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
@@ -136,47 +136,6 @@ export default function Dashboard() {
                 {p.label}
               </button>
             ))}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1 ${
-                  period === "custom" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                }`}>
-                  <Calendar className="h-3 w-3" /> Personalizado
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-3 space-y-3" align="end">
-                <div className="flex items-center gap-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground">Desde</label>
-                    <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="h-8 text-xs" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">Hasta</label>
-                    <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="h-8 text-xs" />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" className="flex-1 text-xs" disabled={!customFrom || !customTo} onClick={() => {
-                    const start = new Date(customFrom + "T00:00:00");
-                    const end = new Date(customTo + "T23:59:59");
-                    if (end < start) { toast.error("La fecha final debe ser posterior a la inicial"); return; }
-                    setCustomRange({ start, end });
-                    setPeriod("custom");
-                  }}>Aplicar</Button>
-                  <Button size="sm" variant="outline" className="text-xs gap-1" disabled={!customFrom || !customTo || syncing} onClick={() => {
-                    const start = new Date(customFrom + "T00:00:00");
-                    const end = new Date(customTo + "T23:59:59");
-                    if (end < start) { toast.error("La fecha final debe ser posterior a la inicial"); return; }
-                    setCustomRange({ start, end });
-                    setPeriod("custom");
-                    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                    handleSync(days);
-                  }}>
-                    <RefreshCw className="h-3 w-3" /> Sync
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
           </div>
         </div>
       </div>
