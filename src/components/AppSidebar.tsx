@@ -1,4 +1,4 @@
-import { BarChart3, Package, Users, ClipboardList, Mail, Settings, LogOut } from "lucide-react";
+import { BarChart3, Package, Users, ClipboardList, Mail, Phone, Settings, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,6 +22,7 @@ const mainItems = [
   { title: "CRM", url: "/crm", icon: Users },
   { title: "Planning", url: "/planning", icon: ClipboardList },
   { title: "Campaigns", url: "/campaigns", icon: Mail },
+  { title: "Llamadas", url: "/llamadas", icon: Phone },
 ];
 
 const adminItems = [
