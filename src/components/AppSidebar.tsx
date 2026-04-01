@@ -22,6 +22,7 @@ const mainItems = [
   { title: "CRM", url: "/crm", icon: Users },
   { title: "Planning", url: "/planning", icon: ClipboardList },
   { title: "Campaigns", url: "/campaigns", icon: Mail },
+  { title: "Llamadas", url: "/llamadas", icon: Phone },
 ];
 
 const adminItems = [
