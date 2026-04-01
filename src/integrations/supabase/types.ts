@@ -290,6 +290,10 @@ export type Database = {
           order_id: number
           order_number: string | null
           order_status: string | null
+          pago_metodo_1: string | null
+          pago_metodo_2: string | null
+          pago_metodo_3: string | null
+          pago_metodo_4: string | null
           payment_method: string | null
           refunded_amount: number | null
           sale_channel: string | null
@@ -322,6 +326,10 @@ export type Database = {
           order_id: number
           order_number?: string | null
           order_status?: string | null
+          pago_metodo_1?: string | null
+          pago_metodo_2?: string | null
+          pago_metodo_3?: string | null
+          pago_metodo_4?: string | null
           payment_method?: string | null
           refunded_amount?: number | null
           sale_channel?: string | null
@@ -354,6 +362,10 @@ export type Database = {
           order_id?: number
           order_number?: string | null
           order_status?: string | null
+          pago_metodo_1?: string | null
+          pago_metodo_2?: string | null
+          pago_metodo_3?: string | null
+          pago_metodo_4?: string | null
           payment_method?: string | null
           refunded_amount?: number | null
           sale_channel?: string | null
