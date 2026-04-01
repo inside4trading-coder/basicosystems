@@ -13,13 +13,21 @@ function md5(data: string): string {
   return createHash("md5").update(data).digest("hex");
 }
 
+function httpBuildQuery(params: Record<string, string>): string {
+  const sorted = Object.keys(params).sort().reduce((obj, key) => {
+    obj[key] = params[key];
+    return obj;
+  }, {} as Record<string, string>);
+  return new URLSearchParams(sorted).toString().replace(/%20/g, "+");
+}
+
 function zadarmaSign(method: string, params: Record<string, string>, secret: string): string {
-  const sortedKeys = Object.keys(params).sort();
-  // Build query string like PHP's http_build_query: key=value&key2=value2
-  const paramsStr = sortedKeys.map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join("&");
+  const paramsStr = httpBuildQuery(params);
   const md5Hash = md5(paramsStr);
   const signStr = method + paramsStr + md5Hash;
-  return createHmac("sha1", secret).update(signStr).digest("base64");
+  // Official SDK: hex digest then base64-encode the hex string
+  const sha1Hex = createHmac("sha1", secret).update(signStr).digest("hex");
+  return btoa(sha1Hex);
 }
 
 async function zadarmaRequest(
