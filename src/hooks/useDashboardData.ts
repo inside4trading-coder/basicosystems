@@ -21,7 +21,7 @@ export interface DashboardData {
   dailyRevenue: { date: string; revenue: number }[];
   dailyOrders: { date: string; count: number }[];
   revenueByState: { state: string; revenue: number }[];
-  revenueByPayment: { method: string; revenue: number }[];
+  ordersByPayment: { method: string; count: number }[];
   hourlyDistribution: { hour: number; count: number }[];
   categoryBreakdown: { category: string; revenue: number; quantity: number }[];
 }
@@ -179,24 +179,24 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
           if (pData) paymentRows.push(...pData);
         }
       }
-      const payMap: Record<string, number> = {};
+      // Count orders per payment method
+      const payCountMap: Record<string, Set<number>> = {};
       for (const p of paymentRows) {
         const m = p.payment_method || "Otro";
-        const orderInfo = orderCurrencyMap.get(p.order_id);
-        const amt = p.payment_amount || 0;
-        const amtUsd = orderInfo && orderInfo.currency !== "USD" && orderInfo.rate > 1 ? amt / orderInfo.rate : amt;
-        payMap[m] = (payMap[m] || 0) + amtUsd;
+        if (!payCountMap[m]) payCountMap[m] = new Set();
+        payCountMap[m].add(p.order_id);
       }
       // Fallback: if no payments rows, use orders table
       if (paymentRows.length === 0) {
         for (const o of paid) {
           const m = o.payment_method || "Otro";
-          payMap[m] = (payMap[m] || 0) + getUsd(o);
+          if (!payCountMap[m]) payCountMap[m] = new Set();
+          payCountMap[m].add(o.order_id);
         }
       }
-      const revenueByPayment = Object.entries(payMap)
-        .map(([method, revenue]) => ({ method, revenue: Math.round(revenue * 100) / 100 }))
-        .sort((a, b) => b.revenue - a.revenue);
+      const ordersByPayment = Object.entries(payCountMap)
+        .map(([method, ids]) => ({ method, count: ids.size }))
+        .sort((a, b) => b.count - a.count);
 
       // Hourly distribution
       const hourMap: Record<number, number> = {};
@@ -257,7 +257,7 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         dailyRevenue,
         dailyOrders,
         revenueByState,
-        revenueByPayment,
+        ordersByPayment,
         hourlyDistribution,
         categoryBreakdown,
       });
