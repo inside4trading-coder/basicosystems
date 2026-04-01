@@ -45,8 +45,6 @@ async function zadarmaRequest(
 
   const url = `https://api.zadarma.com${method}?${paramsStr}`;
 
-  console.log("DEBUG zadarma:", { method, paramsStr, md5Hash, signStr: signStr.substring(0, 80), signature: signature.substring(0, 20), url });
-
   const res = await fetch(url, {
     headers: {
       Authorization: `${key}:${signature}`,
