@@ -9,10 +9,16 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+function md5(data: string): string {
+  return createHmac("md5", "").update(data).digest("hex");
+}
+
 function zadarmaSign(method: string, params: Record<string, string>, secret: string): string {
   const sortedKeys = Object.keys(params).sort();
-  const paramsStr = sortedKeys.map((k) => `${k}=${params[k]}`).join("");
-  const signStr = method + paramsStr + createHmac("md5", "").update(paramsStr).digest("hex");
+  // Build query string like PHP's http_build_query: key=value&key2=value2
+  const paramsStr = sortedKeys.map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join("&");
+  const md5Hash = md5(paramsStr);
+  const signStr = method + paramsStr + md5Hash;
   return createHmac("sha1", secret).update(signStr).digest("base64");
 }
 
