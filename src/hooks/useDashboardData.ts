@@ -105,7 +105,14 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       }
 
       const all = currentOrders || [];
-      const paid = all.filter(o => !EXCLUDED.has(o.order_status || "") && (o.total_amount_usd ?? o.total_amount ?? 0) > 0);
+      const paid = all.filter(o => {
+        if (EXCLUDED.has(o.order_status || "")) return false;
+        const usd = o.total_amount_usd ?? o.total_amount ?? 0;
+        if (usd <= 0) return false;
+        // Skip VES orders with broken exchange rate (rate=1 or 0 means no valid conversion)
+        if (o.order_currency === "VES" && (o.exchange_rate === 1 || o.exchange_rate === 0 || !o.exchange_rate) && (o.total_amount ?? 0) > 100) return false;
+        return true;
+      });
       const prevPaid = (prevOrders || []).filter(o => !EXCLUDED.has(o.order_status || ""));
 
       const getUsd = (o: any) => o.total_amount_usd ?? o.total_amount ?? 0;
