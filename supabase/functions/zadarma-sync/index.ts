@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { createHmac } from "node:crypto";
+import { createHmac, createHash } from "node:crypto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,11 +9,25 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+function md5(data: string): string {
+  return createHash("md5").update(data).digest("hex");
+}
+
+function httpBuildQuery(params: Record<string, string>): string {
+  const sorted = Object.keys(params).sort().reduce((obj, key) => {
+    obj[key] = params[key];
+    return obj;
+  }, {} as Record<string, string>);
+  return new URLSearchParams(sorted).toString().replace(/%20/g, "+");
+}
+
 function zadarmaSign(method: string, params: Record<string, string>, secret: string): string {
-  const sortedKeys = Object.keys(params).sort();
-  const paramsStr = sortedKeys.map((k) => `${k}=${params[k]}`).join("");
-  const signStr = method + paramsStr + createHmac("md5", "").update(paramsStr).digest("hex");
-  return createHmac("sha1", secret).update(signStr).digest("base64");
+  const paramsStr = httpBuildQuery(params);
+  const md5Hash = md5(paramsStr);
+  const signStr = method + paramsStr + md5Hash;
+  // Official SDK: hex digest then base64-encode the hex string
+  const sha1Hex = createHmac("sha1", secret).update(signStr).digest("hex");
+  return btoa(sha1Hex);
 }
 
 async function zadarmaRequest(
@@ -22,9 +36,14 @@ async function zadarmaRequest(
   key: string,
   secret: string
 ) {
-  const qs = new URLSearchParams(params).toString();
-  const url = `https://api.zadarma.com/v1/${apiMethod}/?${qs}`;
-  const signature = zadarmaSign(`/v1/${apiMethod}/`, params, secret);
+  const method = `/v1/${apiMethod}/`;
+  const paramsStr = httpBuildQuery(params);
+  const md5Hash = md5(paramsStr);
+  const signStr = method + paramsStr + md5Hash;
+  const sha1Hex = createHmac("sha1", secret).update(signStr).digest("hex");
+  const signature = btoa(sha1Hex);
+
+  const url = `https://api.zadarma.com${method}?${paramsStr}`;
 
   const res = await fetch(url, {
     headers: {
@@ -82,6 +101,7 @@ Deno.serve(async (req) => {
     const params: Record<string, string> = {
       start,
       end,
+      format: "json",
       version: "2",
     };
 
