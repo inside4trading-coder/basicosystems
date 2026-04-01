@@ -259,6 +259,7 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         dailyOrders,
         revenueByState,
         ordersByPayment,
+        transactionsAnalyzed,
         hourlyDistribution,
         categoryBreakdown,
       });
