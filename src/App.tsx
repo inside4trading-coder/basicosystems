@@ -15,6 +15,7 @@ import Campaigns from "./pages/Campaigns";
 import CampaignWizard from "./pages/CampaignWizard";
 import CampaignDetail from "./pages/CampaignDetail";
 import Configuracion from "./pages/Configuracion";
+import Llamadas from "./pages/Llamadas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
