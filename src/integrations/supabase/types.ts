@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      calls_cache: {
+        Row: {
+          agent_name: string | null
+          call_end: string | null
+          call_id: string | null
+          call_start: string | null
+          caller: string | null
+          cost: number | null
+          destination: string | null
+          direction: string | null
+          duration: number | null
+          id: string
+          is_recorded: boolean | null
+          pbx_call_id: string | null
+          raw_data: Json | null
+          recording_url: string | null
+          sip: string | null
+          status: string | null
+          synced_at: string | null
+          talk_duration: number | null
+        }
+        Insert: {
+          agent_name?: string | null
+          call_end?: string | null
+          call_id?: string | null
+          call_start?: string | null
+          caller?: string | null
+          cost?: number | null
+          destination?: string | null
+          direction?: string | null
+          duration?: number | null
+          id?: string
+          is_recorded?: boolean | null
+          pbx_call_id?: string | null
+          raw_data?: Json | null
+          recording_url?: string | null
+          sip?: string | null
+          status?: string | null
+          synced_at?: string | null
+          talk_duration?: number | null
+        }
+        Update: {
+          agent_name?: string | null
+          call_end?: string | null
+          call_id?: string | null
+          call_start?: string | null
+          caller?: string | null
+          cost?: number | null
+          destination?: string | null
+          direction?: string | null
+          duration?: number | null
+          id?: string
+          is_recorded?: boolean | null
+          pbx_call_id?: string | null
+          raw_data?: Json | null
+          recording_url?: string | null
+          sip?: string | null
+          status?: string | null
+          synced_at?: string | null
+          talk_duration?: number | null
+        }
+        Relationships: []
+      }
       campaign_stats: {
         Row: {
           campaign_id: string
@@ -514,6 +577,27 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      sip_agents: {
+        Row: {
+          agent_name: string
+          created_at: string | null
+          id: string
+          sip_id: string
+        }
+        Insert: {
+          agent_name: string
+          created_at?: string | null
+          id?: string
+          sip_id: string
+        }
+        Update: {
+          agent_name?: string
+          created_at?: string | null
+          id?: string
+          sip_id?: string
         }
         Relationships: []
       }
