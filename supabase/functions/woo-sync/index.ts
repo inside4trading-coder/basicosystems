@@ -206,6 +206,10 @@ serve(async (req) => {
           customer_email: o.billing?.email || null,
           customer_phone: o.billing?.phone || null,
           payment_method: o.payment_method_title || o.payment_method || null,
+          pago_metodo_1: getMetaValue(o.meta_data, "_basico_pago_metodo") || null,
+          pago_metodo_2: getMetaValue(o.meta_data, "_basico_pago_metodo_2") || null,
+          pago_metodo_3: getMetaValue(o.meta_data, "_basico_pago_metodo_3") || null,
+          pago_metodo_4: getMetaValue(o.meta_data, "_basico_pago_metodo_4") || null,
           synced_at: new Date().toISOString(),
         };
       });
