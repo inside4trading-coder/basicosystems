@@ -96,6 +96,7 @@ Deno.serve(async (req) => {
     const params: Record<string, string> = {
       start,
       end,
+      format: "json",
       version: "2",
     };
 
