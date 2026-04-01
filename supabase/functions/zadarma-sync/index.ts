@@ -36,9 +36,16 @@ async function zadarmaRequest(
   key: string,
   secret: string
 ) {
-  const qs = new URLSearchParams(params).toString();
-  const url = `https://api.zadarma.com/v1/${apiMethod}/?${qs}`;
-  const signature = zadarmaSign(`/v1/${apiMethod}/`, params, secret);
+  const method = `/v1/${apiMethod}/`;
+  const paramsStr = httpBuildQuery(params);
+  const md5Hash = md5(paramsStr);
+  const signStr = method + paramsStr + md5Hash;
+  const sha1Hex = createHmac("sha1", secret).update(signStr).digest("hex");
+  const signature = btoa(sha1Hex);
+
+  const url = `https://api.zadarma.com${method}?${paramsStr}`;
+
+  console.log("DEBUG zadarma:", { method, paramsStr, md5Hash, signStr: signStr.substring(0, 80), signature: signature.substring(0, 20), url });
 
   const res = await fetch(url, {
     headers: {
