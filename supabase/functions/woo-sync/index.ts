@@ -154,10 +154,22 @@ serve(async (req) => {
       const batch = allOrders.slice(i, i + 50);
 
       const orderRows = batch.map((o: any) => {
-        const rate = getOrderExchangeRate(o);
+        let rate = getOrderExchangeRate(o);
         const currency = getOrderCurrency(o);
         const total = parseFloat(o.total || "0");
-        const totalUsd = currency === "USD" ? total : (rate > 0 ? total / rate : total);
+        // If currency is not USD but rate is 1 (missing), don't pretend it's USD
+        // Use null for total_amount_usd so it's obvious the conversion failed
+        let totalUsd: number | null;
+        if (currency === "USD") {
+          totalUsd = total;
+        } else if (rate > 1) {
+          totalUsd = total / rate;
+        } else {
+          // No valid exchange rate — estimate from order total (likely VES)
+          // Mark rate as 0 to signal missing data
+          rate = 0;
+          totalUsd = null;
+        }
 
         const shippingLines = o.shipping_lines || [];
         const shippingMethodTitle = shippingLines.map((s: any) => s.method_title).filter(Boolean).join(", ") || null;
