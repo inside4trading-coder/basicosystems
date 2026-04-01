@@ -175,7 +175,11 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       }
 
       // Payment methods from _basico_pago_metodo 1-4
-      const ALLOWED_METHODS = new Set(["Pago Movil", "Punto de venta", "Cashea", "Efectivo USD", "Zelle", "Binance", "PayPal"]);
+      const ALLOWED_METHODS = new Set(["Pago Movil", "Pago Móvil", "Punto de venta", "Punto de venta (Bs)", "Cashea", "Efectivo USD", "Zelle", "Binance", "PayPal"]);
+      const NORMALIZE: Record<string, string> = {
+        "Pago Móvil": "Pago Movil",
+        "Punto de venta (Bs)": "Punto de venta",
+      };
       const payCountMap: Record<string, number> = {};
       let totalAppearances = 0;
       const transactionsAnalyzed = paid.length;
@@ -189,7 +193,8 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         ];
         for (const val of slots) {
           if (val && ALLOWED_METHODS.has(val)) {
-            payCountMap[val] = (payCountMap[val] || 0) + 1;
+            const label = NORMALIZE[val] || val;
+            payCountMap[label] = (payCountMap[label] || 0) + 1;
             totalAppearances++;
           }
         }
