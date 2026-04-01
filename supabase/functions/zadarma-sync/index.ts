@@ -10,7 +10,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 function md5(data: string): string {
-  return createHmac("md5", "").update(data).digest("hex");
+  return createHash("md5").update(data).digest("hex");
 }
 
 function zadarmaSign(method: string, params: Record<string, string>, secret: string): string {
