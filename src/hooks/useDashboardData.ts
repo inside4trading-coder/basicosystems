@@ -21,7 +21,7 @@ export interface DashboardData {
   dailyRevenue: { date: string; revenue: number }[];
   dailyOrders: { date: string; count: number }[];
   revenueByState: { state: string; revenue: number }[];
-  revenueByPayment: { method: string; revenue: number }[];
+  ordersByPayment: { method: string; count: number }[];
   hourlyDistribution: { hour: number; count: number }[];
   categoryBreakdown: { category: string; revenue: number; quantity: number }[];
 }
