@@ -1,0 +1,5 @@
+ALTER TABLE public.orders
+  ADD COLUMN IF NOT EXISTS pago_metodo_1 text DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS pago_metodo_2 text DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS pago_metodo_3 text DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS pago_metodo_4 text DEFAULT NULL;

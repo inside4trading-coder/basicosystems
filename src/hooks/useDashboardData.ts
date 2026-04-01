@@ -21,7 +21,8 @@ export interface DashboardData {
   dailyRevenue: { date: string; revenue: number }[];
   dailyOrders: { date: string; count: number }[];
   revenueByState: { state: string; revenue: number }[];
-  ordersByPayment: { method: string; count: number }[];
+  ordersByPayment: { method: string; count: number; pct: number }[];
+  transactionsAnalyzed: number;
   hourlyDistribution: { hour: number; count: number }[];
   categoryBreakdown: { category: string; revenue: number; quantity: number }[];
 }
@@ -173,36 +174,29 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         });
       }
 
-      // Revenue by payment — use payments table for accuracy
-      const paidOrderIds = paid.map(o => o.order_id);
-      let paymentRows: any[] = [];
-      if (paidOrderIds.length > 0) {
-        for (let i = 0; i < paidOrderIds.length; i += 200) {
-          const chunk = paidOrderIds.slice(i, i + 200);
-          const { data: pData } = await supabase
-            .from("payments")
-            .select("order_id, payment_method, payment_amount, payment_currency")
-            .in("order_id", chunk);
-          if (pData) paymentRows.push(...pData);
+      // Payment methods from _basico_pago_metodo 1-4
+      const ALLOWED_METHODS = new Set(["Pago Movil", "Punto de venta", "Cashea", "Efectivo USD", "Zelle", "Binance", "PayPal"]);
+      const payCountMap: Record<string, number> = {};
+      let totalAppearances = 0;
+      const transactionsAnalyzed = paid.length;
+
+      for (const o of paid) {
+        const slots = [
+          (o as any).pago_metodo_1,
+          (o as any).pago_metodo_2,
+          (o as any).pago_metodo_3,
+          (o as any).pago_metodo_4,
+        ];
+        for (const val of slots) {
+          if (val && ALLOWED_METHODS.has(val)) {
+            payCountMap[val] = (payCountMap[val] || 0) + 1;
+            totalAppearances++;
+          }
         }
       }
-      // Count orders per payment method
-      const payCountMap: Record<string, Set<number>> = {};
-      for (const p of paymentRows) {
-        const m = p.payment_method || "Otro";
-        if (!payCountMap[m]) payCountMap[m] = new Set();
-        payCountMap[m].add(p.order_id);
-      }
-      // Fallback: if no payments rows, use orders table
-      if (paymentRows.length === 0) {
-        for (const o of paid) {
-          const m = o.payment_method || "Otro";
-          if (!payCountMap[m]) payCountMap[m] = new Set();
-          payCountMap[m].add(o.order_id);
-        }
-      }
+
       const ordersByPayment = Object.entries(payCountMap)
-        .map(([method, ids]) => ({ method, count: ids.size }))
+        .map(([method, count]) => ({ method, count, pct: totalAppearances > 0 ? Math.round((count / totalAppearances) * 1000) / 10 : 0 }))
         .sort((a, b) => b.count - a.count);
 
       // Hourly distribution
@@ -265,6 +259,7 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         dailyOrders,
         revenueByState,
         ordersByPayment,
+        transactionsAnalyzed,
         hourlyDistribution,
         categoryBreakdown,
       });

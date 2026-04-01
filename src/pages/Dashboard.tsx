@@ -272,7 +272,10 @@ export default function Dashboard() {
           {/* Row 2: Payment methods + Hourly distribution */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.45s" }}>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Métodos de pago</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Métodos de pago</h3>
+                <span className="text-xs text-muted-foreground">Transacciones analizadas: <span className="font-bold text-foreground">{data.transactionsAnalyzed}</span></span>
+              </div>
               {data.ordersByPayment.length > 0 ? (
                 <div className="flex items-center gap-6">
                   <ResponsiveContainer width="50%" height={180}>
@@ -282,7 +285,7 @@ export default function Dashboard() {
                           <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(v: number) => `${v} pedidos`}
+                      <Tooltip formatter={(v: number, name: string, entry: any) => [`${v} (${entry.payload.pct}%)`, name]}
                         contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -291,20 +294,20 @@ export default function Dashboard() {
                       <div key={p.method} className="flex items-center gap-2 text-xs">
                         <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
                         <span className="font-semibold truncate">{p.method}</span>
-                        <span className="ml-auto text-muted-foreground tabular-nums">{p.count} pedidos</span>
+                        <span className="ml-auto text-muted-foreground tabular-nums">{p.count} ({p.pct}%)</span>
                       </div>
                     ))}
                     <div className="flex items-center gap-2 text-xs border-t border-border pt-2 mt-2">
                       <div className="w-3 h-3 shrink-0" />
-                      <span className="font-black">Total</span>
+                      <span className="font-black">Total apariciones</span>
                       <span className="ml-auto font-black tabular-nums">
-                        {data.ordersByPayment.reduce((s, p) => s + p.count, 0)} pedidos
+                        {data.ordersByPayment.reduce((s, p) => s + p.count, 0)}
                       </span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
+                <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos de métodos de pago</div>
               )}
             </div>
 
