@@ -1,52 +1,57 @@
 
 
-## Análisis: Consistencia de datos del Dashboard
+# Web Phone como widget flotante
 
-### Hallazgo principal
+## Situación actual
+El teléfono web ocupa una Card completa en la parte superior de la página Llamadas, consumiendo espacio valioso del dashboard de analítica.
 
-Después de analizar la base de datos y el código, **los cálculos son matemáticamente consistentes**: tanto Total Sales como la suma de Métodos de Pago usan exactamente la misma fuente de datos y los mismos filtros.
+## Propuesta
+Convertir el Web Phone en un **widget flotante fijo** en la esquina inferior derecha de la pantalla, similar a un botón de chat/WhatsApp. Estará disponible en **todas las páginas** del sistema (no solo en Llamadas).
 
-**Datos actuales del mes (Marzo 2026):**
-- Total de órdenes: 246 (215 pagadas + 31 excluidas)
-- Total Sales: $6,191.55
-- Suma métodos de pago: $6,191.55 (idéntico)
+```text
+┌─────────────────────────────────────┐
+│  AppLayout                          │
+│  ┌──────────────────────────────┐   │
+│  │  <Outlet /> (cualquier pág)  │   │
+│  │                              │   │
+│  │                              │   │
+│  │                              │   │
+│  │                         ┌────┤   │
+│  │                         │ 📞 │   │  ← botón circular (colapsado)
+│  │                         └────┤   │
+│  └──────────────────────────────┘   │
+└─────────────────────────────────────┘
 
-### Cómo funciona cada KPI
+Al hacer click se expande:
+┌─────────────────────────────────────┐
+│                              ┌─────┐│
+│                              │Phone││
+│                              │widget│
+│                              │420px ││
+│                              │     ││
+│                              └─────┘│
+└─────────────────────────────────────┘
+```
 
-| KPI | Fuente | Lógica |
-|-----|--------|--------|
-| **Total Sales** | `orders` filtradas por `order_date` en rango, excluyendo cancelled/failed/refunded/trash | `SUM(total_amount_usd ?? total_amount)` |
-| **Pedidos** | Misma lista filtrada | `COUNT` |
-| **Products Sold** | `order_items` de esos pedidos | `SUM(quantity)` |
-| **Ticket Medio** | Total Sales / Pedidos | Calculado |
-| **Clientes Nuevos** | Emails únicos del periodo actual que NO aparecen en el periodo anterior | Set difference |
-| **Métodos de Pago** | Misma lista filtrada, agrupada por `payment_method` | `SUM(total_amount_usd)` por grupo |
+## Cambios
 
-### Hallazgos relevantes
+### 1. Refactorizar `ZadarmaWebPhone.tsx`
+- Eliminar la Card wrapper — el componente será el contenido del popover/panel flotante.
+- Agregar estado `collapsed` (botón FAB) vs `expanded` (panel con el widget).
+- Posición: `fixed bottom-4 right-4 z-50`.
+- El botón FAB muestra un ícono de teléfono con badge de estado (punto verde = conectado, amarillo = cargando, rojo = error).
+- Al expandir: panel de ~320×460px con bordes redondeados, sombra, y el widget Zadarma dentro.
+- Botón para minimizar/cerrar el panel.
 
-1. **No hay inconsistencia numérica real** — ambas métricas iteran el mismo array `paid` con la misma función `getUsd()`. La suma de las partes siempre iguala el total.
+### 2. Mover el componente de `Llamadas.tsx` a `AppLayout.tsx`
+- Eliminar `<ZadarmaWebPhone />` de la página Llamadas.
+- Renderizarlo en `AppLayout.tsx` después del `<main>`, para que esté disponible globalmente.
+- La página Llamadas queda exclusivamente para analítica (KPIs, gráficos, tabla).
 
-2. **80 órdenes tienen `payment_method = NULL`** — aparecen como "Otro" en el gráfico con $1,431.39. Esto no causa inconsistencia pero sí dificulta el análisis de métodos de pago.
-
-3. **5 órdenes `yith_pos_cash_gateway` tienen total = $0** — probablemente aperturas/cierres de caja POS. Inflan el conteo de pedidos sin aportar revenue.
-
-4. **Si la percepción de inconsistencia viene de comparar en distintos momentos**, es porque la fecha `end` es `new Date()` (ahora), y cada carga del dashboard puede incluir órdenes nuevas.
-
-### Propuesta de mejoras
-
-**1. Resolver los 80 pedidos sin método de pago** 
-Consultar la tabla `payments` para enriquecer `orders.payment_method` cuando es NULL. O usar la tabla `payments` directamente para el gráfico de métodos de pago, ya que ahí se registra el método real por cada pago.
-
-**2. Excluir órdenes POS de total $0**
-Filtrar órdenes con `total_amount_usd = 0` (o `total_amount = 0`) del conteo de pedidos y del gráfico de métodos de pago, ya que no son ventas reales.
-
-**3. Mostrar total en el gráfico de métodos de pago**
-Agregar una fila "Total" al final de la leyenda del pie chart para que el usuario pueda verificar visualmente que coincide con Total Sales.
-
-### Archivos a modificar
-
+### 3. Archivos modificados
 | Archivo | Cambio |
-|---------|--------|
-| `src/hooks/useDashboardData.ts` | Usar tabla `payments` para desglose por método de pago. Filtrar órdenes $0 del conteo. |
-| `src/pages/Dashboard.tsx` | Agregar total en leyenda del pie chart |
+|---|---|
+| `src/components/llamadas/ZadarmaWebPhone.tsx` | Refactorizar a widget flotante con toggle expand/collapse |
+| `src/components/AppLayout.tsx` | Agregar `<ZadarmaWebPhone />` como widget global |
+| `src/pages/Llamadas.tsx` | Eliminar import y uso de `ZadarmaWebPhone` |
 
