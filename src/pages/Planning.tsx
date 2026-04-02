@@ -164,7 +164,7 @@ export default function Planning() {
       {view === "tabla" ? (
         <PlanningTable tasks={tasks} loading={loadingTasks} error={taskError} selectedDatabaseId={selectedSource} />
       ) : (
-        <PlanningCalendar tasks={tasks} loading={loadingTasks} error={taskError} />
+        <PlanningCalendar tasks={tasks} loading={loadingTasks} error={taskError} selectedDatabaseId={selectedSource} />
       )}
     </div>
   );
