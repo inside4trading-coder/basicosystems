@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Phone, PhoneCall, PhoneOff, Clock, DollarSign, CheckCircle, Loader2, AlertTriangle, RefreshCw, Calendar } from "lucide-react";
-import ZadarmaWebPhone from "@/components/llamadas/ZadarmaWebPhone";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,8 +141,6 @@ export default function Llamadas() {
         <p className="text-muted-foreground text-sm">Seguimiento y análisis de llamadas del equipo</p>
       </div>
 
-      {/* Web Phone */}
-      <ZadarmaWebPhone />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
