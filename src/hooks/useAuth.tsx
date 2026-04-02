@@ -21,8 +21,8 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 const ROLE_ROUTES: Record<ProfileRole, string[]> = {
-  admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/campaigns", "/configuracion"],
-  manager: ["/dashboard", "/pedidos", "/crm", "/planning", "/campaigns"],
+  admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/campaigns", "/llamadas", "/configuracion"],
+  manager: ["/dashboard", "/pedidos", "/crm", "/planning", "/campaigns", "/llamadas"],
   partner: ["/dashboard", "/planning"],
 };
 
