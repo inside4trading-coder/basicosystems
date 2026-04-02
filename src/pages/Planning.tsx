@@ -1,291 +1,416 @@
-import { AlertTriangle, Loader2, ExternalLink, Calendar, Users } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { Loader2, AlertTriangle, RefreshCw, ExternalLink, Database, Table, Calendar } from "lucide-react";
+import { toast } from "sonner";
+import { usePlanningDatabases, usePlanningTasks } from "@/hooks/usePlanningData";
+import type { NotionTask } from "@/hooks/usePlanningData";
 
-const TRELLO_LABEL_COLORS: Record<string, string> = {
-  green: "hsl(142 71% 45%)",
-  yellow: "hsl(48 96% 53%)",
+// ── Notion color → HSL map ──
+const NOTION_COLORS: Record<string, string> = {
+  default: "hsl(0 0% 64%)",
+  gray: "hsl(0 0% 64%)",
+  brown: "hsl(25 50% 45%)",
   orange: "hsl(25 95% 53%)",
-  red: "hsl(0 84% 60%)",
-  purple: "hsl(263 70% 50%)",
+  yellow: "hsl(45 93% 47%)",
+  green: "hsl(142 71% 45%)",
   blue: "hsl(217 91% 60%)",
-  sky: "hsl(199 89% 48%)",
-  lime: "hsl(84 81% 44%)",
+  purple: "hsl(263 70% 50%)",
   pink: "hsl(330 81% 60%)",
-  black: "hsl(0 0% 20%)",
-  green_dark: "hsl(142 71% 30%)",
-  yellow_dark: "hsl(48 96% 38%)",
-  orange_dark: "hsl(25 95% 38%)",
-  red_dark: "hsl(0 84% 45%)",
-  purple_dark: "hsl(263 70% 35%)",
-  blue_dark: "hsl(217 91% 45%)",
+  red: "hsl(354 100% 44%)",
 };
 
-interface TrelloBoard {
-  id: string;
-  name: string;
-  url: string;
-  dateLastActivity: string | null;
+function notionColor(color: string | undefined): string {
+  return NOTION_COLORS[color || "default"] || NOTION_COLORS.default;
 }
 
-interface TrelloMember {
-  id: string;
-  fullName: string;
-  initials: string;
-  avatarUrl: string | null;
-}
-
-interface TrelloLabel {
-  id: string;
-  name: string;
-  color: string;
-}
-
-interface TrelloCard {
-  id: string;
-  name: string;
-  desc: string;
-  due: string | null;
-  dueComplete: boolean;
-  url: string;
-  labels: TrelloLabel[];
-  members: TrelloMember[];
-}
-
-interface TrelloList {
-  id: string;
-  name: string;
-  cards: TrelloCard[];
-}
-
-export default function Planning() {
-  const [boards, setBoards] = useState<TrelloBoard[]>([]);
-  const [selectedBoard, setSelectedBoard] = useState<string>("");
-  const [lists, setLists] = useState<TrelloList[]>([]);
-  const [loadingBoards, setLoadingBoards] = useState(true);
-  const [loadingLists, setLoadingLists] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const apiFetch = useCallback(async (params: Record<string, string> = {}) => {
-    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    const qs = new URLSearchParams(params);
-    const res = await fetch(
-      `https://${projectId}.supabase.co/functions/v1/trello-boards?${qs}`,
-      { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
+// ── Planning Table ──
+function PlanningTable({ tasks, loading, error }: { tasks: NotionTask[]; loading: boolean; error: string | null }) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-sm text-muted-foreground font-semibold">Cargando tareas…</span>
+      </div>
     );
-    if (!res.ok) throw new Error(`Error ${res.status}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    return data;
-  }, []);
+  }
 
-  // Fetch boards on mount
-  useEffect(() => {
-    (async () => {
-      setLoadingBoards(true);
-      setError(null);
-      try {
-        const data = await apiFetch();
-        setBoards(data.boards || []);
-        if (data.boards?.length > 0) {
-          setSelectedBoard(data.boards[0].id);
-        }
-      } catch (e: any) {
-        setError(e.message);
-      } finally {
-        setLoadingBoards(false);
-      }
-    })();
-  }, [apiFetch]);
+  if (error) {
+    return (
+      <div className="bg-[hsl(var(--status-error)/0.1)] border border-[hsl(var(--status-error)/0.2)] rounded-lg p-4">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-[hsl(var(--status-error))]" />
+          <p className="text-sm font-bold text-[hsl(var(--status-error))]">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
-  // Fetch lists when board changes
-  useEffect(() => {
-    if (!selectedBoard) return;
-    (async () => {
-      setLoadingLists(true);
-      setError(null);
-      try {
-        const data = await apiFetch({ board_id: selectedBoard });
-        setLists(data.lists || []);
-      } catch (e: any) {
-        setError(e.message);
-      } finally {
-        setLoadingLists(false);
-      }
-    })();
-  }, [selectedBoard, apiFetch]);
+  if (tasks.length === 0) {
+    return (
+      <div className="text-center py-20 text-muted-foreground">
+        <Table className="h-10 w-10 mx-auto mb-3 opacity-40" />
+        <p className="text-sm font-semibold">No hay tareas en esta fuente</p>
+      </div>
+    );
+  }
 
-  const isOverdue = (due: string | null, dueComplete: boolean) => {
-    if (!due || dueComplete) return false;
-    return new Date(due) < new Date();
+  return (
+    <div className="kpi-card overflow-hidden animate-fade-in">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Tarea</th>
+              <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Estado</th>
+              <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Prioridad</th>
+              <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Responsable</th>
+              <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Fecha</th>
+              <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Fuente</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tasks.map((task) => (
+              <tr key={task.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                <td className="py-3 px-4">
+                  <a
+                    href={task.notion_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold hover:text-primary transition-colors leading-snug"
+                  >
+                    {task.name || "Sin título"}
+                  </a>
+                  {task.area && (
+                    <span className="ml-2 text-[11px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">{task.area}</span>
+                  )}
+                </td>
+                <td className="py-3 px-4">
+                  {task.status ? (
+                    <span
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-2.5 py-1"
+                      style={{ backgroundColor: `${notionColor(task.status.color)}20`, color: notionColor(task.status.color) }}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: notionColor(task.status.color) }} />
+                      {task.status.name}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </td>
+                <td className="py-3 px-4">
+                  {task.priority ? (
+                    <span
+                      className="text-xs font-semibold rounded px-2 py-0.5"
+                      style={{ backgroundColor: `${notionColor(task.priority.color)}20`, color: notionColor(task.priority.color) }}
+                    >
+                      {task.priority.name}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </td>
+                <td className="py-3 px-4">
+                  {task.assignee.length > 0 ? (
+                    <div className="flex items-center gap-1.5">
+                      {task.assignee.slice(0, 3).map((a, i) =>
+                        a.avatar_url ? (
+                          <img key={i} src={a.avatar_url} alt={a.name} title={a.name} className="w-6 h-6 rounded-full border-2 border-card object-cover" />
+                        ) : (
+                          <span key={i} title={a.name} className="w-6 h-6 rounded-full bg-secondary text-secondary-foreground text-[10px] font-bold flex items-center justify-center border-2 border-card">
+                            {a.name?.charAt(0)?.toUpperCase() || "?"}
+                          </span>
+                        )
+                      )}
+                      {task.assignee.length > 3 && (
+                        <span className="text-[10px] text-muted-foreground font-semibold">+{task.assignee.length - 3}</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </td>
+                <td className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">
+                  {task.date?.start ? fmtDate(task.date.start) : "—"}
+                  {task.date?.end ? ` → ${fmtDate(task.date.end)}` : ""}
+                </td>
+                <td className="py-3 px-4 text-xs text-muted-foreground truncate max-w-[140px]" title={task.database_name}>
+                  {task.database_name}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Planning Calendar ──
+function PlanningCalendar({ tasks, loading, error }: { tasks: NotionTask[]; loading: boolean; error: string | null }) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-sm text-muted-foreground font-semibold">Cargando tareas…</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-[hsl(var(--status-error)/0.1)] border border-[hsl(var(--status-error)/0.2)] rounded-lg p-4">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-[hsl(var(--status-error))]" />
+          <p className="text-sm font-bold text-[hsl(var(--status-error))]">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const tasksWithDate = tasks.filter((t) => t.date?.start);
+  if (tasksWithDate.length === 0) {
+    return (
+      <div className="text-center py-20 text-muted-foreground">
+        <Calendar className="h-10 w-10 mx-auto mb-3 opacity-40" />
+        <p className="text-sm font-semibold">No hay tareas con fecha asignada</p>
+      </div>
+    );
+  }
+
+  // Group by week
+  const grouped: Record<string, NotionTask[]> = {};
+  for (const t of tasksWithDate) {
+    const d = new Date(t.date!.start!);
+    const weekStart = new Date(d);
+    weekStart.setDate(d.getDate() - d.getDay() + 1);
+    const key = weekStart.toISOString().slice(0, 10);
+    (grouped[key] ||= []).push(t);
+  }
+
+  const sortedWeeks = Object.keys(grouped).sort();
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {sortedWeeks.map((week) => (
+        <div key={week} className="kpi-card p-4">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+            Semana del {fmtDate(week)}
+          </h4>
+          <div className="space-y-2">
+            {grouped[week].sort((a, b) => (a.date!.start! > b.date!.start! ? 1 : -1)).map((task) => (
+              <a
+                key={task.id}
+                href={task.notion_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <span className="text-xs text-muted-foreground font-semibold whitespace-nowrap w-16">
+                  {fmtDate(task.date!.start!)}
+                </span>
+                {task.status && (
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: notionColor(task.status.color) }} />
+                )}
+                <span className="text-sm font-semibold truncate flex-1">{task.name}</span>
+                {task.assignee.length > 0 && (
+                  <div className="flex -space-x-1">
+                    {task.assignee.slice(0, 2).map((a, i) =>
+                      a.avatar_url ? (
+                        <img key={i} src={a.avatar_url} alt={a.name} className="w-5 h-5 rounded-full border border-card" />
+                      ) : (
+                        <span key={i} className="w-5 h-5 rounded-full bg-secondary text-secondary-foreground text-[9px] font-bold flex items-center justify-center border border-card">
+                          {a.name?.charAt(0)?.toUpperCase() || "?"}
+                        </span>
+                      )
+                    )}
+                  </div>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Helpers ──
+function fmtDate(d: string) {
+  const date = new Date(d);
+  return date.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+}
+
+// ── Page ──
+export default function Planning() {
+  const { databases, loading: loadingDbs, error: dbError, refetch: refetchDbs } = usePlanningDatabases();
+  const [selectedSource, setSelectedSource] = useState<string>("all");
+  const [view, setView] = useState<"tabla" | "calendario">("tabla");
+  const { tasks, loading: loadingTasks, error: taskError, refetch: refetchTasks } = usePlanningTasks(selectedSource, databases);
+  const [syncing, setSyncing] = useState(false);
+
+  const isTokenError = (msg: string | null) =>
+    msg && (msg.toLowerCase().includes("401") || msg.toLowerCase().includes("unauthorized"));
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await refetchDbs();
+      await refetchTasks();
+      toast.success("Sincronización completada");
+    } catch {
+      toast.error("Error al sincronizar");
+    } finally {
+      setSyncing(false);
+    }
   };
 
-  const fmtDate = (d: string) => {
-    const date = new Date(d);
-    return date.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
-  };
+  const selectedDb = databases.find((d) => d.id === selectedSource);
 
-  const selectedBoardData = boards.find((b) => b.id === selectedBoard);
+  // ── Token error ──
+  if (dbError && isTokenError(dbError)) {
+    return (
+      <div className="space-y-6">
+        <Header />
+        <div className="kpi-card p-8 text-center animate-fade-in">
+          <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-[hsl(var(--status-error))]" />
+          <h3 className="text-base font-bold mb-1">Token de Notion inválido</h3>
+          <p className="text-sm text-muted-foreground">Verifica que NOTION_TOKEN esté configurado correctamente en los Secrets del proyecto.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Loading databases ──
+  if (loadingDbs) {
+    return (
+      <div className="space-y-6">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-3 text-sm text-muted-foreground font-semibold">Cargando fuentes de Notion…</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Error loading databases ──
+  if (dbError) {
+    return (
+      <div className="space-y-6">
+        <Header />
+        <div className="kpi-card p-8 text-center animate-fade-in">
+          <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-[hsl(var(--status-error))]" />
+          <p className="text-sm font-bold text-[hsl(var(--status-error))] mb-3">{dbError}</p>
+          <button onClick={refetchDbs} className="text-xs font-semibold text-primary hover:underline">Reintentar</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── No databases ──
+  if (databases.length === 0) {
+    return (
+      <div className="space-y-6">
+        <Header />
+        <div className="kpi-card p-8 text-center animate-fade-in">
+          <Database className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          <h3 className="text-base font-bold mb-1">No hay fuentes compartidas</h3>
+          <p className="text-sm text-muted-foreground">Comparte al menos una base de datos de Notion con la integración para comenzar.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h2 className="text-2xl font-black tracking-tight">Planning</h2>
+        <div>
+          <h2 className="text-2xl font-black tracking-tight">Planning</h2>
+          <p className="text-sm text-muted-foreground">Visor de tareas sincronizado con Notion</p>
+        </div>
         <div className="flex items-center gap-3">
-          {!loadingBoards && boards.length > 0 && (
-            <select
-              value={selectedBoard}
-              onChange={(e) => setSelectedBoard(e.target.value)}
-              className="text-sm border border-border rounded-md px-3 py-2 bg-card font-semibold max-w-xs truncate"
-            >
-              {boards.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          )}
-          {selectedBoardData && (
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
+            Sincronizar
+          </button>
+          {selectedDb && (
             <a
-              href={selectedBoardData.url}
+              href={selectedDb.url}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ExternalLink className="h-3.5 w-3.5" /> Abrir en Trello
+              <ExternalLink className="h-3.5 w-3.5" /> Abrir en Notion
             </a>
           )}
         </div>
       </div>
 
-      {/* Loading */}
-      {(loadingBoards || loadingLists) && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-3 text-sm text-muted-foreground font-semibold">
-            {loadingBoards ? "Cargando tableros…" : "Cargando tarjetas…"}
-          </span>
-        </div>
-      )}
-
-      {/* Error */}
-      {error && !loadingBoards && !loadingLists && (
-        <div className="bg-status-error/10 border border-status-error/20 rounded-lg p-4">
-          <p className="text-sm font-bold text-status-error">{error}</p>
-        </div>
-      )}
-
-      {/* Board columns */}
-      {!loadingBoards && !loadingLists && !error && lists.length > 0 && (
-        <div className="flex gap-4 overflow-x-auto pb-4 animate-fade-in">
-          {lists.map((list) => (
-            <div
-              key={list.id}
-              className="bg-muted/50 rounded-lg p-4 min-w-[300px] max-w-[340px] flex-shrink-0"
+      {/* Source selector + view toggle */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+          <button
+            onClick={() => setSelectedSource("all")}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+              selectedSource === "all" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Todas las fuentes
+          </button>
+          {databases.map((db) => (
+            <button
+              key={db.id}
+              onClick={() => setSelectedSource(db.id)}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors truncate max-w-[160px] ${
+                selectedSource === db.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+              title={db.name}
             >
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center justify-between">
-                <span>{list.name}</span>
-                <span className="bg-muted rounded-full px-2 py-0.5 text-[10px]">{list.cards.length}</span>
-              </h3>
-              <div className="space-y-3 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
-                {list.cards.map((card) => {
-                  const overdue = isOverdue(card.due, card.dueComplete);
-                  return (
-                    <a
-                      key={card.id}
-                      href={card.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block bg-card rounded-lg border border-border p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                    >
-                      {/* Labels */}
-                      {card.labels.length > 0 && (
-                        <div className="flex gap-1 mb-2 flex-wrap">
-                          {card.labels.map((label) => (
-                            <span
-                              key={label.id}
-                              className="h-1.5 rounded-full min-w-[32px]"
-                              style={{ backgroundColor: TRELLO_LABEL_COLORS[label.color] || "hsl(var(--muted-foreground))" }}
-                              title={label.name}
-                            />
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Title */}
-                      <p className="text-sm font-semibold mb-2 leading-snug">{card.name}</p>
-
-                      {/* Footer: due date + members */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          {card.due && (
-                            <span
-                              className={`inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 font-semibold ${
-                                card.dueComplete
-                                  ? "bg-[hsl(var(--status-success)/0.12)] text-[hsl(var(--status-success))]"
-                                  : overdue
-                                  ? "bg-[hsl(var(--status-error)/0.12)] text-[hsl(var(--status-error))]"
-                                  : "text-muted-foreground"
-                              }`}
-                            >
-                              {overdue && !card.dueComplete && <AlertTriangle className="h-3 w-3" />}
-                              <Calendar className="h-3 w-3" />
-                              {fmtDate(card.due)}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Members */}
-                        {card.members.length > 0 && (
-                          <div className="flex -space-x-1.5">
-                            {card.members.slice(0, 3).map((m) =>
-                              m.avatarUrl ? (
-                                <img
-                                  key={m.id}
-                                  src={`${m.avatarUrl}/30.png`}
-                                  alt={m.fullName}
-                                  title={m.fullName}
-                                  className="w-6 h-6 rounded-full border-2 border-card object-cover"
-                                />
-                              ) : (
-                                <span
-                                  key={m.id}
-                                  title={m.fullName}
-                                  className="w-6 h-6 rounded-full bg-secondary text-secondary-foreground text-[10px] font-bold flex items-center justify-center border-2 border-card"
-                                >
-                                  {m.initials}
-                                </span>
-                              )
-                            )}
-                            {card.members.length > 3 && (
-                              <span className="w-6 h-6 rounded-full bg-muted text-muted-foreground text-[10px] font-bold flex items-center justify-center border-2 border-card">
-                                +{card.members.length - 3}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </a>
-                  );
-                })}
-
-                {list.cards.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-6">Sin tarjetas</p>
-                )}
-              </div>
-            </div>
+              {db.name}
+            </button>
           ))}
         </div>
-      )}
 
-      {/* Empty state */}
-      {!loadingBoards && !loadingLists && !error && lists.length === 0 && boards.length > 0 && (
-        <div className="text-center py-20 text-muted-foreground">
-          <Users className="h-10 w-10 mx-auto mb-3 opacity-40" />
-          <p className="text-sm font-semibold">Este tablero no tiene listas</p>
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+          <button
+            onClick={() => setView("tabla")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+              view === "tabla" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Table className="h-3.5 w-3.5" /> Tabla
+          </button>
+          <button
+            onClick={() => setView("calendario")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+              view === "calendario" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Calendar className="h-3.5 w-3.5" /> Calendario
+          </button>
         </div>
+      </div>
+
+      {/* Content */}
+      {view === "tabla" ? (
+        <PlanningTable tasks={tasks} loading={loadingTasks} error={taskError} />
+      ) : (
+        <PlanningCalendar tasks={tasks} loading={loadingTasks} error={taskError} />
       )}
+    </div>
+  );
+}
+
+// Extracted to avoid repeating in early-return states
+function Header() {
+  return (
+    <div>
+      <h2 className="text-2xl font-black tracking-tight">Planning</h2>
+      <p className="text-sm text-muted-foreground">Visor de tareas sincronizado con Notion</p>
     </div>
   );
 }
