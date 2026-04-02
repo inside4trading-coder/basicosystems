@@ -53,18 +53,21 @@ export default function ZadarmaWebPhone() {
 
       const { key, sipLogin } = data;
       if (typeof key !== "string" || !key.trim()) throw new Error("Invalid WebRTC key");
-      if (typeof sipLogin !== "string" || !/^\S+-\S+$/.test(sipLogin.trim())) throw new Error("Invalid SIP login");
+      if (typeof sipLogin !== "string" || !sipLogin.trim()) throw new Error("Invalid SIP login");
 
-      console.info("[WebPhone] Key obtained, loading scripts...");
+      console.info("[WebPhone] Key obtained (length:", key.length, "), SIP:", sipLogin);
+      console.info("[WebPhone] Loading scripts...");
       await loadScripts();
       await waitForWidgetFunction();
+      console.info("[WebPhone] Scripts loaded, zadarmaWidgetFn available");
       await waitForStableLayout();
 
       if (typeof window.zadarmaWidgetFn !== "function") throw new Error("zadarmaWidgetFn not found");
 
+      console.info("[WebPhone] Calling zadarmaWidgetFn with SIP:", sipLogin, "shape: square, lang: es, fixed: true, position:", WIDGET_POSITION);
       window.zadarmaWidgetFn(key, sipLogin, "square", "es", true, WIDGET_POSITION);
       await ensureWidgetPlacement();
-      console.info("[WebPhone] Widget initialized");
+      console.info("[WebPhone] Widget initialized successfully. Widget element:", document.getElementById(WIDGET_ROOT_ID));
     } catch (error) {
       console.error("[WebPhone] Error:", error);
     }
