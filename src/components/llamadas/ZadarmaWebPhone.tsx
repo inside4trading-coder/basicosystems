@@ -17,10 +17,10 @@ const SCRIPT_URLS = [
 ];
 
 function isPreviewEnvironment(): boolean {
-  const hostname = window.location.hostname;
+  const hostname = window.location.hostname.toLowerCase();
   return (
     hostname.includes("lovableproject.com") ||
-    hostname.includes("lovable.app") ||
+    hostname.startsWith("id-preview--") ||
     hostname.includes("localhost") ||
     hostname.includes("127.0.0.1") ||
     window.self !== window.top // iframe detection
