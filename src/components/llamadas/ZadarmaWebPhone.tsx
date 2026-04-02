@@ -246,7 +246,7 @@ function removeExistingWidget(container: HTMLDivElement | null): void {
 }
 
 function waitForNextPaint(): Promise<void> {
-  return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 }
 
 function waitForWidgetFunction(timeoutMs = 8000): Promise<void> {
