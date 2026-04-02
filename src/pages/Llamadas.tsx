@@ -354,7 +354,7 @@ export default function Llamadas() {
           </Card>
         </>
       )}
-      <ZadarmaWebPhone />
+      
     </div>
   );
 }
