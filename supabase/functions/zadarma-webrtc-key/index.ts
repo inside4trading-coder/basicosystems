@@ -44,8 +44,7 @@ Deno.serve(async (req) => {
     const paramsStr = httpBuildQuery(params);
     const md5Hash = md5(paramsStr);
     const signStr = apiMethod + paramsStr + md5Hash;
-    const sha1Hex = createHmac("sha1", zadarmaSecret).update(signStr).digest("hex");
-    const signature = btoa(sha1Hex);
+    const signature = createHmac("sha1", zadarmaSecret).update(signStr).digest("base64");
 
     const url = `https://api.zadarma.com${apiMethod}?${paramsStr}`;
 
