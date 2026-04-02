@@ -1,14 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, Loader2, Phone, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-
-type PhoneStatus = "loading" | "loading-scripts" | "initializing" | "ready" | "error" | "preview-blocked";
-
-interface PhoneState {
-  status: PhoneStatus;
-  message: string;
-}
+import { useCallback, useEffect, useRef } from "react";
 
 const SCRIPT_URLS = [
   "https://my.zadarma.com/webphoneWebRTCWidget/v8/js/loader-phone-lib.js",
@@ -16,7 +6,6 @@ const SCRIPT_URLS = [
 ];
 
 const WIDGET_ROOT_ID = "zdrmWPhI";
-const PUBLISHED_CALLS_URL = "https://basico-hub.lovable.app/llamadas";
 
 type ZadarmaWidgetFn = (
   key: string,
@@ -44,13 +33,11 @@ function isPreviewEnvironment(): boolean {
 }
 
 export default function ZadarmaWebPhone() {
-  const [state, setState] = useState<PhoneState>({ status: "loading", message: "Conectando teléfono..." });
   const initAttempted = useRef(false);
 
   const fetchKeyAndInit = useCallback(async () => {
     initAttempted.current = true;
     removeExistingWidget();
-    setState({ status: "loading", message: "Conectando teléfono..." });
 
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -61,41 +48,22 @@ export default function ZadarmaWebPhone() {
       });
 
       const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "No se pudo obtener la clave WebRTC");
-      }
+      if (!response.ok || !data.success) throw new Error(data.error || "WebRTC key error");
 
       const { key, sipLogin } = data;
-      if (typeof key !== "string" || !key.trim()) {
-        throw new Error("La clave WebRTC recibida no es válida");
-      }
+      if (typeof key !== "string" || !key.trim()) throw new Error("Invalid WebRTC key");
+      if (typeof sipLogin !== "string" || !/^\S+-\S+$/.test(sipLogin.trim())) throw new Error("Invalid SIP login");
 
-      if (!isFullSipLogin(sipLogin)) {
-        throw new Error("El login SIP recibido no es el login completo de la extensión PBX");
-      }
-
-      console.info("[WebPhone] WebRTC key obtained", { sipLogin, hasKey: true });
-
-      setState({ status: "loading-scripts", message: "Cargando scripts oficiales..." });
+      console.info("[WebPhone] Key obtained, loading scripts...");
       await loadScripts();
       await waitForWidgetFunction();
 
-      if (typeof window.zadarmaWidgetFn !== "function") {
-        throw new Error("zadarmaWidgetFn no encontrada después de cargar los scripts");
-      }
-
-      setState({ status: "initializing", message: "Inicializando teléfono..." });
+      if (typeof window.zadarmaWidgetFn !== "function") throw new Error("zadarmaWidgetFn not found");
 
       window.zadarmaWidgetFn(key, sipLogin, "square", "es", true, "{right:'10px',bottom:'5px'}");
-
-      setState({ status: "ready", message: "Widget disponible en pantalla — esquina inferior derecha" });
-      console.info("[WebPhone] Widget initialized — Zadarma handles its own DOM");
+      console.info("[WebPhone] Widget initialized");
     } catch (error) {
       console.error("[WebPhone] Error:", error);
-      setState({
-        status: "error",
-        message: error instanceof Error ? error.message : "No se pudo cargar el teléfono web",
-      });
     }
   }, []);
 
@@ -103,10 +71,7 @@ export default function ZadarmaWebPhone() {
     if (initAttempted.current) return;
 
     if (isPreviewEnvironment()) {
-      setState({
-        status: "preview-blocked",
-        message: `Las llamadas solo se ejecutan desde ${PUBLISHED_CALLS_URL}.`,
-      });
+      console.info("[WebPhone] Preview environment — skipping init");
       return;
     }
 
@@ -114,92 +79,24 @@ export default function ZadarmaWebPhone() {
 
     return () => {
       removeExistingWidget();
-      removeZadarmaScripts();
+      SCRIPT_URLS.forEach((url) => document.querySelector(`script[src="${url}"]`)?.remove());
     };
   }, [fetchKeyAndInit]);
 
-  const isLoading = state.status === "loading" || state.status === "loading-scripts" || state.status === "initializing";
-
-  return (
-    <Card className="w-full max-w-sm">
-      <CardContent className="flex items-center gap-3 p-4">
-        {isLoading && (
-          <>
-            <Loader2 className="h-5 w-5 shrink-0 animate-spin text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Teléfono web</p>
-              <p className="text-xs text-muted-foreground">{state.message}</p>
-            </div>
-          </>
-        )}
-
-        {state.status === "ready" && (
-          <>
-            <Phone className="h-5 w-5 shrink-0 text-primary" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Teléfono web activo</p>
-              <p className="text-xs text-muted-foreground">{state.message}</p>
-            </div>
-          </>
-        )}
-
-        {state.status === "error" && (
-          <>
-            <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Error</p>
-              <p className="text-xs text-muted-foreground">{state.message}</p>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="shrink-0 text-xs"
-              onClick={() => {
-                initAttempted.current = false;
-                fetchKeyAndInit();
-              }}
-            >
-              <RefreshCw className="mr-1 h-3 w-3" />
-              Reintentar
-            </Button>
-          </>
-        )}
-
-        {state.status === "preview-blocked" && (
-          <>
-            <Phone className="h-5 w-5 shrink-0 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Teléfono web</p>
-              <p className="text-xs text-muted-foreground">{state.message}</p>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function isFullSipLogin(value: unknown): value is string {
-  return typeof value === "string" && /^\S+-\S+$/.test(value.trim());
+  return null;
 }
 
 function removeExistingWidget(): void {
   document.getElementById(WIDGET_ROOT_ID)?.remove();
 }
 
-function removeZadarmaScripts(): void {
-  SCRIPT_URLS.forEach((url) => {
-    document.querySelector(`script[src="${url}"]`)?.remove();
-  });
-}
-
 function waitForWidgetFunction(timeoutMs = 8000): Promise<void> {
   return new Promise((resolve, reject) => {
-    const startedAt = Date.now();
+    const start = Date.now();
     const check = () => {
       if (typeof window.zadarmaWidgetFn === "function") { resolve(); return; }
-      if (Date.now() - startedAt >= timeoutMs) { reject(new Error("zadarmaWidgetFn no estuvo disponible a tiempo")); return; }
-      window.setTimeout(check, 100);
+      if (Date.now() - start >= timeoutMs) { reject(new Error("Widget function timeout")); return; }
+      setTimeout(check, 100);
     };
     check();
   });
@@ -208,27 +105,18 @@ function waitForWidgetFunction(timeoutMs = 8000): Promise<void> {
 function loadScripts(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (typeof window.zadarmaWidgetFn === "function") { resolve(); return; }
-
-    const timeout = window.setTimeout(() => {
-      reject(new Error("Timeout cargando scripts de Zadarma (15s)"));
-    }, 15000);
-
+    const timeout = setTimeout(() => reject(new Error("Script load timeout")), 15000);
     let loaded = 0;
     const loadNext = () => {
-      if (loaded >= SCRIPT_URLS.length) {
-        window.clearTimeout(timeout);
-        window.setTimeout(resolve, 500);
-        return;
-      }
+      if (loaded >= SCRIPT_URLS.length) { clearTimeout(timeout); setTimeout(resolve, 500); return; }
       const url = SCRIPT_URLS[loaded];
-      if (document.querySelector(`script[src="${url}"]`)) { loaded += 1; loadNext(); return; }
-
-      const script = document.createElement("script");
-      script.src = url;
-      script.async = false;
-      script.onload = () => { loaded += 1; loadNext(); };
-      script.onerror = () => { window.clearTimeout(timeout); reject(new Error(`Failed to load script: ${url}`)); };
-      document.head.appendChild(script);
+      if (document.querySelector(`script[src="${url}"]`)) { loaded++; loadNext(); return; }
+      const s = document.createElement("script");
+      s.src = url;
+      s.async = false;
+      s.onload = () => { loaded++; loadNext(); };
+      s.onerror = () => { clearTimeout(timeout); reject(new Error(`Failed: ${url}`)); };
+      document.head.appendChild(s);
     };
     loadNext();
   });
