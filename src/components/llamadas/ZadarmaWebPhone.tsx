@@ -16,6 +16,27 @@ const SCRIPT_URLS = [
   "https://my.zadarma.com/webphoneWebRTCWidget/v8/js/loader-phone-fn.js",
 ];
 
+const WIDGET_ROOT_ID = "zdrmWPhI";
+const WIDGET_POSITION = {
+  bottom: "0px",
+  right: "0px",
+};
+
+type ZadarmaWidgetFn = (
+  key: string,
+  sip: string,
+  shape: "square" | "circle",
+  lang: "ru" | "en" | "es" | "fr" | "de" | "pl" | "ua",
+  fixed: boolean,
+  position: { bottom?: string; top?: string; right?: string; left?: string },
+) => void;
+
+declare global {
+  interface Window {
+    zadarmaWidgetFn?: ZadarmaWidgetFn;
+  }
+}
+
 function isPreviewEnvironment(): boolean {
   const hostname = window.location.hostname.toLowerCase();
   return (
@@ -28,16 +49,17 @@ function isPreviewEnvironment(): boolean {
 }
 
 export default function ZadarmaWebPhone() {
-  const [state, setState] = useState<PhoneState>({ status: "loading", message: "Obteniendo clave WebRTC..." });
+  const [state, setState] = useState<PhoneState>({ status: "loading", message: "Conectando teléfono..." });
   const containerRef = useRef<HTMLDivElement>(null);
   const initAttempted = useRef(false);
+  const mountedRef = useRef(true);
 
   const fetchKeyAndInit = useCallback(async () => {
     initAttempted.current = true;
-    setState({ status: "loading", message: "Obteniendo clave WebRTC..." });
+    removeExistingWidget(containerRef.current);
+    setState({ status: "loading", message: "Conectando teléfono..." });
 
     try {
-      // 1. Fetch WebRTC key from edge function
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const res = await fetch(
         `https://${projectId}.supabase.co/functions/v1/zadarma-webrtc-key`,
@@ -54,22 +76,33 @@ export default function ZadarmaWebPhone() {
       }
 
       const { key, sipLogin } = data;
-      console.log("[WebPhone] WebRTC key obtained for SIP:", sipLogin);
+      if (typeof key !== "string" || !key.trim()) {
+        throw new Error("La clave WebRTC recibida no es válida");
+      }
 
-      // 2. Load external scripts
-      setState({ status: "loading-scripts", message: "Cargando scripts del teléfono..." });
+      if (!isFullSipLogin(sipLogin)) {
+        throw new Error("El login SIP recibido no es el login completo de la extensión PBX");
+      }
+
+      console.info("[WebPhone] WebRTC key obtained", {
+        sipLogin,
+        hasKey: true,
+        hostname: window.location.hostname,
+      });
+
+      setState({ status: "loading-scripts", message: "Conectando teléfono..." });
 
       try {
         await loadScripts();
-        console.log("[WebPhone] External scripts loaded");
+        await waitForWidgetFunction();
+        console.info("[WebPhone] External scripts loaded and widget function available");
       } catch (scriptErr) {
         console.warn("[WebPhone] Script loading failed:", scriptErr);
 
-        // Check if it's a preview environment blocking scripts
         if (isPreviewEnvironment()) {
           setState({
             status: "preview-blocked",
-            message: "El teléfono web no puede renderizarse en este entorno preview. Los scripts externos de Zadarma están bloqueados por restricciones de sandbox/iframe. Probar en entorno desplegado o compatible.",
+            message: "El teléfono web no puede renderizarse correctamente en este entorno preview de Lovable. Validar en entorno desplegado.",
           });
           return;
         }
@@ -77,8 +110,12 @@ export default function ZadarmaWebPhone() {
         throw new Error("No se pudieron cargar los scripts del teléfono web");
       }
 
-      // 3. Initialize the widget
-      setState({ status: "initializing", message: "Inicializando teléfono..." });
+      if (!containerRef.current) {
+        throw new Error("El contenedor del teléfono web no está disponible");
+      }
+
+      setState({ status: "initializing", message: "Conectando teléfono..." });
+      await waitForNextPaint();
 
       const win = window as unknown as Record<string, unknown>;
       if (typeof win.zadarmaWidgetFn !== "function") {
@@ -87,7 +124,7 @@ export default function ZadarmaWebPhone() {
         if (isPreviewEnvironment()) {
           setState({
             status: "preview-blocked",
-            message: "El teléfono web no puede renderizarse en este entorno preview. La función zadarmaWidgetFn no está disponible. Probar en entorno desplegado o compatible.",
+            message: "El teléfono web no puede renderizarse correctamente en este entorno preview de Lovable. Validar en entorno desplegado.",
           });
           return;
         }
@@ -95,37 +132,59 @@ export default function ZadarmaWebPhone() {
         throw new Error("zadarmaWidgetFn no encontrada después de cargar los scripts");
       }
 
-      // Call the widget initialization
-      (win.zadarmaWidgetFn as (config: Record<string, unknown>) => void)({
-        key,
-        sip: sipLogin,
-        lang: "es",
-        container: containerRef.current,
+      console.info("[WebPhone] Initializing widget", {
+        sipLogin,
+        position: WIDGET_POSITION,
       });
 
-      console.log("[WebPhone] Widget initialized successfully");
+      (win.zadarmaWidgetFn as ZadarmaWidgetFn)(
+        key,
+        sipLogin,
+        "square",
+        "es",
+        false,
+        WIDGET_POSITION,
+      );
+
+      const widgetElement = await waitForWidgetElement();
+
+      if (!containerRef.current) {
+        throw new Error("El contenedor del teléfono web dejó de estar disponible");
+      }
+
+      containerRef.current.replaceChildren(widgetElement);
+      widgetElement.style.margin = "0";
+      console.info("[WebPhone] Widget mounted successfully inside dashboard container");
+
       setState({ status: "ready", message: "Teléfono web listo" });
     } catch (err) {
       console.error("[WebPhone] Error:", err);
 
-      if (isPreviewEnvironment()) {
+      if (isPreviewEnvironment() && shouldTreatAsPreviewIssue(err)) {
         setState({
           status: "preview-blocked",
-          message: `El teléfono web no puede renderizarse en este entorno preview. ${err instanceof Error ? err.message : "Error desconocido"}. Probar en entorno desplegado o compatible.`,
+          message: "El teléfono web no puede renderizarse correctamente en este entorno preview de Lovable. Validar en entorno desplegado.",
         });
       } else {
         setState({
           status: "error",
-          message: err instanceof Error ? err.message : "Error desconocido al inicializar el teléfono",
+          message: "No se pudo cargar el teléfono web",
         });
       }
     }
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     if (!initAttempted.current) {
       fetchKeyAndInit();
     }
+
+    return () => {
+      mountedRef.current = false;
+      removeExistingWidget(containerRef.current);
+    };
   }, [fetchKeyAndInit]);
 
   const statusBadge = () => {
@@ -135,7 +194,7 @@ export default function ZadarmaWebPhone() {
       case "initializing":
         return <Badge variant="secondary" className="text-xs">Conectando</Badge>;
       case "ready":
-        return <Badge className="text-xs bg-green-600">Conectado</Badge>;
+        return <Badge className="text-xs">Conectado</Badge>;
       case "error":
         return <Badge variant="destructive" className="text-xs">Error</Badge>;
       case "preview-blocked":
@@ -155,72 +214,136 @@ export default function ZadarmaWebPhone() {
         </div>
       </CardHeader>
       <CardContent>
-        {/* Loading states */}
-        {(state.status === "loading" || state.status === "loading-scripts" || state.status === "initializing") && (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">{state.message}</p>
-          </div>
-        )}
+        <div className="relative min-h-[420px] overflow-hidden rounded-lg border border-border bg-muted/20">
+          <div
+            ref={containerRef}
+            id="zadarma-webphone-container"
+            className={state.status === "ready" ? "min-h-[420px]" : "min-h-[420px] opacity-0 pointer-events-none"}
+          />
 
-        {/* Error state */}
-        {state.status === "error" && (
-          <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
-            <AlertTriangle className="h-8 w-8 text-destructive" />
-            <p className="text-sm text-muted-foreground max-w-xs">{state.message}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                initAttempted.current = false;
-                fetchKeyAndInit();
-              }}
-            >
-              <RefreshCw className="h-4 w-4 mr-1" />
-              Reintentar
-            </Button>
-          </div>
-        )}
+          {(state.status === "loading" || state.status === "loading-scripts" || state.status === "initializing") && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center bg-background/80 backdrop-blur-sm">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">{state.message}</p>
+            </div>
+          )}
 
-        {/* Preview blocked state */}
-        {state.status === "preview-blocked" && (
-          <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
-            <Monitor className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground max-w-sm">{state.message}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                initAttempted.current = false;
-                fetchKeyAndInit();
-              }}
-            >
-              <RefreshCw className="h-4 w-4 mr-1" />
-              Reintentar
-            </Button>
-          </div>
-        )}
+          {state.status === "error" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center bg-background/90">
+              <AlertTriangle className="h-8 w-8 text-destructive" />
+              <p className="text-sm text-muted-foreground max-w-xs">{state.message}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  initAttempted.current = false;
+                  fetchKeyAndInit();
+                }}
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Reintentar
+              </Button>
+            </div>
+          )}
 
-        {/* Widget container - always mounted for the widget to attach to */}
-        <div
-          ref={containerRef}
-          id="zadarma-webphone-container"
-          className={
-            state.status === "ready"
-              ? "min-h-[400px]"
-              : state.status === "initializing" || state.status === "loading-scripts"
-                ? "min-h-[1px] opacity-0 overflow-hidden"
-                : "hidden"
-          }
-        />
+          {state.status === "preview-blocked" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center bg-background/90">
+              <Monitor className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground max-w-sm">{state.message}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  initAttempted.current = false;
+                  fetchKeyAndInit();
+                }}
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Reintentar
+              </Button>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-/** Load external scripts sequentially with timeout */
+function isFullSipLogin(value: unknown): value is string {
+  return typeof value === "string" && /^\S+-\S+$/.test(value.trim());
+}
+
+function shouldTreatAsPreviewIssue(error: unknown): boolean {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  return !message.includes("sip") && !message.includes("clave") && !message.includes("webrtc") && !message.includes("backend");
+}
+
+function removeExistingWidget(container: HTMLDivElement | null): void {
+  container?.replaceChildren();
+  document.getElementById(WIDGET_ROOT_ID)?.remove();
+}
+
+function waitForNextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
+function waitForWidgetFunction(timeoutMs = 8000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+
+    const check = () => {
+      if (typeof window.zadarmaWidgetFn === "function") {
+        resolve();
+        return;
+      }
+
+      if (Date.now() - startedAt >= timeoutMs) {
+        reject(new Error("zadarmaWidgetFn no estuvo disponible a tiempo"));
+        return;
+      }
+
+      window.setTimeout(check, 100);
+    };
+
+    check();
+  });
+}
+
+function waitForWidgetElement(timeoutMs = 8000): Promise<HTMLDivElement> {
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById(WIDGET_ROOT_ID);
+    if (existing instanceof HTMLDivElement) {
+      resolve(existing);
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      const widget = document.getElementById(WIDGET_ROOT_ID);
+      if (widget instanceof HTMLDivElement) {
+        window.clearTimeout(timeout);
+        observer.disconnect();
+        resolve(widget);
+      }
+    });
+
+    const timeout = window.setTimeout(() => {
+      observer.disconnect();
+      reject(new Error("El widget de Zadarma no se montó en el DOM a tiempo"));
+    }, timeoutMs);
+
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+}
+
 function loadScripts(): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (typeof window.zadarmaWidgetFn === "function") {
+      resolve();
+      return;
+    }
+
     const timeout = setTimeout(() => {
       reject(new Error("Timeout cargando scripts de Zadarma (15s)"));
     }, 15000);
