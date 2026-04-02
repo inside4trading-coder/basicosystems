@@ -15,7 +15,7 @@ const SCRIPT_URLS = [
 ];
 
 const WIDGET_ROOT_ID = "zdrmWPhI";
-const WIDGET_POSITION = { bottom: "0px", right: "0px" };
+const WIDGET_POSITION = { bottom: "5px", right: "10px" };
 const PUBLISHED_CALLS_URL = "https://basico-hub.lovable.app/llamadas";
 
 type ZadarmaWidgetFn = (
