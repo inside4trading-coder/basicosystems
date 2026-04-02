@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Phone, PhoneCall, PhoneOff, Clock, DollarSign, CheckCircle, Loader2, AlertTriangle, RefreshCw, Calendar } from "lucide-react";
-
+import ZadarmaWebPhone from "@/components/llamadas/ZadarmaWebPhone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -354,6 +354,7 @@ export default function Llamadas() {
           </Card>
         </>
       )}
+      <ZadarmaWebPhone />
     </div>
   );
 }

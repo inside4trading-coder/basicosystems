@@ -2,7 +2,6 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import ZadarmaWebPhone from "@/components/llamadas/ZadarmaWebPhone";
 
 export function AppLayout() {
   const { role } = useAuth();
@@ -23,7 +22,6 @@ export function AppLayout() {
             <Outlet />
           </main>
         </div>
-        <ZadarmaWebPhone />
       </div>
     </SidebarProvider>
   );
