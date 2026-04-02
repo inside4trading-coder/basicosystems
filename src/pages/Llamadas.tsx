@@ -141,8 +141,6 @@ export default function Llamadas() {
         <p className="text-muted-foreground text-sm">Seguimiento y análisis de llamadas del equipo</p>
       </div>
 
-      {/* Web Phone */}
-      <ZadarmaWebPhone />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">

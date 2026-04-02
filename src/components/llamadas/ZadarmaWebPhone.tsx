@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Phone, Loader2, AlertTriangle, RefreshCw, Monitor } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Phone, Loader2, AlertTriangle, RefreshCw, Monitor, X, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 type PhoneStatus = "loading" | "loading-scripts" | "initializing" | "ready" | "error" | "preview-blocked";
 
@@ -44,12 +42,13 @@ function isPreviewEnvironment(): boolean {
     hostname.startsWith("id-preview--") ||
     hostname.includes("localhost") ||
     hostname.includes("127.0.0.1") ||
-    window.self !== window.top // iframe detection
+    window.self !== window.top
   );
 }
 
 export default function ZadarmaWebPhone() {
   const [state, setState] = useState<PhoneState>({ status: "loading", message: "Conectando teléfono..." });
+  const [expanded, setExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const initAttempted = useRef(false);
   const mountedRef = useRef(true);
@@ -84,190 +83,150 @@ export default function ZadarmaWebPhone() {
         throw new Error("El login SIP recibido no es el login completo de la extensión PBX");
       }
 
-      console.info("[WebPhone] WebRTC key obtained", {
-        sipLogin,
-        hasKey: true,
-        hostname: window.location.hostname,
-      });
+      console.info("[WebPhone] WebRTC key obtained", { sipLogin, hasKey: true });
 
       setState({ status: "loading-scripts", message: "Conectando teléfono..." });
 
       try {
         await loadScripts();
         await waitForWidgetFunction();
-        console.info("[WebPhone] External scripts loaded and widget function available");
       } catch (scriptErr) {
         console.warn("[WebPhone] Script loading failed:", scriptErr);
-
         if (isPreviewEnvironment()) {
-          setState({
-            status: "preview-blocked",
-            message: "El teléfono web no puede renderizarse correctamente en este entorno preview de Lovable. Validar en entorno desplegado.",
-          });
+          setState({ status: "preview-blocked", message: "El teléfono web no puede renderizarse en este entorno preview." });
           return;
         }
-
         throw new Error("No se pudieron cargar los scripts del teléfono web");
       }
 
-      if (!containerRef.current) {
-        throw new Error("El contenedor del teléfono web no está disponible");
-      }
+      if (!containerRef.current) throw new Error("Contenedor no disponible");
 
       setState({ status: "initializing", message: "Conectando teléfono..." });
       await waitForNextPaint();
 
-      const win = window as unknown as Record<string, unknown>;
-      if (typeof win.zadarmaWidgetFn !== "function") {
-        console.error("[WebPhone] zadarmaWidgetFn not found on window after script load");
-
+      if (typeof window.zadarmaWidgetFn !== "function") {
         if (isPreviewEnvironment()) {
-          setState({
-            status: "preview-blocked",
-            message: "El teléfono web no puede renderizarse correctamente en este entorno preview de Lovable. Validar en entorno desplegado.",
-          });
+          setState({ status: "preview-blocked", message: "El teléfono web no puede renderizarse en este entorno preview." });
           return;
         }
-
-        throw new Error("zadarmaWidgetFn no encontrada después de cargar los scripts");
+        throw new Error("zadarmaWidgetFn no encontrada");
       }
 
-      console.info("[WebPhone] Initializing widget", {
-        sipLogin,
-        position: WIDGET_POSITION,
-      });
-
-      (win.zadarmaWidgetFn as ZadarmaWidgetFn)(
-        key,
-        sipLogin,
-        "square",
-        "es",
-        false,
-        WIDGET_POSITION,
-      );
+      (window.zadarmaWidgetFn as ZadarmaWidgetFn)(key, sipLogin, "square", "es", false, WIDGET_POSITION);
 
       const widgetElement = await waitForWidgetElement();
-
-      if (!containerRef.current) {
-        throw new Error("El contenedor del teléfono web dejó de estar disponible");
-      }
+      if (!containerRef.current) throw new Error("Contenedor no disponible");
 
       containerRef.current.replaceChildren(widgetElement);
       widgetElement.style.margin = "0";
-      console.info("[WebPhone] Widget mounted successfully inside dashboard container");
 
       setState({ status: "ready", message: "Teléfono web listo" });
     } catch (err) {
       console.error("[WebPhone] Error:", err);
-
       if (isPreviewEnvironment() && shouldTreatAsPreviewIssue(err)) {
-        setState({
-          status: "preview-blocked",
-          message: "El teléfono web no puede renderizarse correctamente en este entorno preview de Lovable. Validar en entorno desplegado.",
-        });
+        setState({ status: "preview-blocked", message: "El teléfono web no puede renderizarse en este entorno preview." });
       } else {
-        setState({
-          status: "error",
-          message: "No se pudo cargar el teléfono web",
-        });
+        setState({ status: "error", message: "No se pudo cargar el teléfono web" });
       }
     }
   }, []);
 
   useEffect(() => {
     mountedRef.current = true;
-
-    if (!initAttempted.current) {
-      fetchKeyAndInit();
-    }
-
+    if (!initAttempted.current) fetchKeyAndInit();
     return () => {
       mountedRef.current = false;
       removeExistingWidget(containerRef.current);
     };
   }, [fetchKeyAndInit]);
 
-  const statusBadge = () => {
+  const statusDot = () => {
     switch (state.status) {
       case "loading":
       case "loading-scripts":
       case "initializing":
-        return <Badge variant="secondary" className="text-xs">Conectando</Badge>;
+        return "bg-yellow-400 animate-pulse";
       case "ready":
-        return <Badge className="text-xs">Conectado</Badge>;
+        return "bg-green-500";
       case "error":
-        return <Badge variant="destructive" className="text-xs">Error</Badge>;
+        return "bg-destructive";
       case "preview-blocked":
-        return <Badge variant="outline" className="text-xs">Preview</Badge>;
+        return "bg-muted-foreground";
     }
   };
 
+  const isLoading = state.status === "loading" || state.status === "loading-scripts" || state.status === "initializing";
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-            <Phone className="h-4 w-4" />
-            Teléfono web
-          </CardTitle>
-          {statusBadge()}
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
+      {/* Expanded panel */}
+      {expanded && (
+        <div className="w-[320px] rounded-xl border border-border bg-card shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
+          {/* Panel header */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/50">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Phone className="h-3.5 w-3.5" />
+              Teléfono web
+            </div>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setExpanded(false)}>
+              <Minimize2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+
+          {/* Widget container */}
+          <div className="relative min-h-[420px] bg-muted/20">
+            <div
+              ref={containerRef}
+              id="zadarma-webphone-container"
+              className={state.status === "ready" ? "min-h-[420px]" : "min-h-[420px] opacity-0 pointer-events-none"}
+            />
+
+            {isLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center bg-background/80 backdrop-blur-sm">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">{state.message}</p>
+              </div>
+            )}
+
+            {state.status === "error" && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center bg-background/90">
+                <AlertTriangle className="h-6 w-6 text-destructive" />
+                <p className="text-xs text-muted-foreground max-w-xs">{state.message}</p>
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => { initAttempted.current = false; fetchKeyAndInit(); }}>
+                  <RefreshCw className="h-3 w-3 mr-1" /> Reintentar
+                </Button>
+              </div>
+            )}
+
+            {state.status === "preview-blocked" && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center bg-background/90">
+                <Monitor className="h-6 w-6 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground max-w-[260px]">{state.message}</p>
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => { initAttempted.current = false; fetchKeyAndInit(); }}>
+                  <RefreshCw className="h-3 w-3 mr-1" /> Reintentar
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="relative min-h-[420px] overflow-hidden rounded-lg border border-border bg-muted/20">
-          <div
-            ref={containerRef}
-            id="zadarma-webphone-container"
-            className={state.status === "ready" ? "min-h-[420px]" : "min-h-[420px] opacity-0 pointer-events-none"}
-          />
+      )}
 
-          {(state.status === "loading" || state.status === "loading-scripts" || state.status === "initializing") && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center bg-background/80 backdrop-blur-sm">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">{state.message}</p>
-            </div>
-          )}
-
-          {state.status === "error" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center bg-background/90">
-              <AlertTriangle className="h-8 w-8 text-destructive" />
-              <p className="text-sm text-muted-foreground max-w-xs">{state.message}</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  initAttempted.current = false;
-                  fetchKeyAndInit();
-                }}
-              >
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Reintentar
-              </Button>
-            </div>
-          )}
-
-          {state.status === "preview-blocked" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center bg-background/90">
-              <Monitor className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground max-w-sm">{state.message}</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  initAttempted.current = false;
-                  fetchKeyAndInit();
-                }}
-              >
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Reintentar
-              </Button>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      {/* FAB button */}
+      <Button
+        onClick={() => setExpanded(!expanded)}
+        className="h-14 w-14 rounded-full shadow-lg relative"
+        variant={expanded ? "secondary" : "default"}
+        size="icon"
+      >
+        {expanded ? <X className="h-5 w-5" /> : <Phone className="h-5 w-5" />}
+        {/* Status dot */}
+        <span className={`absolute top-0 right-0 h-3 w-3 rounded-full border-2 border-card ${statusDot()}`} />
+      </Button>
+    </div>
   );
 }
+
+// --- helpers (unchanged logic) ---
 
 function isFullSipLogin(value: unknown): value is string {
   return typeof value === "string" && /^\S+-\S+$/.test(value.trim());
@@ -292,21 +251,11 @@ function waitForNextPaint(): Promise<void> {
 function waitForWidgetFunction(timeoutMs = 8000): Promise<void> {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
-
     const check = () => {
-      if (typeof window.zadarmaWidgetFn === "function") {
-        resolve();
-        return;
-      }
-
-      if (Date.now() - startedAt >= timeoutMs) {
-        reject(new Error("zadarmaWidgetFn no estuvo disponible a tiempo"));
-        return;
-      }
-
+      if (typeof window.zadarmaWidgetFn === "function") { resolve(); return; }
+      if (Date.now() - startedAt >= timeoutMs) { reject(new Error("zadarmaWidgetFn timeout")); return; }
       window.setTimeout(check, 100);
     };
-
     check();
   });
 }
@@ -314,10 +263,7 @@ function waitForWidgetFunction(timeoutMs = 8000): Promise<void> {
 function waitForWidgetElement(timeoutMs = 8000): Promise<HTMLDivElement> {
   return new Promise((resolve, reject) => {
     const existing = document.getElementById(WIDGET_ROOT_ID);
-    if (existing instanceof HTMLDivElement) {
-      resolve(existing);
-      return;
-    }
+    if (existing instanceof HTMLDivElement) { resolve(existing); return; }
 
     const observer = new MutationObserver(() => {
       const widget = document.getElementById(WIDGET_ROOT_ID);
@@ -330,7 +276,7 @@ function waitForWidgetElement(timeoutMs = 8000): Promise<HTMLDivElement> {
 
     const timeout = window.setTimeout(() => {
       observer.disconnect();
-      reject(new Error("El widget de Zadarma no se montó en el DOM a tiempo"));
+      reject(new Error("Widget Zadarma no se montó a tiempo"));
     }, timeoutMs);
 
     observer.observe(document.body, { childList: true, subtree: true });
@@ -339,49 +285,27 @@ function waitForWidgetElement(timeoutMs = 8000): Promise<HTMLDivElement> {
 
 function loadScripts(): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (typeof window.zadarmaWidgetFn === "function") {
-      resolve();
-      return;
-    }
+    if (typeof window.zadarmaWidgetFn === "function") { resolve(); return; }
 
-    const timeout = setTimeout(() => {
-      reject(new Error("Timeout cargando scripts de Zadarma (15s)"));
-    }, 15000);
-
+    const timeout = setTimeout(() => reject(new Error("Timeout scripts Zadarma")), 15000);
     let loaded = 0;
 
     function loadNext() {
       if (loaded >= SCRIPT_URLS.length) {
         clearTimeout(timeout);
-        // Give scripts a moment to initialize
         setTimeout(resolve, 500);
         return;
       }
-
       const url = SCRIPT_URLS[loaded];
-
-      // Check if already loaded
-      if (document.querySelector(`script[src="${url}"]`)) {
-        loaded++;
-        loadNext();
-        return;
-      }
+      if (document.querySelector(`script[src="${url}"]`)) { loaded++; loadNext(); return; }
 
       const script = document.createElement("script");
       script.src = url;
       script.async = false;
-      script.onload = () => {
-        console.log(`[WebPhone] Script loaded: ${url}`);
-        loaded++;
-        loadNext();
-      };
-      script.onerror = (e) => {
-        clearTimeout(timeout);
-        reject(new Error(`Failed to load script: ${url}`));
-      };
+      script.onload = () => { loaded++; loadNext(); };
+      script.onerror = () => { clearTimeout(timeout); reject(new Error(`Failed to load: ${url}`)); };
       document.head.appendChild(script);
     }
-
     loadNext();
   });
 }

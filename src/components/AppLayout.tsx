@@ -23,6 +23,7 @@ export function AppLayout() {
             <Outlet />
           </main>
         </div>
+        <ZadarmaWebPhone />
       </div>
     </SidebarProvider>
   );
