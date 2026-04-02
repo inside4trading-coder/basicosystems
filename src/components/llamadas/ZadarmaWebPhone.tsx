@@ -205,7 +205,13 @@ export default function ZadarmaWebPhone() {
         <div
           ref={containerRef}
           id="zadarma-webphone-container"
-          className={state.status === "ready" ? "min-h-[400px]" : "hidden"}
+          className={
+            state.status === "ready"
+              ? "min-h-[400px]"
+              : state.status === "initializing" || state.status === "loading-scripts"
+                ? "min-h-[1px] opacity-0 overflow-hidden"
+                : "hidden"
+          }
         />
       </CardContent>
     </Card>
