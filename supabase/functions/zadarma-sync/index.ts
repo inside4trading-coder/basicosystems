@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const zadarmaTimeZone = Deno.env.get("ZADARMA_TIMEZONE") ?? "Europe/Madrid";
 
 function md5(data: string): string {
   return createHash("md5").update(data).digest("hex");
@@ -21,13 +22,69 @@ function httpBuildQuery(params: Record<string, string>): string {
   return new URLSearchParams(sorted).toString().replace(/%20/g, "+");
 }
 
-function zadarmaSign(method: string, params: Record<string, string>, secret: string): string {
-  const paramsStr = httpBuildQuery(params);
-  const md5Hash = md5(paramsStr);
-  const signStr = method + paramsStr + md5Hash;
-  // Official SDK: hex digest then base64-encode the hex string
-  const sha1Hex = createHmac("sha1", secret).update(signStr).digest("hex");
-  return btoa(sha1Hex);
+function getTimeZoneOffsetMinutes(date: Date, timeZone: string): number {
+  const offsetPart = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    timeZoneName: "shortOffset",
+  }).formatToParts(date).find((part) => part.type === "timeZoneName")?.value;
+
+  if (!offsetPart || offsetPart === "GMT") return 0;
+
+  const match = offsetPart.match(/^GMT([+-])(\d{1,2})(?::?(\d{2}))?$/);
+  if (!match) return 0;
+
+  const [, sign, hours, minutes] = match;
+  const totalMinutes = Number(hours) * 60 + Number(minutes || 0);
+  return sign === "+" ? totalMinutes : -totalMinutes;
+}
+
+function normalizeIncomingUtcString(value: string): Date {
+  const normalized = value.includes("T")
+    ? value
+    : value.replace(" ", "T");
+
+  return new Date(normalized.endsWith("Z") ? normalized : `${normalized}Z`);
+}
+
+function formatForZadarma(value: string, timeZone: string): string {
+  const date = normalizeIncomingUtcString(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid datetime received: ${value}`);
+  }
+
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const map = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  return `${map.year}-${map.month}-${map.day} ${map.hour}:${map.minute}:${map.second}`;
+}
+
+function parseZadarmaDateTime(value: unknown, timeZone: string): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
+  if (!match) return null;
+
+  const [, year, month, day, hour, minute, second] = match;
+  const assumedUtcMs = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second),
+  );
+
+  const offsetMinutes = getTimeZoneOffsetMinutes(new Date(assumedUtcMs), timeZone);
+  return new Date(assumedUtcMs - offsetMinutes * 60_000).toISOString();
 }
 
 async function zadarmaRequest(
@@ -56,13 +113,6 @@ async function zadarmaRequest(
     throw new Error(`Zadarma API error ${res.status}: ${text}`);
   }
   return res.json();
-}
-
-function mapDirection(disposition: string | undefined, clid: string | undefined): string {
-  if (disposition === "answered" || !disposition) {
-    // Check if incoming based on other fields
-  }
-  return "outgoing"; // default
 }
 
 function mapStatus(disposition: string | undefined, seconds: number): string {
@@ -97,10 +147,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch PBX statistics from Zadarma
+    const zadarmaStart = formatForZadarma(start, zadarmaTimeZone);
+    const zadarmaEnd = formatForZadarma(end, zadarmaTimeZone);
+
     const params: Record<string, string> = {
-      start,
-      end,
+      start: zadarmaStart,
+      end: zadarmaEnd,
       format: "json",
       version: "2",
     };
@@ -114,34 +166,30 @@ Deno.serve(async (req) => {
     const stats = data.stats || [];
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch SIP agent mappings
     const { data: sipAgents } = await supabase.from("sip_agents").select("sip_id, agent_name");
     const sipMap: Record<string, string> = {};
     (sipAgents || []).forEach((a: { sip_id: string; agent_name: string }) => {
       sipMap[a.sip_id] = a.agent_name;
     });
 
-    // Transform and upsert calls
     const calls = stats.map((s: Record<string, unknown>) => {
       const sip = String(s.sip || s.internal || "");
       const callId = String(s.call_id || s.pbx_call_id || s.id || `${s.callstart}_${sip}`);
       const seconds = Number(s.seconds || s.duration || 0);
       const talkSeconds = Number(s.talk_seconds || s.billseconds || seconds);
 
-      // Determine direction
       let direction = "outgoing";
       if (s.calltype === "IN_CALLS" || s.call_type === "incoming" || s.disposition === "incoming") {
         direction = "incoming";
       } else if (s.clid && s.destination) {
-        // If clid looks like external number and destination is a SIP, it's incoming
         if (String(s.destination).length <= 4) direction = "incoming";
       }
 
       return {
         call_id: callId,
         pbx_call_id: String(s.pbx_call_id || ""),
-        call_start: s.callstart || s.call_start || null,
-        call_end: s.callend || null,
+        call_start: parseZadarmaDateTime(s.callstart || s.call_start, zadarmaTimeZone),
+        call_end: parseZadarmaDateTime(s.callend, zadarmaTimeZone),
         caller: String(s.clid || s.caller_id || s.from || ""),
         destination: String(s.destination || s.called_did || s.to || ""),
         direction,
@@ -159,7 +207,6 @@ Deno.serve(async (req) => {
     });
 
     if (calls.length > 0) {
-      // Upsert in batches of 500
       for (let i = 0; i < calls.length; i += 500) {
         const batch = calls.slice(i, i + 500);
         const { error: upsertError } = await supabase
