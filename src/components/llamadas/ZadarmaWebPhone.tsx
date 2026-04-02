@@ -47,7 +47,7 @@ function isPreviewEnvironment(): boolean {
 export default function ZadarmaWebPhone() {
   const [state, setState] = useState<PhoneState>({ status: "idle", message: "" });
   const [expanded, setExpanded] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const initAttempted = useRef(false);
   const initAttempted = useRef(false);
   const previewEnvironment = isPreviewEnvironment();
 
