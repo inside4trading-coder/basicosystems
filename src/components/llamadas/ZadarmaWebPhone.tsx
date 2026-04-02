@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Loader2, Monitor, Phone, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -48,12 +48,11 @@ export default function ZadarmaWebPhone() {
   const [state, setState] = useState<PhoneState>({ status: "idle", message: "" });
   const [expanded, setExpanded] = useState(false);
   const initAttempted = useRef(false);
-  const initAttempted = useRef(false);
   const previewEnvironment = isPreviewEnvironment();
 
   const fetchKeyAndInit = useCallback(async () => {
     initAttempted.current = true;
-    removeExistingWidget(containerRef.current);
+    removeExistingWidget();
     setState({ status: "loading", message: "Conectando teléfono..." });
 
     try {
@@ -89,10 +88,6 @@ export default function ZadarmaWebPhone() {
       await waitForWidgetFunction();
       await waitForNextPaint();
 
-      if (!containerRef.current) {
-        throw new Error("El contenedor del teléfono web no está disponible");
-      }
-
       if (typeof window.zadarmaWidgetFn !== "function") {
         throw new Error("zadarmaWidgetFn no encontrada después de cargar los scripts");
       }
@@ -104,19 +99,8 @@ export default function ZadarmaWebPhone() {
       });
 
       window.zadarmaWidgetFn(key, sipLogin, "square", "es", false, WIDGET_POSITION);
-
-      const widgetElement = await waitForWidgetElement();
-      if (!containerRef.current) {
-        throw new Error("El contenedor del teléfono web dejó de estar disponible");
-      }
-
-      widgetElement.style.margin = "0";
-      widgetElement.style.display = "block";
-      widgetElement.style.maxWidth = "100%";
-      containerRef.current.replaceChildren(widgetElement);
-
-      console.info("[WebPhone] Widget mounted successfully inside calls page");
       setState({ status: "ready", message: "Teléfono web listo" });
+      console.info("[WebPhone] Widget initialized — Zadarma handles its own DOM");
     } catch (error) {
       console.error("[WebPhone] Error:", error);
       setState({
@@ -127,7 +111,7 @@ export default function ZadarmaWebPhone() {
   }, []);
 
   useEffect(() => {
-    return () => removeExistingWidget(containerRef.current);
+    return () => removeExistingWidget();
   }, []);
 
   useEffect(() => {
@@ -192,17 +176,20 @@ export default function ZadarmaWebPhone() {
           </Button>
         </div>
 
-        <div className={`relative overflow-hidden ${state.status === "ready" ? "bg-card" : "min-h-[496px] bg-background"}`}>
-          <div
-            ref={containerRef}
-            id="zadarma-webphone-container"
-            className={state.status === "ready" ? "block leading-none" : "hidden"}
-          />
-
+        <div className="relative overflow-hidden min-h-[496px] bg-background">
           {(state.status === "idle" || isLoading) && (
             <div className="flex min-h-[496px] flex-col items-center justify-center gap-3 px-6 text-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               <p className="max-w-[240px] text-xs text-muted-foreground">{state.message || "Preparando teléfono..."}</p>
+            </div>
+          )}
+
+          {state.status === "ready" && (
+            <div className="flex min-h-[496px] flex-col items-center justify-center gap-3 px-6 text-center">
+              <Phone className="h-6 w-6 text-primary" />
+              <p className="max-w-[240px] text-xs text-muted-foreground">
+                Teléfono web activo. El widget de Zadarma está disponible en la esquina de la pantalla.
+              </p>
             </div>
           )}
 
@@ -252,8 +239,7 @@ function isFullSipLogin(value: unknown): value is string {
   return typeof value === "string" && /^\S+-\S+$/.test(value.trim());
 }
 
-function removeExistingWidget(container: HTMLDivElement | null): void {
-  container?.replaceChildren();
+function removeExistingWidget(): void {
   document.getElementById(WIDGET_ROOT_ID)?.remove();
 }
 
@@ -282,32 +268,6 @@ function waitForWidgetFunction(timeoutMs = 8000): Promise<void> {
     };
 
     check();
-  });
-}
-
-function waitForWidgetElement(timeoutMs = 8000): Promise<HTMLDivElement> {
-  return new Promise((resolve, reject) => {
-    const existing = document.getElementById(WIDGET_ROOT_ID);
-    if (existing instanceof HTMLDivElement) {
-      resolve(existing);
-      return;
-    }
-
-    const observer = new MutationObserver(() => {
-      const widget = document.getElementById(WIDGET_ROOT_ID);
-      if (widget instanceof HTMLDivElement) {
-        window.clearTimeout(timeout);
-        observer.disconnect();
-        resolve(widget);
-      }
-    });
-
-    const timeout = window.setTimeout(() => {
-      observer.disconnect();
-      reject(new Error("El widget de Zadarma no se montó en el DOM a tiempo"));
-    }, timeoutMs);
-
-    observer.observe(document.body, { childList: true, subtree: true });
   });
 }
 
