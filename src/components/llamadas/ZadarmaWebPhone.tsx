@@ -1,5 +1,31 @@
 import { useCallback, useEffect, useRef } from "react";
 
+/* ─── Debug: capture Zadarma internal events ─── */
+function attachWidgetDebugListeners(): void {
+  // Listen for Zadarma widget custom events
+  const events = [
+    "location_confirm", "location_error",
+    "location_update", "incoming_call",
+    "outgoing_call", "call_end",
+    "webrtc_started", "webrtc_error",
+  ];
+  events.forEach((evt) => {
+    window.addEventListener(evt, (e) => {
+      console.info(`[WebPhone] Event: ${evt}`, e);
+    });
+  });
+
+  // Override console.error temporarily to catch Zadarma internal errors
+  const origError = console.error;
+  console.error = (...args: unknown[]) => {
+    const msg = args.map(String).join(" ");
+    if (msg.toLowerCase().includes("zadarma") || msg.toLowerCase().includes("webrtc") || msg.toLowerCase().includes("sip") || msg.toLowerCase().includes("wss://")) {
+      console.info("[WebPhone] Captured internal error:", ...args);
+    }
+    origError.apply(console, args);
+  };
+}
+
 const SCRIPT_URLS = [
   "https://my.zadarma.com/webphoneWebRTCWidget/v8/js/loader-phone-lib.js?v=23",
   "https://my.zadarma.com/webphoneWebRTCWidget/v8/js/loader-phone-fn.js?v=23",
@@ -65,9 +91,20 @@ export default function ZadarmaWebPhone() {
       if (typeof window.zadarmaWidgetFn !== "function") throw new Error("zadarmaWidgetFn not found");
 
       console.info("[WebPhone] Calling zadarmaWidgetFn with SIP:", sipLogin, "shape: square, lang: es, fixed: true, position:", WIDGET_POSITION);
+      attachWidgetDebugListeners();
       window.zadarmaWidgetFn(key, sipLogin, "square", "es", true, WIDGET_POSITION);
       await ensureWidgetPlacement();
-      console.info("[WebPhone] Widget initialized successfully. Widget element:", document.getElementById(WIDGET_ROOT_ID));
+      const widgetEl = document.getElementById(WIDGET_ROOT_ID);
+      console.info("[WebPhone] Widget initialized. Element found:", !!widgetEl, "Children:", widgetEl?.children.length, "InnerHTML length:", widgetEl?.innerHTML.length);
+      
+      // Check if widget has iframe (indicates successful SIP registration attempt)
+      const iframes = widgetEl?.querySelectorAll("iframe");
+      console.info("[WebPhone] Widget iframes:", iframes?.length);
+      if (iframes && iframes.length > 0) {
+        iframes.forEach((iframe, i) => {
+          console.info(`[WebPhone] Iframe ${i}: src=${iframe.src}`);
+        });
+      }
     } catch (error) {
       console.error("[WebPhone] Error:", error);
     }
