@@ -39,8 +39,7 @@ function isPreviewEnvironment(): boolean {
     hostname.includes("lovableproject.com") ||
     hostname.startsWith("id-preview--") ||
     hostname.includes("localhost") ||
-    hostname.includes("127.0.0.1") ||
-    window.self !== window.top
+    hostname.includes("127.0.0.1")
   );
 }
 
