@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 
 const SCRIPT_URLS = [
-  "https://my.zadarma.com/webphoneWebRTCWidget/v8/js/loader-phone-lib.js",
-  "https://my.zadarma.com/webphoneWebRTCWidget/v8/js/loader-phone-fn.js",
+  "https://my.zadarma.com/webphoneWebRTCWidget/v8/js/loader-phone-lib.js?v=23",
+  "https://my.zadarma.com/webphoneWebRTCWidget/v8/js/loader-phone-fn.js?v=23",
 ];
 
 const WIDGET_ROOT_ID = "zdrmWPhI";
