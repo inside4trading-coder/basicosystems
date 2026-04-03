@@ -193,6 +193,9 @@ serve(async (req) => {
   if (!token) {
     return json({ error: "NOTION_TOKEN not configured" }, 500);
   }
+  
+  // Debug: log token prefix and length (never the full token)
+  console.log(`NOTION_TOKEN present: length=${token.length}, prefix=${token.substring(0, 4)}, has_whitespace=${token !== token.trim()}`);
 
   try {
     const body = await req.json();
