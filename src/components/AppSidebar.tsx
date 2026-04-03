@@ -37,9 +37,11 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
   const navigate = useNavigate();
 
   const showAdmin = userRole === "admin";
-  const visibleItems = userRole === "partner"
-    ? mainItems.filter(i => ["/dashboard", "/planning"].includes(i.url))
-    : mainItems;
+  const visibleItems = mainItems.filter(i => {
+    if ((i as any).adminOnly && userRole !== "admin") return false;
+    if (userRole === "partner") return ["/dashboard", "/planning"].includes(i.url);
+    return true;
+  });
 
   const handleLogout = async () => {
     await signOut();
