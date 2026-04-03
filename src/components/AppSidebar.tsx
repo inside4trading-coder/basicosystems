@@ -21,6 +21,7 @@ const mainItems = [
   { title: "Pedidos", url: "/pedidos", icon: Package },
   { title: "CRM", url: "/crm", icon: Users },
   { title: "Planning", url: "/planning", icon: ClipboardList },
+  { title: "Crew", url: "/crew", icon: Users2, adminOnly: true },
   { title: "Campaigns", url: "/campaigns", icon: Mail },
   { title: "Llamadas", url: "/llamadas", icon: Phone },
 ];
