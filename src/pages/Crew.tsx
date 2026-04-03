@@ -1,20 +1,59 @@
-import { Users2, Loader2, AlertTriangle } from "lucide-react";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Users2, Plus, Loader2, AlertTriangle, MapPin, Calendar, Search, GraduationCap } from "lucide-react";
+import { toast } from "sonner";
 import { useCrewData } from "@/hooks/useCrewData";
-import { Badge } from "@/components/ui/badge";
+import { AddEmployeeSheet } from "@/components/crew/AddEmployeeSheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { EmployeeStatus } from "@/types/crew";
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  active: { label: "Activo", className: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" },
-  inactive: { label: "Inactivo", className: "bg-yellow-500/15 text-yellow-700 border-yellow-500/30" },
-  archived: { label: "Archivado", className: "bg-muted text-muted-foreground border-border" },
-  graduated: { label: "Graduado", className: "bg-blue-500/15 text-blue-700 border-blue-500/30" },
+const statusConfig: Record<EmployeeStatus, { label: string; className: string }> = {
+  active: { label: "Activo", className: "status-badge-success" },
+  inactive: { label: "Inactivo", className: "status-badge-warning" },
+  archived: { label: "Archivado", className: "status-badge-inactive" },
+  graduated: { label: "Egresado", className: "status-badge-inactive" },
 };
 
 export default function Crew() {
-  const { employees, loading, error } = useCrewData();
+  const { employees, loading, error, addEmployee } = useCrewData();
+  const navigate = useNavigate();
 
-  const activeCount = employees.filter((e) => e.status === "active").length;
-  const totalCount = employees.length;
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filterPosition, setFilterPosition] = useState("all");
+  const [filterLocation, setFilterLocation] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [showArchived, setShowArchived] = useState(false);
+
+  const uniquePositions = useMemo(() => [...new Set(employees.map((e) => e.position))].sort(), [employees]);
+  const uniqueLocations = useMemo(() => [...new Set(employees.map((e) => e.location).filter(Boolean))].sort(), [employees]);
+
+  const filtered = useMemo(() => {
+    return employees.filter((e) => {
+      if (!showArchived && e.status === "archived") return false;
+      if (filterStatus !== "all" && e.status !== filterStatus) return false;
+      if (filterPosition !== "all" && e.position !== filterPosition) return false;
+      if (filterLocation !== "all" && e.location !== filterLocation) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const match = `${e.first_name} ${e.last_name} ${e.position} ${e.internal_id}`.toLowerCase().includes(q);
+        if (!match) return false;
+      }
+      return true;
+    });
+  }, [employees, search, filterPosition, filterLocation, filterStatus, showArchived]);
+
+  const hasActiveFilters = search || filterPosition !== "all" || filterLocation !== "all" || filterStatus !== "all";
+
+  const handleAddEmployee = (data: Parameters<typeof addEmployee>[0]) => {
+    addEmployee(data);
+    toast.success("Empleado agregado correctamente");
+    setSheetOpen(false);
+  };
 
   if (loading) {
     return (
@@ -42,80 +81,127 @@ export default function Crew() {
             <Users2 className="h-6 w-6 text-primary" />
             Crew
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gestión interna del equipo
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Gestión interna del equipo</p>
         </div>
+        <Button onClick={() => setSheetOpen(true)}>
+          <Plus className="h-4 w-4 mr-1" />
+          Agregar empleado
+        </Button>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="kpi-card p-5">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Total equipo
-          </p>
-          <p className="text-3xl font-black tracking-tight mt-1">{totalCount}</p>
+      {/* Search + Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nombre, cargo o ID…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
         </div>
-        <div className="kpi-card p-5">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Activos
-          </p>
-          <p className="text-3xl font-black tracking-tight mt-1 text-emerald-600">{activeCount}</p>
-        </div>
-        <div className="kpi-card p-5">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Archivados
-          </p>
-          <p className="text-3xl font-black tracking-tight mt-1">{totalCount - activeCount}</p>
-        </div>
+
+        <Select value={filterPosition} onValueChange={setFilterPosition}>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Cargo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los cargos</SelectItem>
+            {uniquePositions.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select value={filterLocation} onValueChange={setFilterLocation}>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Sede/Área" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las sedes</SelectItem>
+            {uniqueLocations.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Estado" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Activo</SelectItem>
+            <SelectItem value="inactive">Inactivo</SelectItem>
+            <SelectItem value="graduated">Egresado</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+          <Checkbox checked={showArchived} onCheckedChange={(v) => setShowArchived(!!v)} />
+          Ver archivados
+        </label>
       </div>
 
-      {/* Crew Table */}
-      <div className="kpi-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left p-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">ID</th>
-                <th className="text-left p-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Nombre</th>
-                <th className="text-left p-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Cargo</th>
-                <th className="text-left p-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Ubicación</th>
-                <th className="text-left p-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Estado</th>
-                <th className="text-left p-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Inicio</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((emp) => {
-                const st = statusConfig[emp.status] ?? statusConfig.active;
-                return (
-                  <tr key={emp.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                    <td className="p-3 font-mono text-xs text-muted-foreground">{emp.internal_id}</td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-7 w-7">
-                          <AvatarImage src={emp.photo_url ?? undefined} />
-                          <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
-                            {emp.first_name[0]}{emp.last_name[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-semibold">{emp.first_name} {emp.last_name}</span>
-                      </div>
-                    </td>
-                    <td className="p-3">{emp.position}</td>
-                    <td className="p-3 text-muted-foreground">{emp.location}</td>
-                    <td className="p-3">
-                      <Badge variant="outline" className={st.className}>{st.label}</Badge>
-                    </td>
-                    <td className="p-3 text-muted-foreground text-xs">
+      {/* Employee Grid */}
+      {filtered.length === 0 ? (
+        <div className="kpi-card flex flex-col items-center justify-center py-16 gap-3">
+          <Users2 className="h-10 w-10 text-muted-foreground/50" />
+          <p className="font-semibold text-sm">No se encontraron empleados</p>
+          <p className="text-xs text-muted-foreground">
+            {hasActiveFilters ? "Intenta con otros filtros" : ""}
+          </p>
+          {!hasActiveFilters && employees.length === 0 && (
+            <Button size="sm" onClick={() => setSheetOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              Agrega el primer empleado
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((emp) => {
+            const st = statusConfig[emp.status];
+            return (
+              <div
+                key={emp.id}
+                className="kpi-card relative cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all"
+                onClick={() => navigate(`/crew/${emp.id}`)}
+              >
+                {/* Internal ID */}
+                <span className="absolute top-3 right-3 text-xs bg-muted rounded-full px-2 py-0.5 font-mono text-muted-foreground">
+                  {emp.internal_id}
+                </span>
+
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-12 w-12 shrink-0">
+                    <AvatarImage src={emp.photo_url ?? undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+                      {emp.first_name[0]}{emp.last_name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="font-semibold text-sm truncate">{emp.first_name} {emp.last_name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{emp.position}</p>
+
+                    {emp.location && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        {emp.location}
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className={st.className}>
+                        {emp.status === "graduated" && <GraduationCap className="h-3 w-3 mr-1" />}
+                        {st.label}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 pt-0.5">
+                      <Calendar className="h-3 w-3 shrink-0" />
                       {new Date(emp.start_date).toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" })}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
+
+      <AddEmployeeSheet open={sheetOpen} onOpenChange={setSheetOpen} onSave={handleAddEmployee} />
     </div>
   );
 }
