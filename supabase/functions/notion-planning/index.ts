@@ -80,7 +80,8 @@ async function listDatabases(token: string) {
     }),
   });
   const data = await res.json();
-  if (!res.ok) return json({ error: data.message || "Notion API error" }, 502);
+  console.log("Notion search response:", res.status, JSON.stringify(data).substring(0, 500));
+  if (!res.ok) return json({ error: data.message || data.code || "Notion API error" }, 502);
 
   const databases = (data.results || [])
     .filter((db: any) => {
