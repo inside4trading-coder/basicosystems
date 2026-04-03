@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { Employee } from "@/types/crew";
 
 const mockEmployees: Employee[] = [
@@ -18,17 +18,7 @@ const mockEmployees: Employee[] = [
     status: "active",
     observations: "Excelente desempeño en Q1 2026.",
     recurring_tasks: [
-      {
-        id: "t1",
-        name: "Revisión de inventario",
-        frequency: "daily",
-        day: "Lunes a Viernes",
-        time: "08:00",
-        priority: "high",
-        area: "Producción",
-        responsible: "Carlos Mendoza",
-        active: true,
-      },
+      { id: "t1", name: "Revisión de inventario", frequency: "daily", day: "Lunes a Viernes", time: "08:00", priority: "high", area: "Producción", responsible: "Carlos Mendoza", active: true },
     ],
     created_at: "2023-03-15T10:00:00Z",
     updated_at: "2026-03-01T14:30:00Z",
@@ -68,17 +58,7 @@ const mockEmployees: Employee[] = [
     status: "active",
     observations: "En periodo de evaluación para aumento.",
     recurring_tasks: [
-      {
-        id: "t2",
-        name: "Publicación de contenido",
-        frequency: "daily",
-        day: "Lunes a Sábado",
-        time: "09:00",
-        priority: "medium",
-        area: "Marketing",
-        responsible: "Andrés Gutiérrez",
-        active: true,
-      },
+      { id: "t2", name: "Publicación de contenido", frequency: "daily", day: "Lunes a Sábado", time: "09:00", priority: "medium", area: "Marketing", responsible: "Andrés Gutiérrez", active: true },
     ],
     created_at: "2024-06-01T08:00:00Z",
     updated_at: "2026-03-15T16:00:00Z",
@@ -105,9 +85,29 @@ const mockEmployees: Employee[] = [
 ];
 
 export function useCrewData() {
-  const [employees] = useState<Employee[]>(mockEmployees);
+  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
   const [loading] = useState(false);
   const [error] = useState<string | null>(null);
 
-  return { employees, loading, error };
+  const addEmployee = useCallback((data: Omit<Employee, "id" | "internal_id" | "skills" | "recurring_tasks" | "created_at" | "updated_at" | "current_salary" | "observations">) => {
+    setEmployees((prev) => {
+      const nextNum = prev.length + 1;
+      const internal_id = `CR-${String(nextNum).padStart(3, "0")}`;
+      const now = new Date().toISOString();
+      const newEmp: Employee = {
+        ...data,
+        id: crypto.randomUUID(),
+        internal_id,
+        current_salary: null,
+        skills: [],
+        observations: "",
+        recurring_tasks: [],
+        created_at: now,
+        updated_at: now,
+      };
+      return [...prev, newEmp];
+    });
+  }, []);
+
+  return { employees, loading, error, addEmployee };
 }
