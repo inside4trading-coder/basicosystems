@@ -16,6 +16,7 @@ import CampaignWizard from "./pages/CampaignWizard";
 import CampaignDetail from "./pages/CampaignDetail";
 import Configuracion from "./pages/Configuracion";
 import Llamadas from "./pages/Llamadas";
+import Crew from "./pages/Crew";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/pedidos" element={<Pedidos />} />
               <Route path="/crm" element={<CRM />} />
               <Route path="/planning" element={<Planning />} />
+              <Route path="/crew" element={<Crew />} />
               <Route path="/campaigns" element={<Campaigns />} />
               <Route path="/campaigns/new" element={<CampaignWizard />} />
               <Route path="/campaigns/:id" element={<CampaignDetail />} />
