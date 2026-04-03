@@ -20,6 +20,7 @@ const statusConfig: Record<EmployeeStatus, { label: string; className: string }>
 
 export default function Crew() {
   const { employees, loading, error, addEmployee } = useCrewData();
+
   const navigate = useNavigate();
 
   const [sheetOpen, setSheetOpen] = useState(false);
