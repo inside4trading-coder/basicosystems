@@ -1,4 +1,4 @@
-import { BarChart3, Package, Users, ClipboardList, Mail, Phone, Settings, LogOut } from "lucide-react";
+import { BarChart3, Package, Users, Users2, ClipboardList, Mail, Phone, Settings, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
