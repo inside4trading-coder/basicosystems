@@ -1,8 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, UserPlus, Upload, Loader2, FileSpreadsheet } from "lucide-react";
+import { CheckCircle, XCircle, UserPlus, Upload, Loader2, FileSpreadsheet, Lock } from "lucide-react";
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 
 const mockUsers = [
   { name: "Admin Basico", email: "admin@basicoclothes.es", role: "admin" },
