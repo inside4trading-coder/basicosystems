@@ -179,6 +179,7 @@ function UploadDocSheet({ open, onOpenChange, employeeId, onSuccess }: {
         expiry_date: expiryDate || null,
       });
       if (error) throw error;
+      logAudit({ employee_id: employeeId, action: "Subió documento", new_value: name.trim() });
       toast.success("Documento subido");
       reset();
       onSuccess();
