@@ -56,11 +56,11 @@ export function CrewDocuments({ employeeId }: { employeeId: string }) {
 
   const deleteMutation = useMutation({
     mutationFn: async (doc: EmployeeDocument) => {
-      // Extract storage path from file_url
       const path = `${employeeId}/${doc.name}`;
       await supabase.storage.from("crew-documents").remove([path]);
       const { error } = await supabase.from("employee_documents").delete().eq("id", doc.id);
       if (error) throw error;
+      logAudit({ employee_id: employeeId, action: "Eliminó documento", old_value: doc.name });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employee_documents", employeeId] });

@@ -44,6 +44,13 @@ export function CrewSalaryHistory({ employeeId, currentSalary }: { employeeId: s
     mutationFn: async (entry: Omit<SalaryEntry, "id" | "created_at">) => {
       const { error } = await supabase.from("salary_history").insert(entry);
       if (error) throw error;
+      logAudit({
+        employee_id: entry.employee_id,
+        action: "Cambió sueldo",
+        old_value: currentSalary ? `$${currentSalary}` : undefined,
+        new_value: `$${entry.base_salary}`,
+        field_changed: entry.reason,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["salary_history", employeeId] });

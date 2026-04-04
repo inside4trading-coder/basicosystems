@@ -47,6 +47,7 @@ export function CrewIncidents({ employeeId, employeeName }: { employeeId: string
     mutationFn: async (incident: Omit<Incident, "id" | "created_at">) => {
       const { error } = await supabase.from("incidents").insert(incident);
       if (error) throw error;
+      logAudit({ employee_id: incident.employee_id, action: "Registró incidencia", new_value: `${incident.type === "positive" ? "Positiva" : "Negativa"} — ${incident.category}` });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents", employeeId] });

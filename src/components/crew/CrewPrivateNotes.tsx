@@ -50,6 +50,7 @@ export function CrewPrivateNotes({ employeeId }: { employeeId: string }) {
     mutationFn: async (note: Omit<PrivateNote, "id" | "created_at">) => {
       const { error } = await supabase.from("private_notes").insert(note);
       if (error) throw error;
+      logAudit({ employee_id: note.employee_id, action: "Agregó nota privada", new_value: note.note_type });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["private_notes", employeeId] });
