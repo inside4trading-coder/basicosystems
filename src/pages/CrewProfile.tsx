@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useCrewData } from "@/hooks/useCrewData";
 import { CrewGeneralData } from "@/components/crew/CrewGeneralData";
 import { CrewRecurringTasks } from "@/components/crew/CrewRecurringTasks";
+import { CrewIncidents } from "@/components/crew/CrewIncidents";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
