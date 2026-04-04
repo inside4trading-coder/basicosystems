@@ -220,9 +220,7 @@ export default function CrewProfile() {
         </TabsContent>
 
         <TabsContent value="notes">
-          <div className="kpi-card">
-            <EmptyTab icon={Lock} message="Sin notas privadas" detail="Las notas privadas solo serán visibles para administradores" />
-          </div>
+          <CrewPrivateNotes employeeId={employee.id} />
         </TabsContent>
       </Tabs>
 
