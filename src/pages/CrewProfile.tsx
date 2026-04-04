@@ -204,9 +204,7 @@ export default function CrewProfile() {
         </TabsContent>
 
         <TabsContent value="incidents">
-          <div className="kpi-card">
-            <EmptyTab icon={AlertCircle} message="No hay incidencias registradas" detail="Las incidencias del empleado aparecerán aquí" />
-          </div>
+          <CrewIncidents employeeId={employee.id} employeeName={fullName} />
         </TabsContent>
 
         <TabsContent value="docs">
