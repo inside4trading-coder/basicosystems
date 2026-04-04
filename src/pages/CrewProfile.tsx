@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, MapPin, Calendar, Pencil, MoreVertical,
   AlertTriangle, FileText, DollarSign,
-  Lock, AlertCircle, GraduationCap, Archive, Trash2,
+  Lock, GraduationCap, Archive, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCrewData } from "@/hooks/useCrewData";
