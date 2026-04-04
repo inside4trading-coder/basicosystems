@@ -205,6 +205,90 @@ export default function Configuracion() {
           )}
         </div>
       </section>
+      {/* Crew Passcode */}
+      <section className="animate-fade-in" style={{ animationDelay: "0.3s" }}>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Crew — Código de incidencias</h3>
+        <CrewPasscodeConfig />
+      </section>
+    </div>
+  );
+}
+
+function CrewPasscodeConfig() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [newCode, setNewCode] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (newCode.length < 4 || newCode.length > 6 || !/^\d+$/.test(newCode)) {
+      toast.error("El código debe tener 4-6 dígitos numéricos");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/crew-passcode`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ action: "update", new_passcode: newCode }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Error");
+      toast.success("Código actualizado");
+      setDialogOpen(false);
+      setNewCode("");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-card rounded-lg border border-border p-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Lock className="h-5 w-5 text-muted-foreground" />
+          <div>
+            <p className="font-bold text-sm">Código de acceso</p>
+            <p className="text-xs text-muted-foreground">Para el registro de incidencias en /crew/incidencias</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-mono tracking-widest">●●●●</span>
+          <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>Cambiar código</Button>
+        </div>
+      </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Cambiar código de incidencias</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Ingresa un nuevo código de 4 a 6 dígitos numéricos.</p>
+            <Input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={newCode}
+              onChange={(e) => setNewCode(e.target.value.replace(/\D/g, ""))}
+              placeholder="Nuevo código"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
