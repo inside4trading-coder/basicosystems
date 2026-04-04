@@ -212,9 +212,7 @@ export default function CrewProfile() {
         </TabsContent>
 
         <TabsContent value="docs">
-          <div className="kpi-card">
-            <EmptyTab icon={FileText} message="No hay documentos adjuntos" detail="Los documentos del empleado se almacenarán aquí" />
-          </div>
+          <CrewDocuments employeeId={employee.id} />
         </TabsContent>
 
         <TabsContent value="salary">
