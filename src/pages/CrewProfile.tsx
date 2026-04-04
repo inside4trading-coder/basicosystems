@@ -216,16 +216,7 @@ export default function CrewProfile() {
         </TabsContent>
 
         <TabsContent value="salary">
-          <div className="kpi-card">
-            {employee.current_salary ? (
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Salario actual</h2>
-                <p className="text-2xl font-black tracking-tight mt-2">${employee.current_salary.toLocaleString("es-VE")}</p>
-              </div>
-            ) : (
-              <EmptyTab icon={DollarSign} message="Sin historial salarial" detail="El historial de salarios se registrará aquí" />
-            )}
-          </div>
+          <CrewSalaryHistory employeeId={employee.id} currentSalary={employee.current_salary} />
         </TabsContent>
 
         <TabsContent value="notes">
