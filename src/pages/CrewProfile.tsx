@@ -3,12 +3,13 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, MapPin, Calendar, Pencil, MoreVertical,
   AlertTriangle, FileText, DollarSign,
-  Lock, AlertCircle, GraduationCap, Archive, Trash2,
+  Lock, GraduationCap, Archive, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCrewData } from "@/hooks/useCrewData";
 import { CrewGeneralData } from "@/components/crew/CrewGeneralData";
 import { CrewRecurringTasks } from "@/components/crew/CrewRecurringTasks";
+import { CrewIncidents } from "@/components/crew/CrewIncidents";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -204,9 +205,7 @@ export default function CrewProfile() {
         </TabsContent>
 
         <TabsContent value="incidents">
-          <div className="kpi-card">
-            <EmptyTab icon={AlertCircle} message="No hay incidencias registradas" detail="Las incidencias del empleado aparecerán aquí" />
-          </div>
+          <CrewIncidents employeeId={employee.id} employeeName={fullName} />
         </TabsContent>
 
         <TabsContent value="docs">
