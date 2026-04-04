@@ -294,6 +294,39 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_documents: {
+        Row: {
+          created_at: string | null
+          doc_type: string
+          employee_id: string
+          expiry_date: string | null
+          file_url: string
+          id: string
+          name: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          doc_type?: string
+          employee_id: string
+          expiry_date?: string | null
+          file_url: string
+          id?: string
+          name: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          doc_type?: string
+          employee_id?: string
+          expiry_date?: string | null
+          file_url?: string
+          id?: string
+          name?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       incidents: {
         Row: {
           category: string
@@ -544,6 +577,36 @@ export type Database = {
           },
         ]
       }
+      private_notes: {
+        Row: {
+          author: string | null
+          content: string
+          created_at: string | null
+          employee_id: string
+          id: string
+          note_type: string
+          privacy_level: string
+        }
+        Insert: {
+          author?: string | null
+          content: string
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          note_type?: string
+          privacy_level?: string
+        }
+        Update: {
+          author?: string | null
+          content?: string
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          note_type?: string
+          privacy_level?: string
+        }
+        Relationships: []
+      }
       product_costs: {
         Row: {
           analytic_category: string | null
@@ -601,6 +664,45 @@ export type Database = {
           id?: string
           role?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      salary_history: {
+        Row: {
+          approved_by: string | null
+          base_salary: number
+          bonus: number | null
+          commission: number | null
+          created_at: string | null
+          effective_date: string
+          employee_id: string
+          id: string
+          observations: string | null
+          reason: string
+        }
+        Insert: {
+          approved_by?: string | null
+          base_salary?: number
+          bonus?: number | null
+          commission?: number | null
+          created_at?: string | null
+          effective_date?: string
+          employee_id: string
+          id?: string
+          observations?: string | null
+          reason: string
+        }
+        Update: {
+          approved_by?: string | null
+          base_salary?: number
+          bonus?: number | null
+          commission?: number | null
+          created_at?: string | null
+          effective_date?: string
+          employee_id?: string
+          id?: string
+          observations?: string | null
+          reason?: string
         }
         Relationships: []
       }

@@ -10,6 +10,9 @@ import { useCrewData } from "@/hooks/useCrewData";
 import { CrewGeneralData } from "@/components/crew/CrewGeneralData";
 import { CrewRecurringTasks } from "@/components/crew/CrewRecurringTasks";
 import { CrewIncidents } from "@/components/crew/CrewIncidents";
+import { CrewDocuments } from "@/components/crew/CrewDocuments";
+import { CrewSalaryHistory } from "@/components/crew/CrewSalaryHistory";
+import { CrewPrivateNotes } from "@/components/crew/CrewPrivateNotes";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -209,28 +212,15 @@ export default function CrewProfile() {
         </TabsContent>
 
         <TabsContent value="docs">
-          <div className="kpi-card">
-            <EmptyTab icon={FileText} message="No hay documentos adjuntos" detail="Los documentos del empleado se almacenarán aquí" />
-          </div>
+          <CrewDocuments employeeId={employee.id} />
         </TabsContent>
 
         <TabsContent value="salary">
-          <div className="kpi-card">
-            {employee.current_salary ? (
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Salario actual</h2>
-                <p className="text-2xl font-black tracking-tight mt-2">${employee.current_salary.toLocaleString("es-VE")}</p>
-              </div>
-            ) : (
-              <EmptyTab icon={DollarSign} message="Sin historial salarial" detail="El historial de salarios se registrará aquí" />
-            )}
-          </div>
+          <CrewSalaryHistory employeeId={employee.id} currentSalary={employee.current_salary} />
         </TabsContent>
 
         <TabsContent value="notes">
-          <div className="kpi-card">
-            <EmptyTab icon={Lock} message="Sin notas privadas" detail="Las notas privadas solo serán visibles para administradores" />
-          </div>
+          <CrewPrivateNotes employeeId={employee.id} />
         </TabsContent>
       </Tabs>
 
