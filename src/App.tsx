@@ -18,6 +18,7 @@ import Configuracion from "./pages/Configuracion";
 import Llamadas from "./pages/Llamadas";
 import Crew from "./pages/Crew";
 import CrewProfile from "./pages/CrewProfile";
+import CrewIncidencias from "./pages/CrewIncidencias";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
