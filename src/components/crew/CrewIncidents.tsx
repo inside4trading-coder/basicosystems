@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Calendar, User, FileText, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { logAudit } from "@/hooks/useCrewAudit";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ export function CrewIncidents({ employeeId, employeeName }: { employeeId: string
     mutationFn: async (incident: Omit<Incident, "id" | "created_at">) => {
       const { error } = await supabase.from("incidents").insert(incident);
       if (error) throw error;
+      logAudit({ employee_id: incident.employee_id, action: "Registró incidencia", new_value: `${incident.type === "positive" ? "Positiva" : "Negativa"} — ${incident.category}` });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents", employeeId] });

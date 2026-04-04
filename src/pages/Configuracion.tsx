@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, UserPlus, Upload, Loader2, FileSpreadsheet, Lock } from "lucide-react";
-import { useState, useRef } from "react";
+import { CheckCircle, XCircle, UserPlus, Upload, Loader2, FileSpreadsheet, Lock, Users2, ShieldCheck } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -205,10 +205,33 @@ export default function Configuracion() {
           )}
         </div>
       </section>
-      {/* Crew Passcode */}
+
+      {/* Crew Section */}
       <section className="animate-fade-in" style={{ animationDelay: "0.3s" }}>
-        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Crew — Código de incidencias</h3>
-        <CrewPasscodeConfig />
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+          <Users2 className="h-4 w-4" />Crew
+        </h3>
+        <div className="bg-card rounded-lg border border-border divide-y divide-border">
+          {/* Passcode */}
+          <CrewPasscodeConfig />
+          {/* Permissions info */}
+          <div className="p-5">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-bold text-sm">Permisos de acceso</p>
+                <p className="text-xs text-muted-foreground">
+                  El módulo Crew es exclusivo para administradores. Los usuarios con rol <span className="font-semibold">partner</span> o <span className="font-semibold">manager</span> no tienen acceso.
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <span className="status-badge-success">Admin — Acceso total</span>
+                  <span className="status-badge-inactive">Manager — Sin acceso</span>
+                  <span className="status-badge-inactive">Partner — Sin acceso</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   );
@@ -217,12 +240,21 @@ export default function Configuracion() {
 function CrewPasscodeConfig() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newCode, setNewCode] = useState("");
+  const [confirmCode, setConfirmCode] = useState("");
   const [saving, setSaving] = useState(false);
+  const [configured, setConfigured] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.from("crew_config").select("key").eq("key", "incident_passcode").maybeSingle()
+      .then(({ data }) => setConfigured(!!data));
+  }, []);
 
   const handleSave = async () => {
     if (newCode.length < 4 || newCode.length > 6 || !/^\d+$/.test(newCode)) {
-      toast.error("El código debe tener 4-6 dígitos numéricos");
-      return;
+      toast.error("El código debe tener 4-6 dígitos numéricos"); return;
+    }
+    if (newCode !== confirmCode) {
+      toast.error("Los códigos no coinciden"); return;
     }
     setSaving(true);
     try {
@@ -242,9 +274,11 @@ function CrewPasscodeConfig() {
       );
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || "Error");
-      toast.success("Código actualizado");
+      toast.success("Código actualizado correctamente");
+      setConfigured(true);
       setDialogOpen(false);
       setNewCode("");
+      setConfirmCode("");
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -253,17 +287,21 @@ function CrewPasscodeConfig() {
   };
 
   return (
-    <div className="bg-card rounded-lg border border-border p-5">
+    <div className="p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Lock className="h-5 w-5 text-muted-foreground" />
           <div>
-            <p className="font-bold text-sm">Código de acceso</p>
-            <p className="text-xs text-muted-foreground">Para el registro de incidencias en /crew/incidencias</p>
+            <p className="font-bold text-sm">Código de incidencias</p>
+            <p className="text-xs text-muted-foreground">Contraseña para el acceso limitado de registro de incidencias</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm font-mono tracking-widest">●●●●</span>
+          {configured === null ? null : configured ? (
+            <span className="status-badge-success">Configurado</span>
+          ) : (
+            <span className="status-badge-warning">Sin configurar</span>
+          )}
           <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>Cambiar código</Button>
         </div>
       </div>
@@ -281,6 +319,15 @@ function CrewPasscodeConfig() {
               value={newCode}
               onChange={(e) => setNewCode(e.target.value.replace(/\D/g, ""))}
               placeholder="Nuevo código"
+            />
+            <Input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={confirmCode}
+              onChange={(e) => setConfirmCode(e.target.value.replace(/\D/g, ""))}
+              placeholder="Confirmar código"
             />
           </div>
           <DialogFooter>

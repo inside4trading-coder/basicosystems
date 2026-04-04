@@ -195,6 +195,39 @@ export type Database = {
           },
         ]
       }
+      crew_audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          employee_id: string
+          field_changed: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          employee_id: string
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          employee_id?: string
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          performed_by?: string | null
+        }
+        Relationships: []
+      }
       crew_config: {
         Row: {
           key: string

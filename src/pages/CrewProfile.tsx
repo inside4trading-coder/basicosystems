@@ -2,17 +2,18 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, MapPin, Calendar, Pencil, MoreVertical,
-  AlertTriangle, FileText, DollarSign,
-  Lock, GraduationCap, Archive, Trash2,
+  AlertTriangle, GraduationCap, Archive, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCrewData } from "@/hooks/useCrewData";
+import { logAudit, logFieldChanges } from "@/hooks/useCrewAudit";
 import { CrewGeneralData } from "@/components/crew/CrewGeneralData";
 import { CrewRecurringTasks } from "@/components/crew/CrewRecurringTasks";
 import { CrewIncidents } from "@/components/crew/CrewIncidents";
 import { CrewDocuments } from "@/components/crew/CrewDocuments";
 import { CrewSalaryHistory } from "@/components/crew/CrewSalaryHistory";
 import { CrewPrivateNotes } from "@/components/crew/CrewPrivateNotes";
+import { CrewAuditLog } from "@/components/crew/CrewAuditLog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +73,7 @@ export default function CrewProfile() {
       toast.error("Nombre, apellido y cargo son requeridos");
       return;
     }
+    logFieldChanges(employee.id, employee, pendingUpdates);
     updateEmployee(employee.id, pendingUpdates);
     setEditing(false);
     setPendingUpdates({});
@@ -80,11 +82,13 @@ export default function CrewProfile() {
 
   const handleChangeStatus = (newStatus: EmployeeStatus) => {
     if (newStatus === "archived") { setArchiveDialog(true); return; }
+    logAudit({ employee_id: employee.id, action: "Cambió estado", field_changed: "Estado", old_value: statusConfig[employee.status].label, new_value: statusConfig[newStatus].label });
     changeStatus(employee.id, newStatus);
     toast.success(`Estado cambiado a ${statusConfig[newStatus].label}`);
   };
 
   const confirmArchive = () => {
+    logAudit({ employee_id: employee.id, action: "Archivó", old_value: statusConfig[employee.status].label, new_value: "Archivado" });
     changeStatus(employee.id, "archived");
     setArchiveDialog(false);
     toast.success("Empleado archivado");
@@ -94,22 +98,28 @@ export default function CrewProfile() {
     if (deleteConfirmName.trim().toLowerCase() !== fullName.toLowerCase()) {
       toast.error("El nombre no coincide"); return;
     }
+    logAudit({ employee_id: employee.id, action: "Eliminó permanentemente" });
     deleteEmployee(employee.id);
     toast.success("Empleado eliminado permanentemente");
     navigate("/crew");
   };
 
   const handleAddTask = (task: RecurringTask) => {
+    logAudit({ employee_id: employee.id, action: "Agregó tarea", new_value: task.name });
     updateEmployee(employee.id, { recurring_tasks: [...employee.recurring_tasks, task] });
   };
 
   const handleToggleTask = (taskId: string) => {
+    const task = employee.recurring_tasks.find((t) => t.id === taskId);
+    if (task) logAudit({ employee_id: employee.id, action: task.active ? "Desactivó tarea" : "Activó tarea", new_value: task.name });
     updateEmployee(employee.id, {
       recurring_tasks: employee.recurring_tasks.map((t) => t.id === taskId ? { ...t, active: !t.active } : t),
     });
   };
 
   const handleDeleteTask = (taskId: string) => {
+    const task = employee.recurring_tasks.find((t) => t.id === taskId);
+    if (task) logAudit({ employee_id: employee.id, action: "Eliminó tarea", old_value: task.name });
     updateEmployee(employee.id, {
       recurring_tasks: employee.recurring_tasks.filter((t) => t.id !== taskId),
     });
@@ -224,6 +234,9 @@ export default function CrewProfile() {
         </TabsContent>
       </Tabs>
 
+      {/* Audit trail */}
+      <CrewAuditLog employeeId={employee.id} />
+
       {/* Archive dialog */}
       <AlertDialog open={archiveDialog} onOpenChange={setArchiveDialog}>
         <AlertDialogContent>
@@ -258,16 +271,6 @@ export default function CrewProfile() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-function EmptyTab({ icon: Icon, message, detail }: { icon: React.ElementType; message: string; detail: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 gap-2">
-      <Icon className="h-8 w-8 text-muted-foreground/40" />
-      <p className="text-sm font-semibold text-muted-foreground">{message}</p>
-      <p className="text-xs text-muted-foreground/70">{detail}</p>
     </div>
   );
 }
