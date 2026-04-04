@@ -195,6 +195,24 @@ export type Database = {
           },
         ]
       }
+      crew_config: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       customers_cache: {
         Row: {
           avatar_url: string | null
@@ -273,6 +291,45 @@ export type Database = {
           username?: string | null
           woo_orders_count?: number | null
           woo_total_spent?: number | null
+        }
+        Relationships: []
+      }
+      incidents: {
+        Row: {
+          category: string
+          created_at: string | null
+          employee_id: string
+          employee_name: string
+          id: string
+          incident_date: string
+          observation: string | null
+          reason: string
+          registered_by: string | null
+          type: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          employee_id: string
+          employee_name: string
+          id?: string
+          incident_date?: string
+          observation?: string | null
+          reason: string
+          registered_by?: string | null
+          type: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          employee_id?: string
+          employee_name?: string
+          id?: string
+          incident_date?: string
+          observation?: string | null
+          reason?: string
+          registered_by?: string | null
+          type?: string
         }
         Relationships: []
       }
