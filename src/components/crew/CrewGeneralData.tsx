@@ -1,7 +1,8 @@
-import { useState, KeyboardEvent } from "react";
+import { useState, useEffect, KeyboardEvent } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Upload, X } from "lucide-react";
+import { CalendarIcon, Upload, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,12 +18,27 @@ interface CrewGeneralDataProps {
   onUpdate: (updates: Partial<Employee>) => void;
 }
 
+/** Resolve a storage path to a signed URL for display */
+async function resolvePhotoUrl(path: string | null | undefined): Promise<string | null> {
+  if (!path) return null;
+  // If it's already a full URL (legacy), return as-is
+  if (path.startsWith("http") || path.startsWith("blob:")) return path;
+  const { data, error } = await supabase.storage.from("crew-documents").createSignedUrl(path, 3600);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
+}
+
 export function CrewGeneralData({ employee, editMode, onUpdate }: CrewGeneralDataProps) {
   const [draft, setDraft] = useState<Partial<Employee>>({});
   const [skillInput, setSkillInput] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  // Sync draft when entering edit mode
+  // Resolve employee photo on mount / when photo_url changes
+  useEffect(() => {
+    resolvePhotoUrl(employee.photo_url).then(setPhotoPreview);
+  }, [employee.photo_url]);
+
   const val = <K extends keyof Employee>(key: K): Employee[K] =>
     editMode && key in draft ? (draft[key] as Employee[K]) : employee[key];
 
@@ -47,12 +63,23 @@ export function CrewGeneralData({ employee, editMode, onUpdate }: CrewGeneralDat
     set("skills", skills.filter((_, i) => i !== idx));
   };
 
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setPhotoPreview(url);
-      set("photo_url", url);
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const storagePath = `${employee.id}/photo_${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("crew-documents").upload(storagePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      // Show preview immediately
+      const signedUrl = await resolvePhotoUrl(storagePath);
+      setPhotoPreview(signedUrl);
+      set("photo_url", storagePath);
+    } catch (err: any) {
+      console.error("Photo upload failed:", err.message);
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
