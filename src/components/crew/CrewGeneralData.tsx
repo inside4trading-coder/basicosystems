@@ -115,16 +115,21 @@ export function CrewGeneralData({ employee, editMode, onUpdate }: CrewGeneralDat
         {/* ID interno - always read-only */}
         <ReadField label="ID interno" value={employee.internal_id} />
 
-        {/* Nombre completo */}
-        <FieldCell label="Nombre completo" editing={editMode}>
+        {/* Nombre */}
+        <FieldCell label="Nombre" editing={editMode}>
           {editMode ? (
-            <Input value={`${val("first_name")} ${val("last_name")}`} onChange={(e) => {
-              const parts = e.target.value.split(" ");
-              set("first_name", parts[0] || "");
-              set("last_name", parts.slice(1).join(" ") || "");
-            }} />
+            <Input value={val("first_name") as string} onChange={(e) => set("first_name", e.target.value)} />
           ) : (
-            <p className="text-sm font-semibold">{employee.first_name} {employee.last_name}</p>
+            <p className="text-sm font-semibold">{employee.first_name}</p>
+          )}
+        </FieldCell>
+
+        {/* Apellido */}
+        <FieldCell label="Apellido" editing={editMode}>
+          {editMode ? (
+            <Input value={val("last_name") as string} onChange={(e) => set("last_name", e.target.value)} />
+          ) : (
+            <p className="text-sm font-semibold">{employee.last_name}</p>
           )}
         </FieldCell>
 
