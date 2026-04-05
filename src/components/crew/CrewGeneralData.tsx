@@ -93,17 +93,20 @@ export function CrewGeneralData({ employee, editMode, onUpdate }: CrewGeneralDat
       {/* Photo row */}
       <div className="flex items-center gap-4">
         <Avatar className="h-16 w-16 shrink-0">
-          <AvatarImage src={photoPreview ?? employee.photo_url ?? undefined} />
+          <AvatarImage src={photoPreview ?? undefined} />
           <AvatarFallback className="bg-primary/10 text-primary font-black text-lg">
             {employee.first_name[0]}{employee.last_name[0]}
           </AvatarFallback>
         </Avatar>
         {editMode && (
           <label className="cursor-pointer">
-            <Button variant="outline" size="sm" asChild>
-              <span><Upload className="h-4 w-4 mr-1" />Cambiar foto</span>
+            <Button variant="outline" size="sm" asChild disabled={uploadingPhoto}>
+              <span>
+                {uploadingPhoto ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                {uploadingPhoto ? "Subiendo…" : "Cambiar foto"}
+              </span>
             </Button>
-            <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+            <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} disabled={uploadingPhoto} />
           </label>
         )}
       </div>
