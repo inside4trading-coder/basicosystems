@@ -1,7 +1,8 @@
-import { useState, KeyboardEvent } from "react";
+import { useState, useEffect, KeyboardEvent } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Upload, X } from "lucide-react";
+import { CalendarIcon, Upload, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,12 +18,27 @@ interface CrewGeneralDataProps {
   onUpdate: (updates: Partial<Employee>) => void;
 }
 
+/** Resolve a storage path to a signed URL for display */
+async function resolvePhotoUrl(path: string | null | undefined): Promise<string | null> {
+  if (!path) return null;
+  // If it's already a full URL (legacy), return as-is
+  if (path.startsWith("http") || path.startsWith("blob:")) return path;
+  const { data, error } = await supabase.storage.from("crew-documents").createSignedUrl(path, 3600);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
+}
+
 export function CrewGeneralData({ employee, editMode, onUpdate }: CrewGeneralDataProps) {
   const [draft, setDraft] = useState<Partial<Employee>>({});
   const [skillInput, setSkillInput] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  // Sync draft when entering edit mode
+  // Resolve employee photo on mount / when photo_url changes
+  useEffect(() => {
+    resolvePhotoUrl(employee.photo_url).then(setPhotoPreview);
+  }, [employee.photo_url]);
+
   const val = <K extends keyof Employee>(key: K): Employee[K] =>
     editMode && key in draft ? (draft[key] as Employee[K]) : employee[key];
 
@@ -47,12 +63,23 @@ export function CrewGeneralData({ employee, editMode, onUpdate }: CrewGeneralDat
     set("skills", skills.filter((_, i) => i !== idx));
   };
 
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setPhotoPreview(url);
-      set("photo_url", url);
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const storagePath = `${employee.id}/photo_${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("crew-documents").upload(storagePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      // Show preview immediately
+      const signedUrl = await resolvePhotoUrl(storagePath);
+      setPhotoPreview(signedUrl);
+      set("photo_url", storagePath);
+    } catch (err: any) {
+      console.error("Photo upload failed:", err.message);
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -66,17 +93,20 @@ export function CrewGeneralData({ employee, editMode, onUpdate }: CrewGeneralDat
       {/* Photo row */}
       <div className="flex items-center gap-4">
         <Avatar className="h-16 w-16 shrink-0">
-          <AvatarImage src={photoPreview ?? employee.photo_url ?? undefined} />
+          <AvatarImage src={photoPreview ?? undefined} />
           <AvatarFallback className="bg-primary/10 text-primary font-black text-lg">
             {employee.first_name[0]}{employee.last_name[0]}
           </AvatarFallback>
         </Avatar>
         {editMode && (
           <label className="cursor-pointer">
-            <Button variant="outline" size="sm" asChild>
-              <span><Upload className="h-4 w-4 mr-1" />Cambiar foto</span>
+            <Button variant="outline" size="sm" asChild disabled={uploadingPhoto}>
+              <span>
+                {uploadingPhoto ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                {uploadingPhoto ? "Subiendo…" : "Cambiar foto"}
+              </span>
             </Button>
-            <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+            <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} disabled={uploadingPhoto} />
           </label>
         )}
       </div>
@@ -85,16 +115,21 @@ export function CrewGeneralData({ employee, editMode, onUpdate }: CrewGeneralDat
         {/* ID interno - always read-only */}
         <ReadField label="ID interno" value={employee.internal_id} />
 
-        {/* Nombre completo */}
-        <FieldCell label="Nombre completo" editing={editMode}>
+        {/* Nombre */}
+        <FieldCell label="Nombre" editing={editMode}>
           {editMode ? (
-            <Input value={`${val("first_name")} ${val("last_name")}`} onChange={(e) => {
-              const parts = e.target.value.split(" ");
-              set("first_name", parts[0] || "");
-              set("last_name", parts.slice(1).join(" ") || "");
-            }} />
+            <Input value={val("first_name") as string} onChange={(e) => set("first_name", e.target.value)} />
           ) : (
-            <p className="text-sm font-semibold">{employee.first_name} {employee.last_name}</p>
+            <p className="text-sm font-semibold">{employee.first_name}</p>
+          )}
+        </FieldCell>
+
+        {/* Apellido */}
+        <FieldCell label="Apellido" editing={editMode}>
+          {editMode ? (
+            <Input value={val("last_name") as string} onChange={(e) => set("last_name", e.target.value)} />
+          ) : (
+            <p className="text-sm font-semibold">{employee.last_name}</p>
           )}
         </FieldCell>
 

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, MapPin, Calendar, Pencil, MoreVertical,
   AlertTriangle, GraduationCap, Archive, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useCrewData } from "@/hooks/useCrewData";
 import { logAudit, logFieldChanges } from "@/hooks/useCrewAudit";
 import { CrewGeneralData } from "@/components/crew/CrewGeneralData";
@@ -48,6 +49,18 @@ export default function CrewProfile() {
   const [archiveDialog, setArchiveDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [resolvedPhotoUrl, setResolvedPhotoUrl] = useState<string | null>(null);
+
+  // Resolve photo URL from storage path
+  useEffect(() => {
+    if (!employee?.photo_url) { setResolvedPhotoUrl(null); return; }
+    if (employee.photo_url.startsWith("http") || employee.photo_url.startsWith("blob:")) {
+      setResolvedPhotoUrl(employee.photo_url);
+      return;
+    }
+    supabase.storage.from("crew-documents").createSignedUrl(employee.photo_url, 3600)
+      .then(({ data }) => setResolvedPhotoUrl(data?.signedUrl ?? null));
+  }, [employee?.photo_url]);
 
   if (!employee) {
     return (
@@ -136,7 +149,7 @@ export default function CrewProfile() {
       <div className="kpi-card">
         <div className="flex flex-col sm:flex-row items-start gap-4">
           <Avatar className="h-20 w-20 shrink-0">
-            <AvatarImage src={employee.photo_url ?? undefined} />
+            <AvatarImage src={resolvedPhotoUrl ?? undefined} />
             <AvatarFallback className="bg-primary/10 text-primary font-black text-xl">
               {employee.first_name[0]}{employee.last_name[0]}
             </AvatarFallback>

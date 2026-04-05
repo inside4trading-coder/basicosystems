@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { FileText, FileCheck, FileImage, FolderOpen, Calendar, Plus, X, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,9 +122,7 @@ export function CrewDocuments({ employeeId }: { employeeId: string }) {
                     </span>
                   )}
                 </div>
-                <Button variant="outline" size="sm" className="w-full mt-1" onClick={() => window.open(doc.file_url, "_blank")}>
-                  <ExternalLink className="h-3.5 w-3.5 mr-1" />Ver archivo
-                </Button>
+                <OpenDocButton fileUrl={doc.file_url} />
               </div>
             );
           })}
@@ -141,6 +139,35 @@ export function CrewDocuments({ employeeId }: { employeeId: string }) {
         }}
       />
     </div>
+  );
+}
+
+function OpenDocButton({ fileUrl }: { fileUrl: string }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleOpen = async () => {
+    setLoading(true);
+    try {
+      // If it's already a full URL (legacy signed URL), open directly
+      if (fileUrl.startsWith("http")) {
+        window.open(fileUrl, "_blank");
+        return;
+      }
+      const { data, error } = await supabase.storage.from("crew-documents").createSignedUrl(fileUrl, 3600);
+      if (error || !data?.signedUrl) throw error || new Error("No se pudo generar el enlace");
+      window.open(data.signedUrl, "_blank");
+    } catch (e: any) {
+      toast.error(e?.message || "Error al abrir archivo");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button variant="outline" size="sm" className="w-full mt-1" onClick={handleOpen} disabled={loading}>
+      {loading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5 mr-1" />}
+      {loading ? "Abriendo…" : "Ver archivo"}
+    </Button>
   );
 }
 
@@ -166,16 +193,11 @@ function UploadDocSheet({ open, onOpenChange, employeeId, onSuccess }: {
       const { error: uploadError } = await supabase.storage.from("crew-documents").upload(storagePath, file);
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from("crew-documents").getPublicUrl(storagePath);
-      // Since bucket is private, create signed URL
-      const { data: signedData, error: signError } = await supabase.storage.from("crew-documents").createSignedUrl(storagePath, 60 * 60 * 24 * 365);
-      if (signError) throw signError;
-
       const { error } = await supabase.from("employee_documents").insert({
         employee_id: employeeId,
         name: name.trim(),
         doc_type: docType,
-        file_url: signedData.signedUrl,
+        file_url: storagePath,
         expiry_date: expiryDate || null,
       });
       if (error) throw error;
