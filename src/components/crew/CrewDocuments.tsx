@@ -164,16 +164,11 @@ function UploadDocSheet({ open, onOpenChange, employeeId, onSuccess }: {
       const { error: uploadError } = await supabase.storage.from("crew-documents").upload(storagePath, file);
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from("crew-documents").getPublicUrl(storagePath);
-      // Since bucket is private, create signed URL
-      const { data: signedData, error: signError } = await supabase.storage.from("crew-documents").createSignedUrl(storagePath, 60 * 60 * 24 * 365);
-      if (signError) throw signError;
-
       const { error } = await supabase.from("employee_documents").insert({
         employee_id: employeeId,
         name: name.trim(),
         doc_type: docType,
-        file_url: signedData.signedUrl,
+        file_url: storagePath,
         expiry_date: expiryDate || null,
       });
       if (error) throw error;
