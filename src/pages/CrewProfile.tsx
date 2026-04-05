@@ -49,6 +49,18 @@ export default function CrewProfile() {
   const [archiveDialog, setArchiveDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [resolvedPhotoUrl, setResolvedPhotoUrl] = useState<string | null>(null);
+
+  // Resolve photo URL from storage path
+  useEffect(() => {
+    if (!employee?.photo_url) { setResolvedPhotoUrl(null); return; }
+    if (employee.photo_url.startsWith("http") || employee.photo_url.startsWith("blob:")) {
+      setResolvedPhotoUrl(employee.photo_url);
+      return;
+    }
+    supabase.storage.from("crew-documents").createSignedUrl(employee.photo_url, 3600)
+      .then(({ data }) => setResolvedPhotoUrl(data?.signedUrl ?? null));
+  }, [employee?.photo_url]);
 
   if (!employee) {
     return (
