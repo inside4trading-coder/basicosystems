@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, MapPin, Calendar, Pencil, MoreVertical,
-  AlertTriangle, GraduationCap, Archive, Trash2,
+  AlertTriangle, GraduationCap, Archive, Trash2, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +40,10 @@ const statusConfig: Record<EmployeeStatus, { label: string; className: string }>
 export default function CrewProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { employees, updateEmployee, deleteEmployee, changeStatus } = useCrewData();
+  const {
+    employees, loading, updateEmployee, deleteEmployee, changeStatus,
+    addRecurringTask, toggleRecurringTask, deleteRecurringTask,
+  } = useCrewData();
 
   const employee = employees.find((e) => e.id === id);
 
@@ -62,6 +65,14 @@ export default function CrewProfile() {
       .then(({ data }) => setResolvedPhotoUrl(data?.signedUrl ?? null));
   }, [employee?.photo_url]);
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   if (!employee) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-3 animate-fade-in">
@@ -78,7 +89,7 @@ export default function CrewProfile() {
   const startEditing = () => { setPendingUpdates({}); setEditing(true); };
   const cancelEditing = () => { setPendingUpdates({}); setEditing(false); };
 
-  const saveEditing = () => {
+  const saveEditing = async () => {
     const fn = pendingUpdates.first_name ?? employee.first_name;
     const ln = pendingUpdates.last_name ?? employee.last_name;
     const pos = pendingUpdates.position ?? employee.position;
@@ -86,57 +97,81 @@ export default function CrewProfile() {
       toast.error("Nombre, apellido y cargo son requeridos");
       return;
     }
-    logFieldChanges(employee.id, employee, pendingUpdates);
-    updateEmployee(employee.id, pendingUpdates);
-    setEditing(false);
-    setPendingUpdates({});
-    toast.success("Cambios guardados");
+    try {
+      logFieldChanges(employee.id, employee, pendingUpdates);
+      await updateEmployee(employee.id, pendingUpdates);
+      setEditing(false);
+      setPendingUpdates({});
+      toast.success("Cambios guardados");
+    } catch (err: any) {
+      toast.error(err.message ?? "Error al guardar");
+    }
   };
 
-  const handleChangeStatus = (newStatus: EmployeeStatus) => {
+  const handleChangeStatus = async (newStatus: EmployeeStatus) => {
     if (newStatus === "archived") { setArchiveDialog(true); return; }
-    logAudit({ employee_id: employee.id, action: "Cambió estado", field_changed: "Estado", old_value: statusConfig[employee.status].label, new_value: statusConfig[newStatus].label });
-    changeStatus(employee.id, newStatus);
-    toast.success(`Estado cambiado a ${statusConfig[newStatus].label}`);
+    try {
+      logAudit({ employee_id: employee.id, action: "Cambió estado", field_changed: "Estado", old_value: statusConfig[employee.status].label, new_value: statusConfig[newStatus].label });
+      await changeStatus(employee.id, newStatus);
+      toast.success(`Estado cambiado a ${statusConfig[newStatus].label}`);
+    } catch (err: any) {
+      toast.error(err.message ?? "Error al cambiar estado");
+    }
   };
 
-  const confirmArchive = () => {
-    logAudit({ employee_id: employee.id, action: "Archivó", old_value: statusConfig[employee.status].label, new_value: "Archivado" });
-    changeStatus(employee.id, "archived");
-    setArchiveDialog(false);
-    toast.success("Empleado archivado");
+  const confirmArchive = async () => {
+    try {
+      logAudit({ employee_id: employee.id, action: "Archivó", old_value: statusConfig[employee.status].label, new_value: "Archivado" });
+      await changeStatus(employee.id, "archived");
+      setArchiveDialog(false);
+      toast.success("Empleado archivado");
+    } catch (err: any) {
+      toast.error(err.message ?? "Error al archivar");
+    }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteConfirmName.trim().toLowerCase() !== fullName.toLowerCase()) {
       toast.error("El nombre no coincide"); return;
     }
-    logAudit({ employee_id: employee.id, action: "Eliminó permanentemente" });
-    deleteEmployee(employee.id);
-    toast.success("Empleado eliminado permanentemente");
-    navigate("/crew");
+    try {
+      logAudit({ employee_id: employee.id, action: "Eliminó permanentemente" });
+      await deleteEmployee(employee.id);
+      toast.success("Empleado eliminado permanentemente");
+      navigate("/crew");
+    } catch (err: any) {
+      toast.error(err.message ?? "Error al eliminar");
+    }
   };
 
-  const handleAddTask = (task: RecurringTask) => {
-    logAudit({ employee_id: employee.id, action: "Agregó tarea", new_value: task.name });
-    updateEmployee(employee.id, { recurring_tasks: [...employee.recurring_tasks, task] });
+  const handleAddTask = async (task: RecurringTask) => {
+    try {
+      logAudit({ employee_id: employee.id, action: "Agregó tarea", new_value: task.name });
+      await addRecurringTask(employee.id, task);
+    } catch (err: any) {
+      toast.error(err.message ?? "Error al agregar tarea");
+    }
   };
 
-  const handleToggleTask = (taskId: string) => {
+  const handleToggleTask = async (taskId: string) => {
     const task = employee.recurring_tasks.find((t) => t.id === taskId);
     if (task) logAudit({ employee_id: employee.id, action: task.active ? "Desactivó tarea" : "Activó tarea", new_value: task.name });
-    updateEmployee(employee.id, {
-      recurring_tasks: employee.recurring_tasks.map((t) => t.id === taskId ? { ...t, active: !t.active } : t),
-    });
+    try {
+      await toggleRecurringTask(taskId, task?.active ?? false);
+    } catch (err: any) {
+      toast.error(err.message ?? "Error al cambiar tarea");
+    }
   };
 
-  const handleDeleteTask = (taskId: string) => {
+  const handleDeleteTask = async (taskId: string) => {
     const task = employee.recurring_tasks.find((t) => t.id === taskId);
     if (task) logAudit({ employee_id: employee.id, action: "Eliminó tarea", old_value: task.name });
-    updateEmployee(employee.id, {
-      recurring_tasks: employee.recurring_tasks.filter((t) => t.id !== taskId),
-    });
-    toast.success("Tarea eliminada");
+    try {
+      await deleteRecurringTask(taskId);
+      toast.success("Tarea eliminada");
+    } catch (err: any) {
+      toast.error(err.message ?? "Error al eliminar tarea");
+    }
   };
 
   return (

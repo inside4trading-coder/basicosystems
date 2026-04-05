@@ -50,10 +50,14 @@ export default function Crew() {
 
   const hasActiveFilters = search || filterPosition !== "all" || filterLocation !== "all" || filterStatus !== "all";
 
-  const handleAddEmployee = (data: Parameters<typeof addEmployee>[0]) => {
-    addEmployee(data);
-    toast.success("Empleado agregado correctamente");
-    setSheetOpen(false);
+  const handleAddEmployee = async (data: Parameters<typeof addEmployee>[0]) => {
+    try {
+      await addEmployee(data);
+      toast.success("Empleado agregado correctamente");
+      setSheetOpen(false);
+    } catch (err: any) {
+      toast.error(err.message ?? "Error al agregar empleado");
+    }
   };
 
   if (loading) {

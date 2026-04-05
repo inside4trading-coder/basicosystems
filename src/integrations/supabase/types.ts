@@ -360,6 +360,63 @@ export type Database = {
         }
         Relationships: []
       }
+      employees: {
+        Row: {
+          cedula: string | null
+          created_at: string
+          current_salary: number | null
+          first_name: string
+          id: string
+          internal_id: string
+          last_name: string
+          location: string | null
+          observations: string | null
+          phone: string | null
+          photo_url: string | null
+          position: string
+          skills: string[] | null
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cedula?: string | null
+          created_at?: string
+          current_salary?: number | null
+          first_name: string
+          id?: string
+          internal_id: string
+          last_name: string
+          location?: string | null
+          observations?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          position: string
+          skills?: string[] | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cedula?: string | null
+          created_at?: string
+          current_salary?: number | null
+          first_name?: string
+          id?: string
+          internal_id?: string
+          last_name?: string
+          location?: string | null
+          observations?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          position?: string
+          skills?: string[] | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       incidents: {
         Row: {
           category: string
@@ -699,6 +756,56 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      recurring_tasks: {
+        Row: {
+          active: boolean
+          area: string | null
+          created_at: string
+          day: string | null
+          employee_id: string
+          frequency: string
+          id: string
+          name: string
+          priority: string
+          responsible: string | null
+          time: string | null
+        }
+        Insert: {
+          active?: boolean
+          area?: string | null
+          created_at?: string
+          day?: string | null
+          employee_id: string
+          frequency?: string
+          id?: string
+          name: string
+          priority?: string
+          responsible?: string | null
+          time?: string | null
+        }
+        Update: {
+          active?: boolean
+          area?: string | null
+          created_at?: string
+          day?: string | null
+          employee_id?: string
+          frequency?: string
+          id?: string
+          name?: string
+          priority?: string
+          responsible?: string | null
+          time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_tasks_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       salary_history: {
         Row: {
