@@ -1,87 +1,181 @@
-import { useState, useCallback } from "react";
-import type { Employee, EmployeeStatus } from "@/types/crew";
-
-const mockEmployees: Employee[] = [
-  {
-    id: "1", internal_id: "CR-001", photo_url: null,
-    first_name: "Carlos", last_name: "Mendoza", cedula: "V-18.432.567",
-    phone: "+58 412-3456789", position: "Coordinador de Producción", location: "Caracas",
-    start_date: "2023-03-15", current_salary: 850,
-    skills: ["Gestión de inventario", "Excel avanzado", "Logística"],
-    status: "active", observations: "Excelente desempeño en Q1 2026.",
-    recurring_tasks: [
-      { id: "t1", name: "Revisión de inventario", frequency: "daily", day: "Lunes a Viernes", time: "08:00", priority: "high", area: "Producción", responsible: "Carlos Mendoza", active: true },
-    ],
-    created_at: "2023-03-15T10:00:00Z", updated_at: "2026-03-01T14:30:00Z",
-  },
-  {
-    id: "2", internal_id: "CR-002", photo_url: null,
-    first_name: "María", last_name: "Rodríguez", cedula: "V-20.876.321",
-    phone: "+58 414-9876543", position: "Diseñadora Gráfica", location: "Valencia",
-    start_date: "2024-01-10", current_salary: 650,
-    skills: ["Illustrator", "Photoshop", "Figma", "Branding"],
-    status: "active", observations: "",
-    recurring_tasks: [],
-    created_at: "2024-01-10T09:00:00Z", updated_at: "2026-02-20T11:00:00Z",
-  },
-  {
-    id: "3", internal_id: "CR-003", photo_url: null,
-    first_name: "Andrés", last_name: "Gutiérrez", cedula: "V-22.145.890",
-    phone: "+58 424-5551234", position: "Community Manager", location: "Caracas",
-    start_date: "2024-06-01", current_salary: 500,
-    skills: ["Redes sociales", "Copywriting", "Canva", "Analytics"],
-    status: "active", observations: "En periodo de evaluación para aumento.",
-    recurring_tasks: [
-      { id: "t2", name: "Publicación de contenido", frequency: "daily", day: "Lunes a Sábado", time: "09:00", priority: "medium", area: "Marketing", responsible: "Andrés Gutiérrez", active: true },
-    ],
-    created_at: "2024-06-01T08:00:00Z", updated_at: "2026-03-15T16:00:00Z",
-  },
-  {
-    id: "4", internal_id: "CR-004", photo_url: null,
-    first_name: "Valentina", last_name: "Pérez", cedula: "V-19.567.234",
-    phone: "+58 416-7778899", position: "Asistente Administrativa", location: "Maracaibo",
-    start_date: "2023-09-20", current_salary: null,
-    skills: ["Atención al cliente", "Facturación", "Google Workspace"],
-    status: "archived", observations: "Finalizó contrato en diciembre 2025.",
-    recurring_tasks: [],
-    created_at: "2023-09-20T10:00:00Z", updated_at: "2025-12-31T18:00:00Z",
-  },
-];
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { Employee, EmployeeStatus, RecurringTask } from "@/types/crew";
 
 export function useCrewData() {
-  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
-  const [loading] = useState(false);
-  const [error] = useState<string | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const addEmployee = useCallback((data: Omit<Employee, "id" | "internal_id" | "skills" | "recurring_tasks" | "created_at" | "updated_at" | "current_salary" | "observations">) => {
-    setEmployees((prev) => {
-      const nextNum = prev.length + 1;
-      const internal_id = `CR-${String(nextNum).padStart(3, "0")}`;
-      const now = new Date().toISOString();
-      const newEmp: Employee = {
-        ...data, id: crypto.randomUUID(), internal_id,
-        current_salary: null, skills: [], observations: "",
-        recurring_tasks: [], created_at: now, updated_at: now,
-      };
-      return [...prev, newEmp];
+  const fetchEmployees = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: empRows, error: empErr } = await supabase
+        .from("employees")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      if (empErr) throw empErr;
+
+      const { data: taskRows, error: taskErr } = await supabase
+        .from("recurring_tasks")
+        .select("*");
+
+      if (taskErr) throw taskErr;
+
+      const tasksByEmployee = new Map<string, RecurringTask[]>();
+      for (const t of taskRows ?? []) {
+        const list = tasksByEmployee.get(t.employee_id) ?? [];
+        list.push({
+          id: t.id,
+          name: t.name,
+          frequency: t.frequency as RecurringTask["frequency"],
+          day: t.day ?? "",
+          time: t.time ?? "",
+          priority: t.priority as RecurringTask["priority"],
+          area: t.area ?? "",
+          responsible: t.responsible ?? "",
+          active: t.active,
+        });
+        tasksByEmployee.set(t.employee_id, list);
+      }
+
+      const mapped: Employee[] = (empRows ?? []).map((e) => ({
+        id: e.id,
+        internal_id: e.internal_id,
+        photo_url: e.photo_url,
+        first_name: e.first_name,
+        last_name: e.last_name,
+        cedula: e.cedula ?? "",
+        phone: e.phone ?? "",
+        position: e.position,
+        location: e.location ?? "",
+        start_date: e.start_date,
+        current_salary: e.current_salary ? Number(e.current_salary) : null,
+        skills: e.skills ?? [],
+        status: (e.status ?? "active") as EmployeeStatus,
+        observations: e.observations ?? "",
+        recurring_tasks: tasksByEmployee.get(e.id) ?? [],
+        created_at: e.created_at,
+        updated_at: e.updated_at,
+      }));
+
+      setEmployees(mapped);
+    } catch (err: any) {
+      console.error("Error fetching employees:", err);
+      setError(err.message ?? "Error al cargar empleados");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
+
+  const addEmployee = useCallback(async (data: {
+    first_name: string;
+    last_name: string;
+    cedula: string;
+    phone: string;
+    position: string;
+    location: string;
+    start_date: string;
+    status: EmployeeStatus;
+    photo_url: string | null;
+  }) => {
+    const { error: insertErr } = await supabase.from("employees").insert({
+      first_name: data.first_name,
+      last_name: data.last_name,
+      cedula: data.cedula,
+      phone: data.phone,
+      position: data.position,
+      location: data.location,
+      start_date: data.start_date,
+      status: data.status,
+      photo_url: data.photo_url,
+      internal_id: "", // trigger will auto-generate
     });
-  }, []);
+    if (insertErr) throw insertErr;
+    await fetchEmployees();
+  }, [fetchEmployees]);
 
-  const updateEmployee = useCallback((id: string, updates: Partial<Employee>) => {
-    setEmployees((prev) =>
-      prev.map((e) => e.id === id ? { ...e, ...updates, updated_at: new Date().toISOString() } : e)
-    );
-  }, []);
+  const updateEmployee = useCallback(async (id: string, updates: Partial<Employee>) => {
+    const { recurring_tasks, ...dbUpdates } = updates as any;
+    const cleanUpdates: Record<string, any> = { ...dbUpdates, updated_at: new Date().toISOString() };
+    // Remove non-DB fields
+    delete cleanUpdates.internal_id;
+    delete cleanUpdates.created_at;
+    delete cleanUpdates.id;
 
-  const deleteEmployee = useCallback((id: string) => {
+    if (Object.keys(cleanUpdates).length > 1) { // more than just updated_at
+      const { error: updateErr } = await supabase
+        .from("employees")
+        .update(cleanUpdates)
+        .eq("id", id);
+      if (updateErr) throw updateErr;
+    }
+
+    await fetchEmployees();
+  }, [fetchEmployees]);
+
+  const deleteEmployee = useCallback(async (id: string) => {
+    const { error: delErr } = await supabase
+      .from("employees")
+      .delete()
+      .eq("id", id);
+    if (delErr) throw delErr;
     setEmployees((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
-  const changeStatus = useCallback((id: string, status: EmployeeStatus) => {
-    setEmployees((prev) =>
-      prev.map((e) => e.id === id ? { ...e, status, updated_at: new Date().toISOString() } : e)
-    );
-  }, []);
+  const changeStatus = useCallback(async (id: string, status: EmployeeStatus) => {
+    const { error: upErr } = await supabase
+      .from("employees")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (upErr) throw upErr;
+    await fetchEmployees();
+  }, [fetchEmployees]);
 
-  return { employees, loading, error, addEmployee, updateEmployee, deleteEmployee, changeStatus };
+  // Recurring tasks helpers
+  const addRecurringTask = useCallback(async (employeeId: string, task: Omit<RecurringTask, "id">) => {
+    const { error: insertErr } = await supabase.from("recurring_tasks").insert({
+      employee_id: employeeId,
+      name: task.name,
+      frequency: task.frequency,
+      day: task.day,
+      time: task.time,
+      priority: task.priority,
+      area: task.area,
+      responsible: task.responsible,
+      active: task.active,
+    });
+    if (insertErr) throw insertErr;
+    await fetchEmployees();
+  }, [fetchEmployees]);
+
+  const toggleRecurringTask = useCallback(async (taskId: string, currentActive: boolean) => {
+    const { error: upErr } = await supabase
+      .from("recurring_tasks")
+      .update({ active: !currentActive })
+      .eq("id", taskId);
+    if (upErr) throw upErr;
+    await fetchEmployees();
+  }, [fetchEmployees]);
+
+  const deleteRecurringTask = useCallback(async (taskId: string) => {
+    const { error: delErr } = await supabase
+      .from("recurring_tasks")
+      .delete()
+      .eq("id", taskId);
+    if (delErr) throw delErr;
+    await fetchEmployees();
+  }, [fetchEmployees]);
+
+  return {
+    employees, loading, error, refetch: fetchEmployees,
+    addEmployee, updateEmployee, deleteEmployee, changeStatus,
+    addRecurringTask, toggleRecurringTask, deleteRecurringTask,
+  };
 }
