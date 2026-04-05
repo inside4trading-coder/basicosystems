@@ -142,6 +142,35 @@ export function CrewDocuments({ employeeId }: { employeeId: string }) {
   );
 }
 
+function OpenDocButton({ fileUrl }: { fileUrl: string }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleOpen = async () => {
+    setLoading(true);
+    try {
+      // If it's already a full URL (legacy signed URL), open directly
+      if (fileUrl.startsWith("http")) {
+        window.open(fileUrl, "_blank");
+        return;
+      }
+      const { data, error } = await supabase.storage.from("crew-documents").createSignedUrl(fileUrl, 3600);
+      if (error || !data?.signedUrl) throw error || new Error("No se pudo generar el enlace");
+      window.open(data.signedUrl, "_blank");
+    } catch (e: any) {
+      toast.error(e?.message || "Error al abrir archivo");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button variant="outline" size="sm" className="w-full mt-1" onClick={handleOpen} disabled={loading}>
+      {loading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5 mr-1" />}
+      {loading ? "Abriendo…" : "Ver archivo"}
+    </Button>
+  );
+}
+
 function UploadDocSheet({ open, onOpenChange, employeeId, onSuccess }: {
   open: boolean; onOpenChange: (v: boolean) => void; employeeId: string; onSuccess: () => void;
 }) {

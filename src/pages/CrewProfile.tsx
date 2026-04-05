@@ -149,7 +149,7 @@ export default function CrewProfile() {
       <div className="kpi-card">
         <div className="flex flex-col sm:flex-row items-start gap-4">
           <Avatar className="h-20 w-20 shrink-0">
-            <AvatarImage src={employee.photo_url ?? undefined} />
+            <AvatarImage src={resolvedPhotoUrl ?? undefined} />
             <AvatarFallback className="bg-primary/10 text-primary font-black text-xl">
               {employee.first_name[0]}{employee.last_name[0]}
             </AvatarFallback>
