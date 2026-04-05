@@ -122,9 +122,7 @@ export function CrewDocuments({ employeeId }: { employeeId: string }) {
                     </span>
                   )}
                 </div>
-                <Button variant="outline" size="sm" className="w-full mt-1" onClick={() => window.open(doc.file_url, "_blank")}>
-                  <ExternalLink className="h-3.5 w-3.5 mr-1" />Ver archivo
-                </Button>
+                <OpenDocButton fileUrl={doc.file_url} />
               </div>
             );
           })}
