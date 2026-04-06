@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const NOTION_VERSION = "2022-06-28";
+const NOTION_VERSION = "2026-03-11";
 
 function notionHeaders(token: string) {
   return {
@@ -21,6 +21,53 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+async function notionRequest(token: string, path: string, init: RequestInit = {}) {
+  const res = await fetch(`https://api.notion.com${path}`, {
+    ...init,
+    headers: {
+      ...notionHeaders(token),
+      ...(init.headers || {}),
+    },
+  });
+
+  const text = await res.text();
+  let data: any = {};
+
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { raw: text };
+  }
+
+  return { res, data };
+}
+
+function notionError(prefix: string, status: number, data: any) {
+  const code = data?.code ? ` (${data.code})` : "";
+  const message = data?.message || data?.error || "Notion API error";
+  return `${prefix}: ${status}${code} — ${message}`;
+}
+
+function extractRichText(items: any[] | undefined): string {
+  if (!Array.isArray(items)) return "";
+  return items.map((item: any) => item?.plain_text || "").join("").trim();
+}
+
+function normalizeSource(source: any) {
+  const props: Record<string, { type: string; name: string }> = {};
+
+  for (const [key, val] of Object.entries(source.properties || {})) {
+    props[key] = { type: (val as any).type, name: (val as any).name || key };
+  }
+
+  return {
+    id: source.id,
+    name: extractRichText(source.title) || "Fuente sin título",
+    url: source.url || "",
+    properties: props,
+  };
 }
 
 // ── helpers to extract property values ──
@@ -71,62 +118,136 @@ function extractArea(prop: any): string | null {
 // ── actions ──
 
 async function listDatabases(token: string) {
-  const res = await fetch("https://api.notion.com/v1/search", {
+  const sourceSearch = await notionRequest(token, "/v1/search", {
     method: "POST",
-    headers: notionHeaders(token),
     body: JSON.stringify({
-      filter: { value: "database", property: "object" },
+      filter: { value: "data_source", property: "object" },
       page_size: 100,
     }),
   });
-  const data = await res.json();
-  console.log("Notion search response:", res.status, JSON.stringify(data).substring(0, 500));
-  if (!res.ok) return json({ error: data.message || data.code || "Notion API error" }, 502);
+  console.log(
+    "Notion search(data_source):",
+    sourceSearch.res.status,
+    JSON.stringify(sourceSearch.data).substring(0, 500)
+  );
 
-  const databases = (data.results || [])
-    .filter((db: any) => {
-      if (db.object !== "database") return false;
-      const title = (db.title || []).map((t: any) => t.plain_text || "").join("");
-      if (!title) return false;
-      const props = db.properties || {};
-      return Object.keys(props).length > 0;
-    })
-    .map((db: any) => {
-      const props: Record<string, { type: string; name: string }> = {};
-      for (const [key, val] of Object.entries(db.properties || {})) {
-        props[key] = { type: (val as any).type, name: (val as any).name || key };
-      }
-      return {
-        id: db.id,
-        name: (db.title || []).map((t: any) => t.plain_text || "").join(""),
-        url: db.url,
-        properties: props,
-      };
+  let results = Array.isArray(sourceSearch.data?.results) ? sourceSearch.data.results : [];
+  let searchMode = "data_source";
+
+  if (!sourceSearch.res.ok || results.length === 0) {
+    const legacySearch = await notionRequest(token, "/v1/search", {
+      method: "POST",
+      body: JSON.stringify({
+        filter: { value: "database", property: "object" },
+        page_size: 100,
+      }),
     });
 
-  return json({ databases });
+    console.log(
+      "Notion search(database fallback):",
+      legacySearch.res.status,
+      JSON.stringify(legacySearch.data).substring(0, 500)
+    );
+
+    if (!legacySearch.res.ok && !sourceSearch.res.ok) {
+      return json(
+        {
+          error: notionError("Notion search failed", sourceSearch.res.status, sourceSearch.data),
+        },
+        502
+      );
+    }
+
+    if (legacySearch.res.ok && Array.isArray(legacySearch.data?.results) && legacySearch.data.results.length > 0) {
+      results = legacySearch.data.results;
+      searchMode = "database";
+    }
+  }
+
+  const databases = results
+    .filter((source: any) => source.object === "data_source" || source.object === "database")
+    .filter((source: any) => Object.keys(source.properties || {}).length > 0)
+    .map(normalizeSource);
+
+  const uniqueDatabases = Array.from(new Map(databases.map((source: any) => [source.id, source])).values());
+
+  console.log(
+    `Notion sources normalized: mode=${searchMode}, raw=${results.length}, valid=${uniqueDatabases.length}`
+  );
+
+  if (results.length > 0 && uniqueDatabases.length === 0) {
+    return json(
+      {
+        error:
+          "Notion devolvió fuentes compartidas, pero ninguna pudo normalizarse con el modelo actual de data sources.",
+      },
+      502
+    );
+  }
+
+  return json({ databases: uniqueDatabases });
 }
 
-async function queryDatabase(token: string, databaseId: string) {
-  // First get database metadata for the name
-  const dbRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
-    headers: notionHeaders(token),
-  });
-  const dbData = await dbRes.json();
-  const databaseName = dbRes.ok
-    ? (dbData.title || []).map((t: any) => t.plain_text || "").join("")
-    : "";
+async function queryDatabase(token: string, databaseId: string, fallbackName = "") {
+  let databaseName = fallbackName;
+  let data: any = null;
+  let sourceMode = "data_source";
 
-  const res = await fetch(
-    `https://api.notion.com/v1/databases/${databaseId}/query`,
-    {
+  const dataSourceMeta = await notionRequest(token, `/v1/data_sources/${databaseId}`);
+
+  if (dataSourceMeta.res.ok && dataSourceMeta.data?.object === "data_source") {
+    databaseName = extractRichText(dataSourceMeta.data.title) || fallbackName || "Fuente sin título";
+
+    const queryRes = await notionRequest(token, `/v1/data_sources/${databaseId}/query`, {
       method: "POST",
-      headers: notionHeaders(token),
       body: JSON.stringify({ page_size: 100 }),
+    });
+
+    if (!queryRes.res.ok) {
+      return json(
+        { error: notionError("Notion data source query failed", queryRes.res.status, queryRes.data) },
+        502
+      );
     }
+
+    data = queryRes.data;
+  } else {
+    sourceMode = "database";
+
+    if (!dataSourceMeta.res.ok) {
+      console.log(
+        `Data source retrieve fallback for ${databaseId}: ${dataSourceMeta.res.status} ${JSON.stringify(dataSourceMeta.data).substring(0, 300)}`
+      );
+    }
+
+    const dbMeta = await notionRequest(token, `/v1/databases/${databaseId}`);
+    if (!dbMeta.res.ok) {
+      return json(
+        { error: notionError("Notion source retrieve failed", dbMeta.res.status, dbMeta.data) },
+        502
+      );
+    }
+
+    databaseName = extractRichText(dbMeta.data.title) || fallbackName || "Fuente sin título";
+
+    const queryRes = await notionRequest(token, `/v1/databases/${databaseId}/query`, {
+      method: "POST",
+      body: JSON.stringify({ page_size: 100 }),
+    });
+
+    if (!queryRes.res.ok) {
+      return json(
+        { error: notionError("Notion database query failed", queryRes.res.status, queryRes.data) },
+        502
+      );
+    }
+
+    data = queryRes.data;
+  }
+
+  console.log(
+    `Notion source query success: mode=${sourceMode}, source=${databaseId}, rows=${Array.isArray(data?.results) ? data.results.length : 0}`
   );
-  const data = await res.json();
-  if (!res.ok) return json({ error: data.message || "Notion API error" }, 502);
 
   const priorityKeys = ["priority", "prioridad"];
   const areaKeys = ["area", "proyecto", "project"];
@@ -210,7 +331,7 @@ serve(async (req) => {
       if (!body.database_id) {
         return json({ error: "database_id is required" }, 400);
       }
-      return await queryDatabase(token, body.database_id);
+      return await queryDatabase(token, body.database_id, body.database_name);
     }
 
     return json({ error: "Unknown action" }, 400);

@@ -82,13 +82,17 @@ export function usePlanningTasks(
       if (selectedDatabaseId === "all") {
         const results = await Promise.all(
           databases.map((db) =>
-            callPlanningFunction("query-database", { database_id: db.id })
+            callPlanningFunction("query-database", {
+              database_id: db.id,
+              database_name: db.name,
+            })
           )
         );
         setTasks(results.flatMap((r) => r.tasks || []));
       } else {
         const data = await callPlanningFunction("query-database", {
           database_id: selectedDatabaseId,
+          database_name: databases.find((db) => db.id === selectedDatabaseId)?.name,
         });
         setTasks(data.tasks || []);
       }
