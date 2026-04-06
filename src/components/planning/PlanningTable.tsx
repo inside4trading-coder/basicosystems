@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { ExternalLink, ClipboardList, Calendar as CalendarIcon } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { ExternalLink, ClipboardList, Calendar as CalendarIcon, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { NotionTask } from "@/hooks/usePlanningData";
 
