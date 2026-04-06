@@ -226,13 +226,44 @@ export default function PlanningTable({ tasks, loading, error, selectedDatabaseI
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Nombre</th>
-                  <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Asignado a</th>
-                  <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Estado</th>
-                  <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Fecha</th>
-                  <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Prioridad</th>
-                  <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Área</th>
-                  {showSource && <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Fuente</th>}
+                  {([
+                    ["name", "Nombre"],
+                    ["assignee", "Asignado a"],
+                    ["status", "Estado"],
+                    ["date", "Fecha"],
+                    ["priority", "Prioridad"],
+                    ["area", "Área"],
+                  ] as [SortKey, string][]).map(([key, label]) => (
+                    <th
+                      key={key}
+                      onClick={() => toggleSort(key)}
+                      className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4 cursor-pointer select-none hover:text-foreground transition-colors"
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {label}
+                        {sortKey === key ? (
+                          sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-30" />
+                        )}
+                      </span>
+                    </th>
+                  ))}
+                  {showSource && (
+                    <th
+                      onClick={() => toggleSort("source")}
+                      className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4 cursor-pointer select-none hover:text-foreground transition-colors"
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Fuente
+                        {sortKey === "source" ? (
+                          sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-30" />
+                        )}
+                      </span>
+                    </th>
+                  )}
                   <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-center py-3 px-4 w-10">Notion</th>
                 </tr>
               </thead>
