@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { ExternalLink, ClipboardList, Calendar as CalendarIcon } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { ExternalLink, ClipboardList, Calendar as CalendarIcon, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { NotionTask } from "@/hooks/usePlanningData";
 
@@ -31,6 +31,47 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
 }
 
+type SortKey = "name" | "assignee" | "status" | "date" | "priority" | "area" | "source";
+type SortDir = "asc" | "desc";
+
+const PRIORITY_ORDER: Record<string, number> = {
+  "Urgente": 0, "Urgent": 0,
+  "Alta": 1, "High": 1,
+  "Media": 2, "Medium": 2,
+  "Baja": 3, "Low": 3,
+};
+
+function compareTasks(a: NotionTask, b: NotionTask, key: SortKey, dir: SortDir): number {
+  let cmp = 0;
+  switch (key) {
+    case "name":
+      cmp = (a.name || "").localeCompare(b.name || "");
+      break;
+    case "assignee":
+      cmp = (a.assignee[0]?.name || "zzz").localeCompare(b.assignee[0]?.name || "zzz");
+      break;
+    case "status":
+      cmp = (a.status?.name || "zzz").localeCompare(b.status?.name || "zzz");
+      break;
+    case "date":
+      cmp = (a.date?.start || "9999").localeCompare(b.date?.start || "9999");
+      break;
+    case "priority": {
+      const pa = PRIORITY_ORDER[a.priority?.name || ""] ?? 99;
+      const pb = PRIORITY_ORDER[b.priority?.name || ""] ?? 99;
+      cmp = pa - pb;
+      break;
+    }
+    case "area":
+      cmp = (a.area || "zzz").localeCompare(b.area || "zzz");
+      break;
+    case "source":
+      cmp = (a.database_name || "zzz").localeCompare(b.database_name || "zzz");
+      break;
+  }
+  return dir === "desc" ? -cmp : cmp;
+}
+
 export default function PlanningTable({ tasks, loading, error, selectedDatabaseId }: PlanningTableProps) {
   const showSource = selectedDatabaseId === "all";
 
@@ -41,6 +82,20 @@ export default function PlanningTable({ tasks, loading, error, selectedDatabaseI
   const [fSource, setFSource] = useState("");
   const [fDateFrom, setFDateFrom] = useState("");
   const [fDateTo, setFDateTo] = useState("");
+
+  // ── Sort state ──
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const toggleSort = useCallback((key: SortKey) => {
+    if (sortKey === key) {
+      if (sortDir === "asc") setSortDir("desc");
+      else { setSortKey(null); setSortDir("asc"); }
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }, [sortKey, sortDir]);
 
   const hasFilters = !!(fAssignee || fStatus || fPriority || fSource || fDateFrom || fDateTo);
 
@@ -59,9 +114,9 @@ export default function PlanningTable({ tasks, loading, error, selectedDatabaseI
   const uniquePriorities = useMemo(() => [...new Set(tasks.map((t) => t.priority?.name).filter(Boolean) as string[])].sort(), [tasks]);
   const uniqueSources = useMemo(() => [...new Set(tasks.map((t) => t.database_name).filter(Boolean))].sort(), [tasks]);
 
-  // ── Filtered tasks ──
+  // ── Filtered + sorted tasks ──
   const filtered = useMemo(() => {
-    return tasks.filter((t) => {
+    const f = tasks.filter((t) => {
       if (fAssignee && !t.assignee.some((a) => a.name === fAssignee)) return false;
       if (fStatus && t.status?.name !== fStatus) return false;
       if (fPriority && t.priority?.name !== fPriority) return false;
@@ -70,7 +125,11 @@ export default function PlanningTable({ tasks, loading, error, selectedDatabaseI
       if (fDateTo && (!t.date?.start || t.date.start > fDateTo)) return false;
       return true;
     });
-  }, [tasks, fAssignee, fStatus, fPriority, fSource, fDateFrom, fDateTo]);
+    if (sortKey) {
+      return [...f].sort((a, b) => compareTasks(a, b, sortKey, sortDir));
+    }
+    return f;
+  }, [tasks, fAssignee, fStatus, fPriority, fSource, fDateFrom, fDateTo, sortKey, sortDir]);
 
   // ── Loading ──
   if (loading) {
@@ -167,13 +226,44 @@ export default function PlanningTable({ tasks, loading, error, selectedDatabaseI
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Nombre</th>
-                  <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Asignado a</th>
-                  <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Estado</th>
-                  <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Fecha</th>
-                  <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Prioridad</th>
-                  <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Área</th>
-                  {showSource && <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4">Fuente</th>}
+                  {([
+                    ["name", "Nombre"],
+                    ["assignee", "Asignado a"],
+                    ["status", "Estado"],
+                    ["date", "Fecha"],
+                    ["priority", "Prioridad"],
+                    ["area", "Área"],
+                  ] as [SortKey, string][]).map(([key, label]) => (
+                    <th
+                      key={key}
+                      onClick={() => toggleSort(key)}
+                      className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4 cursor-pointer select-none hover:text-foreground transition-colors"
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {label}
+                        {sortKey === key ? (
+                          sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-30" />
+                        )}
+                      </span>
+                    </th>
+                  ))}
+                  {showSource && (
+                    <th
+                      onClick={() => toggleSort("source")}
+                      className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left py-3 px-4 cursor-pointer select-none hover:text-foreground transition-colors"
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Fuente
+                        {sortKey === "source" ? (
+                          sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-30" />
+                        )}
+                      </span>
+                    </th>
+                  )}
                   <th className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-center py-3 px-4 w-10">Notion</th>
                 </tr>
               </thead>
