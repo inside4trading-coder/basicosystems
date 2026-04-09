@@ -267,7 +267,9 @@ serve(async (req) => {
         for (const li of (o.line_items || [])) {
           const sku = li.sku || null;
           const costInfo = sku ? costMap.get(sku) : null;
-          const wcCategory = productCategoryMap.get(li.product_id) || null;
+          const wcCatInfo = productCategoryMap.get(li.product_id) || null;
+          const wcCategory = wcCatInfo?.category || null;
+          const parentCategory = wcCatInfo?.parentCategory || null;
           itemRows.push({
             order_id: o.id,
             line_item_id: li.id,
@@ -282,6 +284,7 @@ serve(async (req) => {
             color: extractVariation(li.meta_data, "color") || extractVariation(li.meta_data, "pa_color"),
             analytic_category: costInfo?.category || wcCategory || null,
             product_category: wcCategory,
+            parent_category: parentCategory,
           });
         }
       }
