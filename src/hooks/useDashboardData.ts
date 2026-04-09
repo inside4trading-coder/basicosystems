@@ -251,7 +251,8 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       }
       const categoryBreakdown = Object.entries(catMap)
         .map(([category, v]) => ({ category, revenue: Math.round(v.revenue * 100) / 100, quantity: v.quantity }))
-        .sort((a, b) => b.revenue - a.revenue);
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 10);
 
       setData({
         kpis: {
