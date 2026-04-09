@@ -218,10 +218,13 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       }));
 
       // Top products from items (with revenue in USD)
+      // Group by base product name (strip variant suffix like "- Talla M, Negro")
+      const stripVariant = (name: string) => name.replace(/\s*-\s*(Talla\s+\w+,?\s*\w*|\w+,\s*\w+)$/i, '').trim();
       const prodMap: Record<string, { name: string; qty: number; rev: number }> = {};
       for (const item of items) {
         if (!paidIds.has(item.order_id)) continue;
-        const key = item.product_name || item.sku || "unknown";
+        const rawName = item.product_name || item.sku || "unknown";
+        const key = stripVariant(rawName);
         if (!prodMap[key]) prodMap[key] = { name: key, qty: 0, rev: 0 };
         prodMap[key].qty += item.quantity || 0;
         const oc = orderCurrencyMap.get(item.order_id);
