@@ -237,11 +237,11 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         .slice(0, 10)
         .map(p => ({ name: p.name, quantity: p.qty, revenue: Math.round(p.rev * 100) / 100 }));
 
-      // Category breakdown
+      // Category breakdown — use parent_category (root WC category) when available
       const catMap: Record<string, { revenue: number; quantity: number }> = {};
       for (const item of items) {
         if (!paidIds.has(item.order_id)) continue;
-        const cat = item.product_category || item.analytic_category || "Sin categoría";
+        const cat = (item as any).parent_category || item.product_category || item.analytic_category || "Sin categoría";
         if (!catMap[cat]) catMap[cat] = { revenue: 0, quantity: 0 };
         const oc = orderCurrencyMap.get(item.order_id);
         const lineTotal = item.line_total || 0;

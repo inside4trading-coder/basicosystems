@@ -465,6 +465,7 @@ export type Database = {
           line_item_id: number | null
           line_total: number | null
           order_id: number
+          parent_category: string | null
           parent_sku: string | null
           product_category: string | null
           product_name: string | null
@@ -481,6 +482,7 @@ export type Database = {
           line_item_id?: number | null
           line_total?: number | null
           order_id: number
+          parent_category?: string | null
           parent_sku?: string | null
           product_category?: string | null
           product_name?: string | null
@@ -497,6 +499,7 @@ export type Database = {
           line_item_id?: number | null
           line_total?: number | null
           order_id?: number
+          parent_category?: string | null
           parent_sku?: string | null
           product_category?: string | null
           product_name?: string | null

@@ -124,7 +124,42 @@ serve(async (req) => {
         if (li.product_id) productIdSet.add(li.product_id);
       }
     }
-    const productCategoryMap = new Map<number, string>();
+
+    // First, fetch the full category tree to build parent lookup
+    const categoryParentMap = new Map<number, { name: string; parentId: number }>();
+    let catPage = 1;
+    let catTotalPages = 1;
+    while (catPage <= catTotalPages) {
+      const res = await wcFetch("/products/categories", {
+        per_page: "100",
+        page: String(catPage),
+        _fields: "id,name,parent",
+      });
+      catTotalPages = res.totalPages;
+      if (Array.isArray(res.body)) {
+        for (const c of res.body) {
+          categoryParentMap.set(c.id, { name: c.name, parentId: c.parent || 0 });
+        }
+      }
+      catPage++;
+    }
+    console.log(`Fetched ${categoryParentMap.size} categories from WC tree`);
+
+    // Helper to find top-level parent category name
+    function getParentCategoryName(catId: number): string | null {
+      let current = catId;
+      let depth = 0;
+      while (depth < 10) {
+        const cat = categoryParentMap.get(current);
+        if (!cat) return null;
+        if (cat.parentId === 0) return cat.name; // This is the root
+        current = cat.parentId;
+        depth++;
+      }
+      return null;
+    }
+
+    const productCategoryMap = new Map<number, { category: string; parentCategory: string | null }>();
     const productIds = [...productIdSet];
     console.log(`Fetching categories for ${productIds.length} unique products...`);
     // Fetch products in batches of 100
@@ -137,9 +172,17 @@ serve(async (req) => {
       });
       if (Array.isArray(res.body)) {
         for (const p of res.body) {
-          const cats = (p.categories || []).map((c: any) => c.name).filter(Boolean);
-          // Use the last (most specific) category
-          if (cats.length > 0) productCategoryMap.set(p.id, cats[cats.length - 1]);
+          const cats: { id: number; name: string }[] = (p.categories || []).filter((c: any) => c.name);
+          if (cats.length > 0) {
+            // Most specific = last category
+            const specific = cats[cats.length - 1];
+            // Find root parent
+            const parentName = getParentCategoryName(specific.id);
+            productCategoryMap.set(p.id, {
+              category: specific.name,
+              parentCategory: parentName && parentName !== specific.name ? parentName : null,
+            });
+          }
         }
       }
     }
@@ -224,7 +267,9 @@ serve(async (req) => {
         for (const li of (o.line_items || [])) {
           const sku = li.sku || null;
           const costInfo = sku ? costMap.get(sku) : null;
-          const wcCategory = productCategoryMap.get(li.product_id) || null;
+          const wcCatInfo = productCategoryMap.get(li.product_id) || null;
+          const wcCategory = wcCatInfo?.category || null;
+          const parentCategory = wcCatInfo?.parentCategory || null;
           itemRows.push({
             order_id: o.id,
             line_item_id: li.id,
@@ -239,6 +284,7 @@ serve(async (req) => {
             color: extractVariation(li.meta_data, "color") || extractVariation(li.meta_data, "pa_color"),
             analytic_category: costInfo?.category || wcCategory || null,
             product_category: wcCategory,
+            parent_category: parentCategory,
           });
         }
       }
