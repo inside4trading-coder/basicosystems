@@ -89,10 +89,11 @@ serve(async (req) => {
 
     // Fetch all orders paginated
     const allOrders: any[] = [];
-    let page = 1;
+    let page = startPage;
     let totalPages = 1;
-    console.log(`Starting sync ${full ? "(FULL HISTORICAL)" : `since ${since.toISOString()} (${sinceDays} days)`}`);
-    while (page <= totalPages) {
+    const endPage = startPage + maxPages - 1;
+    console.log(`Starting sync ${full ? "(FULL HISTORICAL)" : `since ${since.toISOString()} (${sinceDays} days)`} pages ${startPage}-${endPage}`);
+    while (page <= totalPages && page <= endPage) {
       console.log(`Fetching page ${page}/${totalPages}...`);
       const params: Record<string, string> = {
         per_page: "100",
@@ -112,7 +113,8 @@ serve(async (req) => {
       console.log(`Page ${page} done, got ${res.body?.length || 0} orders (total so far: ${allOrders.length})`);
       page++;
     }
-    console.log(`Total orders fetched: ${allOrders.length}`);
+    const nextPage = page <= totalPages ? page : null;
+    console.log(`Total orders fetched in this batch: ${allOrders.length}. Next page: ${nextPage ?? "DONE"}`);
 
     // Fetch product_costs for matching
     const { data: costData } = await supabase.from("product_costs").select("sku, analytic_category, unit_cost_total");
