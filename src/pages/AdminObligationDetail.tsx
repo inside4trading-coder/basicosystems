@@ -47,6 +47,7 @@ import {
 } from "@/components/admin/adminConstants";
 import { MarkPaidDialog } from "@/components/admin/MarkPaidDialog";
 import { NewInstanceSheet } from "@/components/admin/NewInstanceSheet";
+import { AdminDetailHeaderSkeleton } from "@/components/admin/AdminSkeletons";
 
 const FREQUENCIES: { value: ObligationFrequency; label: string }[] = [
   { value: "unica", label: "Única" },
@@ -197,11 +198,7 @@ export default function AdminObligationDetail() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <AdminDetailHeaderSkeleton />;
   }
 
   if (error || !obligation) {
