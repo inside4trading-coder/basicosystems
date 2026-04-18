@@ -71,7 +71,7 @@ export default function Dashboard() {
         toast.info(`Sincronizando lote ${i + 1}/${batches.length}...`);
         
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 55000);
+        const timeout = setTimeout(() => controller.abort(), 300000);
         const res = await fetch(
           `https://${projectId}.supabase.co/functions/v1/woo-sync?days=${sinceDays}`,
           { 
