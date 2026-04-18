@@ -102,12 +102,22 @@ export default function Landing() {
     }
     setSubmitting(true);
     const { name, email, brand, message, interest: i } = parsed.data;
-    const { error } = await supabase.from("landing_leads").insert([{ name, email, brand, message, interest: i }]);
+    const { data: lead, error } = await supabase
+      .from("landing_leads")
+      .insert([{ name, email, brand, message, interest: i }])
+      .select("id")
+      .single();
     setSubmitting(false);
     if (error) {
       toast.error("No pudimos enviar tu mensaje. Intenta de nuevo.");
       return;
     }
+    // Fire-and-forget email notification (no bloquea el éxito del form)
+    supabase.functions
+      .invoke("send-landing-lead-notification", {
+        body: { leadId: lead?.id, name, email, brand, interest: i, message: message ?? "" },
+      })
+      .catch((err) => console.error("send-landing-lead-notification failed:", err));
     toast.success("Recibido. Volvemos en menos de 48h.");
     (e.target as HTMLFormElement).reset();
     setInterest("unsure");
