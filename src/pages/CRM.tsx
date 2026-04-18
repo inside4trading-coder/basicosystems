@@ -58,6 +58,8 @@ export default function CRM() {
   const [customerType, setCustomerType] = useState<string>("all");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [fullSyncing, setFullSyncing] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 500);
