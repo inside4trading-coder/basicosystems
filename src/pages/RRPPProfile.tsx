@@ -40,17 +40,32 @@ type TabValue = typeof ALL_TABS[number]["value"];
 
 export default function RRPPProfile() {
   const { id } = useParams<{ id: string }>();
+  const perms = useRRPPPermissions();
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [tab, setTab] = useState<TabValue>("general");
+  // Tabs visible to current role
+  const visibleTabs = useMemo(() => {
+    if (perms.role === "limited") {
+      return ALL_TABS.filter((t) => t.value === "pipeline" || t.value === "interactions");
+    }
+    return ALL_TABS.filter((t) => t.value !== "notes" || perms.canViewPrivateNotes);
+  }, [perms.role, perms.canViewPrivateNotes]);
+
+  const defaultTab: TabValue = visibleTabs[0]?.value ?? "general";
+  const [tab, setTab] = useState<TabValue>(defaultTab);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Partial<Contact>>({});
   const [saving, setSaving] = useState(false);
 
   // Tab switch guard
   const [pendingTab, setPendingTab] = useState<TabValue | null>(null);
+
+  // Reset tab if current one becomes hidden
+  useEffect(() => {
+    if (!visibleTabs.some((t) => t.value === tab)) setTab(defaultTab);
+  }, [visibleTabs, tab, defaultTab]);
 
   const load = () => {
     if (!id) return;
@@ -188,17 +203,28 @@ export default function RRPPProfile() {
           </div>
 
           <div className="flex items-center gap-2">
-            {editing ? (
-              <>
-                <Button variant="ghost" onClick={cancelEdit} disabled={saving}>Cancelar</Button>
-                <Button onClick={saveEdit} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</Button>
-              </>
-            ) : (
-              <Button variant="outline" size="sm" onClick={startEdit}>
-                <Pencil className="h-4 w-4 mr-2" /> Editar
-              </Button>
+            {perms.canEditGeneral && (
+              editing ? (
+                <>
+                  <Button variant="ghost" onClick={cancelEdit} disabled={saving}>Cancelar</Button>
+                  <Button onClick={saveEdit} disabled={saving || perms.role === "limited"}>
+                    {saving ? "Guardando…" : "Guardar"}
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" size="sm" onClick={startEdit}>
+                  <Pencil className="h-4 w-4 mr-2" /> Editar
+                </Button>
+              )
             )}
-            <ContactActionsMenu contact={contact} onChanged={load} />
+            {(perms.canArchive || perms.canDeleteContact) && (
+              <ContactActionsMenu
+                contact={contact}
+                onChanged={load}
+                canDelete={perms.canDeleteContact}
+                canArchive={perms.canArchive}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -206,7 +232,7 @@ export default function RRPPProfile() {
       {/* Tabs */}
       <Tabs value={tab} onValueChange={handleTabChange}>
         <TabsList className="flex-wrap h-auto">
-          {TABS.map((t) => (
+          {visibleTabs.map((t) => (
             <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
           ))}
         </TabsList>
@@ -224,17 +250,13 @@ export default function RRPPProfile() {
           <RRPPInteractions contactId={contact.id} />
         </TabsContent>
         <TabsContent value="collaborations" className="mt-4">
-          <div className="kpi-card text-center py-16">
-            <h3 className="font-semibold">Colaboraciones</h3>
-            <p className="text-sm text-muted-foreground mt-1">Próximamente: envíos, cupones y resultados.</p>
-          </div>
+          <RRPPCollaborations contactId={contact.id} />
         </TabsContent>
-        <TabsContent value="notes" className="mt-4">
-          <div className="kpi-card text-center py-16">
-            <h3 className="font-semibold">Notas privadas</h3>
-            <p className="text-sm text-muted-foreground mt-1">Próximamente: notas confidenciales del equipo.</p>
-          </div>
-        </TabsContent>
+        {perms.canViewPrivateNotes && (
+          <TabsContent value="notes" className="mt-4">
+            <RRPPPrivateNotes contactId={contact.id} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Audit trail */}
