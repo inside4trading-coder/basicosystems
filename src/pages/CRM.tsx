@@ -168,11 +168,6 @@ export default function CRM() {
     if (!confirm("Esto sincronizará TODOS los pedidos históricos de WooCommerce. Puede tardar varios minutos. ¿Continuar?")) return;
     setFullSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("woo-sync", {
-        body: null,
-        method: "GET",
-      });
-      // supabase.functions.invoke doesn't pass query strings well — use direct fetch instead
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const res = await fetch(
