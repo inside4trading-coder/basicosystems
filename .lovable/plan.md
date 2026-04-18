@@ -1,94 +1,66 @@
 
-## Diagnóstico
 
-El problema no es el límite local de 1000 por batch en sí. Ese batch está bien pensado.
+## Diagnóstico real
 
-Lo que sí está fallando es esto:
-- La primera llamada a `woo-sync?full=true&start_page=1&max_pages=10` trae **1000 pedidos** y responde `next_page: 11`.
-- La segunda llamada (`start_page=11`) devuelve **`total_pages: 1`, `total_fetched: 0`, `next_page: null`**.
-- En `supabase/functions/woo-sync/index.ts`, cuando Woo devuelve un payload no-array o un error de paginación, la función lo interpreta como “ya terminé” en vez de marcarlo como error/retry.
+Comprobé la BD:
+- `orders` tiene **11.067 pedidos** y **5.007 emails únicos**.
+- `customers_cache` tiene **4.384 clientes** que SÍ coinciden (case-insensitive) con esos emails.
+- Pero solo **126 muestran `orders_count = 1`**, **13 con 2-5**, **0 con 6+**.
+- El cliente `gtovar12@hotmail.com` tiene **20 pedidos** en `orders` y aparece como `0` en `customers_cache`.
 
-Resultado:
-- el histórico se corta tras los primeros 1000 pedidos
-- `refresh_customers_order_stats()` recalcula con histórico incompleto
-- CRM y Campaigns siguen viendo `orders_count` subestimado o en 0 para muchos clientes
+Conclusión: **la RPC `refresh_customers_order_stats()` nunca terminó de ejecutarse después del sync histórico**.
 
-## Qué voy a corregir
+## Por qué falló
 
-### 1. Hacer robusta la paginación del edge function
-Actualizar `supabase/functions/woo-sync/index.ts` para que:
-- valide explícitamente la respuesta de Woo
-- detecte respuestas de error/página inválida
-- no convierta un error en `next_page: null`
-- devuelva un estado claro tipo:
-  - `success`
-  - `next_page`
-  - `has_more`
-  - `reached_end`
-  - `source_error` cuando Woo responda mal
+En `woo-sync/index.ts` línea 374:
+```ts
+if (reachedEnd && !sourceError) {
+  await supabase.rpc("refresh_customers_order_stats");
+}
+```
 
-### 2. Dejar de depender solo de `X-WP-TotalPages`
-Woo parece devolver metadatos inconsistentes a partir de cierto punto. Voy a cambiar la lógica para terminar el histórico por una condición más segura:
-- seguir mientras la respuesta traiga pedidos
-- considerar fin real cuando el lote venga vacío de forma válida
-- si Woo devuelve error estructurado, abortar con mensaje claro y sin “cerrar” el histórico falsamente
+La RPC solo se dispara cuando un chunk concreto devuelve `reached_end = true`. Si:
+- el loop del CRM se detuvo antes (timeout, cierre de tab, error intermedio), o
+- el último batch devolvió `has_more` por error de paginación,
 
-### 3. Reducir el riesgo de corte por lote
-El batch actual son 10 páginas = 1000 pedidos.
-Voy a bajarlo y hacerlo más conservador:
-- usar lotes más pequeños para histórico
-- opcionalmente permitir ajuste simple del chunk desde cliente
-Esto reduce probabilidad de respuestas inconsistentes o timeouts intermedios.
+…la recalculación nunca corre. Y el botón "🧮 Recalcular" puede haber tirado timeout también porque la RPC procesa 8.500+ filas dos veces (reset + GREATEST update).
 
-### 4. Mejorar el loop del CRM
-En `src/pages/CRM.tsx`:
-- el loop histórico debe frenar solo cuando el backend indique fin real
-- si recibe payload inválido o inconsistente, mostrar error claro
-- añadir progreso más confiable:
-  - pedidos sincronizados
-  - página actual
-  - si el histórico quedó incompleto
+## Plan de fix
 
-### 5. Recalcular contadores solo con histórico consistente
-Mantener `refresh_customers_order_stats()` como fuente de verdad, pero asegurar que:
-- se ejecute al final del histórico completo
-- o manualmente con el botón de recalcular
-Así Campaigns segmentará por cantidad de compras con datos reales.
+### 1. Disparar la recalculación AHORA (one-shot)
+Ejecutar `SELECT public.refresh_customers_order_stats();` vía migración. Esto arregla los segmentos inmediatamente con los 11.067 pedidos ya sincronizados. Resultado esperado:
+- "Primera compra (1)" → ~3.000+ clientes
+- "Recurrentes (2-5)" → ~1.000+
+- "Fieles (6-15)" → ~200+
+- "VIP (16+)" → ~10+
+
+### 2. Hacer la RPC más rápida y robusta
+Reescribir `refresh_customers_order_stats()` para:
+- usar un único `UPDATE ... FROM` en vez de 2 pasadas
+- match **case-insensitive** por email (`LOWER(email) = LOWER(customer_email)`) para no perder clientes con casing distinto
+- ignorar pedidos cancelados/refunded para que el conteo refleje compras válidas (status `completed`, `processing`, `on-hold`)
+
+### 3. Disparar recalc en CADA chunk del histórico (no solo al final)
+Cambiar `woo-sync/index.ts`: ejecutar la RPC también cuando `status = "has_more"`. Es idempotente y barata tras el fix #2. Así, aunque el loop se interrumpa, el cache siempre refleja lo sincronizado hasta ese punto.
+
+### 4. Botón "Recalcular" con feedback real
+En `src/pages/CRM.tsx`, tras llamar la RPC, mostrar el resultado (`SELECT COUNT(*) WHERE orders_count > 0`) en el toast: `"4.382 clientes con compras actualizados"`. Así el usuario ve evidencia inmediata.
 
 ## Archivos a tocar
 
-- `supabase/functions/woo-sync/index.ts`
-- `src/pages/CRM.tsx`
+- **Migración SQL**: redefinir `refresh_customers_order_stats()` (case-insensitive + status filter + single UPDATE) y ejecutarla.
+- `supabase/functions/woo-sync/index.ts`: quitar la condición `reachedEnd` para llamar la RPC también en `has_more`.
+- `src/pages/CRM.tsx`: enriquecer el toast del botón Recalcular con el conteo real.
 
 ## Validación
 
-Después del fix voy a verificar:
-1. que el histórico avance más allá de la página 10 / 1000 pedidos
-2. que no se marque como terminado cuando Woo responda mal
-3. que el CRM muestre clientes en:
-   - Primera compra
-   - Recurrentes
-   - Fieles
-   - VIP
-4. que `SegmentBuilder` use esos `orders_count` ya corregidos
+Tras aplicar:
+1. Ir a CRM → filtro "Primera compra" debe mostrar miles, no 126.
+2. Filtro "VIP" debe poblarse con `gtovar12@hotmail.com`, `gabo.stonks@gmail.com`, etc.
+3. SegmentBuilder en Campaigns mostrará audiencias realistas por nº de compras.
 
-## Detalle técnico
+## Fuera de alcance
 
-El bug actual está en esta combinación:
-- la función usa `X-WP-TotalPages` como verdad absoluta
-- si Woo responde distinto en `page=11`, `wcFetch` no tipa el fallo
-- `woo-sync` cae en el branch de “body no es array” y sale sin propagar error real
-- el frontend interpreta `next_page: null` como “histórico completo”
+- Re-sync de pedidos (ya están todos en BD, solo falta recalcular).
+- Cambios en Brevo o segmentos guardados.
 
-La corrección consiste en distinguir claramente:
-```text
-fin real del histórico != respuesta inválida de Woo
-```
-
-## Resultado esperado
-
-Una vez aplicado:
-- el histórico ya no se corta en 1000
-- `orders` tendrá el histórico completo realmente importado
-- `customers_cache.orders_count` se recalculará bien
-- CRM y Email Campaigns podrán segmentar correctamente por cantidad histórica de compras
