@@ -810,6 +810,317 @@ export type Database = {
           },
         ]
       }
+      rrpp_audit_log: {
+        Row: {
+          action: string
+          contact_id: string | null
+          created_at: string
+          field_changed: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          contact_id?: string | null
+          created_at?: string
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          contact_id?: string | null
+          created_at?: string
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          performed_by?: string | null
+        }
+        Relationships: []
+      }
+      rrpp_collaborations: {
+        Row: {
+          collab_done: boolean
+          contact_id: string
+          coupon_code: string | null
+          coupon_revenue: number
+          created_at: string
+          has_coupon: boolean
+          id: string
+          network_posted: string | null
+          observations: string | null
+          post_date: string | null
+          post_observation: string | null
+          products: string | null
+          received: boolean
+          send_date: string | null
+        }
+        Insert: {
+          collab_done?: boolean
+          contact_id: string
+          coupon_code?: string | null
+          coupon_revenue?: number
+          created_at?: string
+          has_coupon?: boolean
+          id?: string
+          network_posted?: string | null
+          observations?: string | null
+          post_date?: string | null
+          post_observation?: string | null
+          products?: string | null
+          received?: boolean
+          send_date?: string | null
+        }
+        Update: {
+          collab_done?: boolean
+          contact_id?: string
+          coupon_code?: string | null
+          coupon_revenue?: number
+          created_at?: string
+          has_coupon?: boolean
+          id?: string
+          network_posted?: string | null
+          observations?: string | null
+          post_date?: string | null
+          post_observation?: string | null
+          products?: string | null
+          received?: boolean
+          send_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rrpp_collaborations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "rrpp_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rrpp_config: {
+        Row: {
+          category: string
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          category: string
+          id?: string
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          category?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      rrpp_contacts: {
+        Row: {
+          alias: string | null
+          city: string | null
+          contact_type: string
+          country: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          main_channel: string | null
+          main_tag: string | null
+          name: string
+          observations: string | null
+          phone: string | null
+          photo_url: string | null
+          relationship_status: string
+          responsible: string | null
+          skills: string[] | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          alias?: string | null
+          city?: string | null
+          contact_type?: string
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          main_channel?: string | null
+          main_tag?: string | null
+          name: string
+          observations?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          relationship_status?: string
+          responsible?: string | null
+          skills?: string[] | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          alias?: string | null
+          city?: string | null
+          contact_type?: string
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          main_channel?: string | null
+          main_tag?: string | null
+          name?: string
+          observations?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          relationship_status?: string
+          responsible?: string | null
+          skills?: string[] | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rrpp_interactions: {
+        Row: {
+          channel: string
+          contact_id: string
+          created_at: string
+          date: string
+          id: string
+          next_action: string | null
+          observation: string | null
+          responsible: string | null
+          result: string | null
+          summary: string | null
+          type: string
+        }
+        Insert: {
+          channel?: string
+          contact_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          next_action?: string | null
+          observation?: string | null
+          responsible?: string | null
+          result?: string | null
+          summary?: string | null
+          type?: string
+        }
+        Update: {
+          channel?: string
+          contact_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          next_action?: string | null
+          observation?: string | null
+          responsible?: string | null
+          result?: string | null
+          summary?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rrpp_interactions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "rrpp_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rrpp_private_notes: {
+        Row: {
+          author: string | null
+          contact_id: string
+          content: string
+          created_at: string
+          date: string
+          id: string
+          note_type: string
+          privacy_level: string
+        }
+        Insert: {
+          author?: string | null
+          contact_id: string
+          content: string
+          created_at?: string
+          date?: string
+          id?: string
+          note_type?: string
+          privacy_level?: string
+        }
+        Update: {
+          author?: string | null
+          contact_id?: string
+          content?: string
+          created_at?: string
+          date?: string
+          id?: string
+          note_type?: string
+          privacy_level?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rrpp_private_notes_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "rrpp_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rrpp_social_media: {
+        Row: {
+          contact_id: string
+          created_at: string
+          followers: number
+          handle: string
+          id: string
+          measured_at: string
+          network: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          followers?: number
+          handle?: string
+          id?: string
+          measured_at?: string
+          network: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          followers?: number
+          handle?: string
+          id?: string
+          measured_at?: string
+          network?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rrpp_social_media_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "rrpp_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_history: {
         Row: {
           approved_by: string | null
