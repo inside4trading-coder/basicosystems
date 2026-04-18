@@ -7,15 +7,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { fetchContactById, updateContact } from "@/hooks/useRRPPData";
-import type { Contact, ContactType, RelationshipStatus } from "@/types/rrpp";
+import type { Contact } from "@/types/rrpp";
 import {
   RELATIONSHIP_LABELS, CONTACT_TYPE_LABELS, relationshipBadgeClass,
 } from "@/components/rrpp/rrppConstants";
