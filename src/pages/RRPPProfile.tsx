@@ -21,7 +21,10 @@ import {
 } from "@/components/rrpp/rrppConstants";
 import { ContactActionsMenu } from "@/components/rrpp/ContactActionsMenu";
 import { RRPPAuditTrail } from "@/components/rrpp/RRPPAuditTrail";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RRPPGeneralData } from "@/components/rrpp/RRPPGeneralData";
+import { RRPPSocialMedia } from "@/components/rrpp/RRPPSocialMedia";
+import { RRPPPipeline } from "@/components/rrpp/RRPPPipeline";
+import { RRPPInteractions } from "@/components/rrpp/RRPPInteractions";
 
 const TABS = [
   { value: "general", label: "Datos generales" },
@@ -208,16 +211,16 @@ export default function RRPPProfile() {
         </TabsList>
 
         <TabsContent value="general" className="mt-4">
-          <GeneralTab contact={contact} draft={draft} setDraft={setDraft} editing={editing} />
+          <RRPPGeneralData contact={contact} draft={draft} setDraft={setDraft} editing={editing} />
         </TabsContent>
         <TabsContent value="social" className="mt-4">
-          <PlaceholderTab title="Redes sociales" hint="Próximamente: gestión de redes y seguidores." />
+          <RRPPSocialMedia contactId={contact.id} />
         </TabsContent>
         <TabsContent value="pipeline" className="mt-4">
-          <PlaceholderTab title="Relación / Pipeline" hint="Próximamente: pipeline visual del contacto." />
+          <RRPPPipeline contact={contact} onChanged={load} />
         </TabsContent>
         <TabsContent value="interactions" className="mt-4">
-          <PlaceholderTab title="Interacciones" hint="Próximamente: historial de mensajes y reuniones." />
+          <RRPPInteractions contactId={contact.id} />
         </TabsContent>
         <TabsContent value="collaborations" className="mt-4">
           <PlaceholderTab title="Colaboraciones" hint="Próximamente: envíos, cupones y resultados." />
