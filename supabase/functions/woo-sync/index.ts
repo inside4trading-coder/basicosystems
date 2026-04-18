@@ -89,15 +89,18 @@ serve(async (req) => {
     const allOrders: any[] = [];
     let page = 1;
     let totalPages = 1;
-    console.log(`Starting sync since ${since.toISOString()} (${sinceDays} days)`);
+    console.log(`Starting sync ${full ? "(FULL HISTORICAL)" : `since ${since.toISOString()} (${sinceDays} days)`}`);
     while (page <= totalPages) {
       console.log(`Fetching page ${page}/${totalPages}...`);
-      const res = await wcFetch("/orders", {
-        after: since.toISOString(),
+      const params: Record<string, string> = {
         per_page: "100",
         page: String(page),
         status: "any",
-      });
+        orderby: "date",
+        order: "desc",
+      };
+      if (!full) params.after = since.toISOString();
+      const res = await wcFetch("/orders", params);
       totalPages = res.totalPages;
       if (Array.isArray(res.body)) allOrders.push(...res.body);
       else {
