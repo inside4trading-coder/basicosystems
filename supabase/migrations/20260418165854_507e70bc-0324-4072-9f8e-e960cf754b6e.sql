@@ -1,0 +1,1 @@
+SELECT public.refresh_customers_order_stats();
