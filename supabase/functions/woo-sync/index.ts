@@ -370,11 +370,12 @@ serve(async (req) => {
       syncedPayments += paymentRows.length;
     }
 
-    // Recalculate customer order stats only when we truly reached the end (no source error)
-    if (reachedEnd && !sourceError) {
+    // Recalculate customer order stats after every successful chunk (idempotent + cheap).
+    // This way the cache stays fresh even if the historical loop is interrupted.
+    if (!sourceError && allOrders.length > 0) {
       const { error: rpcErr } = await supabase.rpc("refresh_customers_order_stats");
       if (rpcErr) console.error("refresh_customers_order_stats error:", rpcErr.message);
-      else console.log("Customer order stats recalculated");
+      else console.log(`Customer order stats recalculated (chunk end, reachedEnd=${reachedEnd})`);
     }
 
     const status = sourceError ? "source_error" : reachedEnd ? "reached_end" : "has_more";

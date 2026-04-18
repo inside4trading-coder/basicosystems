@@ -231,7 +231,11 @@ export default function CRM() {
     try {
       const { error } = await supabase.rpc("refresh_customers_order_stats");
       if (error) throw error;
-      toast.success("Contadores de pedidos recalculados");
+      const { count } = await supabase
+        .from("customers_cache")
+        .select("*", { count: "exact", head: true })
+        .gt("orders_count", 0);
+      toast.success(`${count?.toLocaleString("es-ES") ?? 0} clientes con compras actualizados`);
       fetchCustomers();
     } catch (e: any) {
       toast.error(`Error recalculando: ${e.message}`);
