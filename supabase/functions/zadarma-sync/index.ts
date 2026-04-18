@@ -247,7 +247,7 @@ Deno.serve(async (req) => {
         sip,
         agent_name: sipMap[sip] || sip || "Sin asignar",
         cost: Number(s.cost || s.bill_cost || 0),
-        is_recorded: Boolean(s.is_recorded || s.recorded),
+        is_recorded: String(s.is_recorded).toLowerCase() === "true" || Boolean(s.recorded),
         recording_url: String(s.recording || s.record_link || ""),
         raw_data: s,
         synced_at: new Date().toISOString(),
