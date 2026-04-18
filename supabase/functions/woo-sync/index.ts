@@ -75,6 +75,7 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
+    const full = url.searchParams.get("full") === "true";
     const sinceDays = parseInt(url.searchParams.get("days") || "30");
     const since = new Date();
     since.setDate(since.getDate() - sinceDays);
@@ -88,15 +89,18 @@ serve(async (req) => {
     const allOrders: any[] = [];
     let page = 1;
     let totalPages = 1;
-    console.log(`Starting sync since ${since.toISOString()} (${sinceDays} days)`);
+    console.log(`Starting sync ${full ? "(FULL HISTORICAL)" : `since ${since.toISOString()} (${sinceDays} days)`}`);
     while (page <= totalPages) {
       console.log(`Fetching page ${page}/${totalPages}...`);
-      const res = await wcFetch("/orders", {
-        after: since.toISOString(),
+      const params: Record<string, string> = {
         per_page: "100",
         page: String(page),
         status: "any",
-      });
+        orderby: "date",
+        order: "desc",
+      };
+      if (!full) params.after = since.toISOString();
+      const res = await wcFetch("/orders", params);
       totalPages = res.totalPages;
       if (Array.isArray(res.body)) allOrders.push(...res.body);
       else {
@@ -316,11 +320,17 @@ serve(async (req) => {
       syncedPayments += paymentRows.length;
     }
 
+    // Recalculate customer order stats from local orders table
+    const { error: rpcErr } = await supabase.rpc("refresh_customers_order_stats");
+    if (rpcErr) console.error("refresh_customers_order_stats error:", rpcErr.message);
+    else console.log("Customer order stats recalculated");
+
     return new Response(JSON.stringify({
       success: true,
+      mode: full ? "full" : "incremental",
       synced: { orders: syncedOrders, items: syncedItems, payments: syncedPayments },
       total_fetched: allOrders.length,
-      since: since.toISOString(),
+      since: full ? null : since.toISOString(),
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

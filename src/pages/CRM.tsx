@@ -1,4 +1,4 @@
-import { Search, Loader2, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { Search, Loader2, ChevronLeft, ChevronRight, RefreshCw, Calculator, History } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useCallback } from "react";
 import { CustomerOrdersDialog } from "@/components/crm/CustomerOrdersDialog";
@@ -58,6 +58,8 @@ export default function CRM() {
   const [customerType, setCustomerType] = useState<string>("all");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [fullSyncing, setFullSyncing] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 500);
@@ -162,6 +164,41 @@ export default function CRM() {
     }
   };
 
+  const syncOrdersHistorical = async () => {
+    if (!confirm("Esto sincronizará TODOS los pedidos históricos de WooCommerce. Puede tardar varios minutos. ¿Continuar?")) return;
+    setFullSyncing(true);
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/woo-sync?full=true`,
+        { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
+      );
+      const result = await res.json();
+      if (!res.ok || result.error) throw new Error(result.error || "Sync failed");
+      toast.success(`Histórico sincronizado: ${result.synced.orders} pedidos. Contadores recalculados.`);
+      fetchCustomers();
+    } catch (e: any) {
+      toast.error(`Error sync histórico: ${e.message}`);
+    } finally {
+      setFullSyncing(false);
+    }
+  };
+
+  const recalculateStats = async () => {
+    setRecalculating(true);
+    try {
+      const { error } = await supabase.rpc("refresh_customers_order_stats");
+      if (error) throw error;
+      toast.success("Contadores de pedidos recalculados");
+      fetchCustomers();
+    } catch (e: any) {
+      toast.error(`Error recalculando: ${e.message}`);
+    } finally {
+      setRecalculating(false);
+    }
+  };
+
   const fmtDate = (d: string | null) => {
     if (!d) return "—";
     return new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
@@ -179,10 +216,26 @@ export default function CRM() {
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button
+            onClick={recalculateStats}
+            disabled={recalculating}
+            className="p-2 rounded-md border border-border bg-card hover:bg-muted transition-colors disabled:opacity-50"
+            title="Recalcular contadores de pedidos (rápido, sin re-sincronizar)"
+          >
+            <Calculator className={`h-4 w-4 ${recalculating ? "animate-pulse" : ""}`} />
+          </button>
+          <button
+            onClick={syncOrdersHistorical}
+            disabled={fullSyncing}
+            className="p-2 rounded-md border border-border bg-card hover:bg-muted transition-colors disabled:opacity-50"
+            title="Sync histórico completo de pedidos (lento, una sola vez)"
+          >
+            <History className={`h-4 w-4 ${fullSyncing ? "animate-spin" : ""}`} />
+          </button>
+          <button
             onClick={syncCustomers}
             disabled={syncing}
             className="p-2 rounded-md border border-border bg-card hover:bg-muted transition-colors disabled:opacity-50"
-            title="Sincronizar clientes"
+            title="Sincronizar clientes desde WooCommerce"
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
           </button>
