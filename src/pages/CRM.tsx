@@ -216,10 +216,26 @@ export default function CRM() {
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button
+            onClick={recalculateStats}
+            disabled={recalculating}
+            className="p-2 rounded-md border border-border bg-card hover:bg-muted transition-colors disabled:opacity-50"
+            title="Recalcular contadores de pedidos (rápido, sin re-sincronizar)"
+          >
+            <Calculator className={`h-4 w-4 ${recalculating ? "animate-pulse" : ""}`} />
+          </button>
+          <button
+            onClick={syncOrdersHistorical}
+            disabled={fullSyncing}
+            className="p-2 rounded-md border border-border bg-card hover:bg-muted transition-colors disabled:opacity-50"
+            title="Sync histórico completo de pedidos (lento, una sola vez)"
+          >
+            <History className={`h-4 w-4 ${fullSyncing ? "animate-spin" : ""}`} />
+          </button>
+          <button
             onClick={syncCustomers}
             disabled={syncing}
             className="p-2 rounded-md border border-border bg-card hover:bg-muted transition-colors disabled:opacity-50"
-            title="Sincronizar clientes"
+            title="Sincronizar clientes desde WooCommerce"
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
           </button>
