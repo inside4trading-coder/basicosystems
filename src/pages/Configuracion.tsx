@@ -238,6 +238,9 @@ export default function Configuracion() {
 
       {/* RRPP Configuration */}
       <RRPPConfigSection />
+
+      {/* Administración Configuration */}
+      <AdminConfigSection />
     </div>
   );
 }
