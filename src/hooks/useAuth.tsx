@@ -39,12 +39,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchRole = async (userId: string) => {
-    const { data } = await supabase
+    // Source of truth: user_roles table (RBAC). Falls back to profiles.role for legacy users.
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+
+    if (roles && roles.length > 0) {
+      const priority: ProfileRole[] = ["admin", "manager", "partner"];
+      const found = priority.find((p) => roles.some((r: any) => r.role === p));
+      setRole(found ?? "partner");
+      return;
+    }
+
+    const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", userId)
       .maybeSingle();
-    setRole((data?.role as ProfileRole) ?? "partner");
+    setRole((profile?.role as ProfileRole) ?? "partner");
   };
 
   useEffect(() => {
