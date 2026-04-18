@@ -19,6 +19,8 @@ import Llamadas from "./pages/Llamadas";
 import Crew from "./pages/Crew";
 import CrewProfile from "./pages/CrewProfile";
 import CrewIncidencias from "./pages/CrewIncidencias";
+import RRPP from "./pages/RRPP";
+import RRPPProfile from "./pages/RRPPProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +48,8 @@ const App = () => (
               <Route path="/planning" element={<Planning />} />
               <Route path="/crew" element={<Crew />} />
               <Route path="/crew/:id" element={<CrewProfile />} />
+              <Route path="/rrpp" element={<RRPP />} />
+              <Route path="/rrpp/:id" element={<RRPPProfile />} />
               <Route path="/campaigns" element={<Campaigns />} />
               <Route path="/campaigns/new" element={<CampaignWizard />} />
               <Route path="/campaigns/:id" element={<CampaignDetail />} />
