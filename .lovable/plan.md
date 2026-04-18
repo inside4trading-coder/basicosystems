@@ -1,68 +1,51 @@
 
 
-## Plan: Refactor de clasificación de status de órdenes
+## Plan: Auditoría de inconsistencias entre WordPress export y datos en Lovable
 
-Tengo todo lo necesario. Procedo con el mapeo exacto que confirmaste.
+### Contexto
+Tienes un export de WooCommerce con todas las órdenes desde el 1 de abril hasta hoy. El objetivo es comparar contra la BD de Lovable y encontrar dónde divergen **Total Sales**, **Pedidos** y **Products Sold**.
 
-### Archivo nuevo: `src/config/orderStatuses.ts`
+### Lo que voy a hacer (en modo default)
 
-Constantes públicas idénticas a la spec original (16 etiquetas válidas, 4 excluidas, 7 quick access). Adicionalmente:
+**1. Leer el .xlsx con DuckDB**
+- Extraer columnas clave: `order_id`, `order_date`, `status`, `total`, `items_count`/line_items.
+- Filtrar al rango 2026-04-01 → hoy.
+- Normalizar status (los que vienen en el export podrían ser etiquetas largas en español, no slugs).
 
-```ts
-// Mapa slug-BD → etiqueta canónica (basado en tu confirmación)
-export const SLUG_TO_CANONICAL: Record<string, string> = {
-  "processing":          "Pago confirmado automáticamente: pedido en proceso",
-  "pick-up-listo-par":   "Pick-Up Listo para entrega – Pago efectivo",
-  "pedido-pick-up-re":   "Pick-Up Recibido – Pago en efectivo",
-  "el-pedido-esta-si":   "El pedido esta siendo procesado",
-  "pedido-recibido-p":   "Pedido recibido – Por cobrar",
-  "recordartorio-de-":   "Recordartorio de calificación",
-  "tu-pedido-ha-sido":   "Tu pedido ha sido enviado",
-  "pedido-listo-para":   "Pedido listo para entrega/despacho",
-  "tu-pago-fue-confi":   "Pago confirmado: pedido listo para procesar",
-  "pending":             "Pending payment",
-  "completed":           "Pedido recibido por POS – Pago por confirmar",
-  "on-hold":             "On hold",
-  "ml-pago-por-confi":   "ML – Pago por confirmar",
-  "pedido-pending-pa":   "Pago por confirmar",
-  "draft":               "Draft",
-  // Excluidos de revenue
-  "cancelled":           "Cancelled",
-  "refunded":            "Refunded",
-  "failed":              "Failed",
-  "pago-pendiente-po":   "ERROR EN PAGO: Pago pendiente por confirmar",
-};
+**2. Calcular agregados de WordPress** (la "verdad de WooCommerce"):
+- `WP_total_orders` = conteo de órdenes válidas (aplicando `isValidOrder` sobre la etiqueta del export).
+- `WP_total_sales` = suma de `total`, excluyendo `EXCLUDED_FROM_REVENUE`.
+- `WP_products_sold` = suma de `quantity` de line items en órdenes válidas.
 
-export const toCanonical = (raw: string) => SLUG_TO_CANONICAL[raw] ?? raw;
+**3. Calcular los mismos agregados en Lovable** (mismo rango de fechas):
+```sql
+SELECT order_id, order_status, total_amount, total_amount_usd, order_date
+FROM orders WHERE order_date >= '2026-04-01';
+SELECT order_id, quantity FROM order_items WHERE order_id IN (...);
 ```
+- Aplicar `isValidOrder(status)` y `isExcludedFromRevenue(status)` igual que en el dashboard.
 
-Helpers `isValidOrder`, `isExcludedFromRevenue`, `isQuickAccess` con la firma exacta de la spec, normalizando internamente vía `toCanonical`.
+**4. Comparar y diagnosticar**
+Construir 3 deltas:
+- **Δ Total Sales**: WP vs Lovable. Posibles causas:
+  - Conversión a USD mal aplicada (Lovable estandariza a USD, WP probablemente reporta en moneda original).
+  - Órdenes que en WP están en estado válido pero el slug de la BD no está en `SLUG_TO_CANONICAL` (ej. `en-fabricacion`) → quedan como "no válidas" en Lovable.
+  - Órdenes con `total_amount_usd = NULL` filtradas por el dashboard.
+- **Δ Pedidos**: misma raíz — slugs no mapeados o filtros adicionales (USD>0, VES roto) en `useDashboardData`.
+- **Δ Products Sold**: 
+  - El dashboard cuenta sobre `order_items` filtrados por órdenes válidas. Si una orden válida en WP no se cuenta en Lovable, sus items tampoco.
+  - Posible falta de sincronización de items para órdenes recientes.
 
-**Nota sobre "En fabricación"**: el slug no está confirmado. Lo dejo en la lista canónica pero no en `SLUG_TO_CANONICAL`. Cuando aparezca en BD, se añade en una línea.
+**5. Identificar específicamente las órdenes faltantes/divergentes**
+- `LEFT JOIN` para encontrar órdenes en WP que no están en `orders` (o viceversa).
+- Listar slugs de status presentes en Lovable que NO están en `SLUG_TO_CANONICAL` → esos son "fugas" silenciosas.
+- Listar órdenes con `total_amount_usd IS NULL` en el rango.
 
-### `src/hooks/useDashboardData.ts`
+### Entregable
+Un reporte conciso en chat con:
+1. Tres números lado a lado (WP vs Lovable) con su delta absoluto y %.
+2. La causa raíz de cada delta (con conteos y ejemplos de órdenes).
+3. Recomendación de fix (mapeo nuevo, re-sync, o ajuste de filtros en `useDashboardData`).
 
-- Eliminar `const EXCLUDED = new Set(...)`.
-- Filtro `paid` para **conteos** (orders, productsSold, dailyOrders): `isValidOrder(o.order_status)` + filtros existentes de USD>0 / VES roto.
-- Para **sumas de revenue** (revenue, dailyRevenue, revenueByState, top productos USD, categorías USD): además excluir si `isExcludedFromRevenue(o.order_status)`.
-- Mismo tratamiento al `prevPaid`.
-
-### `src/pages/Pedidos.tsx`
-
-- Reordenar `STATUS_OPTIONS` para que los 7 quick-access aparezcan primero (no se ocultan los demás). Uso `isQuickAccess(toCanonical(value))` para el ordenamiento estable.
-- Conservar `statusClass`/`statusLabel` (presentación, fuera de scope).
-
-### `src/pages/Dashboard.tsx`
-
-- Bloque que itera `data.statuses`: ordenar primero los slugs cuyo canonical pertenece a `QUICK_ACCESS_STATUSES`, resto después. Sin ocultar nada.
-
-### Lo que NO se toca
-
-- `CustomerOrdersDialog.tsx`, `woo-sync`, BD, lógica de presentación de badges (statusClass/statusLabel) — fuera de scope per la spec ("no refactorizar lo no relacionado").
-
-### Entregables al finalizar
-
-1. Lista de archivos cambiados con resumen por archivo.
-2. Cómo se aplicó cada grupo (1, 2, 3).
-3. Conflictos previos detectados (ya identificados: el `EXCLUDED` Set en useDashboardData y los `STATUS_OPTIONS` duplicados en 3 archivos como presentación).
+**No se modifica código en este paso** — primero auditamos, luego decides qué arreglar.
 
