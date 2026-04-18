@@ -87,6 +87,54 @@ function parseZadarmaDateTime(value: unknown, timeZone: string): string | null {
   return new Date(assumedUtcMs - offsetMinutes * 60_000).toISOString();
 }
 
+async function fetchRecordingUrl(
+  pbxCallId: string,
+  key: string,
+  secret: string,
+): Promise<string | null> {
+  try {
+    const data = await zadarmaRequest(
+      "pbx/record/request",
+      { pbx_call_id: pbxCallId, lifetime: "5184000" },
+      key,
+      secret,
+    );
+    if (data?.status !== "success") return null;
+    const link = data.link || (Array.isArray(data.links) ? data.links[0] : null);
+    return typeof link === "string" && link ? link : null;
+  } catch (err) {
+    console.warn(`fetchRecordingUrl failed for ${pbxCallId}:`, err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+async function enrichWithRecordings(
+  calls: Array<Record<string, unknown>>,
+  key: string,
+  secret: string,
+  concurrency = 5,
+): Promise<number> {
+  const targets = calls.filter((c) => {
+    const pbx = String(c.pbx_call_id || "");
+    return pbx && Number(c.talk_duration || 0) > 0 && !c.recording_url;
+  });
+  let enriched = 0;
+  for (let i = 0; i < targets.length; i += concurrency) {
+    const batch = targets.slice(i, i + concurrency);
+    await Promise.all(
+      batch.map(async (call) => {
+        const link = await fetchRecordingUrl(String(call.pbx_call_id), key, secret);
+        if (link) {
+          call.recording_url = link;
+          call.is_recorded = true;
+          enriched++;
+        }
+      }),
+    );
+  }
+  return enriched;
+}
+
 async function zadarmaRequest(
   apiMethod: string,
   params: Record<string, string>,
@@ -205,6 +253,30 @@ Deno.serve(async (req) => {
         synced_at: new Date().toISOString(),
       };
     });
+
+    // Pre-cargar URLs de grabación ya guardadas para no re-pedirlas a Zadarma
+    if (calls.length > 0) {
+      const callIds = calls.map((c: Record<string, unknown>) => String(c.call_id)).filter(Boolean);
+      const { data: existing } = await supabase
+        .from("calls_cache")
+        .select("call_id, recording_url")
+        .in("call_id", callIds);
+      const existingMap: Record<string, string> = {};
+      (existing || []).forEach((row: { call_id: string; recording_url: string | null }) => {
+        if (row.recording_url) existingMap[row.call_id] = row.recording_url;
+      });
+      calls.forEach((c: Record<string, unknown>) => {
+        const cached = existingMap[String(c.call_id)];
+        if (cached && !c.recording_url) {
+          c.recording_url = cached;
+          c.is_recorded = true;
+        }
+      });
+    }
+
+    // Para llamadas answered sin URL, pedirla a Zadarma (outgoing y algunas incoming)
+    const enrichedCount = await enrichWithRecordings(calls, zadarmaKey, zadarmaSecret);
+    console.log(`Enriched ${enrichedCount} call(s) with recording URLs`);
 
     if (calls.length > 0) {
       for (let i = 0; i < calls.length; i += 500) {
