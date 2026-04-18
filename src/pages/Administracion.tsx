@@ -1,26 +1,40 @@
-import { useMemo, useState } from "react";
-import { AlertTriangle, Building2, Calendar as CalendarIcon, CheckCircle2, List, Loader2, Plus, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Building2, Calendar as CalendarIcon, List, Loader2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useAdminData } from "@/hooks/useAdminData";
 import { AdminKPIs } from "@/components/admin/AdminKPIs";
 import { AdminCalendar } from "@/components/admin/AdminCalendar";
 import { AdminInstanceSheet } from "@/components/admin/AdminInstanceSheet";
+import { AdminListView } from "@/components/admin/AdminListView";
+import { AdminListFilters, type ListFilters } from "@/components/admin/AdminListFilters";
+import { CreateObligationSheet } from "@/components/admin/CreateObligationSheet";
 import type { ObligationInstance } from "@/types/admin";
-import { cn } from "@/lib/utils";
 
 type View = "calendar" | "list";
 
 export default function Administracion() {
-  const { instances, obligations, loading, error } = useAdminData();
+  const { instances, obligations, loading, error, refetch } = useAdminData();
   const [view, setView] = useState<View>("calendar");
-  const [monthDate, setMonthDate] = useState<Date>(() => {
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const initialMonth = useMemo(() => {
     const d = new Date();
     d.setDate(1);
     d.setHours(0, 0, 0, 0);
     return d;
+  }, []);
+
+  const [filters, setFilters] = useState<ListFilters>({
+    monthDate: initialMonth,
+    category: null,
+    responsible: null,
+    status: null,
+    importance: null,
+    onlyOverdue: false,
+    next7Days: false,
   });
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+
   const [sheetInstance, setSheetInstance] = useState<ObligationInstance | null>(null);
   const [dismissedOverdue, setDismissedOverdue] = useState(false);
   const [dismissedCritical, setDismissedCritical] = useState(false);
@@ -51,32 +65,54 @@ export default function Administracion() {
     }).length;
   }, [instances, today]);
 
-  const monthLabel = monthDate.toLocaleDateString("es-VE", { month: "long", year: "numeric" });
+  // Filtered instances for List view
+  const listInstances = useMemo(() => {
+    const y = filters.monthDate.getFullYear();
+    const m = filters.monthDate.getMonth();
+    const in7 = new Date(today);
+    in7.setDate(in7.getDate() + 7);
+
+    return instances
+      .filter((i) => {
+        const d = new Date(i.due_date);
+        if (!filters.next7Days && !filters.onlyOverdue) {
+          if (d.getFullYear() !== y || d.getMonth() !== m) return false;
+        }
+        if (filters.category && i.category !== filters.category) return false;
+        if (filters.responsible && i.responsible !== filters.responsible) return false;
+        if (filters.status && i.status !== filters.status) return false;
+        if (filters.importance && i.importance !== filters.importance) return false;
+        if (filters.onlyOverdue) {
+          const dd = new Date(i.due_date);
+          dd.setHours(0, 0, 0, 0);
+          if (!(i.status === "vencido" || (dd < today && i.status === "pendiente"))) return false;
+        }
+        if (filters.next7Days) {
+          const dd = new Date(i.due_date);
+          dd.setHours(0, 0, 0, 0);
+          if (!(dd >= today && dd <= in7 && i.status !== "pagado")) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => a.due_date.localeCompare(b.due_date));
+  }, [instances, filters, today]);
+
+  // Reset alert dismissal when overdue/critical change
+  useEffect(() => {
+    if (overdueCount === 0) setDismissedOverdue(false);
+    if (criticalSoonCount === 0) setDismissedCritical(false);
+  }, [overdueCount, criticalSoonCount]);
 
   const goPrev = () => {
-    const d = new Date(monthDate);
+    const d = new Date(filters.monthDate);
     d.setMonth(d.getMonth() - 1);
-    setMonthDate(d);
-    setSelectedDay(null);
+    setFilters({ ...filters, monthDate: d });
   };
   const goNext = () => {
-    const d = new Date(monthDate);
+    const d = new Date(filters.monthDate);
     d.setMonth(d.getMonth() + 1);
-    setMonthDate(d);
-    setSelectedDay(null);
+    setFilters({ ...filters, monthDate: d });
   };
-
-  const dayFiltered = useMemo(() => {
-    if (!selectedDay) return null;
-    return instances.filter((i) => {
-      const d = new Date(i.due_date);
-      return (
-        d.getFullYear() === selectedDay.getFullYear() &&
-        d.getMonth() === selectedDay.getMonth() &&
-        d.getDate() === selectedDay.getDate()
-      );
-    });
-  }, [instances, selectedDay]);
 
   if (loading) {
     return (
@@ -126,7 +162,7 @@ export default function Administracion() {
               <span className="hidden sm:inline text-xs font-bold">Lista</span>
             </ToggleGroupItem>
           </ToggleGroup>
-          <Button variant="brand" size="sm" disabled>
+          <Button variant="brand" size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             Agregar obligación
           </Button>
@@ -141,7 +177,7 @@ export default function Administracion() {
           <p className="text-sm text-muted-foreground mb-4">
             Empieza creando una plantilla de obligación recurrente.
           </p>
-          <Button variant="brand" disabled>
+          <Button variant="brand" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             Agregar primera obligación
           </Button>
@@ -149,19 +185,32 @@ export default function Administracion() {
       ) : (
         <>
           {/* KPIs */}
-          <AdminKPIs instances={instances} monthDate={monthDate} />
+          <AdminKPIs instances={instances} monthDate={filters.monthDate} />
 
           {/* Alert strips */}
           {overdueCount > 0 && !dismissedOverdue && (
-            <div className="flex items-center gap-3 rounded-md border border-status-error/30 bg-status-error/10 px-4 py-3">
+            <button
+              type="button"
+              onClick={() => {
+                setView("list");
+                setFilters({ ...filters, onlyOverdue: true });
+              }}
+              className="w-full flex items-center gap-3 rounded-md border border-status-error/30 bg-status-error/10 px-4 py-3 hover:bg-status-error/15 transition-colors text-left"
+            >
               <AlertTriangle className="h-5 w-5 text-status-error shrink-0" />
               <div className="flex-1 text-sm">
                 <span className="font-bold">{overdueCount} obligaciones vencidas</span> requieren atención
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setDismissedOverdue(true)}>
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDismissedOverdue(true);
+                }}
+                className="p-1 rounded hover:bg-status-error/20"
+              >
                 <X className="h-4 w-4" />
-              </Button>
-            </div>
+              </span>
+            </button>
           )}
           {criticalSoonCount > 0 && !dismissedCritical && (
             <div className="flex items-center gap-3 rounded-md border border-status-warning/30 bg-status-warning/10 px-4 py-3">
@@ -178,24 +227,28 @@ export default function Administracion() {
           {/* View */}
           {view === "calendar" ? (
             <AdminCalendar
-              monthDate={monthDate}
+              monthDate={filters.monthDate}
               instances={instances}
               onPrevMonth={goPrev}
               onNextMonth={goNext}
               onChipClick={(inst) => setSheetInstance(inst)}
               onDayClick={(d) => {
-                setSelectedDay(d);
                 setView("list");
+                setFilters({
+                  ...filters,
+                  monthDate: new Date(d.getFullYear(), d.getMonth(), 1),
+                });
               }}
             />
           ) : (
-            <ListShell
-              monthLabel={monthLabel}
-              instances={dayFiltered ?? instances}
-              selectedDay={selectedDay}
-              onClearDay={() => setSelectedDay(null)}
-              onRowClick={(inst) => setSheetInstance(inst)}
-            />
+            <>
+              <AdminListFilters filters={filters} onChange={setFilters} />
+              <AdminListView
+                instances={listInstances}
+                onRowClick={(inst) => setSheetInstance(inst)}
+                onPaid={() => refetch()}
+              />
+            </>
           )}
         </>
       )}
@@ -205,88 +258,12 @@ export default function Administracion() {
         open={!!sheetInstance}
         onOpenChange={(v) => !v && setSheetInstance(null)}
       />
+
+      <CreateObligationSheet
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => refetch()}
+      />
     </div>
   );
 }
-
-/* Lista shell — full columns will be implemented in Prompt 3 */
-function ListShell({
-  monthLabel,
-  instances,
-  selectedDay,
-  onClearDay,
-  onRowClick,
-}: {
-  monthLabel: string;
-  instances: ObligationInstance[];
-  selectedDay: Date | null;
-  onClearDay: () => void;
-  onRowClick: (inst: ObligationInstance) => void;
-}) {
-  if (instances.length === 0) {
-    return (
-      <div className="kpi-card text-center py-16">
-        <CalendarIcon className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-        <h3 className="font-semibold">
-          {selectedDay ? "Sin obligaciones este día" : `Sin obligaciones para ${monthLabel}`}
-        </h3>
-        {selectedDay && (
-          <Button variant="outline" size="sm" className="mt-3" onClick={onClearDay}>
-            Ver todas
-          </Button>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="kpi-card !p-0 overflow-hidden">
-      {selectedDay && (
-        <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/40 text-sm">
-          <span className="font-bold">
-            Filtrando por{" "}
-            {selectedDay.toLocaleDateString("es-VE", { weekday: "long", day: "2-digit", month: "long" })}
-          </span>
-          <Button variant="ghost" size="sm" onClick={onClearDay}>
-            <X className="h-4 w-4" /> Quitar
-          </Button>
-        </div>
-      )}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 text-xs uppercase font-bold text-muted-foreground">
-            <tr>
-              <th className="text-left p-3">Obligación</th>
-              <th className="text-left p-3">Vence</th>
-              <th className="text-left p-3">Monto</th>
-              <th className="text-left p-3">Estado</th>
-              <th className="text-left p-3">Importancia</th>
-              <th className="text-left p-3">Responsable</th>
-            </tr>
-          </thead>
-          <tbody>
-            {instances.map((i) => (
-              <tr
-                key={i.id}
-                onClick={() => onRowClick(i)}
-                className="border-t hover:bg-accent/40 cursor-pointer transition-colors"
-              >
-                <td className="p-3 font-bold">{i.obligation_name ?? "—"}</td>
-                <td className="p-3">{new Date(i.due_date).toLocaleDateString("es-VE")}</td>
-                <td className="p-3">
-                  {new Intl.NumberFormat("es-VE", { style: "currency", currency: i.currency || "USD" }).format(i.amount)}
-                </td>
-                <td className="p-3 capitalize">{i.status.replace("_", " ")}</td>
-                <td className="p-3 capitalize">{i.importance ?? "—"}</td>
-                <td className="p-3">{i.responsible ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// keep `cn` import used (avoid TS unused warning if list grows)
-void cn;
