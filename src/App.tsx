@@ -21,6 +21,8 @@ import CrewProfile from "./pages/CrewProfile";
 import CrewIncidencias from "./pages/CrewIncidencias";
 import RRPP from "./pages/RRPP";
 import RRPPProfile from "./pages/RRPPProfile";
+import Administracion from "./pages/Administracion";
+import AdminObligationDetail from "./pages/AdminObligationDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +56,8 @@ const App = () => (
               <Route path="/campaigns/new" element={<CampaignWizard />} />
               <Route path="/campaigns/:id" element={<CampaignDetail />} />
               <Route path="/llamadas" element={<Llamadas />} />
+              <Route path="/administracion" element={<Administracion />} />
+              <Route path="/administracion/:id" element={<AdminObligationDetail />} />
               <Route path="/configuracion" element={<Configuracion />} />
             </Route>
             <Route path="/crew/incidencias" element={<CrewIncidencias />} />
