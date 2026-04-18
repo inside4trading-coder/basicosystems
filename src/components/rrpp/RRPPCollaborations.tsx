@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Package, Check, X, Tag as TagIcon } from "lucide-react";
+import { Plus, Package, Check, X, Tag as TagIcon, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter,
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
 } from "@/components/ui/sheet";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { fetchConfig } from "@/hooks/useRRPPData";
 import type { Collaboration } from "@/types/rrpp";
 import { useRRPPPermissions } from "./useRRPPPermissions";
@@ -22,6 +26,22 @@ const DEFAULT_NETWORKS = ["Instagram", "TikTok", "YouTube", "X", "Facebook", "Li
 
 interface Props { contactId: string; }
 
+const today = () => new Date().toISOString().slice(0, 10);
+
+const emptyForm = () => ({
+  send_date: today(),
+  products: "",
+  received: false,
+  collab_done: false,
+  has_coupon: false,
+  coupon_code: "",
+  coupon_revenue: 0,
+  network_posted: "",
+  post_date: today(),
+  post_observation: "",
+  observations: "",
+});
+
 export function RRPPCollaborations({ contactId }: Props) {
   const perms = useRRPPPermissions();
   const [items, setItems] = useState<Collaboration[]>([]);
@@ -29,21 +49,8 @@ export function RRPPCollaborations({ contactId }: Props) {
   const [networks, setNetworks] = useState<string[]>(DEFAULT_NETWORKS);
   const [openSheet, setOpenSheet] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const today = new Date().toISOString().slice(0, 10);
-  const [form, setForm] = useState({
-    send_date: today,
-    products: "",
-    received: false,
-    collab_done: false,
-    has_coupon: false,
-    coupon_code: "",
-    coupon_revenue: 0,
-    network_posted: "",
-    post_date: today,
-    post_observation: "",
-    observations: "",
-  });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyForm());
 
   const load = async () => {
     setLoading(true);
@@ -67,22 +74,45 @@ export function RRPPCollaborations({ contactId }: Props) {
     // eslint-disable-next-line
   }, [contactId]);
 
-  async function logAudit(newValue: string) {
+  async function logAudit(action: string, newValue: string) {
     const { data: u } = await supabase.auth.getUser();
     await db.from("rrpp_audit_log").insert({
       contact_id: contactId,
-      action: "collaboration_add",
+      action,
       field_changed: "collaborations",
       new_value: newValue,
       performed_by: u.user?.email ?? u.user?.id ?? "system",
     });
   }
 
+  const openNew = () => {
+    setEditingId(null);
+    setForm(emptyForm());
+    setOpenSheet(true);
+  };
+
+  const openEdit = (c: Collaboration) => {
+    setEditingId(c.id);
+    setForm({
+      send_date: c.send_date ?? today(),
+      products: c.products ?? "",
+      received: !!c.received,
+      collab_done: !!c.collab_done,
+      has_coupon: !!c.has_coupon,
+      coupon_code: c.coupon_code ?? "",
+      coupon_revenue: Number(c.coupon_revenue ?? 0),
+      network_posted: c.network_posted ?? "",
+      post_date: c.post_date ?? today(),
+      post_observation: c.post_observation ?? "",
+      observations: c.observations ?? "",
+    });
+    setOpenSheet(true);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       const payload: any = {
-        contact_id: contactId,
         send_date: form.send_date || null,
         products: form.products.trim(),
         received: form.received,
@@ -95,16 +125,22 @@ export function RRPPCollaborations({ contactId }: Props) {
         post_observation: form.collab_done ? form.post_observation.trim() : "",
         observations: form.observations.trim(),
       };
-      const { error } = await db.from("rrpp_collaborations").insert(payload);
-      if (error) throw error;
-      await logAudit(`Envío ${form.send_date}${form.has_coupon ? ` · cupón ${form.coupon_code}` : ""}`);
-      toast.success("Colaboración registrada");
+
+      if (editingId) {
+        const { error } = await db.from("rrpp_collaborations").update(payload).eq("id", editingId);
+        if (error) throw error;
+        await logAudit("collaboration_update", `Editada (envío ${payload.send_date ?? "—"})`);
+        toast.success("Colaboración actualizada");
+      } else {
+        const { error } = await db.from("rrpp_collaborations").insert({ ...payload, contact_id: contactId });
+        if (error) throw error;
+        await logAudit("collaboration_add", `Envío ${payload.send_date ?? "—"}${form.has_coupon ? ` · cupón ${form.coupon_code}` : ""}`);
+        toast.success("Colaboración registrada");
+      }
+
       setOpenSheet(false);
-      setForm({
-        send_date: today, products: "", received: false, collab_done: false,
-        has_coupon: false, coupon_code: "", coupon_revenue: 0,
-        network_posted: "", post_date: today, post_observation: "", observations: "",
-      });
+      setEditingId(null);
+      setForm(emptyForm());
       load();
     } catch (e: any) {
       toast.error(e?.message ?? "Error al guardar");
@@ -113,95 +149,112 @@ export function RRPPCollaborations({ contactId }: Props) {
     }
   };
 
+  const handleDelete = async (c: Collaboration) => {
+    const { error } = await db.from("rrpp_collaborations").delete().eq("id", c.id);
+    if (error) return toast.error(error.message);
+    await logAudit("collaboration_delete", `Envío ${c.send_date ?? "—"}`);
+    toast.success("Colaboración eliminada");
+    load();
+  };
+
   if (loading) return <div className="kpi-card text-muted-foreground text-sm">Cargando colaboraciones…</div>;
 
   return (
     <div className="space-y-4">
       {perms.canManageCollaborations && (
         <div className="flex justify-end">
-          <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-            <SheetTrigger asChild>
-              <Button size="sm"><Plus className="h-4 w-4 mr-2" />Registrar colaboración</Button>
-            </SheetTrigger>
-            <SheetContent className="overflow-y-auto">
-              <SheetHeader><SheetTitle>Nueva colaboración</SheetTitle></SheetHeader>
-              <div className="space-y-4 mt-6">
-                <div>
-                  <Label>Fecha de envío</Label>
-                  <Input type="date" value={form.send_date}
-                    onChange={(e) => setForm({ ...form, send_date: e.target.value })} className="mt-1" />
-                </div>
-                <div>
-                  <Label>Productos enviados</Label>
-                  <Textarea rows={2} maxLength={500} value={form.products}
-                    onChange={(e) => setForm({ ...form, products: e.target.value })} className="mt-1" />
-                </div>
-                <div className="flex items-center justify-between rounded-md border p-3">
-                  <Label className="cursor-pointer">Recibido</Label>
-                  <Switch checked={form.received} onCheckedChange={(v) => setForm({ ...form, received: v })} />
-                </div>
-                <div className="flex items-center justify-between rounded-md border p-3">
-                  <Label className="cursor-pointer">Colaboración realizada</Label>
-                  <Switch checked={form.collab_done} onCheckedChange={(v) => setForm({ ...form, collab_done: v })} />
-                </div>
-                <div className="flex items-center justify-between rounded-md border p-3">
-                  <Label className="cursor-pointer">Tiene cupón</Label>
-                  <Switch checked={form.has_coupon} onCheckedChange={(v) => setForm({ ...form, has_coupon: v })} />
-                </div>
-
-                {form.has_coupon && (
-                  <div className="space-y-3 pl-3 border-l-2 border-primary/40">
-                    <div>
-                      <Label>Código de cupón</Label>
-                      <Input value={form.coupon_code} maxLength={60}
-                        onChange={(e) => setForm({ ...form, coupon_code: e.target.value })} className="mt-1" />
-                    </div>
-                    <div>
-                      <Label>Ingresos generados</Label>
-                      <Input type="number" min={0} step="0.01" value={form.coupon_revenue}
-                        onChange={(e) => setForm({ ...form, coupon_revenue: Number(e.target.value) })} className="mt-1" />
-                    </div>
-                  </div>
-                )}
-
-                {form.collab_done && (
-                  <div className="space-y-3 pl-3 border-l-2 border-primary/40">
-                    <div>
-                      <Label>Red donde se publicó</Label>
-                      <Select value={form.network_posted} onValueChange={(v) => setForm({ ...form, network_posted: v })}>
-                        <SelectTrigger className="mt-1"><SelectValue placeholder="Selecciona red" /></SelectTrigger>
-                        <SelectContent>
-                          {networks.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Fecha del post</Label>
-                      <Input type="date" value={form.post_date}
-                        onChange={(e) => setForm({ ...form, post_date: e.target.value })} className="mt-1" />
-                    </div>
-                    <div>
-                      <Label>Observación del post</Label>
-                      <Textarea rows={2} maxLength={500} value={form.post_observation}
-                        onChange={(e) => setForm({ ...form, post_observation: e.target.value })} className="mt-1" />
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <Label>Observaciones</Label>
-                  <Textarea rows={3} maxLength={1000} value={form.observations}
-                    onChange={(e) => setForm({ ...form, observations: e.target.value })} className="mt-1" />
-                </div>
-              </div>
-              <SheetFooter className="mt-6">
-                <Button variant="ghost" onClick={() => setOpenSheet(false)}>Cancelar</Button>
-                <Button onClick={handleSave} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</Button>
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
+          <Button size="sm" onClick={openNew}>
+            <Plus className="h-4 w-4 mr-2" />Registrar colaboración
+          </Button>
         </div>
       )}
+
+      <Sheet open={openSheet} onOpenChange={(v) => { setOpenSheet(v); if (!v) setEditingId(null); }}>
+        <SheetContent className="overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{editingId ? "Editar colaboración" : "Nueva colaboración"}</SheetTitle>
+          </SheetHeader>
+          <p className="text-xs text-muted-foreground mt-2">
+            Solo es necesario rellenar lo que ya tengas. Puedes editar más tarde para añadir cupón, ingresos o datos del post.
+          </p>
+          <div className="space-y-4 mt-6">
+            <div>
+              <Label>Fecha de envío</Label>
+              <Input type="date" value={form.send_date}
+                onChange={(e) => setForm({ ...form, send_date: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label>Productos enviados</Label>
+              <Textarea rows={2} maxLength={500} value={form.products}
+                placeholder="Opcional"
+                onChange={(e) => setForm({ ...form, products: e.target.value })} className="mt-1" />
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <Label className="cursor-pointer">Recibido</Label>
+              <Switch checked={form.received} onCheckedChange={(v) => setForm({ ...form, received: v })} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <Label className="cursor-pointer">Colaboración realizada</Label>
+              <Switch checked={form.collab_done} onCheckedChange={(v) => setForm({ ...form, collab_done: v })} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <Label className="cursor-pointer">Tiene cupón</Label>
+              <Switch checked={form.has_coupon} onCheckedChange={(v) => setForm({ ...form, has_coupon: v })} />
+            </div>
+
+            {form.has_coupon && (
+              <div className="space-y-3 pl-3 border-l-2 border-primary/40">
+                <div>
+                  <Label>Código de cupón</Label>
+                  <Input value={form.coupon_code} maxLength={60}
+                    onChange={(e) => setForm({ ...form, coupon_code: e.target.value })} className="mt-1" />
+                </div>
+                <div>
+                  <Label>Ingresos generados</Label>
+                  <Input type="number" min={0} step="0.01" value={form.coupon_revenue}
+                    onChange={(e) => setForm({ ...form, coupon_revenue: Number(e.target.value) })} className="mt-1" />
+                </div>
+              </div>
+            )}
+
+            {form.collab_done && (
+              <div className="space-y-3 pl-3 border-l-2 border-primary/40">
+                <div>
+                  <Label>Red donde se publicó</Label>
+                  <Select value={form.network_posted} onValueChange={(v) => setForm({ ...form, network_posted: v })}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Selecciona red" /></SelectTrigger>
+                    <SelectContent>
+                      {networks.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Fecha del post</Label>
+                  <Input type="date" value={form.post_date}
+                    onChange={(e) => setForm({ ...form, post_date: e.target.value })} className="mt-1" />
+                </div>
+                <div>
+                  <Label>Observación del post</Label>
+                  <Textarea rows={2} maxLength={500} value={form.post_observation}
+                    onChange={(e) => setForm({ ...form, post_observation: e.target.value })} className="mt-1" />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Label>Observaciones</Label>
+              <Textarea rows={3} maxLength={1000} value={form.observations}
+                onChange={(e) => setForm({ ...form, observations: e.target.value })} className="mt-1" />
+            </div>
+          </div>
+          <SheetFooter className="mt-6">
+            <Button variant="ghost" onClick={() => { setOpenSheet(false); setEditingId(null); }}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Guardando…" : editingId ? "Actualizar" : "Guardar"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       {items.length === 0 ? (
         <div className="kpi-card text-center py-16">
@@ -220,10 +273,36 @@ export function RRPPCollaborations({ contactId }: Props) {
                   <p className="text-xs text-muted-foreground">Envío</p>
                   <p className="font-semibold">{c.send_date ? new Date(c.send_date).toLocaleDateString() : "—"}</p>
                 </div>
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2 flex-wrap items-center">
                   <StatusPill on={c.received} label="Recibido" />
                   <StatusPill on={c.collab_done} label="Colaboración hecha" />
                   {c.has_coupon && <StatusPill on label="Cupón" />}
+                  {perms.canManageCollaborations && (
+                    <>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar colaboración?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Se eliminará permanentemente este registro. Esta acción no se puede deshacer.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(c)}>Eliminar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
+                  )}
                 </div>
               </div>
 
