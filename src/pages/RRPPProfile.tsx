@@ -26,6 +26,8 @@ import { RRPPInteractions } from "@/components/rrpp/RRPPInteractions";
 import { RRPPCollaborations } from "@/components/rrpp/RRPPCollaborations";
 import { RRPPPrivateNotes } from "@/components/rrpp/RRPPPrivateNotes";
 import { useRRPPPermissions } from "@/components/rrpp/useRRPPPermissions";
+import { ProfileHeaderSkeleton, TabContentSkeleton } from "@/components/rrpp/RRPPSkeletons";
+import { AlertTriangle } from "lucide-react";
 
 const ALL_TABS = [
   { value: "general", label: "Datos generales" },
@@ -129,10 +131,26 @@ export default function RRPPProfile() {
   };
 
   if (loading) {
-    return <div className="p-6"><p className="text-muted-foreground">Cargando perfil…</p></div>;
+    return (
+      <div className="p-6 space-y-6">
+        <Link to="/rrpp"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />RRPP</Button></Link>
+        <ProfileHeaderSkeleton />
+        <TabContentSkeleton />
+      </div>
+    );
   }
   if (error) {
-    return <div className="p-6"><p className="text-destructive">Error: {error}</p></div>;
+    return (
+      <div className="p-6">
+        <div className="kpi-card flex items-start gap-3 bg-status-error/10 border-status-error/20">
+          <AlertTriangle className="h-5 w-5 text-status-error shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-sm">Error al cargar el perfil</p>
+            <p className="text-xs text-muted-foreground">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
   }
   if (!contact) {
     return (

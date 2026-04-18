@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { RRPPConfigSection } from "@/components/rrpp/RRPPConfigSection";
 
 const mockUsers = [
   { name: "Admin Basico", email: "admin@basicoclothes.es", role: "admin" },
@@ -233,6 +234,9 @@ export default function Configuracion() {
           </div>
         </div>
       </section>
+
+      {/* RRPP Configuration */}
+      <RRPPConfigSection />
     </div>
   );
 }
