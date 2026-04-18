@@ -23,8 +23,11 @@ import { RRPPGeneralData } from "@/components/rrpp/RRPPGeneralData";
 import { RRPPSocialMedia } from "@/components/rrpp/RRPPSocialMedia";
 import { RRPPPipeline } from "@/components/rrpp/RRPPPipeline";
 import { RRPPInteractions } from "@/components/rrpp/RRPPInteractions";
+import { RRPPCollaborations } from "@/components/rrpp/RRPPCollaborations";
+import { RRPPPrivateNotes } from "@/components/rrpp/RRPPPrivateNotes";
+import { useRRPPPermissions } from "@/components/rrpp/useRRPPPermissions";
 
-const TABS = [
+const ALL_TABS = [
   { value: "general", label: "Datos generales" },
   { value: "social", label: "Redes sociales" },
   { value: "pipeline", label: "Relación / Pipeline" },
@@ -33,7 +36,7 @@ const TABS = [
   { value: "notes", label: "Notas privadas" },
 ] as const;
 
-type TabValue = typeof TABS[number]["value"];
+type TabValue = typeof ALL_TABS[number]["value"];
 
 export default function RRPPProfile() {
   const { id } = useParams<{ id: string }>();
