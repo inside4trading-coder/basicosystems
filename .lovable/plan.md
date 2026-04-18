@@ -1,46 +1,36 @@
 
-## Contexto
+## Problema
 
-El usuario pide dos mejoras en el módulo RRPP del perfil de contacto:
+Las llamadas salientes sí están grabadas en Zadarma, pero el endpoint `statistics/pbx` v2 **no devuelve la URL de grabación** para llamadas outgoing. Por eso `recording_url` queda vacío. En la BD vemos que todas tienen `pbx_call_id` (ej. `out_ad70c8bf…`), que es el identificador necesario para pedir el enlace.
 
-1. **Redes sociales**: ya se pueden agregar mediciones, pero quiere reforzar el flujo de "nuevo muestreo" y la visualización de crecimiento/decrecimiento vs medición anterior.
-2. **Colaboraciones**: hoy el formulario pide todos los datos al crear. Necesita poder crear una colaboración con datos mínimos y luego **editarla** para ir agregando información (cupón, ingresos, fecha de post, etc.) a medida que avanza.
+Zadarma expone un endpoint específico: **`GET /v1/pbx/record/request/?pbx_call_id=<id>`** que devuelve un link temporal a la grabación (mp3).
 
-## Estado actual
+## Solución
 
-- `RRPPSocialMedia.tsx` ya soporta agregar mediciones y muestra tendencia (TrendIcon ↑/↓/—) comparando última vs anterior por red. Funciona, pero:
-  - El botón se llama "Agregar red social", confuso cuando ya existe esa red. Debe llamarse "Nuevo muestreo" cuando ya hay datos de esa red, y prefijar la red automáticamente.
-  - El delta se muestra solo en valor absoluto. Falta el porcentaje (+12.5%) que es la métrica clave de crecimiento.
-  - No hay un atajo "+ muestreo" por tarjeta de red existente.
+En `supabase/functions/zadarma-sync/index.ts`, después de mapear las llamadas, para las que cumplan:
+- `direction === "outgoing"`
+- `pbx_call_id` empieza con `out_`
+- `talk_duration > 0` (sólo contestadas tienen audio)
+- `recording_url` vacío
 
-- `RRPPCollaborations.tsx` (no mostrado pero referenciado): el Sheet exige todos los campos al crear. No hay flujo de edición posterior.
+…hacer una llamada paralela limitada (concurrencia 5) a `pbx/record/request/` y guardar el link en `recording_url` + `is_recorded = true`. Las incoming, que sí traen `recording`, siguen igual.
 
-## Cambios
+### Cambios
 
-### 1. `src/components/rrpp/RRPPSocialMedia.tsx`
+1. **`zadarmaRequest`**: ya sirve, sólo se invocará con el nuevo método.
+2. **Nueva función** `fetchRecordingUrl(pbxCallId, key, secret)` que:
+   - Llama a `pbx/record/request/` con `pbx_call_id` y `lifetime=5184000` (60 días).
+   - Devuelve `data.link` o `null` si falla (sin lanzar — para no romper el sync entero).
+3. **Bucle de enriquecimiento** tras `calls.map(...)` y antes del upsert: procesar en lotes de 5 concurrentes para respetar el rate limit de Zadarma (~10 req/s).
+4. **Misma lógica para incoming sin URL** (algunas también la requieren bajo demanda) — pasar el filtro a "cualquier llamada answered sin recording_url y con pbx_call_id".
+5. **Caché**: si una llamada ya tiene `recording_url` en BD, no re-pedirla. Para esto, antes del enriquecimiento hacer un `select call_id, recording_url from calls_cache where call_id in (...)` y saltar las que ya tengan link.
 
-- Añadir botón **"+ Nuevo muestreo"** en cada tarjeta de red existente, que abre el Sheet con `network` preseleccionado y `handle` autocompletado del último muestreo (editable).
-- Mantener "Agregar red social" en el header solo para redes nuevas.
-- En el bloque de tendencia, añadir el **porcentaje** de variación junto al valor absoluto: `+1.2K (+12.5%)` o `−340 (−4.1%)`.
-- Pequeño coloreo: verde para crecimiento, rojo para decrecimiento, gris si no hay anterior.
+### Archivos a tocar
 
-### 2. `src/components/rrpp/RRPPCollaborations.tsx`
+- `supabase/functions/zadarma-sync/index.ts` — añadir `fetchRecordingUrl` + bloque de enriquecimiento.
 
-- **Crear con datos mínimos**: hacer el Sheet de creación opcional en todos los campos excepto `send_date` (o ninguno; default hoy). El usuario puede crear la fila apenas con "products" y guardar.
-- **Editar colaboración existente**: añadir botón ✏️ "Editar" en cada `kpi-card` de colaboración. Reutilizar el mismo Sheet en modo edición:
-  - Si `editingId` está set, hace `update()` en lugar de `insert()`.
-  - Pre-rellena el form con los valores actuales.
-  - Audit log: registra el cambio como `collab_update` con resumen de campos modificados.
-- **Eliminar colaboración**: añadir AlertDialog con botón de papelera (admin/rrpp/marketing).
-- Mantener la lógica condicional de campos (cupón si `has_coupon`, post si `collab_done`) tanto en creación como en edición.
+Sin migraciones, sin cambios en frontend. El reproductor existente en `Llamadas.tsx` ya consume `recording_url`, así que en cuanto se rellene, el botón "Reproducir" funcionará para outgoing.
 
-### 3. Permisos
+## Resultado esperado
 
-Sin cambios en RLS — las policies ya permiten manage a admin/rrpp/marketing. El hook `useRRPPPermissions` ya cubre los gates de UI.
-
-## Archivos a tocar
-
-- `src/components/rrpp/RRPPSocialMedia.tsx` — preselección de red, botón por tarjeta, % de cambio.
-- `src/components/rrpp/RRPPCollaborations.tsx` — modo edición + delete + campos opcionales.
-
-Sin migraciones ni cambios en edge functions.
+Tras un re-sync (manual o el próximo automático), las 8 llamadas outgoing answered tendrán `recording_url` poblado y se podrán reproducir desde el módulo Llamadas.
