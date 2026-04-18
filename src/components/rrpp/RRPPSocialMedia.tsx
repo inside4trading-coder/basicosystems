@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter,
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
 } from "@/components/ui/sheet";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -27,19 +27,21 @@ interface Props {
   contactId: string;
 }
 
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const emptyForm = () => ({
+  network: "",
+  handle: "",
+  followers: 0,
+  measured_at: todayStr(),
+});
+
 export function RRPPSocialMedia({ contactId }: Props) {
   const [records, setRecords] = useState<SocialMedia[]>([]);
   const [loading, setLoading] = useState(true);
   const [networks, setNetworks] = useState<string[]>(DEFAULT_NETWORKS);
   const [openSheet, setOpenSheet] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const [form, setForm] = useState({
-    network: "",
-    handle: "",
-    followers: 0,
-    measured_at: new Date().toISOString().slice(0, 10),
-  });
+  const [form, setForm] = useState(emptyForm());
 
   const load = async () => {
     setLoading(true);
@@ -78,6 +80,16 @@ export function RRPPSocialMedia({ contactId }: Props) {
     });
   }
 
+  const openNewNetwork = () => {
+    setForm(emptyForm());
+    setOpenSheet(true);
+  };
+
+  const openNewSample = (network: string, lastHandle: string) => {
+    setForm({ network, handle: lastHandle, followers: 0, measured_at: todayStr() });
+    setOpenSheet(true);
+  };
+
   const handleSave = async () => {
     if (!form.network) return toast.error("Selecciona una red");
     if (!form.handle.trim()) return toast.error("El handle es requerido");
@@ -92,9 +104,9 @@ export function RRPPSocialMedia({ contactId }: Props) {
       });
       if (error) throw error;
       await logAudit("social_add", `${form.network} @${form.handle} (${form.followers})`);
-      toast.success("Red social agregada");
+      toast.success("Muestreo guardado");
       setOpenSheet(false);
-      setForm({ network: "", handle: "", followers: 0, measured_at: new Date().toISOString().slice(0, 10) });
+      setForm(emptyForm());
       load();
     } catch (e: any) {
       toast.error(e?.message ?? "Error al guardar");
@@ -118,58 +130,61 @@ export function RRPPSocialMedia({ contactId }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-          <SheetTrigger asChild>
-            <Button size="sm"><Plus className="h-4 w-4 mr-2" />Agregar red social</Button>
-          </SheetTrigger>
-          <SheetContent>
-            <SheetHeader><SheetTitle>Nueva red social</SheetTitle></SheetHeader>
-            <div className="space-y-4 mt-6">
-              <div>
-                <Label>Red</Label>
-                <Select value={form.network} onValueChange={(v) => setForm({ ...form, network: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Selecciona red" /></SelectTrigger>
-                  <SelectContent>
-                    {networks.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Handle *</Label>
-                <Input
-                  value={form.handle}
-                  onChange={(e) => setForm({ ...form, handle: e.target.value })}
-                  maxLength={120}
-                  placeholder="@usuario"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Seguidores</Label>
-                <Input
-                  type="number" min={0}
-                  value={form.followers}
-                  onChange={(e) => setForm({ ...form, followers: Number(e.target.value) })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Fecha de medición</Label>
-                <Input
-                  type="date"
-                  value={form.measured_at}
-                  onChange={(e) => setForm({ ...form, measured_at: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-            <SheetFooter className="mt-6">
-              <Button variant="ghost" onClick={() => setOpenSheet(false)}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</Button>
-            </SheetFooter>
-          </SheetContent>
-        </Sheet>
+        <Button size="sm" onClick={openNewNetwork}>
+          <Plus className="h-4 w-4 mr-2" />Agregar red social
+        </Button>
       </div>
+
+      <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{form.network ? `Nuevo muestreo · ${form.network}` : "Nueva red social"}</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 mt-6">
+            <div>
+              <Label>Red</Label>
+              <Select value={form.network} onValueChange={(v) => setForm({ ...form, network: v })}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Selecciona red" /></SelectTrigger>
+                <SelectContent>
+                  {networks.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Handle *</Label>
+              <Input
+                value={form.handle}
+                onChange={(e) => setForm({ ...form, handle: e.target.value })}
+                maxLength={120}
+                placeholder="@usuario"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>Seguidores</Label>
+              <Input
+                type="number" min={0}
+                value={form.followers}
+                onChange={(e) => setForm({ ...form, followers: Number(e.target.value) })}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>Fecha de medición</Label>
+              <Input
+                type="date"
+                value={form.measured_at}
+                onChange={(e) => setForm({ ...form, measured_at: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <SheetFooter className="mt-6">
+            <Button variant="ghost" onClick={() => setOpenSheet(false)}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       {Object.keys(grouped).length === 0 ? (
         <div className="kpi-card text-center py-16">
@@ -188,55 +203,99 @@ export function RRPPSocialMedia({ contactId }: Props) {
             const latest = sorted[0];
             const prev = sorted[1];
             const trend = prev ? latest.followers - prev.followers : 0;
+            const pct = prev && prev.followers > 0
+              ? (trend / prev.followers) * 100
+              : null;
             const TrendIcon = trend > 0 ? TrendingUp : trend < 0 ? TrendingDown : Minus;
-            const trendClass = trend > 0 ? "text-green-600" : trend < 0 ? "text-destructive" : "text-muted-foreground";
+            const trendClass = trend > 0
+              ? "text-green-600 dark:text-green-400"
+              : trend < 0
+                ? "text-destructive"
+                : "text-muted-foreground";
 
             return (
               <div key={network} className="kpi-card">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
+                <div className="flex items-start justify-between mb-3 gap-3">
+                  <div className="min-w-0">
                     <h4 className="font-bold">{network}</h4>
-                    <p className="text-sm text-muted-foreground">@{latest.handle}</p>
+                    <p className="text-sm text-muted-foreground truncate">@{latest.handle}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-black">{formatFollowers(latest.followers)}</p>
-                    {prev && (
-                      <p className={`text-xs flex items-center justify-end gap-1 ${trendClass}`}>
+                    {prev ? (
+                      <p className={`text-xs flex items-center justify-end gap-1 font-semibold ${trendClass}`}>
                         <TrendIcon className="h-3 w-3" />
-                        {trend > 0 ? "+" : ""}{formatFollowers(Math.abs(trend))}
+                        {trend > 0 ? "+" : trend < 0 ? "−" : ""}
+                        {formatFollowers(Math.abs(trend))}
+                        {pct !== null && (
+                          <span className="opacity-80">
+                            ({trend > 0 ? "+" : trend < 0 ? "−" : ""}{Math.abs(pct).toFixed(1)}%)
+                          </span>
+                        )}
                       </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Sin muestreo previo</p>
                     )}
                   </div>
                 </div>
 
+                <div className="flex justify-end mb-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => openNewSample(network, latest.handle)}
+                  >
+                    <Plus className="h-3 w-3 mr-1" /> Nuevo muestreo
+                  </Button>
+                </div>
+
                 <div className="space-y-2 max-h-48 overflow-auto">
-                  {sorted.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between text-xs border-t pt-2">
-                      <div>
-                        <p className="text-muted-foreground">{new Date(r.measured_at).toLocaleDateString()}</p>
-                        <p>@{r.handle} · {formatFollowers(r.followers)} seguidores</p>
+                  {sorted.map((r, idx) => {
+                    const next = sorted[idx + 1];
+                    const d = next ? r.followers - next.followers : 0;
+                    const dPct = next && next.followers > 0 ? (d / next.followers) * 100 : null;
+                    const dClass = d > 0
+                      ? "text-green-600 dark:text-green-400"
+                      : d < 0
+                        ? "text-destructive"
+                        : "text-muted-foreground";
+                    return (
+                      <div key={r.id} className="flex items-center justify-between text-xs border-t pt-2">
+                        <div className="min-w-0">
+                          <p className="text-muted-foreground">{new Date(r.measured_at).toLocaleDateString()}</p>
+                          <p className="truncate">
+                            @{r.handle} · {formatFollowers(r.followers)}
+                            {next && (
+                              <span className={`ml-2 font-semibold ${dClass}`}>
+                                {d > 0 ? "+" : d < 0 ? "−" : ""}{formatFollowers(Math.abs(d))}
+                                {dPct !== null && ` (${d > 0 ? "+" : d < 0 ? "−" : ""}${Math.abs(dPct).toFixed(1)}%)`}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Eliminar registro?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Se eliminará la medición de {network} del {new Date(r.measured_at).toLocaleDateString()}.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(r)}>Eliminar</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar registro?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Se eliminará la medición de {network} del {new Date(r.measured_at).toLocaleDateString()}.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(r)}>Eliminar</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
