@@ -102,20 +102,20 @@ export default function Landing() {
     }
     setSubmitting(true);
     const { name, email, brand, message, interest: i } = parsed.data;
-    const { data: lead, error } = await supabase
+    const leadId = crypto.randomUUID();
+    const { error } = await supabase
       .from("landing_leads")
-      .insert([{ name, email, brand, message, interest: i }])
-      .select("id")
-      .single();
+      .insert([{ id: leadId, name, email, brand, message, interest: i }]);
     setSubmitting(false);
     if (error) {
+      console.error("landing_leads insert error:", error);
       toast.error("No pudimos enviar tu mensaje. Intenta de nuevo.");
       return;
     }
     // Fire-and-forget email notification (no bloquea el éxito del form)
     supabase.functions
       .invoke("send-landing-lead-notification", {
-        body: { leadId: lead?.id, name, email, brand, interest: i, message: message ?? "" },
+        body: { leadId, name, email, brand, interest: i, message: message ?? "" },
       })
       .catch((err) => console.error("send-landing-lead-notification failed:", err));
     toast.success("Recibido. Volvemos en menos de 48h.");
