@@ -1,5 +1,16 @@
 import { useEffect, useState } from "react";
-import { Building2, Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  Building2,
+  Coins,
+  CreditCard,
+  Loader2,
+  Plus,
+  Repeat,
+  Tag,
+  Trash2,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,12 +34,24 @@ interface SubsectionProps {
   description?: string;
   category: string;
   items: ConfigItem[];
-  usage: Record<string, number>; // value -> count
+  usage: Record<string, number>;
   onChange: () => void;
   readOnly?: boolean;
+  emptyIcon: LucideIcon;
+  emptyText: string;
 }
 
-function ConfigSubsection({ title, description, category, items, usage, onChange, readOnly }: SubsectionProps) {
+function ConfigSubsection({
+  title,
+  description,
+  category,
+  items,
+  usage,
+  onChange,
+  readOnly,
+  emptyIcon: EmptyIcon,
+  emptyText,
+}: SubsectionProps) {
   const [newValue, setNewValue] = useState("");
   const [adding, setAdding] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -119,7 +142,10 @@ function ConfigSubsection({ title, description, category, items, usage, onChange
 
       <div className="space-y-2">
         {items.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">Sin valores configurados</p>
+          <div className="text-center py-6 space-y-2 border border-dashed rounded-md">
+            <EmptyIcon className="h-7 w-7 mx-auto text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">{emptyText}</p>
+          </div>
         ) : (
           items.map((item) => (
             <ConfigRow
@@ -279,6 +305,8 @@ export function AdminConfigSection() {
               items={byCategory("obligation_category")}
               usage={usage.obligation_category ?? {}}
               onChange={load}
+              emptyIcon={Tag}
+              emptyText="Sin categorías configuradas"
             />
             <ConfigSubsection
               title="Responsables"
@@ -287,6 +315,8 @@ export function AdminConfigSection() {
               items={byCategory("responsible")}
               usage={usage.responsible ?? {}}
               onChange={load}
+              emptyIcon={Users}
+              emptyText="Agrega responsables para asignarlos a las obligaciones"
             />
             <ConfigSubsection
               title="Métodos de pago"
@@ -295,6 +325,8 @@ export function AdminConfigSection() {
               items={byCategory("payment_method")}
               usage={usage.payment_method ?? {}}
               onChange={load}
+              emptyIcon={CreditCard}
+              emptyText="Sin métodos de pago configurados"
             />
             <ConfigSubsection
               title="Monedas"
@@ -303,6 +335,8 @@ export function AdminConfigSection() {
               items={byCategory("currency")}
               usage={usage.currency ?? {}}
               onChange={load}
+              emptyIcon={Coins}
+              emptyText="Sin monedas configuradas"
             />
             <ConfigSubsection
               title="Frecuencias"
@@ -312,6 +346,8 @@ export function AdminConfigSection() {
               usage={usage.frequency ?? {}}
               onChange={load}
               readOnly
+              emptyIcon={Repeat}
+              emptyText="Sin frecuencias configuradas"
             />
           </>
         )}
