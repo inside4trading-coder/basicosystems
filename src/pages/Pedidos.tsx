@@ -3,8 +3,9 @@ import { Input } from "@/components/ui/input";
 import { useState, useEffect, useCallback } from "react";
 import { OrderExpandedDetails } from "@/components/pedidos/OrderExpandedDetails";
 import { supabase } from "@/integrations/supabase/client";
+import { isQuickAccess } from "@/config/orderStatuses";
 
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS_RAW = [
   { value: "any", label: "Todos" },
   { value: "on-hold", label: "En espera" },
   { value: "processing", label: "Procesando" },
@@ -16,7 +17,17 @@ const STATUS_OPTIONS = [
   { value: "tu-pago-fue-confi", label: "Pago confirmado" },
   { value: "pedido-listo-para", label: "Listo para envío" },
   { value: "pedido-recibido-p", label: "Recibido" },
+  { value: "pedido-pending-pa", label: "Pago por confirmar" },
 ];
+
+// Group 3: prioritize quick-access statuses first; "Todos" stays leading; others keep order.
+const STATUS_OPTIONS = (() => {
+  const todos = STATUS_OPTIONS_RAW.filter(o => o.value === "any");
+  const rest = STATUS_OPTIONS_RAW.filter(o => o.value !== "any");
+  const quick = rest.filter(o => isQuickAccess(o.value));
+  const others = rest.filter(o => !isQuickAccess(o.value));
+  return [...todos, ...quick, ...others];
+})();
 
 const statusClass: Record<string, string> = {
   completed: "status-badge-success",

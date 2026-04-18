@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDashboardData, type Period } from "@/hooks/useDashboardData";
+import { isQuickAccess } from "@/config/orderStatuses";
 import { toast } from "sonner";
 
 const periods: { key: Period; label: string }[] = [
@@ -222,10 +223,16 @@ export default function Dashboard() {
 
           {/* Status badges */}
           <div className="flex flex-wrap gap-3 animate-fade-in" style={{ animationDelay: "0.3s" }}>
-            {Object.entries(data.statuses).map(([status, count]) => {
-              const info = statusLabels[status] || { label: status, className: "status-badge-inactive" };
-              return <span key={status} className={info.className}>{info.label}: {count}</span>;
-            })}
+            {Object.entries(data.statuses)
+              .sort(([a], [b]) => {
+                const qa = isQuickAccess(a) ? 0 : 1;
+                const qb = isQuickAccess(b) ? 0 : 1;
+                return qa - qb;
+              })
+              .map(([status, count]) => {
+                const info = statusLabels[status] || { label: status, className: "status-badge-inactive" };
+                return <span key={status} className={info.className}>{info.label}: {count}</span>;
+              })}
           </div>
 
           {/* Row 1: Ventas netas + Pedidos por día (matching WooCommerce layout) */}
