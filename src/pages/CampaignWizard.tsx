@@ -88,7 +88,7 @@ export default function CampaignWizard() {
 
   const canAdvance = () => {
     if (step === 0) return name.trim() && subject.trim();
-    if (step === 1) return contactCount !== null && contactCount > 0;
+    if (step === 1) return selectedContacts.length > 0;
     if (step === 2) return blocks.length > 0;
     return true;
   };
@@ -309,7 +309,7 @@ export default function CampaignWizard() {
                 initialFilter={segmentFilter || undefined}
               />
 
-              {contactCount !== null && contactCount > 0 && !listId && (
+              {selectedContacts.length > 0 && !listId && (
                 <Button onClick={syncContacts} disabled={syncingContacts} className="w-full" variant="outline">
                   {syncingContacts ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                   {syncingContacts ? "Sincronizando..." : "Sincronizar contactos con Brevo"}
@@ -463,7 +463,7 @@ export default function CampaignWizard() {
                   <div className="flex justify-between"><span className="text-muted-foreground">Asunto</span><span className="font-bold">{subject}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Remitente</span><span>{senderName} &lt;{senderEmail}&gt;</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Segmento</span><span>{segmentLabel}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Contactos</span><span className="font-bold">{contactCount?.toLocaleString() || "—"}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Contactos</span><span className="font-bold">{(contactCount || selectedContacts.length).toLocaleString()}</span></div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Envío</span>
                     <span>{sendMode === "now" ? "Inmediato" : `${scheduledDate} ${scheduledTime}`}</span>
