@@ -463,7 +463,7 @@ export default function CampaignWizard() {
                   <div className="flex justify-between"><span className="text-muted-foreground">Asunto</span><span className="font-bold">{subject}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Remitente</span><span>{senderName} &lt;{senderEmail}&gt;</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Segmento</span><span>{segmentLabel}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Contactos</span><span className="font-bold">{contactCount?.toLocaleString() || "—"}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Contactos</span><span className="font-bold">{(contactCount || selectedContacts.length).toLocaleString()}</span></div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Envío</span>
                     <span>{sendMode === "now" ? "Inmediato" : `${scheduledDate} ${scheduledTime}`}</span>
