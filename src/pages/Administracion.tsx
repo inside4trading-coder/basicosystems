@@ -43,6 +43,7 @@ export default function Administracion() {
   const [sheetInstance, setSheetInstance] = useState<ObligationInstance | null>(null);
   const [dismissedOverdue, setDismissedOverdue] = useState(false);
   const [dismissedCritical, setDismissedCritical] = useState(false);
+  const [dismissedSoon, setDismissedSoon] = useState(false);
 
   const today = useMemo(() => {
     const d = new Date();
@@ -66,7 +67,22 @@ export default function Administracion() {
     return instances.filter((i) => {
       const d = new Date(i.due_date);
       d.setHours(0, 0, 0, 0);
-      return i.importance === "critica" && i.status !== "pagado" && d >= today && d <= in3;
+      return (
+        (i.importance === "critica" || i.importance === "alta") &&
+        i.status !== "pagado" &&
+        d >= today &&
+        d <= in3
+      );
+    }).length;
+  }, [instances, today]);
+
+  const upcomingWeekCount = useMemo(() => {
+    const in7 = new Date(today);
+    in7.setDate(in7.getDate() + 7);
+    return instances.filter((i) => {
+      const d = new Date(i.due_date);
+      d.setHours(0, 0, 0, 0);
+      return i.status === "proximo_vencer" || (d >= today && d <= in7 && i.status === "pendiente");
     }).length;
   }, [instances, today]);
 
