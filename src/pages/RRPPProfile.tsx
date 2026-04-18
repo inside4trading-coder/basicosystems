@@ -223,10 +223,16 @@ export default function RRPPProfile() {
           <RRPPInteractions contactId={contact.id} />
         </TabsContent>
         <TabsContent value="collaborations" className="mt-4">
-          <PlaceholderTab title="Colaboraciones" hint="Próximamente: envíos, cupones y resultados." />
+          <div className="kpi-card text-center py-16">
+            <h3 className="font-semibold">Colaboraciones</h3>
+            <p className="text-sm text-muted-foreground mt-1">Próximamente: envíos, cupones y resultados.</p>
+          </div>
         </TabsContent>
         <TabsContent value="notes" className="mt-4">
-          <PlaceholderTab title="Notas privadas" hint="Próximamente: notas confidenciales del equipo." />
+          <div className="kpi-card text-center py-16">
+            <h3 className="font-semibold">Notas privadas</h3>
+            <p className="text-sm text-muted-foreground mt-1">Próximamente: notas confidenciales del equipo.</p>
+          </div>
         </TabsContent>
       </Tabs>
 
