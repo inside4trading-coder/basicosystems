@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle, MoreVertical, User } from "lucide-react";
+import { CheckCircle, MoreVertical, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -27,16 +27,26 @@ interface Props {
   instances: ObligationInstance[];
   onRowClick: (inst: ObligationInstance) => void;
   onPaid: () => void;
+  onClearFilters?: () => void;
+  hasActiveFilters?: boolean;
 }
 
-export function AdminListView({ instances, onRowClick, onPaid }: Props) {
+export function AdminListView({ instances, onRowClick, onPaid, onClearFilters, hasActiveFilters }: Props) {
   const [paying, setPaying] = useState<ObligationInstance | null>(null);
 
   if (instances.length === 0) {
     return (
-      <div className="kpi-card text-center py-16">
-        <h3 className="font-semibold">Sin obligaciones para los filtros aplicados</h3>
-        <p className="text-sm text-muted-foreground">Cambia los filtros o el mes seleccionado.</p>
+      <div className="kpi-card text-center py-16 animate-fade-in">
+        <Search className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+        <h3 className="font-semibold">Sin resultados para estos filtros</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Ajusta los filtros o el mes seleccionado para ver obligaciones.
+        </p>
+        {hasActiveFilters && onClearFilters && (
+          <Button variant="outline" size="sm" onClick={onClearFilters}>
+            Limpiar filtros
+          </Button>
+        )}
       </div>
     );
   }
