@@ -103,8 +103,8 @@ export default function Configuracion() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl">
-      <h2 className="text-2xl font-black tracking-tight">Configuración</h2>
+    <div className="space-y-6 sm:space-y-8 max-w-4xl">
+      <h2 className="text-xl sm:text-2xl font-black tracking-tight">Configuración</h2>
 
       {/* Users */}
       <section className="animate-fade-in">
@@ -116,13 +116,13 @@ export default function Configuracion() {
         </div>
         <div className="bg-card rounded-lg border border-border overflow-hidden">
           {mockUsers.map((user) => (
-            <div key={user.email} className="flex items-center justify-between px-4 py-3 border-b border-border last:border-0">
-              <div>
-                <p className="font-bold text-sm">{user.name}</p>
-                <p className="text-xs text-muted-foreground">{user.email}</p>
+            <div key={user.email} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 border-b border-border last:border-0">
+              <div className="min-w-0">
+                <p className="font-bold text-sm truncate">{user.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
               </div>
               <select defaultValue={user.role}
-                className="text-xs border border-border rounded-md px-2 py-1 bg-background font-semibold">
+                className="text-xs border border-border rounded-md px-2 py-1 bg-background font-semibold w-full sm:w-auto">
                 <option value="admin">Admin Basico</option>
                 <option value="manager">Manager Basico</option>
                 <option value="partner">Partner Basico</option>
@@ -137,15 +137,15 @@ export default function Configuracion() {
         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Integraciones</h3>
         <div className="bg-card rounded-lg border border-border overflow-hidden">
           {integrations.map((integ) => (
-            <div key={integ.name} className="flex items-center justify-between px-4 py-4 border-b border-border last:border-0">
-              <div className="flex items-center gap-3">
-                {integ.connected ? <CheckCircle className="h-5 w-5 text-status-success" /> : <XCircle className="h-5 w-5 text-status-error" />}
-                <div>
+            <div key={integ.name} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-4 border-b border-border last:border-0">
+              <div className="flex items-center gap-3 min-w-0">
+                {integ.connected ? <CheckCircle className="h-5 w-5 text-status-success shrink-0" /> : <XCircle className="h-5 w-5 text-status-error shrink-0" />}
+                <div className="min-w-0">
                   <p className="font-bold text-sm">{integ.name}</p>
                   <p className="text-xs text-muted-foreground">{integ.description}</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm">Probar conexión</Button>
+              <Button variant="outline" size="sm" className="w-full sm:w-auto shrink-0">Probar conexión</Button>
             </div>
           ))}
         </div>

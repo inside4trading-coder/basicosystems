@@ -116,9 +116,9 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 max-w-7xl">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-black tracking-tight">Dashboard</h2>
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 className="text-xl sm:text-2xl font-black tracking-tight">Dashboard</h2>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center">
             <Button variant="outline" size="sm" onClick={() => handleSync(1)} disabled={syncing} className="gap-2 rounded-r-none">
               <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
@@ -284,8 +284,9 @@ export default function Dashboard() {
                 <span className="text-xs text-muted-foreground">Transacciones analizadas: <span className="font-bold text-foreground">{data.transactionsAnalyzed}</span></span>
               </div>
               {data.ordersByPayment.length > 0 ? (
-                <div className="flex items-center gap-6">
-                  <ResponsiveContainer width="50%" height={180}>
+                <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+                  <div className="w-full md:w-1/2 h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie data={data.ordersByPayment} dataKey="count" nameKey="method" cx="50%" cy="50%" outerRadius={70} strokeWidth={2}>
                         {data.ordersByPayment.map((_, i) => (
@@ -296,6 +297,7 @@ export default function Dashboard() {
                         contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                     </PieChart>
                   </ResponsiveContainer>
+                  </div>
                   <div className="space-y-2 flex-1">
                     {data.ordersByPayment.map((p, i) => (
                       <div key={p.method} className="flex items-center gap-2 text-xs">

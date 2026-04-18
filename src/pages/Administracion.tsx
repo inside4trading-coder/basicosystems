@@ -189,15 +189,15 @@ export default function Administracion() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Building2 className="h-6 w-6 text-primary" />
-          <div>
-            <h1 className="text-2xl font-black tracking-tight">Administración</h1>
+          <Building2 className="h-6 w-6 text-primary shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight">Administración</h1>
             <p className="text-muted-foreground text-sm">
               Control de obligaciones fijas y recurrentes de la empresa
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ToggleGroup
             type="single"
             value={view}

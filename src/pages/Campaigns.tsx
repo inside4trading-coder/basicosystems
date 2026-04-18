@@ -110,9 +110,9 @@ export default function Campaigns() {
 
   return (
     <div className="space-y-6 max-w-7xl">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-black tracking-tight">Email Campaigns</h2>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 className="text-xl sm:text-2xl font-black tracking-tight">Email Campaigns</h2>
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={fetchCampaigns} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
           </Button>
@@ -147,6 +147,7 @@ export default function Campaigns() {
             <p className="text-sm text-muted-foreground mt-1">Crea tu primera campaña de email</p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/50">
@@ -210,6 +211,7 @@ export default function Campaigns() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

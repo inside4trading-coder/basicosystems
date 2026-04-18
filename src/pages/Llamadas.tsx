@@ -138,7 +138,7 @@ export default function Llamadas() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Llamadas</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Llamadas</h1>
         <p className="text-muted-foreground text-sm">Seguimiento y análisis de llamadas del equipo</p>
       </div>
 
@@ -174,8 +174,8 @@ export default function Llamadas() {
           </PopoverContent>
         </Popover>
 
-        <div className="ml-auto">
-          <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing}>
+        <div className="w-full sm:w-auto sm:ml-auto">
+          <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing} className="w-full sm:w-auto">
             {syncing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
             Sincronizar llamadas
           </Button>

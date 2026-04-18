@@ -230,7 +230,7 @@ export default function AdminObligationDetail() {
 
       {/* Header */}
       <div className="kpi-card">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start sm:justify-between gap-3 sm:gap-4">
           <div className="flex-1 min-w-0 space-y-2">
             {editing ? (
               <Input
@@ -240,7 +240,7 @@ export default function AdminObligationDetail() {
                 maxLength={120}
               />
             ) : (
-              <h1 className="text-xl font-black tracking-tight flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-black tracking-tight flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-muted-foreground" />
                 {obligation.name}
               </h1>

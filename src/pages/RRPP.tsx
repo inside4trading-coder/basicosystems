@@ -89,16 +89,16 @@ export default function RRPP() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <header className="flex items-start justify-between gap-4 flex-wrap">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">RRPP</h1>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight">RRPP</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Relaciones y contactos estratégicos de la marca
           </p>
         </div>
-        <Button onClick={() => setSheetOpen(true)}>
+        <Button onClick={() => setSheetOpen(true)} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" /> Agregar contacto
         </Button>
       </header>

@@ -95,20 +95,20 @@ export default function CampaignDetail() {
   return (
     <div className="max-w-7xl space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/campaigns")}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/campaigns")} className="shrink-0">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-black tracking-tight">{campaign.name}</h2>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight truncate">{campaign.name}</h2>
               <Badge variant="outline" className={badge.className}>{badge.label}</Badge>
             </div>
-            {campaign.subject && <p className="text-sm text-muted-foreground mt-0.5">{campaign.subject}</p>}
+            {campaign.subject && <p className="text-sm text-muted-foreground mt-0.5 truncate">{campaign.subject}</p>}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => fetchCampaign(false)} disabled={refreshing}>
             <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? "animate-spin" : ""}`} /> Actualizar
           </Button>

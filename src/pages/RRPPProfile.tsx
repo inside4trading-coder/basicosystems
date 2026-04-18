@@ -132,7 +132,7 @@ export default function RRPPProfile() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="space-y-6">
         <Link to="/rrpp"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />RRPP</Button></Link>
         <ProfileHeaderSkeleton />
         <TabContentSkeleton />
@@ -141,7 +141,7 @@ export default function RRPPProfile() {
   }
   if (error) {
     return (
-      <div className="p-6">
+      <div>
         <div className="kpi-card flex items-start gap-3 bg-status-error/10 border-status-error/20">
           <AlertTriangle className="h-5 w-5 text-status-error shrink-0 mt-0.5" />
           <div>
@@ -154,7 +154,7 @@ export default function RRPPProfile() {
   }
   if (!contact) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="space-y-4">
         <Link to="/rrpp"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />RRPP</Button></Link>
         <div className="kpi-card text-center py-16 text-muted-foreground">Contacto no encontrado.</div>
       </div>
@@ -164,7 +164,7 @@ export default function RRPPProfile() {
   const created = new Date(contact.created_at).toLocaleDateString();
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <Link to="/rrpp">
         <Button variant="ghost" size="sm">
           <ArrowLeft className="h-4 w-4 mr-2" /> RRPP
@@ -249,11 +249,13 @@ export default function RRPPProfile() {
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={handleTabChange}>
-        <TabsList className="flex-wrap h-auto">
-          {visibleTabs.map((t) => (
-            <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+          <TabsList className="w-max">
+            {visibleTabs.map((t) => (
+              <TabsTrigger key={t.value} value={t.value} className="whitespace-nowrap">{t.label}</TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         <TabsContent value="general" className="mt-4">
           <RRPPGeneralData contact={contact} draft={draft} setDraft={setDraft} editing={editing} />

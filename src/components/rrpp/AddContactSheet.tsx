@@ -147,7 +147,7 @@ export function AddContactSheet({ open, onOpenChange, onCreated }: Props) {
             <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={120} required />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="alias">Alias</Label>
               <Input id="alias" value={form.alias} onChange={(e) => setForm({ ...form, alias: e.target.value })} maxLength={80} />
@@ -165,7 +165,7 @@ export function AddContactSheet({ open, onOpenChange, onCreated }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="main_channel">Canal principal</Label>
               <Input id="main_channel" placeholder="Instagram, TikTok…" value={form.main_channel} onChange={(e) => setForm({ ...form, main_channel: e.target.value })} maxLength={80} />
@@ -181,7 +181,7 @@ export function AddContactSheet({ open, onOpenChange, onCreated }: Props) {
             <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={255} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="city">Ciudad</Label>
               <Input id="city" list="rrpp-cities" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} maxLength={80} />

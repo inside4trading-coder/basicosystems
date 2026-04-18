@@ -182,7 +182,7 @@ function AddSalarySheet({ open, onOpenChange, employeeId, currentSalary, onSave,
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Sueldo base ($)</label>
             <Input type="number" value={baseSalary} onChange={(e) => setBaseSalary(e.target.value)} className="mt-1" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Bono ($)</label>
               <Input type="number" value={bonus} onChange={(e) => setBonus(e.target.value)} className="mt-1" />

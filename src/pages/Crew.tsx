@@ -80,15 +80,15 @@ export default function Crew() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
             <Users2 className="h-6 w-6 text-primary" />
             Crew
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Gestión interna del equipo</p>
         </div>
-        <Button onClick={() => setSheetOpen(true)}>
+        <Button onClick={() => setSheetOpen(true)} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-1" />
           Agregar empleado
         </Button>
