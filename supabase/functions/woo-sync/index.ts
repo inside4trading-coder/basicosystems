@@ -77,6 +77,8 @@ serve(async (req) => {
     const url = new URL(req.url);
     const full = url.searchParams.get("full") === "true";
     const sinceDays = parseInt(url.searchParams.get("days") || "30");
+    const startPage = parseInt(url.searchParams.get("start_page") || "1");
+    const maxPages = parseInt(url.searchParams.get("max_pages") || "10");
     const since = new Date();
     since.setDate(since.getDate() - sinceDays);
 
