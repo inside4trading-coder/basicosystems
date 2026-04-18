@@ -14,6 +14,204 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          field_changed: string | null
+          id: string
+          instance_id: string | null
+          new_value: string | null
+          obligation_id: string | null
+          old_value: string | null
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          field_changed?: string | null
+          id?: string
+          instance_id?: string | null
+          new_value?: string | null
+          obligation_id?: string | null
+          old_value?: string | null
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          field_changed?: string | null
+          id?: string
+          instance_id?: string | null
+          new_value?: string | null
+          obligation_id?: string | null
+          old_value?: string | null
+          performed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "admin_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "admin_instances_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "admin_obligations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_config: {
+        Row: {
+          active: boolean | null
+          category: string
+          created_at: string | null
+          id: string
+          sort_order: number | null
+          value: string
+        }
+        Insert: {
+          active?: boolean | null
+          category: string
+          created_at?: string | null
+          id?: string
+          sort_order?: number | null
+          value: string
+        }
+        Update: {
+          active?: boolean | null
+          category?: string
+          created_at?: string | null
+          id?: string
+          sort_order?: number | null
+          value?: string
+        }
+        Relationships: []
+      }
+      admin_instances: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          currency: string | null
+          due_date: string
+          id: string
+          notes: string | null
+          obligation_id: string | null
+          paid_at: string | null
+          paid_by: string | null
+          payment_reference: string | null
+          period_label: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          currency?: string | null
+          due_date: string
+          id?: string
+          notes?: string | null
+          obligation_id?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_reference?: string | null
+          period_label: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          currency?: string | null
+          due_date?: string
+          id?: string
+          notes?: string | null
+          obligation_id?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_reference?: string | null
+          period_label?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_instances_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "admin_obligations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_obligations: {
+        Row: {
+          amount: number | null
+          category: string
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          due_day: number | null
+          frequency: string
+          id: string
+          importance: string
+          name: string
+          notes: string | null
+          payment_method: string | null
+          provider: string | null
+          responsible: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number | null
+          category: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          due_day?: number | null
+          frequency: string
+          id?: string
+          importance?: string
+          name: string
+          notes?: string | null
+          payment_method?: string | null
+          provider?: string | null
+          responsible?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number | null
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          due_day?: number | null
+          frequency?: string
+          id?: string
+          importance?: string
+          name?: string
+          notes?: string | null
+          payment_method?: string | null
+          provider?: string | null
+          responsible?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       calls_cache: {
         Row: {
           agent_name: string | null
@@ -1237,9 +1435,43 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      admin_instances_view: {
+        Row: {
+          amount: number | null
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          due_date: string | null
+          frequency: string | null
+          id: string | null
+          importance: string | null
+          notes: string | null
+          obligation_id: string | null
+          obligation_name: string | null
+          paid_at: string | null
+          paid_by: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          period_label: string | null
+          provider: string | null
+          responsible: string | null
+          status: string | null
+          updated_at: string | null
+          urgency: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_instances_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "admin_obligations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      get_urgency: { Args: { due: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
