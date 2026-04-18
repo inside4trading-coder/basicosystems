@@ -87,34 +87,80 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Fetch all orders paginated
+    // Fetch orders paginated. Don't trust X-WP-TotalPages alone — Woo can return
+    // inconsistent metadata mid-history. Use payload contents as source of truth:
+    //  - non-empty array  => keep going (next_page = current+1)
+    //  - empty array      => real end of history (reached_end)
+    //  - non-array body   => source_error (do NOT close history)
     const allOrders: any[] = [];
     let page = startPage;
     let totalPages = 1;
+    let reachedEnd = false;
+    let sourceError: string | null = null;
+    let lastBatchSize = 0;
     const endPage = startPage + maxPages - 1;
+    const PER_PAGE = 100;
     console.log(`Starting sync ${full ? "(FULL HISTORICAL)" : `since ${since.toISOString()} (${sinceDays} days)`} pages ${startPage}-${endPage}`);
-    while (page <= totalPages && page <= endPage) {
-      console.log(`Fetching page ${page}/${totalPages}...`);
+    while (page <= endPage) {
+      console.log(`Fetching page ${page} (totalPages hint: ${totalPages})...`);
       const params: Record<string, string> = {
-        per_page: "100",
+        per_page: String(PER_PAGE),
         page: String(page),
         status: "any",
         orderby: "date",
-        order: "desc",
+        order: full ? "asc" : "desc",
       };
       if (!full) params.after = since.toISOString();
-      const res = await wcFetch("/orders", params);
-      totalPages = res.totalPages;
-      if (Array.isArray(res.body)) allOrders.push(...res.body);
-      else {
-        console.error("WC API returned non-array:", JSON.stringify(res.body).slice(0, 200));
+
+      let res;
+      try {
+        res = await wcFetch("/orders", params);
+      } catch (e: any) {
+        sourceError = `WC fetch failed at page ${page}: ${e.message}`;
+        console.error(sourceError);
         break;
       }
-      console.log(`Page ${page} done, got ${res.body?.length || 0} orders (total so far: ${allOrders.length})`);
+
+      if (!Array.isArray(res.body)) {
+        sourceError = `WC returned non-array at page ${page}: ${JSON.stringify(res.body).slice(0, 200)}`;
+        console.error(sourceError);
+        break;
+      }
+
+      totalPages = res.totalPages;
+      lastBatchSize = res.body.length;
+
+      if (res.body.length === 0) {
+        // Genuine end of history
+        reachedEnd = true;
+        console.log(`Page ${page} returned 0 orders — reached end of history.`);
+        break;
+      }
+
+      allOrders.push(...res.body);
+      console.log(`Page ${page} done, got ${res.body.length} orders (total so far: ${allOrders.length})`);
+
+      // If less than PER_PAGE returned, this was the last page
+      if (res.body.length < PER_PAGE) {
+        reachedEnd = true;
+        console.log(`Page ${page} returned <${PER_PAGE} orders — reached end of history.`);
+        page++;
+        break;
+      }
       page++;
     }
-    const nextPage = page <= totalPages ? page : null;
-    console.log(`Total orders fetched in this batch: ${allOrders.length}. Next page: ${nextPage ?? "DONE"}`);
+
+    // Compute next_page only if we have a valid reason to continue
+    let nextPage: number | null;
+    if (sourceError) {
+      nextPage = page; // retry from same page on source error
+    } else if (reachedEnd) {
+      nextPage = null;
+    } else {
+      // Reached chunk limit but more might exist
+      nextPage = page;
+    }
+    console.log(`Batch done. orders=${allOrders.length} reachedEnd=${reachedEnd} sourceError=${sourceError ? "yes" : "no"} next_page=${nextPage ?? "DONE"}`);
 
     // Fetch product_costs for matching
     const { data: costData } = await supabase.from("product_costs").select("sku, analytic_category, unit_cost_total");
@@ -324,20 +370,26 @@ serve(async (req) => {
       syncedPayments += paymentRows.length;
     }
 
-    // Recalculate customer order stats only on final batch
-    if (!nextPage) {
+    // Recalculate customer order stats only when we truly reached the end (no source error)
+    if (reachedEnd && !sourceError) {
       const { error: rpcErr } = await supabase.rpc("refresh_customers_order_stats");
       if (rpcErr) console.error("refresh_customers_order_stats error:", rpcErr.message);
       else console.log("Customer order stats recalculated");
     }
 
+    const status = sourceError ? "source_error" : reachedEnd ? "reached_end" : "has_more";
+
     return new Response(JSON.stringify({
-      success: true,
+      success: !sourceError,
+      status,
+      source_error: sourceError,
       mode: full ? "full" : "incremental",
       synced: { orders: syncedOrders, items: syncedItems, payments: syncedPayments },
       total_fetched: allOrders.length,
+      last_batch_size: lastBatchSize,
       page_range: { start: startPage, end: page - 1, total_pages: totalPages },
       next_page: nextPage,
+      reached_end: reachedEnd,
       since: full ? null : since.toISOString(),
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
