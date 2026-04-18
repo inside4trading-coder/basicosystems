@@ -172,7 +172,11 @@ export default function CRM() {
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       let nextPage: number | null = 1;
       let totalOrders = 0;
-      const CHUNK = 10;
+      let reachedEnd = false;
+      let retries = 0;
+      const CHUNK = 5; // smaller chunks = more reliable Woo responses
+      const MAX_RETRIES_PER_PAGE = 3;
+      let lastRetryPage: number | null = null;
 
       while (nextPage) {
         const res = await fetch(
@@ -180,13 +184,40 @@ export default function CRM() {
           { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
         );
         const result = await res.json();
-        if (!res.ok || result.error) throw new Error(result.error || "Sync failed");
+        if (!res.ok) throw new Error(result.error || `HTTP ${res.status}`);
+
         totalOrders += result.synced?.orders || 0;
-        toast.info(`Sincronizando… ${totalOrders} pedidos hasta ahora`);
-        nextPage = result.next_page;
+
+        if (result.status === "source_error") {
+          // Retry same page up to N times before giving up
+          if (lastRetryPage === result.next_page) retries++;
+          else { retries = 1; lastRetryPage = result.next_page; }
+          if (retries > MAX_RETRIES_PER_PAGE) {
+            throw new Error(`WooCommerce devolvió respuesta inválida en página ${result.next_page} tras ${MAX_RETRIES_PER_PAGE} reintentos: ${result.source_error}`);
+          }
+          toast.warning(`Reintentando página ${result.next_page} (intento ${retries}/${MAX_RETRIES_PER_PAGE})…`);
+          await new Promise(r => setTimeout(r, 2000));
+          nextPage = result.next_page;
+          continue;
+        }
+
+        retries = 0;
+        lastRetryPage = null;
+        toast.info(`Sincronizando… ${totalOrders} pedidos (página ${result.page_range?.end ?? "?"})`);
+
+        if (result.status === "reached_end") {
+          reachedEnd = true;
+          nextPage = null;
+        } else {
+          nextPage = result.next_page;
+        }
       }
 
-      toast.success(`Histórico completo: ${totalOrders} pedidos. Contadores recalculados.`);
+      if (reachedEnd) {
+        toast.success(`Histórico completo: ${totalOrders} pedidos. Contadores recalculados.`);
+      } else {
+        toast.warning(`Sync detenido: ${totalOrders} pedidos importados pero no se confirmó fin del histórico.`);
+      }
       fetchCustomers();
     } catch (e: any) {
       toast.error(`Error sync histórico: ${e.message}`);
