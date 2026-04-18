@@ -654,6 +654,36 @@ export type Database = {
         }
         Relationships: []
       }
+      landing_leads: {
+        Row: {
+          brand: string | null
+          created_at: string
+          email: string
+          id: string
+          interest: string
+          message: string | null
+          name: string
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          interest?: string
+          message?: string | null
+          name: string
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          interest?: string
+          message?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           analytic_category: string | null
