@@ -59,6 +59,39 @@ export function useAdminData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const autoUpdateStaleStatuses = useCallback(async (rows: ObligationInstance[]) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const in7 = new Date(today);
+    in7.setDate(in7.getDate() + 7);
+    const todayStr = today.toISOString().slice(0, 10);
+    const in7Str = in7.toISOString().slice(0, 10);
+
+    const toVencido: string[] = [];
+    const toProximo: string[] = [];
+
+    for (const r of rows) {
+      if (r.status !== "pendiente") continue;
+      if (r.due_date < todayStr) {
+        toVencido.push(r.id);
+        r.status = "vencido";
+      } else if (r.due_date <= in7Str) {
+        toProximo.push(r.id);
+        r.status = "proximo_vencer";
+      }
+    }
+
+    const ops: Promise<unknown>[] = [];
+    if (toVencido.length) {
+      ops.push((supabase.from(INSTANCES) as any).update({ status: "vencido" }).in("id", toVencido));
+    }
+    if (toProximo.length) {
+      ops.push((supabase.from(INSTANCES) as any).update({ status: "proximo_vencer" }).in("id", toProximo));
+    }
+    if (ops.length) await Promise.all(ops);
+    return rows;
+  }, []);
+
   const fetchInstances = useCallback(async (filters: InstanceFilters = {}) => {
     let query = (supabase.from(VIEW) as any).select("*").order("due_date", { ascending: true });
 
@@ -76,9 +109,10 @@ export function useAdminData() {
     const { data, error } = await query;
     if (error) throw error;
     const mapped = (data ?? []).map(mapInstance);
+    await autoUpdateStaleStatuses(mapped);
     setInstances(mapped);
     return mapped;
-  }, []);
+  }, [autoUpdateStaleStatuses]);
 
   const fetchObligations = useCallback(async () => {
     const { data, error } = await (supabase.from(OBLIGATIONS) as any)
