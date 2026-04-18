@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { isValidOrder, isExcludedFromRevenue } from "@/config/orderStatuses";
 
 export type Period = "today" | "week" | "month" | "year" | "custom";
 
@@ -60,7 +61,7 @@ function getPrevDateRange(period: Period, customRange?: { start: Date; end: Date
   return { start: new Date(start.getTime() - diff), end: start };
 }
 
-const EXCLUDED = new Set(["cancelled", "failed", "refunded", "trash"]);
+// Status classification lives in src/config/orderStatuses.ts (single source of truth).
 
 export function useDashboardData(period: Period, customRange?: { start: Date; end: Date }) {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -106,19 +107,25 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       }
 
       const all = currentOrders || [];
+      // Group 1: valid/computable orders (used for counts, lists, products sold).
       const paid = all.filter(o => {
-        if (EXCLUDED.has(o.order_status || "")) return false;
+        if (!isValidOrder(o.order_status || "")) return false;
         const usd = o.total_amount_usd ?? o.total_amount ?? 0;
         if (usd <= 0) return false;
         // Skip VES orders with broken exchange rate (rate=1 or 0 means no valid conversion)
         if (o.order_currency === "VES" && (o.exchange_rate === 1 || o.exchange_rate === 0 || !o.exchange_rate) && (o.total_amount ?? 0) > 100) return false;
         return true;
       });
-      const prevPaid = (prevOrders || []).filter(o => !EXCLUDED.has(o.order_status || ""));
+      const prevPaid = (prevOrders || []).filter(o => isValidOrder(o.order_status || ""));
+
+      // Group 2: revenue exclusion — only affects monetary sums, not order counts.
+      const revenueOrders = paid.filter(o => !isExcludedFromRevenue(o.order_status || ""));
+      const prevRevenueOrders = prevPaid.filter(o => !isExcludedFromRevenue(o.order_status || ""));
+      const revenueOrderIds = new Set(revenueOrders.map(o => o.order_id));
 
       const getUsd = (o: any) => o.total_amount_usd ?? o.total_amount ?? 0;
-      const revenue = paid.reduce((s, o) => s + getUsd(o), 0);
-      const prevRevenue = prevPaid.reduce((s, o) => s + getUsd(o), 0);
+      const revenue = revenueOrders.reduce((s, o) => s + getUsd(o), 0);
+      const prevRevenue = prevRevenueOrders.reduce((s, o) => s + getUsd(o), 0);
       const totalOrders = paid.length;
       const prevTotalOrders = prevPaid.length;
       const avgTicket = totalOrders > 0 ? revenue / totalOrders : 0;
@@ -142,22 +149,24 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       const statuses: Record<string, number> = {};
       for (const o of all) statuses[o.order_status || "unknown"] = (statuses[o.order_status || "unknown"] || 0) + 1;
 
-      // Daily revenue
+      // Daily revenue (excludes refunded/failed/cancelled) + daily order counts (all valid)
       const dailyMap: Record<string, number> = {};
       const dailyCountMap: Record<string, number> = {};
       for (const o of paid) {
         const d = o.order_date || "";
-        dailyMap[d] = (dailyMap[d] || 0) + getUsd(o);
         dailyCountMap[d] = (dailyCountMap[d] || 0) + 1;
+        if (revenueOrderIds.has(o.order_id)) {
+          dailyMap[d] = (dailyMap[d] || 0) + getUsd(o);
+        }
       }
       const dailyRevenue = Object.entries(dailyMap).sort(([a], [b]) => a.localeCompare(b))
         .map(([date, revenue]) => ({ date, revenue: Math.round(revenue * 100) / 100 }));
       const dailyOrders = Object.entries(dailyCountMap).sort(([a], [b]) => a.localeCompare(b))
         .map(([date, count]) => ({ date, count }));
 
-      // Revenue by state
+      // Revenue by state (excludes refunded/failed/cancelled)
       const stateMap: Record<string, number> = {};
-      for (const o of paid) {
+      for (const o of revenueOrders) {
         const s = o.billing_state || "Sin estado";
         stateMap[s] = (stateMap[s] || 0) + getUsd(o);
       }
@@ -165,12 +174,12 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         .map(([state, revenue]) => ({ state, revenue: Math.round(revenue * 100) / 100 }))
         .sort((a, b) => b.revenue - a.revenue).slice(0, 10);
 
-      // Build currency map (used by payments and products)
+      // Build currency map (used by payments and products) — only for revenue-eligible orders
       const orderCurrencyMap = new Map<number, { rate: number; currency: string }>();
-      for (const o of paid) {
-        orderCurrencyMap.set(o.order_id, { 
-          rate: o.exchange_rate || 1, 
-          currency: o.order_currency || "USD" 
+      for (const o of revenueOrders) {
+        orderCurrencyMap.set(o.order_id, {
+          rate: o.exchange_rate || 1,
+          currency: o.order_currency || "USD"
         });
       }
 
@@ -222,7 +231,7 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       const stripVariant = (name: string) => name.replace(/\s*-\s*(Talla\s+\w+,?\s*\w*|\w+,\s*\w+)$/i, '').trim();
       const prodMap: Record<string, { name: string; qty: number; rev: number }> = {};
       for (const item of items) {
-        if (!paidIds.has(item.order_id)) continue;
+        if (!revenueOrderIds.has(item.order_id)) continue;
         const rawName = item.product_name || item.sku || "unknown";
         const key = stripVariant(rawName);
         if (!prodMap[key]) prodMap[key] = { name: key, qty: 0, rev: 0 };
@@ -240,7 +249,7 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       // Category breakdown — use parent_category (root WC category) when available
       const catMap: Record<string, { revenue: number; quantity: number }> = {};
       for (const item of items) {
-        if (!paidIds.has(item.order_id)) continue;
+        if (!revenueOrderIds.has(item.order_id)) continue;
         const cat = (item as any).parent_category || item.product_category || item.analytic_category || "Sin categoría";
         if (!catMap[cat]) catMap[cat] = { revenue: 0, quantity: 0 };
         const oc = orderCurrencyMap.get(item.order_id);
