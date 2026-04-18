@@ -90,6 +90,57 @@ export function useAdminData() {
     return (data ?? []) as Obligation[];
   }, []);
 
+  const fetchObligation = useCallback(async (id: string) => {
+    const { data, error } = await (supabase.from(OBLIGATIONS) as any)
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (error) throw error;
+    return data as Obligation;
+  }, []);
+
+  const fetchInstancesByObligation = useCallback(async (obligationId: string) => {
+    const { data, error } = await (supabase.from(VIEW) as any)
+      .select("*")
+      .eq("obligation_id", obligationId)
+      .order("due_date", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(mapInstance);
+  }, []);
+
+  const fetchAuditLog = useCallback(async (obligationId: string) => {
+    const { data, error } = await (supabase.from(AUDIT) as any)
+      .select("*")
+      .eq("obligation_id", obligationId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    return (data ?? []) as Array<{
+      id: string;
+      action: string;
+      field_changed: string | null;
+      old_value: string | null;
+      new_value: string | null;
+      performed_by: string | null;
+      created_at: string;
+    }>;
+  }, []);
+
+  const updateObligation = useCallback(async (id: string, patch: Partial<Obligation>) => {
+    const { data: row, error } = await (supabase.from(OBLIGATIONS) as any)
+      .update(patch)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    await logAudit({
+      action: "update_obligation",
+      obligation_id: id,
+      new_value: JSON.stringify(patch).slice(0, 500),
+    });
+    return row as Obligation;
+  }, []);
+
   const createObligation = useCallback(async (data: Partial<Obligation>) => {
     const { data: row, error } = await (supabase.from(OBLIGATIONS) as any)
       .insert(data)
