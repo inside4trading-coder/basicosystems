@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, PhoneCall, PhoneOff, Clock, DollarSign, CheckCircle, Loader2, AlertTriangle, RefreshCw, Calendar } from "lucide-react";
+import { Phone, PhoneCall, PhoneOff, Clock, DollarSign, CheckCircle, Loader2, AlertTriangle, RefreshCw, Calendar, Play, X, Download } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,7 @@ export default function Llamadas() {
   const [customTo, setCustomTo] = useState("");
   const { data, loading, error, refetch } = useCallsData(period, customRange);
   const [syncing, setSyncing] = useState(false);
+  const [playingId, setPlayingId] = useState<string | null>(null);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -337,9 +338,26 @@ export default function Llamadas() {
                           <TableCell className="text-right text-sm">${c.cost.toFixed(2)}</TableCell>
                           <TableCell>
                             {c.is_recorded && c.recording_url ? (
-                              <a href={c.recording_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
-                                🎧 Escuchar
-                              </a>
+                              playingId === c.id ? (
+                                <div className="flex items-center gap-1">
+                                  <audio controls autoPlay src={c.recording_url} className="h-8 max-w-[220px]" onEnded={() => setPlayingId(null)} />
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPlayingId(null)} title="Cerrar">
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <a href={c.recording_url} download target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary" title="Descargar">
+                                    <Download className="h-3.5 w-3.5" />
+                                  </a>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setPlayingId(c.id)}>
+                                    <Play className="h-3.5 w-3.5 mr-1" /> Reproducir
+                                  </Button>
+                                  <a href={c.recording_url} download target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary" title="Descargar">
+                                    <Download className="h-3.5 w-3.5" />
+                                  </a>
+                                </div>
+                              )
                             ) : (
                               <span className="text-xs text-muted-foreground">—</span>
                             )}
