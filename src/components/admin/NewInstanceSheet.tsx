@@ -125,7 +125,7 @@ export function NewInstanceSheet({ obligation, open, onOpenChange, onCreated }: 
             <Label htmlFor="dueDate">Fecha de vencimiento *</Label>
             <Input id="dueDate" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="amount">Monto</Label>
               <Input id="amount" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />

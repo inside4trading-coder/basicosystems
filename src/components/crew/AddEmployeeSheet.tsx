@@ -114,7 +114,7 @@ export function AddEmployeeSheet({ open, onOpenChange, onSave }: AddEmployeeShee
           </div>
 
           {/* Name */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nombre *</Label>
               <Input value={firstName} onChange={(e) => { setFirstName(e.target.value); setErrors((p) => ({ ...p, firstName: false })); }} className={errors.firstName ? "border-destructive" : ""} />
@@ -128,7 +128,7 @@ export function AddEmployeeSheet({ open, onOpenChange, onSave }: AddEmployeeShee
           </div>
 
           {/* Cedula + Phone */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Cédula</Label>
               <Input value={cedula} onChange={(e) => setCedula(e.target.value)} placeholder="V-00.000.000" />

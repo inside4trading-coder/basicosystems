@@ -218,11 +218,11 @@ export default function CampaignWizard() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/campaigns")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h2 className="text-2xl font-black tracking-tight">Nueva Campaña</h2>
+        <h2 className="text-xl sm:text-2xl font-black tracking-tight">Nueva Campaña</h2>
       </div>
 
       {/* Stepper */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
         {STEPS.map((s, i) => (
           <div key={s} className="flex items-center gap-2 flex-1">
             <div
@@ -333,8 +333,8 @@ export default function CampaignWizard() {
           {/* Step 3: Content editor */}
           {step === 2 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex gap-1">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex flex-wrap gap-1">
                   <Button size="sm" variant="outline" onClick={() => addBlock("heading")}>Título</Button>
                   <Button size="sm" variant="outline" onClick={() => addBlock("text")}>Texto</Button>
                   <Button size="sm" variant="outline" onClick={() => addBlock("image")}>Imagen</Button>

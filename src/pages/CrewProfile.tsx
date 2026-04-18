@@ -248,14 +248,16 @@ export default function CrewProfile() {
 
       {/* Tabs */}
       <Tabs defaultValue="general" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="general">Datos generales</TabsTrigger>
-          <TabsTrigger value="tasks">Tareas recurrentes</TabsTrigger>
-          <TabsTrigger value="incidents">Incidencias</TabsTrigger>
-          <TabsTrigger value="docs">Documentos</TabsTrigger>
-          <TabsTrigger value="salary">Historial salarial</TabsTrigger>
-          <TabsTrigger value="notes">Notas privadas</TabsTrigger>
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+        <TabsList className="w-max">
+          <TabsTrigger value="general" className="whitespace-nowrap">Datos generales</TabsTrigger>
+          <TabsTrigger value="tasks" className="whitespace-nowrap">Tareas recurrentes</TabsTrigger>
+          <TabsTrigger value="incidents" className="whitespace-nowrap">Incidencias</TabsTrigger>
+          <TabsTrigger value="docs" className="whitespace-nowrap">Documentos</TabsTrigger>
+          <TabsTrigger value="salary" className="whitespace-nowrap">Historial salarial</TabsTrigger>
+          <TabsTrigger value="notes" className="whitespace-nowrap">Notas privadas</TabsTrigger>
         </TabsList>
+        </div>
 
         <TabsContent value="general">
           <CrewGeneralData employee={employee} editMode={editing} onUpdate={setPendingUpdates} />

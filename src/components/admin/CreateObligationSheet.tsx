@@ -230,7 +230,7 @@ export function CreateObligationSheet({ open, onOpenChange, onCreated }: Props) 
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Categoría *</Label>
                 <Select value={tpl.category} onValueChange={(v) => setTpl({ ...tpl, category: v })}>
@@ -251,7 +251,7 @@ export function CreateObligationSheet({ open, onOpenChange, onCreated }: Props) 
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Frecuencia *</Label>
                 <Select value={tpl.frequency} onValueChange={(v) => setTpl({ ...tpl, frequency: v })}>
@@ -276,7 +276,7 @@ export function CreateObligationSheet({ open, onOpenChange, onCreated }: Props) 
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Importancia *</Label>
                 <Select
@@ -381,7 +381,7 @@ export function CreateObligationSheet({ open, onOpenChange, onCreated }: Props) 
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="amount">Monto</Label>
                 <Input
