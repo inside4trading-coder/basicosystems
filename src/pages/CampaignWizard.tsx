@@ -52,7 +52,7 @@ export default function CampaignWizard() {
           body: { action: "get_senders" },
         });
         if (error) throw error;
-        const list = Array.isArray(data) ? data : [];
+        const list = Array.isArray(data) ? data : (data?.senders ?? []);
         setSenders(list);
         if (list.length > 0) {
           setSenderName(list[0].name);

@@ -26,15 +26,31 @@ serve(async (req) => {
 
     // ---- GET SENDERS ----
     if (action === "get_senders") {
-      const res = await fetch(`${BREVO_BASE}/senders`, {
-        headers: { "api-key": BREVO_API_KEY },
-      });
-      if (!res.ok) throw new Error("Failed to fetch senders from Brevo");
-      const data = await res.json();
-      const activeSenders = (data.senders || []).filter((s: any) => s.active);
-      return new Response(JSON.stringify(activeSenders), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      try {
+        const res = await fetch(`${BREVO_BASE}/senders`, {
+          headers: { "api-key": BREVO_API_KEY, "accept": "application/json" },
+        });
+        const text = await res.text();
+        if (!res.ok) {
+          console.error(`Brevo /senders failed [${res.status}]:`, text);
+          // Return empty list with fallback flag so UI can use defaults
+          return new Response(
+            JSON.stringify({ senders: [], fallback: true, reason: `Brevo ${res.status}`, detail: text }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const data = JSON.parse(text);
+        const activeSenders = (data.senders || []).filter((s: any) => s.active);
+        return new Response(JSON.stringify({ senders: activeSenders, fallback: false }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (e: any) {
+        console.error("Brevo /senders exception:", e);
+        return new Response(
+          JSON.stringify({ senders: [], fallback: true, reason: e.message }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // ---- LIST campaigns ----
