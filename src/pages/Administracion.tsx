@@ -118,11 +118,12 @@ export default function Administracion() {
       .sort((a, b) => a.due_date.localeCompare(b.due_date));
   }, [instances, filters, today]);
 
-  // Reset alert dismissal when overdue/critical change
+  // Reset alert dismissal when counts go to zero
   useEffect(() => {
     if (overdueCount === 0) setDismissedOverdue(false);
     if (criticalSoonCount === 0) setDismissedCritical(false);
-  }, [overdueCount, criticalSoonCount]);
+    if (upcomingWeekCount === 0) setDismissedSoon(false);
+  }, [overdueCount, criticalSoonCount, upcomingWeekCount]);
 
   const goPrev = () => {
     const d = new Date(filters.monthDate);
@@ -135,10 +136,39 @@ export default function Administracion() {
     setFilters({ ...filters, monthDate: d });
   };
 
+  const clearListFilters = () =>
+    setFilters({
+      ...filters,
+      category: null,
+      responsible: null,
+      status: null,
+      importance: null,
+      onlyOverdue: false,
+      next7Days: false,
+    });
+
+  const hasActiveListFilters =
+    !!filters.category ||
+    !!filters.responsible ||
+    !!filters.status ||
+    !!filters.importance ||
+    filters.onlyOverdue ||
+    filters.next7Days;
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <Building2 className="h-6 w-6 text-primary" />
+          <div>
+            <h1 className="text-2xl font-black tracking-tight">Administración</h1>
+            <p className="text-muted-foreground text-sm">
+              Control de obligaciones fijas y recurrentes de la empresa
+            </p>
+          </div>
+        </div>
+        <AdminKPIsSkeleton />
+        {view === "calendar" ? <AdminCalendarSkeleton /> : <AdminListSkeleton />}
       </div>
     );
   }
