@@ -1,54 +1,46 @@
 
-The user is on step 2 (Audiencia) of the campaign wizard and can't proceed with "Sincronizar y avanzar". They have 1 manual contact selected but "0 contactos coinciden" from segment conditions.
+## Contexto
 
-Let me investigate the wizard logic.
-<lov-tool-use id="toolu_vrtx_01A2STVC85or7HVKgMVmKa6p" name="code--search_files" integration-id="code" data="{\"query\": \"SINCRONIZAR Y AVANZAR|Sincronizar y avanzar\"}">
-</lov-tool-use>
+El usuario pide dos mejoras en el módulo RRPP del perfil de contacto:
 
-<lov-tool-use id="toolu_vrtx_01XEGsVqJ4sbH7ag4ynF6aRe" name="code--search_files" integration-id="code" data="{\"query\": \"SINCRONIZAR Y AVANZAR|Sincronizar y avanzar|sincronizar\", \"case_sensitive\": false}">
-</lov-tool-use>
+1. **Redes sociales**: ya se pueden agregar mediciones, pero quiere reforzar el flujo de "nuevo muestreo" y la visualización de crecimiento/decrecimiento vs medición anterior.
+2. **Colaboraciones**: hoy el formulario pide todos los datos al crear. Necesita poder crear una colaboración con datos mínimos y luego **editarla** para ir agregando información (cupón, ingresos, fecha de post, etc.) a medida que avanza.
 
-<lov-tool-use id="toolu_vrtx_01P3GWZYfk6buf8qBxCT1edm" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/CampaignWizard.tsx\", \"lines\": \"1-200\"}">
-</lov-tool-use>
+## Estado actual
 
-<lov-tool-use id="toolu_vrtx_01T1d3B3YByE5TxDH1ktUswo" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/CampaignWizard.tsx\", \"lines\": \"460-498\"}">
-</lov-tool-use>
+- `RRPPSocialMedia.tsx` ya soporta agregar mediciones y muestra tendencia (TrendIcon ↑/↓/—) comparando última vs anterior por red. Funciona, pero:
+  - El botón se llama "Agregar red social", confuso cuando ya existe esa red. Debe llamarse "Nuevo muestreo" cuando ya hay datos de esa red, y prefijar la red automáticamente.
+  - El delta se muestra solo en valor absoluto. Falta el porcentaje (+12.5%) que es la métrica clave de crecimiento.
+  - No hay un atajo "+ muestreo" por tarjeta de red existente.
 
-<lov-tool-use id="toolu_vrtx_01UA7hQxiCaanyAaFDUrgMDC" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/CampaignWizard.tsx\", \"lines\": \"200-260\"}">
-</lov-tool-use>
-Let me check SegmentBuilder to see how `contactCount` gets set — issue: `contactCount` is null, so `canAdvance` returns false at step 1. The image shows "0 contactos coinciden" but "1 seleccionados". Need to know if selected count updates contactCount.
-<lov-tool-use id="toolu_vrtx_01VKEnEXhBfP65mUFJYssMjn" name="code--search_files" integration-id="code" data="{\"query\": \"onCountChange|onSelectedChange|setContactCount|onCount\", \"include_patterns\": \"src/**/*.tsx\"}">
-</lov-tool-use>
+- `RRPPCollaborations.tsx` (no mostrado pero referenciado): el Sheet exige todos los campos al crear. No hay flujo de edición posterior.
 
-<lov-tool-use id="toolu_vrtx_01K5V37YxX9ye24kfddq2qTE" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/CampaignWizard.tsx\", \"lines\": \"290-330\"}">
-</lov-tool-use>
-Found it. The screenshot shows "0 contactos coinciden" but "1 seleccionados" (manually-added email). `contactCount` reflects "matched" count (0), not selected (1). So `canAdvance()` returns false → button disabled. Also, even if user can click it, `syncContacts` checks `selectedContacts` which would work but the button is gated by canAdvance using contactCount.
+## Cambios
 
-<lov-plan>
-## Problema
+### 1. `src/components/rrpp/RRPPSocialMedia.tsx`
 
-En el paso "Audiencia", el botón **"Sincronizar y avanzar"** se deshabilita porque `canAdvance()` exige `contactCount > 0`, pero `contactCount` solo refleja los contactos que **coinciden con las condiciones** del segmento (0 en tu caso). Los emails añadidos **manualmente** (`selectedContacts`, en tu caso 1: eduardojg1994@gmail.com) no cuentan.
+- Añadir botón **"+ Nuevo muestreo"** en cada tarjeta de red existente, que abre el Sheet con `network` preseleccionado y `handle` autocompletado del último muestreo (editable).
+- Mantener "Agregar red social" en el header solo para redes nuevas.
+- En el bloque de tendencia, añadir el **porcentaje** de variación junto al valor absoluto: `+1.2K (+12.5%)` o `−340 (−4.1%)`.
+- Pequeño coloreo: verde para crecimiento, rojo para decrecimiento, gris si no hay anterior.
 
-Resultado: tienes 1 contacto seleccionado válido para enviar, pero el wizard te bloquea.
+### 2. `src/components/rrpp/RRPPCollaborations.tsx`
 
-## Solución
+- **Crear con datos mínimos**: hacer el Sheet de creación opcional en todos los campos excepto `send_date` (o ninguno; default hoy). El usuario puede crear la fila apenas con "products" y guardar.
+- **Editar colaboración existente**: añadir botón ✏️ "Editar" en cada `kpi-card` de colaboración. Reutilizar el mismo Sheet en modo edición:
+  - Si `editingId` está set, hace `update()` en lugar de `insert()`.
+  - Pre-rellena el form con los valores actuales.
+  - Audit log: registra el cambio como `collab_update` con resumen de campos modificados.
+- **Eliminar colaboración**: añadir AlertDialog con botón de papelera (admin/rrpp/marketing).
+- Mantener la lógica condicional de campos (cupón si `has_coupon`, post si `collab_done`) tanto en creación como en edición.
 
-Cambiar la lógica de avance del paso 2 para que considere **el total real seleccionado**, que es la suma efectiva de:
-- contactos del segmento que están marcados, o
-- emails añadidos manualmente.
+### 3. Permisos
 
-### Cambios en `src/pages/CampaignWizard.tsx`
+Sin cambios en RLS — las policies ya permiten manage a admin/rrpp/marketing. El hook `useRRPPPermissions` ya cubre los gates de UI.
 
-1. **`canAdvance()` (paso 1)**: en lugar de comprobar `contactCount > 0`, comprobar `selectedContacts.length > 0`. Así el botón se habilita en cuanto haya al menos un destinatario (manual o del segmento).
+## Archivos a tocar
 
-2. **Botón "Sincronizar contactos con Brevo"** (línea 312): mostrarlo cuando `selectedContacts.length > 0 && !listId` (no solo cuando hay match del segmento).
+- `src/components/rrpp/RRPPSocialMedia.tsx` — preselección de red, botón por tarjeta, % de cambio.
+- `src/components/rrpp/RRPPCollaborations.tsx` — modo edición + delete + campos opcionales.
 
-3. **Resumen del paso 4** (línea 466): mostrar `selectedContacts.length` como número de contactos si `contactCount` es 0/null.
-
-4. **Etiqueta del botón** (línea 487): mantener "Sincronizar y avanzar" cuando `!listId`, lo cual seguirá disparando `syncContacts()` con los `selectedContacts` correctamente (esa función ya usa `selectedContacts`, no `contactCount`).
-
-No se requieren cambios en edge functions ni en BD. Es un fix de 4 líneas en el wizard.
-
-## Resultado esperado
-
-- Añades manualmente un email → contador "1 seleccionados" → botón **"Sincronizar y avanzar"** se activa → al pulsarlo, llama a `brevo-sync-contacts`, crea la lista en Brevo y pasa al paso 3 (Contenido).
+Sin migraciones ni cambios en edge functions.
