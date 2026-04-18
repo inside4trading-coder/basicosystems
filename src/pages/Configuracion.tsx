@@ -17,9 +17,10 @@ const mockUsers = [
 ];
 
 const integrations = [
-  { name: "WooCommerce", description: "basicoclothes.es", connected: true },
-  { name: "Trello", description: "Workspace Basico", connected: true },
-  { name: "Brevo", description: "Email marketing", connected: false },
+  { name: "WooCommerce", description: "basicoclothes.es — Pedidos, CRM, Dashboard", connected: true },
+  { name: "Brevo", description: "Email marketing — Campañas", connected: true },
+  { name: "Notion", description: "Planning — Calendario editorial", connected: true },
+  { name: "Zadarma", description: "Telefonía — Analítica de llamadas", connected: true },
 ];
 
 interface CostRow {
