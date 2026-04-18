@@ -309,7 +309,7 @@ export default function CampaignWizard() {
                 initialFilter={segmentFilter || undefined}
               />
 
-              {contactCount !== null && contactCount > 0 && !listId && (
+              {selectedContacts.length > 0 && !listId && (
                 <Button onClick={syncContacts} disabled={syncingContacts} className="w-full" variant="outline">
                   {syncingContacts ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                   {syncingContacts ? "Sincronizando..." : "Sincronizar contactos con Brevo"}
