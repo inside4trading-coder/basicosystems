@@ -51,6 +51,7 @@ export default function Llamadas() {
   const [customTo, setCustomTo] = useState("");
   const { data, loading, error, refetch } = useCallsData(period, customRange);
   const [syncing, setSyncing] = useState(false);
+  const [playingId, setPlayingId] = useState<string | null>(null);
 
   const handleSync = async () => {
     setSyncing(true);
