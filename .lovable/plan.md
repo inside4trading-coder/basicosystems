@@ -1,51 +1,47 @@
 
 
-## Plan: Auditoría de inconsistencias entre WordPress export y datos en Lovable
+## Plan: Eliminar código de Trello y Zadarma SIP/PBX (no usados)
 
 ### Contexto
-Tienes un export de WooCommerce con todas las órdenes desde el 1 de abril hasta hoy. El objetivo es comparar contra la BD de Lovable y encontrar dónde divergen **Total Sales**, **Pedidos** y **Products Sold**.
+Trello y Zadarma SIP/PBX/WebRTC tienen claves "NA" (placeholder, no funcionales). El resto de secretos (Brevo, WooCommerce, Zadarma KEY/SECRET para historial de llamadas, Notion) sí están sincronizados y deben quedarse.
 
-### Lo que voy a hacer (en modo default)
+### Qué se elimina
 
-**1. Leer el .xlsx con DuckDB**
-- Extraer columnas clave: `order_id`, `order_date`, `status`, `total`, `items_count`/line_items.
-- Filtrar al rango 2026-04-01 → hoy.
-- Normalizar status (los que vienen en el export podrían ser etiquetas largas en español, no slugs).
+**Edge Functions (eliminar carpeta + deploy delete):**
+- `supabase/functions/trello-explore/`
+- `supabase/functions/zadarma-webrtc-key/`
 
-**2. Calcular agregados de WordPress** (la "verdad de WooCommerce"):
-- `WP_total_orders` = conteo de órdenes válidas (aplicando `isValidOrder` sobre la etiqueta del export).
-- `WP_total_sales` = suma de `total`, excluyendo `EXCLUDED_FROM_REVENUE`.
-- `WP_products_sold` = suma de `quantity` de line items en órdenes válidas.
+**Frontend:**
+- `src/components/llamadas/ZadarmaWebPhone.tsx` (componente del webphone)
+- Quitar import + render de `<ZadarmaWebPhone />` donde sea que se monte (probablemente `AppLayout.tsx` o `Llamadas.tsx`).
 
-**3. Calcular los mismos agregados en Lovable** (mismo rango de fechas):
-```sql
-SELECT order_id, order_status, total_amount, total_amount_usd, order_date
-FROM orders WHERE order_date >= '2026-04-01';
-SELECT order_id, quantity FROM order_items WHERE order_id IN (...);
-```
-- Aplicar `isValidOrder(status)` y `isExcludedFromRevenue(status)` igual que en el dashboard.
+### Qué se conserva
 
-**4. Comparar y diagnosticar**
-Construir 3 deltas:
-- **Δ Total Sales**: WP vs Lovable. Posibles causas:
-  - Conversión a USD mal aplicada (Lovable estandariza a USD, WP probablemente reporta en moneda original).
-  - Órdenes que en WP están en estado válido pero el slug de la BD no está en `SLUG_TO_CANONICAL` (ej. `en-fabricacion`) → quedan como "no válidas" en Lovable.
-  - Órdenes con `total_amount_usd = NULL` filtradas por el dashboard.
-- **Δ Pedidos**: misma raíz — slugs no mapeados o filtros adicionales (USD>0, VES roto) en `useDashboardData`.
-- **Δ Products Sold**: 
-  - El dashboard cuenta sobre `order_items` filtrados por órdenes válidas. Si una orden válida en WP no se cuenta en Lovable, sus items tampoco.
-  - Posible falta de sincronización de items para órdenes recientes.
+- `supabase/functions/zadarma-sync/index.ts` → usa `ZADARMA_KEY` y `ZADARMA_SECRET` para análisis histórico de llamadas (per memoria `mem://features/llamadas`: "Zadarma integration is strictly historical analysis, no web dialing"). Este se queda intacto.
+- Secretos `ZADARMA_KEY` / `ZADARMA_SECRET` → siguen necesarios para `zadarma-sync`.
+- Secretos `ZADARMA_SIP_LOGIN`, `ZADARMA_PBX_EXTENSION`, `ZADARMA_PBX_HOST`, `TRELLO_*` → quedan en "NA" en el panel de secretos. No los borro porque la herramienta de secretos no los expone para borrar; quedan inertes al no haber código que los lea.
 
-**5. Identificar específicamente las órdenes faltantes/divergentes**
-- `LEFT JOIN` para encontrar órdenes en WP que no están en `orders` (o viceversa).
-- Listar slugs de status presentes en Lovable que NO están en `SLUG_TO_CANONICAL` → esos son "fugas" silenciosas.
-- Listar órdenes con `total_amount_usd IS NULL` en el rango.
+### Verificación previa que haré antes de tocar nada
+
+1. `code--search_files` por `ZadarmaWebPhone` → confirmar dónde se importa/renderiza.
+2. `code--search_files` por `trello-explore` y `zadarma-webrtc-key` → confirmar que no haya invocaciones desde el frontend.
+3. `code--search_files` por `TRELLO_`, `ZADARMA_SIP`, `ZADARMA_PBX` en `supabase/functions/` → confirmar que solo viven en las funciones a eliminar.
+
+### Archivos que cambiarán
+
+| Archivo | Acción |
+|---|---|
+| `supabase/functions/trello-explore/index.ts` | Eliminar carpeta + delete edge function |
+| `supabase/functions/zadarma-webrtc-key/index.ts` | Eliminar carpeta + delete edge function |
+| `src/components/llamadas/ZadarmaWebPhone.tsx` | Eliminar archivo |
+| `AppLayout.tsx` o `Llamadas.tsx` (a confirmar) | Quitar import + JSX `<ZadarmaWebPhone />` |
+
+### Lo que NO se toca
+
+- `zadarma-sync` y toda la pantalla de Llamadas (analytics histórico).
+- Memoria del proyecto (la regla "Zadarma = solo histórico" ya está vigente y este cambio la refuerza).
+- Otras integraciones (Brevo, Woo, Notion).
 
 ### Entregable
-Un reporte conciso en chat con:
-1. Tres números lado a lado (WP vs Lovable) con su delta absoluto y %.
-2. La causa raíz de cada delta (con conteos y ejemplos de órdenes).
-3. Recomendación de fix (mapeo nuevo, re-sync, o ajuste de filtros en `useDashboardData`).
-
-**No se modifica código en este paso** — primero auditamos, luego decides qué arreglar.
+Lista final de archivos eliminados/modificados y confirmación de que el build sigue limpio (sin imports rotos).
 
