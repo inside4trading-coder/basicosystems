@@ -320,11 +320,17 @@ serve(async (req) => {
       syncedPayments += paymentRows.length;
     }
 
+    // Recalculate customer order stats from local orders table
+    const { error: rpcErr } = await supabase.rpc("refresh_customers_order_stats");
+    if (rpcErr) console.error("refresh_customers_order_stats error:", rpcErr.message);
+    else console.log("Customer order stats recalculated");
+
     return new Response(JSON.stringify({
       success: true,
+      mode: full ? "full" : "incremental",
       synced: { orders: syncedOrders, items: syncedItems, payments: syncedPayments },
       total_fetched: allOrders.length,
-      since: since.toISOString(),
+      since: full ? null : since.toISOString(),
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
