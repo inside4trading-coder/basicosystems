@@ -254,6 +254,30 @@ Deno.serve(async (req) => {
       };
     });
 
+    // Pre-cargar URLs de grabación ya guardadas para no re-pedirlas a Zadarma
+    if (calls.length > 0) {
+      const callIds = calls.map((c: Record<string, unknown>) => String(c.call_id)).filter(Boolean);
+      const { data: existing } = await supabase
+        .from("calls_cache")
+        .select("call_id, recording_url")
+        .in("call_id", callIds);
+      const existingMap: Record<string, string> = {};
+      (existing || []).forEach((row: { call_id: string; recording_url: string | null }) => {
+        if (row.recording_url) existingMap[row.call_id] = row.recording_url;
+      });
+      calls.forEach((c: Record<string, unknown>) => {
+        const cached = existingMap[String(c.call_id)];
+        if (cached && !c.recording_url) {
+          c.recording_url = cached;
+          c.is_recorded = true;
+        }
+      });
+    }
+
+    // Para llamadas answered sin URL, pedirla a Zadarma (outgoing y algunas incoming)
+    const enrichedCount = await enrichWithRecordings(calls, zadarmaKey, zadarmaSecret);
+    console.log(`Enriched ${enrichedCount} call(s) with recording URLs`);
+
     if (calls.length > 0) {
       for (let i = 0; i < calls.length; i += 500) {
         const batch = calls.slice(i, i + 500);
