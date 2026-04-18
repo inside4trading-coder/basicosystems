@@ -1,4 +1,4 @@
-import { Search, Loader2, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { Search, Loader2, ChevronLeft, ChevronRight, RefreshCw, Calculator, History } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useCallback } from "react";
 import { CustomerOrdersDialog } from "@/components/crm/CustomerOrdersDialog";
