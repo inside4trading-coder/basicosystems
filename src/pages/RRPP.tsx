@@ -14,6 +14,8 @@ import {
   RELATIONSHIP_LABELS, CONTACT_TYPE_LABELS, SOCIAL_CONTACT_TYPES,
   relationshipBadgeClass, formatFollowers,
 } from "@/components/rrpp/rrppConstants";
+import { ContactGridSkeleton } from "@/components/rrpp/RRPPSkeletons";
+import { AlertTriangle } from "lucide-react";
 
 const ALL = "__all__";
 
@@ -168,8 +170,16 @@ export default function RRPP() {
       </div>
 
       {/* Body */}
-      {loading && <p className="text-muted-foreground text-center py-12">Cargando contactos…</p>}
-      {error && <p className="text-destructive text-center py-12">Error: {error}</p>}
+      {loading && <ContactGridSkeleton />}
+      {error && (
+        <div className="kpi-card flex items-start gap-3 bg-status-error/10 border-status-error/20">
+          <AlertTriangle className="h-5 w-5 text-status-error shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-sm">Error al cargar contactos</p>
+            <p className="text-xs text-muted-foreground">{error}</p>
+          </div>
+        </div>
+      )}
 
       {!loading && !error && contacts.length === 0 && !showArchived && (
         <div className="kpi-card text-center py-16">
