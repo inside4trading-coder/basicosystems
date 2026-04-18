@@ -136,7 +136,7 @@ export function RRPPConfigSection() {
       </h3>
       <div className="bg-card rounded-lg border border-border divide-y divide-border">
         {CATEGORIES.map((c) => (
-          <CategoryEditor key={c.key} {...c} />
+          <CategoryEditor key={c.key} category={c.key} label={c.label} icon={c.icon} hint={c.hint} />
         ))}
       </div>
     </section>
