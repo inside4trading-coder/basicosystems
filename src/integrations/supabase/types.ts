@@ -939,7 +939,7 @@ export type Database = {
       refresh_customers_order_stats: { Args: never; Returns: undefined }
     }
     Enums: {
-      app_role: "admin" | "manager" | "partner"
+      app_role: "admin" | "manager" | "partner" | "rrpp" | "marketing"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1067,7 +1067,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager", "partner"],
+      app_role: ["admin", "manager", "partner", "rrpp", "marketing"],
     },
   },
 } as const
