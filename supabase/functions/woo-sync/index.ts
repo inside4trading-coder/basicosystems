@@ -370,20 +370,26 @@ serve(async (req) => {
       syncedPayments += paymentRows.length;
     }
 
-    // Recalculate customer order stats only on final batch
-    if (!nextPage) {
+    // Recalculate customer order stats only when we truly reached the end (no source error)
+    if (reachedEnd && !sourceError) {
       const { error: rpcErr } = await supabase.rpc("refresh_customers_order_stats");
       if (rpcErr) console.error("refresh_customers_order_stats error:", rpcErr.message);
       else console.log("Customer order stats recalculated");
     }
 
+    const status = sourceError ? "source_error" : reachedEnd ? "reached_end" : "has_more";
+
     return new Response(JSON.stringify({
-      success: true,
+      success: !sourceError,
+      status,
+      source_error: sourceError,
       mode: full ? "full" : "incremental",
       synced: { orders: syncedOrders, items: syncedItems, payments: syncedPayments },
       total_fetched: allOrders.length,
+      last_batch_size: lastBatchSize,
       page_range: { start: startPage, end: page - 1, total_pages: totalPages },
       next_page: nextPage,
+      reached_end: reachedEnd,
       since: full ? null : since.toISOString(),
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
