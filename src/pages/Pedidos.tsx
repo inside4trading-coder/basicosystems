@@ -128,7 +128,7 @@ export default function Pedidos() {
   const totalPages = Math.ceil(total / PER_PAGE);
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="space-y-6 w-full">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black tracking-tight">Pedidos</h2>
