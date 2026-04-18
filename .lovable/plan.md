@@ -1,90 +1,68 @@
 
 
-## Reframe final
+## Respuesta corta
 
-Dos ofertas en una landing, con jerarquía clara:
+Sí, **trae el 100% del histórico** y deja los segmentos de Campaigns funcionando correctamente. Pero hay un matiz: necesitamos asegurarnos de que **todos los pedidos históricos estén en la tabla `orders`**, no solo los últimos 30 días.
 
-1. **Tailor-made (oferta principal)** — construimos el sistema operativo completo a medida.
-2. **Basico Systems SaaS (entrada)** — el mismo sistema, configurable y personalizable, listo para arrancar rápido.
+## Cómo queda el flujo
 
-Posicionamiento: "Empieza con el SaaS. Crece a medida cuando lo necesites." No es un SaaS genérico — es el sistema probado en Basico, parametrizable por marca.
+```text
+WooCommerce  ──(sync histórico completo)──►  orders (tabla local)
+                                                   │
+                                                   ▼
+                              refresh_customers_order_stats()
+                                                   │
+                                                   ▼
+                                   customers_cache.orders_count
+                                                   │
+                                                   ▼
+                              Campaigns / SegmentBuilder (filtros por nº pedidos)
+```
 
-## Cambios sobre el plan anterior
+La fuente de verdad es `orders`. Mientras esa tabla tenga el histórico, el resto se calcula solo.
 
-Mantengo toda la estructura aprobada y añado/modifico:
+## Plan en 3 pasos
 
-### Hero (ajustado)
-- H1: "SISTEMAS OPERATIVOS PARA MARCAS QUE NO CABEN EN UN SAAS GENÉRICO"
-- Subtítulo: "Empieza con Basico Systems. Evoluciona a un sistema 100% a medida cuando tu operación lo pida."
-- Dos CTAs lado a lado:
-  - Primario rojo: "Probar Basico Systems"
-  - Secundario outline blanco: "Quiero uno a medida"
+### 1. Sync histórico completo de pedidos (one-shot)
+Modifico `supabase/functions/woo-sync/index.ts` para aceptar `?full=true`. Cuando se invoca con ese flag, ignora el filtro de 30 días y pagina **todos** los pedidos de WooCommerce (status `any`, sin `after`). Esto trae el histórico completo a la tabla `orders`.
 
-### Nueva sección: "DOS FORMAS DE EMPEZAR" (después del manifiesto)
-Layout 2 columnas (stack en mobile), comparativa visual editorial:
+### 2. Auto-recálculo en cada sync
+Al final de `woo-sync` (sea incremental o full), llamamos `supabase.rpc("refresh_customers_order_stats")`. Así, cada pedido nuevo que entre en el futuro actualiza automáticamente el contador del cliente. Nunca más quedará desfasado.
 
-**Columna A — BASICO SYSTEMS (SaaS personalizable)**
-- Eyebrow: "PRODUCTO"
-- Título: "Arranca en días"
-- Bullets:
-  - 8 módulos listos: Pedidos, CRM, Planning, Crew, RRPP, Campañas, Llamadas, Administración
-  - Personalizable: branding, roles, flujos, campos
-  - Integraciones nativas: WooCommerce, Brevo, Notion, Zadarma
-  - Onboarding guiado con tu equipo
-- CTA: "Solicitar acceso"
+### 3. Botón en CRM con dos modos
+En `src/pages/CRM.tsx`, junto al botón ↻ actual:
+- **"Sincronizar pedidos"** → modo incremental (30 días) — uso diario.
+- **"Sync histórico completo"** → llama con `?full=true` — uso puntual, ahora y rara vez después.
+- **"Recalcular contadores"** → solo dispara la RPC sin re-bajar pedidos. Útil para forzar refresh sin esperar.
 
-**Columna B — TAILOR-MADE (estudio)**
-- Eyebrow: "ESTUDIO"
-- Título: "Construido para tu operación"
-- Bullets:
-  - Discovery profundo de tu negocio
-  - Módulos nuevos diseñados desde cero
-  - Integraciones con cualquier herramienta
-  - Soporte y evolución continua
-- CTA: "Hablar con el estudio"
+## Migración inmediata
+Ejecuto `SELECT public.refresh_customers_order_stats();` ya, para arreglar los 169 clientes con pedidos que ya tenemos sincronizados. Resultado inmediato visible en CRM antes incluso del sync histórico.
 
-Visual: borde fino, fondo blanco vs fondo negro invertido para crear contraste. Misma altura.
+## Impacto en Campaigns / SegmentBuilder
 
-### Sección "Capacidades" (renombrada)
-Ahora se llama **"QUÉ INCLUYE BASICO SYSTEMS HOY"** y deja claro que son los módulos ya construidos del SaaS — y la base sobre la que se hacen los tailor-made.
+`SegmentBuilder` filtra contra `customers_cache.orders_count`. Una vez recalculado:
+- **Primera compra (=1)** → ~140 clientes reales (hoy: 0).
+- **Recurrentes (2-5)** → se puebla.
+- **VIP (6+)** → se puebla cuando llegue el histórico completo.
+- **Sin compras (=0)** → baja de 8.405 a ~8.236 (los que de verdad nunca compraron).
 
-Subtítulo: "Estos son los módulos en producción. En tailor-made, los combinamos, modificamos o construimos nuevos."
+Las audiencias de campañas pasan a ser fiables.
 
-### Sección "Personalización" (nueva, antes del caso Basico)
-Fondo blanco. Título: "TU MARCA, NO LA NUESTRA."
-Grid 4 cards minimalistas mostrando ejes de personalización del SaaS:
-- Branding (colores, logo, tipografía)
-- Módulos (activa solo los que necesitas)
-- Roles y permisos (RBAC configurable)
-- Integraciones (las tuyas, no solo las nuestras)
+## Validación
 
-### Sección "Para cualquier rubro" (mantener)
-Añadir una línea: "Cada rubro arranca con Basico Systems y crece a medida según el negocio."
+1. Click en "Recalcular" → toast con número de clientes actualizados.
+2. CRM: filtro "Primera compra" muestra ~140.
+3. Click en "Sync histórico completo" → barra de progreso, trae todos los pedidos antiguos. Al terminar, recalcula solo. Segmentos VIP/Recurrentes se pueblan según el histórico real de Basico.
+4. En Campaigns Wizard, al construir un segmento "compradores 3+ pedidos", el contador de audiencia es realista.
 
-### Caso Basico (mantener) — añadir línea
-"Basico Clothes opera hoy sobre el SaaS + módulos a medida construidos por el estudio."
+## Archivos a tocar
 
-### CTA final (ajustado)
-Dos opciones claras en el form:
-- Radio o toggle: ¿Qué te interesa?
-  - Probar Basico Systems
-  - Construir uno a medida
-  - Aún no lo sé
-- Resto del form igual (nombre, marca, email, mensaje)
-
-### Resto de secciones
-Sin cambios respecto al plan aprobado anteriormente (Stack & AI, Proceso, Banner Powered by Basico, Footer).
-
-## Archivos (sin cambios respecto al plan anterior)
-
-- Nuevo: `src/pages/Landing.tsx`
-- Nuevo: `src/assets/landing-hero.jpg`, `src/assets/landing-case-basico.jpg`
-- Modificar: `src/App.tsx` (`/` → `<Landing />`)
-- Backend: tabla `landing_leads` con columna extra `interest` (`saas` | `tailor` | `unsure`)
+- `supabase/functions/woo-sync/index.ts` — flag `full=true` + llamada RPC al final.
+- `src/pages/CRM.tsx` — 2 botones nuevos (sync histórico, recalcular).
+- Migración SQL one-shot — `SELECT public.refresh_customers_order_stats();`.
 
 ## Fuera de alcance
 
-- Pricing del SaaS (venta consultiva, pricing en conversación).
-- Self-signup al SaaS (es solicitud → onboarding asistido).
-- Demo interactiva del producto (link a screenshots/caso Basico es suficiente).
+- Tocar Brevo / sync de contactos (los segmentos se construyen con datos locales; Brevo solo recibe el resultado).
+- Pedir `orders_count` a Woo (Woo lo devuelve en 0 — irrelevante).
 
