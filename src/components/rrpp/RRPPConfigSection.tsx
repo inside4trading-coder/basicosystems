@@ -20,7 +20,9 @@ const CATEGORIES = [
 const titleCase = (s: string) =>
   s.trim().toLowerCase().split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
-function CategoryEditor({ category, label, icon: Icon, hint }: typeof CATEGORIES[number]) {
+type CategoryDef = { key: string; label: string; icon: typeof Star; hint: string };
+
+function CategoryEditor({ key: category, label, icon: Icon, hint }: CategoryDef & { key: string }) {
   const [rows, setRows] = useState<ConfigRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [newValue, setNewValue] = useState("");
