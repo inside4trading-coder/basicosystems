@@ -22,7 +22,7 @@ const titleCase = (s: string) =>
 
 type CategoryDef = { key: string; label: string; icon: typeof Star; hint: string };
 
-function CategoryEditor({ key: category, label, icon: Icon, hint }: CategoryDef & { key: string }) {
+function CategoryEditor({ category, label, icon: Icon, hint }: { category: string; label: string; icon: typeof Star; hint: string }) {
   const [rows, setRows] = useState<ConfigRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [newValue, setNewValue] = useState("");
