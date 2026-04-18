@@ -87,6 +87,54 @@ function parseZadarmaDateTime(value: unknown, timeZone: string): string | null {
   return new Date(assumedUtcMs - offsetMinutes * 60_000).toISOString();
 }
 
+async function fetchRecordingUrl(
+  pbxCallId: string,
+  key: string,
+  secret: string,
+): Promise<string | null> {
+  try {
+    const data = await zadarmaRequest(
+      "pbx/record/request",
+      { pbx_call_id: pbxCallId, lifetime: "5184000" },
+      key,
+      secret,
+    );
+    if (data?.status !== "success") return null;
+    const link = data.link || (Array.isArray(data.links) ? data.links[0] : null);
+    return typeof link === "string" && link ? link : null;
+  } catch (err) {
+    console.warn(`fetchRecordingUrl failed for ${pbxCallId}:`, err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+async function enrichWithRecordings(
+  calls: Array<Record<string, unknown>>,
+  key: string,
+  secret: string,
+  concurrency = 5,
+): Promise<number> {
+  const targets = calls.filter((c) => {
+    const pbx = String(c.pbx_call_id || "");
+    return pbx && Number(c.talk_duration || 0) > 0 && !c.recording_url;
+  });
+  let enriched = 0;
+  for (let i = 0; i < targets.length; i += concurrency) {
+    const batch = targets.slice(i, i + concurrency);
+    await Promise.all(
+      batch.map(async (call) => {
+        const link = await fetchRecordingUrl(String(call.pbx_call_id), key, secret);
+        if (link) {
+          call.recording_url = link;
+          call.is_recorded = true;
+          enriched++;
+        }
+      }),
+    );
+  }
+  return enriched;
+}
+
 async function zadarmaRequest(
   apiMethod: string,
   params: Record<string, string>,
