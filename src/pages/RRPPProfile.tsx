@@ -7,21 +7,22 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { fetchContactById, updateContact } from "@/hooks/useRRPPData";
-import type { Contact, ContactType, RelationshipStatus } from "@/types/rrpp";
+import type { Contact } from "@/types/rrpp";
 import {
   RELATIONSHIP_LABELS, CONTACT_TYPE_LABELS, relationshipBadgeClass,
 } from "@/components/rrpp/rrppConstants";
 import { ContactActionsMenu } from "@/components/rrpp/ContactActionsMenu";
 import { RRPPAuditTrail } from "@/components/rrpp/RRPPAuditTrail";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RRPPGeneralData } from "@/components/rrpp/RRPPGeneralData";
+import { RRPPSocialMedia } from "@/components/rrpp/RRPPSocialMedia";
+import { RRPPPipeline } from "@/components/rrpp/RRPPPipeline";
+import { RRPPInteractions } from "@/components/rrpp/RRPPInteractions";
 
 const TABS = [
   { value: "general", label: "Datos generales" },
@@ -208,22 +209,28 @@ export default function RRPPProfile() {
         </TabsList>
 
         <TabsContent value="general" className="mt-4">
-          <GeneralTab contact={contact} draft={draft} setDraft={setDraft} editing={editing} />
+          <RRPPGeneralData contact={contact} draft={draft} setDraft={setDraft} editing={editing} />
         </TabsContent>
         <TabsContent value="social" className="mt-4">
-          <PlaceholderTab title="Redes sociales" hint="Próximamente: gestión de redes y seguidores." />
+          <RRPPSocialMedia contactId={contact.id} />
         </TabsContent>
         <TabsContent value="pipeline" className="mt-4">
-          <PlaceholderTab title="Relación / Pipeline" hint="Próximamente: pipeline visual del contacto." />
+          <RRPPPipeline contact={contact} onChanged={load} />
         </TabsContent>
         <TabsContent value="interactions" className="mt-4">
-          <PlaceholderTab title="Interacciones" hint="Próximamente: historial de mensajes y reuniones." />
+          <RRPPInteractions contactId={contact.id} />
         </TabsContent>
         <TabsContent value="collaborations" className="mt-4">
-          <PlaceholderTab title="Colaboraciones" hint="Próximamente: envíos, cupones y resultados." />
+          <div className="kpi-card text-center py-16">
+            <h3 className="font-semibold">Colaboraciones</h3>
+            <p className="text-sm text-muted-foreground mt-1">Próximamente: envíos, cupones y resultados.</p>
+          </div>
         </TabsContent>
         <TabsContent value="notes" className="mt-4">
-          <PlaceholderTab title="Notas privadas" hint="Próximamente: notas confidenciales del equipo." />
+          <div className="kpi-card text-center py-16">
+            <h3 className="font-semibold">Notas privadas</h3>
+            <p className="text-sm text-muted-foreground mt-1">Próximamente: notas confidenciales del equipo.</p>
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -249,91 +256,3 @@ export default function RRPPProfile() {
   );
 }
 
-function PlaceholderTab({ title, hint }: { title: string; hint: string }) {
-  return (
-    <div className="kpi-card text-center py-16">
-      <h3 className="font-semibold">{title}</h3>
-      <p className="text-sm text-muted-foreground mt-1">{hint}</p>
-    </div>
-  );
-}
-
-interface GeneralProps {
-  contact: Contact;
-  draft: Partial<Contact>;
-  setDraft: (d: Partial<Contact>) => void;
-  editing: boolean;
-}
-
-function GeneralTab({ contact, draft, setDraft, editing }: GeneralProps) {
-  const Field = ({
-    label, value, onChange, type = "text", maxLength = 120,
-  }: { label: string; value: string; onChange: (v: string) => void; type?: string; maxLength?: number }) => (
-    <div>
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      {editing ? (
-        <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} maxLength={maxLength} className="mt-1" />
-      ) : (
-        <p className="mt-1 text-sm">{value || <span className="text-muted-foreground">—</span>}</p>
-      )}
-    </div>
-  );
-
-  return (
-    <div className="kpi-card space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Field label="Alias" value={draft.alias ?? ""} onChange={(v) => setDraft({ ...draft, alias: v })} maxLength={80} />
-        <div>
-          <Label className="text-xs text-muted-foreground">Tipo de contacto</Label>
-          {editing ? (
-            <Select value={(draft.contact_type as string) ?? contact.contact_type} onValueChange={(v) => setDraft({ ...draft, contact_type: v as ContactType })}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(CONTACT_TYPE_LABELS) as ContactType[]).map((k) => (
-                  <SelectItem key={k} value={k}>{CONTACT_TYPE_LABELS[k]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <p className="mt-1 text-sm">{CONTACT_TYPE_LABELS[contact.contact_type] ?? contact.contact_type}</p>
-          )}
-        </div>
-        <Field label="Canal principal" value={draft.main_channel ?? ""} onChange={(v) => setDraft({ ...draft, main_channel: v })} maxLength={80} />
-        <Field label="Etiqueta principal" value={draft.main_tag ?? ""} onChange={(v) => setDraft({ ...draft, main_tag: v })} maxLength={80} />
-        <Field label="Teléfono" value={draft.phone ?? ""} onChange={(v) => setDraft({ ...draft, phone: v })} maxLength={40} />
-        <Field label="Email" value={draft.email ?? ""} onChange={(v) => setDraft({ ...draft, email: v })} type="email" maxLength={255} />
-        <Field label="Ciudad" value={draft.city ?? ""} onChange={(v) => setDraft({ ...draft, city: v })} maxLength={80} />
-        <Field label="País" value={draft.country ?? ""} onChange={(v) => setDraft({ ...draft, country: v })} maxLength={80} />
-        <Field label="Responsable interno" value={draft.responsible ?? ""} onChange={(v) => setDraft({ ...draft, responsible: v })} maxLength={80} />
-        <div>
-          <Label className="text-xs text-muted-foreground">Estado de relación</Label>
-          {editing ? (
-            <Select value={(draft.relationship_status as string) ?? contact.relationship_status} onValueChange={(v) => setDraft({ ...draft, relationship_status: v as RelationshipStatus })}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(RELATIONSHIP_LABELS) as RelationshipStatus[]).map((k) => (
-                  <SelectItem key={k} value={k}>{RELATIONSHIP_LABELS[k]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <p className="mt-1 text-sm">{RELATIONSHIP_LABELS[contact.relationship_status]}</p>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <Label className="text-xs text-muted-foreground">Observaciones</Label>
-        {editing ? (
-          <Textarea
-            rows={4} maxLength={1000} className="mt-1"
-            value={draft.observations ?? ""}
-            onChange={(e) => setDraft({ ...draft, observations: e.target.value })}
-          />
-        ) : (
-          <p className="mt-1 text-sm whitespace-pre-wrap">{contact.observations || <span className="text-muted-foreground">—</span>}</p>
-        )}
-      </div>
-    </div>
-  );
-}
