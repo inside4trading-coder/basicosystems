@@ -19,9 +19,11 @@ import type { Contact, RelationshipStatus } from "@/types/rrpp";
 interface Props {
   contact: Contact;
   onChanged: () => void;
+  canDelete?: boolean;
+  canArchive?: boolean;
 }
 
-export function ContactActionsMenu({ contact, onChanged }: Props) {
+export function ContactActionsMenu({ contact, onChanged, canDelete = true, canArchive = true }: Props) {
   const navigate = useNavigate();
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -84,18 +86,22 @@ export function ContactActionsMenu({ contact, onChanged }: Props) {
             </DropdownMenuSubContent>
           </DropdownMenuSub>
           <DropdownMenuSeparator />
-          {contact.status === "active" ? (
-            <DropdownMenuItem onClick={() => setArchiveOpen(true)}>
-              <Archive className="h-4 w-4 mr-2" />Archivar
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem onClick={handleReactivate}>
-              <RotateCcw className="h-4 w-4 mr-2" />Reactivar
+          {canArchive && (
+            contact.status === "active" ? (
+              <DropdownMenuItem onClick={() => setArchiveOpen(true)}>
+                <Archive className="h-4 w-4 mr-2" />Archivar
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={handleReactivate}>
+                <RotateCcw className="h-4 w-4 mr-2" />Reactivar
+              </DropdownMenuItem>
+            )
+          )}
+          {canDelete && (
+            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="h-4 w-4 mr-2" />Eliminar
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem className="text-destructive" onClick={() => setDeleteOpen(true)}>
-            <Trash2 className="h-4 w-4 mr-2" />Eliminar
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
