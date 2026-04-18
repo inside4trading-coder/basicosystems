@@ -101,7 +101,8 @@ export default function Landing() {
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.from("landing_leads").insert([parsed.data]);
+    const { name, email, brand, message, interest: i } = parsed.data;
+    const { error } = await supabase.from("landing_leads").insert([{ name, email, brand, message, interest: i }]);
     setSubmitting(false);
     if (error) {
       toast.error("No pudimos enviar tu mensaje. Intenta de nuevo.");
