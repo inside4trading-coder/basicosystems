@@ -164,6 +164,46 @@ export default function CRM() {
     }
   };
 
+  const syncOrdersHistorical = async () => {
+    if (!confirm("Esto sincronizará TODOS los pedidos históricos de WooCommerce. Puede tardar varios minutos. ¿Continuar?")) return;
+    setFullSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("woo-sync", {
+        body: null,
+        method: "GET",
+      });
+      // supabase.functions.invoke doesn't pass query strings well — use direct fetch instead
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/woo-sync?full=true`,
+        { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
+      );
+      const result = await res.json();
+      if (!res.ok || result.error) throw new Error(result.error || "Sync failed");
+      toast.success(`Histórico sincronizado: ${result.synced.orders} pedidos. Contadores recalculados.`);
+      fetchCustomers();
+    } catch (e: any) {
+      toast.error(`Error sync histórico: ${e.message}`);
+    } finally {
+      setFullSyncing(false);
+    }
+  };
+
+  const recalculateStats = async () => {
+    setRecalculating(true);
+    try {
+      const { error } = await supabase.rpc("refresh_customers_order_stats");
+      if (error) throw error;
+      toast.success("Contadores de pedidos recalculados");
+      fetchCustomers();
+    } catch (e: any) {
+      toast.error(`Error recalculando: ${e.message}`);
+    } finally {
+      setRecalculating(false);
+    }
+  };
+
   const fmtDate = (d: string | null) => {
     if (!d) return "—";
     return new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
