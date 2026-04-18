@@ -1,10 +1,38 @@
-import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { fetchContactById } from "@/hooks/useRRPPData";
-import type { Contact } from "@/types/rrpp";
-import { Card } from "@/components/ui/card";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import {
+  ArrowLeft, MapPin, User as UserIcon, Calendar, Pencil, Tag,
+} from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { fetchContactById, updateContact } from "@/hooks/useRRPPData";
+import type { Contact, ContactType, RelationshipStatus } from "@/types/rrpp";
+import {
+  RELATIONSHIP_LABELS, CONTACT_TYPE_LABELS, relationshipBadgeClass,
+} from "@/components/rrpp/rrppConstants";
+import { ContactActionsMenu } from "@/components/rrpp/ContactActionsMenu";
+import { RRPPAuditTrail } from "@/components/rrpp/RRPPAuditTrail";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const TABS = [
+  { value: "general", label: "Datos generales" },
+  { value: "social", label: "Redes sociales" },
+  { value: "pipeline", label: "Relación / Pipeline" },
+  { value: "interactions", label: "Interacciones" },
+  { value: "collaborations", label: "Colaboraciones" },
+  { value: "notes", label: "Notas privadas" },
+] as const;
+
+type TabValue = typeof TABS[number]["value"];
 
 export default function RRPPProfile() {
   const { id } = useParams<{ id: string }>();
@@ -12,48 +40,300 @@ export default function RRPPProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const [tab, setTab] = useState<TabValue>("general");
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Partial<Contact>>({});
+  const [saving, setSaving] = useState(false);
+
+  // Tab switch guard
+  const [pendingTab, setPendingTab] = useState<TabValue | null>(null);
+
+  const load = () => {
     if (!id) return;
+    setLoading(true);
     fetchContactById(id)
-      .then(setContact)
+      .then((c) => { setContact(c); setDraft(c ?? {}); })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [id]);
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+
+  const initials = useMemo(() => {
+    const n = contact?.name ?? "";
+    return n.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
+  }, [contact?.name]);
+
+  const startEdit = () => { setDraft(contact ?? {}); setEditing(true); };
+  const cancelEdit = () => { setDraft(contact ?? {}); setEditing(false); };
+
+  const saveEdit = async () => {
+    if (!contact) return;
+    if (!draft.name?.trim()) { toast.error("El nombre es requerido"); return; }
+    setSaving(true);
+    try {
+      const patch: Partial<Contact> = {};
+      (Object.keys(draft) as (keyof Contact)[]).forEach((k) => {
+        if (JSON.stringify((draft as any)[k]) !== JSON.stringify((contact as any)[k])) {
+          (patch as any)[k] = (draft as any)[k];
+        }
+      });
+      if (Object.keys(patch).length === 0) {
+        setEditing(false);
+        return;
+      }
+      await updateContact(contact.id, patch);
+      toast.success("Cambios guardados");
+      setEditing(false);
+      load();
+    } catch (e: any) { toast.error(e?.message ?? "Error al guardar"); }
+    finally { setSaving(false); }
+  };
+
+  const handleTabChange = (next: string) => {
+    const v = next as TabValue;
+    if (editing) { setPendingTab(v); return; }
+    setTab(v);
+  };
+
+  const confirmDiscardAndSwitch = () => {
+    if (!pendingTab) return;
+    setDraft(contact ?? {});
+    setEditing(false);
+    setTab(pendingTab);
+    setPendingTab(null);
+  };
+
+  const saveAndSwitch = async () => {
+    await saveEdit();
+    if (pendingTab) { setTab(pendingTab); setPendingTab(null); }
+  };
+
+  if (loading) {
+    return <div className="p-6"><p className="text-muted-foreground">Cargando perfil…</p></div>;
+  }
+  if (error) {
+    return <div className="p-6"><p className="text-destructive">Error: {error}</p></div>;
+  }
+  if (!contact) {
+    return (
+      <div className="p-6 space-y-4">
+        <Link to="/rrpp"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />RRPP</Button></Link>
+        <div className="kpi-card text-center py-16 text-muted-foreground">Contacto no encontrado.</div>
+      </div>
+    );
+  }
+
+  const created = new Date(contact.created_at).toLocaleDateString();
 
   return (
     <div className="p-6 space-y-6">
       <Link to="/rrpp">
         <Button variant="ghost" size="sm">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Volver
+          <ArrowLeft className="h-4 w-4 mr-2" /> RRPP
         </Button>
       </Link>
 
-      {loading && <p className="text-muted-foreground">Cargando perfil…</p>}
-      {error && <p className="text-destructive">Error: {error}</p>}
-      {!loading && !contact && !error && (
-        <Card className="p-12 text-center text-muted-foreground">
-          Contacto no encontrado.
-        </Card>
-      )}
+      {/* Header */}
+      <div className="kpi-card">
+        <div className="flex items-start gap-4 flex-wrap">
+          <Avatar className="h-20 w-20 shrink-0">
+            {contact.photo_url && <AvatarImage src={contact.photo_url} alt={contact.name} />}
+            <AvatarFallback className="bg-secondary text-secondary-foreground font-bold text-xl">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
 
-      {contact && (
-        <Card className="p-6 space-y-4">
-          <div>
-            <h1 className="text-2xl font-bold">{contact.name}</h1>
-            {contact.alias && <p className="text-muted-foreground">@{contact.alias}</p>}
+          <div className="flex-1 min-w-[200px]">
+            <div className="flex items-center gap-3 flex-wrap">
+              {editing ? (
+                <Input
+                  value={draft.name ?? ""}
+                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                  className="text-xl font-black max-w-md"
+                  maxLength={120}
+                />
+              ) : (
+                <h1 className="text-xl font-black tracking-tight">{contact.name}</h1>
+              )}
+              {contact.alias && !editing && (
+                <span className="text-[10px] font-semibold uppercase tracking-wide bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">
+                  @{contact.alias}
+                </span>
+              )}
+              {contact.status === "archived" && (
+                <span className="status-badge-inactive">Archivado</span>
+              )}
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <span className="text-[10px] font-medium uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded">
+                {CONTACT_TYPE_LABELS[contact.contact_type] ?? contact.contact_type}
+              </span>
+              {contact.city && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{contact.city}</span>}
+              {contact.responsible && <span className="flex items-center gap-1"><UserIcon className="h-3.5 w-3.5" />{contact.responsible}</span>}
+              <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{created}</span>
+              {contact.main_tag && <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />{contact.main_tag}</span>}
+            </div>
+
+            <div className="mt-3">
+              <span className={relationshipBadgeClass(contact.relationship_status)}>
+                {RELATIONSHIP_LABELS[contact.relationship_status]}
+              </span>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span className="font-medium">Tipo:</span> {contact.contact_type}</div>
-            <div><span className="font-medium">Estado:</span> {contact.relationship_status}</div>
-            <div><span className="font-medium">Email:</span> {contact.email || "—"}</div>
-            <div><span className="font-medium">Teléfono:</span> {contact.phone || "—"}</div>
-            <div><span className="font-medium">Ciudad:</span> {contact.city || "—"}</div>
-            <div><span className="font-medium">País:</span> {contact.country || "—"}</div>
-            <div><span className="font-medium">Responsable:</span> {contact.responsible || "—"}</div>
-            <div><span className="font-medium">Etiqueta:</span> {contact.main_tag || "—"}</div>
+
+          <div className="flex items-center gap-2">
+            {editing ? (
+              <>
+                <Button variant="ghost" onClick={cancelEdit} disabled={saving}>Cancelar</Button>
+                <Button onClick={saveEdit} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</Button>
+              </>
+            ) : (
+              <Button variant="outline" size="sm" onClick={startEdit}>
+                <Pencil className="h-4 w-4 mr-2" /> Editar
+              </Button>
+            )}
+            <ContactActionsMenu contact={contact} onChanged={load} />
           </div>
-        </Card>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={tab} onValueChange={handleTabChange}>
+        <TabsList className="flex-wrap h-auto">
+          {TABS.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value="general" className="mt-4">
+          <GeneralTab contact={contact} draft={draft} setDraft={setDraft} editing={editing} />
+        </TabsContent>
+        <TabsContent value="social" className="mt-4">
+          <PlaceholderTab title="Redes sociales" hint="Próximamente: gestión de redes y seguidores." />
+        </TabsContent>
+        <TabsContent value="pipeline" className="mt-4">
+          <PlaceholderTab title="Relación / Pipeline" hint="Próximamente: pipeline visual del contacto." />
+        </TabsContent>
+        <TabsContent value="interactions" className="mt-4">
+          <PlaceholderTab title="Interacciones" hint="Próximamente: historial de mensajes y reuniones." />
+        </TabsContent>
+        <TabsContent value="collaborations" className="mt-4">
+          <PlaceholderTab title="Colaboraciones" hint="Próximamente: envíos, cupones y resultados." />
+        </TabsContent>
+        <TabsContent value="notes" className="mt-4">
+          <PlaceholderTab title="Notas privadas" hint="Próximamente: notas confidenciales del equipo." />
+        </TabsContent>
+      </Tabs>
+
+      {/* Audit trail */}
+      <RRPPAuditTrail contactId={contact.id} />
+
+      {/* Switch tab guard */}
+      <AlertDialog open={pendingTab !== null} onOpenChange={(o) => { if (!o) setPendingTab(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Guardar cambios?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tienes cambios sin guardar. ¿Quieres guardarlos antes de cambiar de pestaña?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={confirmDiscardAndSwitch}>Descartar</AlertDialogCancel>
+            <AlertDialogAction onClick={saveAndSwitch} disabled={saving}>Guardar y continuar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+function PlaceholderTab({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div className="kpi-card text-center py-16">
+      <h3 className="font-semibold">{title}</h3>
+      <p className="text-sm text-muted-foreground mt-1">{hint}</p>
+    </div>
+  );
+}
+
+interface GeneralProps {
+  contact: Contact;
+  draft: Partial<Contact>;
+  setDraft: (d: Partial<Contact>) => void;
+  editing: boolean;
+}
+
+function GeneralTab({ contact, draft, setDraft, editing }: GeneralProps) {
+  const Field = ({
+    label, value, onChange, type = "text", maxLength = 120,
+  }: { label: string; value: string; onChange: (v: string) => void; type?: string; maxLength?: number }) => (
+    <div>
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      {editing ? (
+        <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} maxLength={maxLength} className="mt-1" />
+      ) : (
+        <p className="mt-1 text-sm">{value || <span className="text-muted-foreground">—</span>}</p>
       )}
+    </div>
+  );
+
+  return (
+    <div className="kpi-card space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Field label="Alias" value={draft.alias ?? ""} onChange={(v) => setDraft({ ...draft, alias: v })} maxLength={80} />
+        <div>
+          <Label className="text-xs text-muted-foreground">Tipo de contacto</Label>
+          {editing ? (
+            <Select value={(draft.contact_type as string) ?? contact.contact_type} onValueChange={(v) => setDraft({ ...draft, contact_type: v as ContactType })}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(CONTACT_TYPE_LABELS) as ContactType[]).map((k) => (
+                  <SelectItem key={k} value={k}>{CONTACT_TYPE_LABELS[k]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="mt-1 text-sm">{CONTACT_TYPE_LABELS[contact.contact_type] ?? contact.contact_type}</p>
+          )}
+        </div>
+        <Field label="Canal principal" value={draft.main_channel ?? ""} onChange={(v) => setDraft({ ...draft, main_channel: v })} maxLength={80} />
+        <Field label="Etiqueta principal" value={draft.main_tag ?? ""} onChange={(v) => setDraft({ ...draft, main_tag: v })} maxLength={80} />
+        <Field label="Teléfono" value={draft.phone ?? ""} onChange={(v) => setDraft({ ...draft, phone: v })} maxLength={40} />
+        <Field label="Email" value={draft.email ?? ""} onChange={(v) => setDraft({ ...draft, email: v })} type="email" maxLength={255} />
+        <Field label="Ciudad" value={draft.city ?? ""} onChange={(v) => setDraft({ ...draft, city: v })} maxLength={80} />
+        <Field label="País" value={draft.country ?? ""} onChange={(v) => setDraft({ ...draft, country: v })} maxLength={80} />
+        <Field label="Responsable interno" value={draft.responsible ?? ""} onChange={(v) => setDraft({ ...draft, responsible: v })} maxLength={80} />
+        <div>
+          <Label className="text-xs text-muted-foreground">Estado de relación</Label>
+          {editing ? (
+            <Select value={(draft.relationship_status as string) ?? contact.relationship_status} onValueChange={(v) => setDraft({ ...draft, relationship_status: v as RelationshipStatus })}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(RELATIONSHIP_LABELS) as RelationshipStatus[]).map((k) => (
+                  <SelectItem key={k} value={k}>{RELATIONSHIP_LABELS[k]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="mt-1 text-sm">{RELATIONSHIP_LABELS[contact.relationship_status]}</p>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <Label className="text-xs text-muted-foreground">Observaciones</Label>
+        {editing ? (
+          <Textarea
+            rows={4} maxLength={1000} className="mt-1"
+            value={draft.observations ?? ""}
+            onChange={(e) => setDraft({ ...draft, observations: e.target.value })}
+          />
+        ) : (
+          <p className="mt-1 text-sm whitespace-pre-wrap">{contact.observations || <span className="text-muted-foreground">—</span>}</p>
+        )}
+      </div>
     </div>
   );
 }
