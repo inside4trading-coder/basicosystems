@@ -170,13 +170,23 @@ export default function CRM() {
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/woo-sync?full=true`,
-        { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
-      );
-      const result = await res.json();
-      if (!res.ok || result.error) throw new Error(result.error || "Sync failed");
-      toast.success(`Histórico sincronizado: ${result.synced.orders} pedidos. Contadores recalculados.`);
+      let nextPage: number | null = 1;
+      let totalOrders = 0;
+      const CHUNK = 10;
+
+      while (nextPage) {
+        const res = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/woo-sync?full=true&start_page=${nextPage}&max_pages=${CHUNK}`,
+          { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
+        );
+        const result = await res.json();
+        if (!res.ok || result.error) throw new Error(result.error || "Sync failed");
+        totalOrders += result.synced?.orders || 0;
+        toast.info(`Sincronizando… ${totalOrders} pedidos hasta ahora`);
+        nextPage = result.next_page;
+      }
+
+      toast.success(`Histórico completo: ${totalOrders} pedidos. Contadores recalculados.`);
       fetchCustomers();
     } catch (e: any) {
       toast.error(`Error sync histórico: ${e.message}`);

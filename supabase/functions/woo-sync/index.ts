@@ -77,6 +77,8 @@ serve(async (req) => {
     const url = new URL(req.url);
     const full = url.searchParams.get("full") === "true";
     const sinceDays = parseInt(url.searchParams.get("days") || "30");
+    const startPage = parseInt(url.searchParams.get("start_page") || "1");
+    const maxPages = parseInt(url.searchParams.get("max_pages") || "10");
     const since = new Date();
     since.setDate(since.getDate() - sinceDays);
 
@@ -87,10 +89,11 @@ serve(async (req) => {
 
     // Fetch all orders paginated
     const allOrders: any[] = [];
-    let page = 1;
+    let page = startPage;
     let totalPages = 1;
-    console.log(`Starting sync ${full ? "(FULL HISTORICAL)" : `since ${since.toISOString()} (${sinceDays} days)`}`);
-    while (page <= totalPages) {
+    const endPage = startPage + maxPages - 1;
+    console.log(`Starting sync ${full ? "(FULL HISTORICAL)" : `since ${since.toISOString()} (${sinceDays} days)`} pages ${startPage}-${endPage}`);
+    while (page <= totalPages && page <= endPage) {
       console.log(`Fetching page ${page}/${totalPages}...`);
       const params: Record<string, string> = {
         per_page: "100",
@@ -110,7 +113,8 @@ serve(async (req) => {
       console.log(`Page ${page} done, got ${res.body?.length || 0} orders (total so far: ${allOrders.length})`);
       page++;
     }
-    console.log(`Total orders fetched: ${allOrders.length}`);
+    const nextPage = page <= totalPages ? page : null;
+    console.log(`Total orders fetched in this batch: ${allOrders.length}. Next page: ${nextPage ?? "DONE"}`);
 
     // Fetch product_costs for matching
     const { data: costData } = await supabase.from("product_costs").select("sku, analytic_category, unit_cost_total");
@@ -320,16 +324,20 @@ serve(async (req) => {
       syncedPayments += paymentRows.length;
     }
 
-    // Recalculate customer order stats from local orders table
-    const { error: rpcErr } = await supabase.rpc("refresh_customers_order_stats");
-    if (rpcErr) console.error("refresh_customers_order_stats error:", rpcErr.message);
-    else console.log("Customer order stats recalculated");
+    // Recalculate customer order stats only on final batch
+    if (!nextPage) {
+      const { error: rpcErr } = await supabase.rpc("refresh_customers_order_stats");
+      if (rpcErr) console.error("refresh_customers_order_stats error:", rpcErr.message);
+      else console.log("Customer order stats recalculated");
+    }
 
     return new Response(JSON.stringify({
       success: true,
       mode: full ? "full" : "incremental",
       synced: { orders: syncedOrders, items: syncedItems, payments: syncedPayments },
       total_fetched: allOrders.length,
+      page_range: { start: startPage, end: page - 1, total_pages: totalPages },
+      next_page: nextPage,
       since: full ? null : since.toISOString(),
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
