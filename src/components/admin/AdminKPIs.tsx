@@ -52,6 +52,7 @@ export function AdminKPIs({ instances, monthDate }: Props) {
     })
     .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
 
+  const noOverdue = overdue.length === 0;
   const cards = [
     { label: "Pendientes del mes", value: pendingMonth.length, icon: Clock, tint: "" },
     { label: "Monto pendiente", value: fmtMoney(pendingAmount), icon: DollarSign, tint: "" },
@@ -59,8 +60,10 @@ export function AdminKPIs({ instances, monthDate }: Props) {
     {
       label: "Vencidas",
       value: overdue.length,
-      icon: AlertTriangle,
-      tint: overdue.length > 0 ? "bg-status-error/10 border-status-error/30" : "",
+      icon: noOverdue ? CheckCircle2 : AlertTriangle,
+      tint: noOverdue
+        ? "bg-status-success/10 border-status-success/30"
+        : "bg-status-error/10 border-status-error/30",
     },
     {
       label: "Críticas próximas",

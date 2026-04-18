@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Building2, Calendar as CalendarIcon, List, Loader2, Plus, X } from "lucide-react";
+import { AlertTriangle, Building2, Calendar as CalendarIcon, List, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useAdminData } from "@/hooks/useAdminData";
@@ -9,6 +9,11 @@ import { AdminInstanceSheet } from "@/components/admin/AdminInstanceSheet";
 import { AdminListView } from "@/components/admin/AdminListView";
 import { AdminListFilters, type ListFilters } from "@/components/admin/AdminListFilters";
 import { CreateObligationSheet } from "@/components/admin/CreateObligationSheet";
+import {
+  AdminCalendarSkeleton,
+  AdminKPIsSkeleton,
+  AdminListSkeleton,
+} from "@/components/admin/AdminSkeletons";
 import type { ObligationInstance } from "@/types/admin";
 
 type View = "calendar" | "list";
