@@ -88,7 +88,7 @@ export default function CampaignWizard() {
 
   const canAdvance = () => {
     if (step === 0) return name.trim() && subject.trim();
-    if (step === 1) return contactCount !== null && contactCount > 0;
+    if (step === 1) return selectedContacts.length > 0;
     if (step === 2) return blocks.length > 0;
     return true;
   };
