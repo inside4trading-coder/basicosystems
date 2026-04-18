@@ -330,7 +330,15 @@ export default function Landing() {
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight mb-12 sm:mb-16">Basico Clothes</h2>
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
             <div className="aspect-[3/4] overflow-hidden bg-muted">
-              <img src={caseImg} alt="Basico Clothes" loading="lazy" width={1080} height={1920} className="w-full h-full object-cover" />
+              <video
+                src="/landingasset.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
               <p className="text-lg sm:text-xl leading-relaxed mb-8">
