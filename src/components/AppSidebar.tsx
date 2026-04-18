@@ -1,4 +1,4 @@
-import { BarChart3, Package, Users, Users2, ClipboardList, Mail, Phone, Settings, LogOut } from "lucide-react";
+import { BarChart3, Package, Users, Users2, ClipboardList, Mail, Phone, Settings, LogOut, Star } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,6 +22,7 @@ const mainItems = [
   { title: "CRM", url: "/crm", icon: Users },
   { title: "Planning", url: "/planning", icon: ClipboardList },
   { title: "Crew", url: "/crew", icon: Users2, adminOnly: true },
+  { title: "RRPP", url: "/rrpp", icon: Star, roles: ["admin", "rrpp", "marketing"] },
   { title: "Campaigns", url: "/campaigns", icon: Mail },
   { title: "Llamadas", url: "/llamadas", icon: Phone },
 ];
@@ -39,6 +40,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
   const showAdmin = userRole === "admin";
   const visibleItems = mainItems.filter(i => {
     if ((i as any).adminOnly && userRole !== "admin") return false;
+    if ((i as any).roles && !(i as any).roles.includes(userRole)) return false;
     if (userRole === "partner") return ["/dashboard", "/planning"].includes(i.url);
     return true;
   });

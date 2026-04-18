@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
-type ProfileRole = "admin" | "manager" | "partner";
+type ProfileRole = "admin" | "manager" | "partner" | "rrpp" | "marketing";
 
 interface AuthContextType {
   user: User | null;
@@ -21,9 +21,11 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 const ROLE_ROUTES: Record<ProfileRole, string[]> = {
-  admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/crew", "/campaigns", "/llamadas", "/configuracion"],
+  admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/crew", "/rrpp", "/campaigns", "/llamadas", "/configuracion"],
   manager: ["/dashboard", "/pedidos", "/crm", "/planning", "/campaigns", "/llamadas"],
   partner: ["/dashboard", "/planning"],
+  rrpp: ["/dashboard", "/rrpp"],
+  marketing: ["/dashboard", "/rrpp", "/campaigns"],
 };
 
 export function canAccessRoute(role: ProfileRole | null, path: string): boolean {
@@ -46,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq("user_id", userId);
 
     if (roles && roles.length > 0) {
-      const priority: ProfileRole[] = ["admin", "manager", "partner"];
+      const priority: ProfileRole[] = ["admin", "manager", "rrpp", "marketing", "partner"];
       const found = priority.find((p) => roles.some((r: any) => r.role === p));
       setRole(found ?? "partner");
       return;
