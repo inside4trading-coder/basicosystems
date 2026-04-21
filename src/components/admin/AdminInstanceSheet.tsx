@@ -83,6 +83,22 @@ export function AdminInstanceSheet({ instance, open, onOpenChange }: Props) {
             </div>
           )}
 
+          {instance.payment_proof_url && (
+            <div>
+              <div className="text-xs uppercase font-bold text-muted-foreground mb-1">Comprobante de pago</div>
+              {proofUrl ? (
+                <Button asChild variant="outline" className="w-full justify-start">
+                  <a href={proofUrl} target="_blank" rel="noopener noreferrer">
+                    <FileText className="h-4 w-4" />
+                    Ver comprobante
+                  </a>
+                </Button>
+              ) : (
+                <div className="text-xs text-muted-foreground">Cargando…</div>
+              )}
+            </div>
+          )}
+
           {instance.obligation_id && (
             <Button asChild className="w-full" variant="outline">
               <Link to={`/administracion/${instance.obligation_id}`}>Ver obligación completa</Link>
