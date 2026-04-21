@@ -17,6 +17,24 @@ const fmtMoney = (n: number, c = "USD") =>
   new Intl.NumberFormat("es-VE", { style: "currency", currency: c }).format(n);
 
 export function AdminInstanceSheet({ instance, open, onOpenChange }: Props) {
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setProofUrl(null);
+    const path = instance?.payment_proof_url;
+    if (!open || !path) return;
+    supabase.storage
+      .from("admin-payments")
+      .createSignedUrl(path, 3600)
+      .then(({ data }) => {
+        if (!cancelled) setProofUrl(data?.signedUrl ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, instance?.payment_proof_url]);
+
   if (!instance) return null;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
