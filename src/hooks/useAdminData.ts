@@ -26,6 +26,99 @@ async function logAudit(entry: {
   await (supabase.from(AUDIT) as any).insert(entry);
 }
 
+const RECURRING_FREQUENCIES: Array<string> = [
+  "semanal",
+  "quincenal",
+  "mensual",
+  "bimestral",
+  "trimestral",
+  "semestral",
+  "anual",
+];
+
+function monthsStep(freq: string): number {
+  switch (freq) {
+    case "mensual": return 1;
+    case "bimestral": return 2;
+    case "trimestral": return 3;
+    case "semestral": return 6;
+    case "anual": return 12;
+    default: return 1; // semanal/quincenal handled separately
+  }
+}
+
+function periodLabelFor(date: Date): string {
+  return date
+    .toLocaleDateString("es-VE", { month: "long", year: "numeric" })
+    .replace(/^./, (c) => c.toUpperCase());
+}
+
+function generateDueDates(obligation: Obligation, monthsAhead: number, fromDate = new Date()): Array<{ due_date: string; period_label: string }> {
+  const out: Array<{ due_date: string; period_label: string }> = [];
+  const freq = obligation.frequency;
+  const day = obligation.due_day ?? 1;
+  const start = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+  const endLimit = new Date(start.getFullYear(), start.getMonth() + monthsAhead, 1);
+
+  if (freq === "semanal" || freq === "quincenal") {
+    const stepDays = freq === "semanal" ? 7 : 14;
+    const cursor = new Date(fromDate);
+    cursor.setHours(0, 0, 0, 0);
+    while (cursor < endLimit) {
+      const d = new Date(cursor);
+      out.push({
+        due_date: d.toISOString().slice(0, 10),
+        period_label: d.toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }),
+      });
+      cursor.setDate(cursor.getDate() + stepDays);
+    }
+    return out;
+  }
+
+  const step = monthsStep(freq);
+  for (let i = 0; i < monthsAhead; i += step) {
+    const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+    const lastDayOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, lastDayOfMonth));
+    if (d < new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate())) continue;
+    out.push({
+      due_date: d.toISOString().slice(0, 10),
+      period_label: periodLabelFor(d),
+    });
+  }
+  return out;
+}
+
+async function generateRecurringInstances(obligation: Obligation, monthsAhead = 12) {
+  if (!RECURRING_FREQUENCIES.includes(obligation.frequency)) return;
+  if (obligation.status !== "active") return;
+  const targets = generateDueDates(obligation, monthsAhead);
+  if (!targets.length) return;
+
+  const { data: existing } = await (supabase.from(INSTANCES) as any)
+    .select("due_date,period_label")
+    .eq("obligation_id", obligation.id);
+
+  const existingKeys = new Set<string>(
+    ((existing as any[]) ?? []).map((r) => `${r.due_date}|${r.period_label}`),
+  );
+
+  const toInsert = targets
+    .filter((t) => !existingKeys.has(`${t.due_date}|${t.period_label}`))
+    .map((t) => ({
+      obligation_id: obligation.id,
+      period_label: t.period_label,
+      due_date: t.due_date,
+      amount: obligation.amount ?? 0,
+      currency: obligation.currency ?? "USD",
+      status: "pendiente" as const,
+    }));
+
+  if (toInsert.length) {
+    await (supabase.from(INSTANCES) as any).insert(toInsert);
+  }
+}
+
 function mapInstance(row: any): ObligationInstance {
   const due = row.due_date as string;
   return {
