@@ -342,23 +342,33 @@ export function useAdminData() {
     return row;
   }, []);
 
-  const markAsPaid = useCallback(async (id: string, paidBy: string, ref: string) => {
-    const today = new Date().toISOString().slice(0, 10);
-    const { data: row, error } = await (supabase.from(INSTANCES) as any)
-      .update({ status: "pagado", paid_at: today, paid_by: paidBy, payment_reference: ref })
-      .eq("id", id)
-      .select()
-      .single();
-    if (error) throw error;
-    await logAudit({
-      action: "mark_paid",
-      instance_id: id,
-      field_changed: "status",
-      new_value: "pagado",
-      performed_by: paidBy,
-    });
-    return row;
-  }, []);
+  const markAsPaid = useCallback(
+    async (id: string, paidBy: string, ref: string, proofUrl?: string) => {
+      const today = new Date().toISOString().slice(0, 10);
+      const patch: Record<string, unknown> = {
+        status: "pagado",
+        paid_at: today,
+        paid_by: paidBy,
+        payment_reference: ref,
+      };
+      if (proofUrl) patch.payment_proof_url = proofUrl;
+      const { data: row, error } = await (supabase.from(INSTANCES) as any)
+        .update(patch)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      await logAudit({
+        action: "mark_paid",
+        instance_id: id,
+        field_changed: "status",
+        new_value: proofUrl ? "pagado (con comprobante)" : "pagado",
+        performed_by: paidBy,
+      });
+      return row;
+    },
+    [],
+  );
 
   const fetchConfig = useCallback(async (category: string) => {
     const { data, error } = await (supabase.from(CONFIG) as any)
