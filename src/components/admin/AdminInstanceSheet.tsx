@@ -1,8 +1,11 @@
+import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
 import type { ObligationInstance } from "@/types/admin";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   instance: ObligationInstance | null;
@@ -14,6 +17,24 @@ const fmtMoney = (n: number, c = "USD") =>
   new Intl.NumberFormat("es-VE", { style: "currency", currency: c }).format(n);
 
 export function AdminInstanceSheet({ instance, open, onOpenChange }: Props) {
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setProofUrl(null);
+    const path = instance?.payment_proof_url;
+    if (!open || !path) return;
+    supabase.storage
+      .from("admin-payments")
+      .createSignedUrl(path, 3600)
+      .then(({ data }) => {
+        if (!cancelled) setProofUrl(data?.signedUrl ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, instance?.payment_proof_url]);
+
   if (!instance) return null;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -59,6 +80,22 @@ export function AdminInstanceSheet({ instance, open, onOpenChange }: Props) {
             <div>
               <div className="text-xs uppercase font-bold text-muted-foreground mb-1">Notas</div>
               <div className="text-sm">{instance.notes}</div>
+            </div>
+          )}
+
+          {instance.payment_proof_url && (
+            <div>
+              <div className="text-xs uppercase font-bold text-muted-foreground mb-1">Comprobante de pago</div>
+              {proofUrl ? (
+                <Button asChild variant="outline" className="w-full justify-start">
+                  <a href={proofUrl} target="_blank" rel="noopener noreferrer">
+                    <FileText className="h-4 w-4" />
+                    Ver comprobante
+                  </a>
+                </Button>
+              ) : (
+                <div className="text-xs text-muted-foreground">Cargando…</div>
+              )}
             </div>
           )}
 

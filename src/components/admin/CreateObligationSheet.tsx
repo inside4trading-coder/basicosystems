@@ -276,6 +276,11 @@ export function CreateObligationSheet({ open, onOpenChange, onCreated }: Props) 
               </div>
             </div>
 
+            {tpl.frequency && tpl.due_day && tpl.frequency !== "unica" && (
+              <p className="text-xs text-muted-foreground -mt-1">
+                Se generarán automáticamente las próximas instancias para los siguientes 12 meses.
+              </p>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Importancia *</Label>
