@@ -185,7 +185,34 @@ export function useAdminData() {
     return rows;
   }, []);
 
+  const ensureInstancesForMonth = useCallback(async (month: string) => {
+    const [y, m] = month.split("-").map(Number);
+    const monthStart = new Date(y, m - 1, 1);
+    const monthEnd = new Date(y, m, 1);
+    const today = new Date();
+    // Only generate if month is current or future
+    if (monthEnd <= new Date(today.getFullYear(), today.getMonth(), 1)) return;
+
+    const { data: oblig } = await (supabase.from(OBLIGATIONS) as any)
+      .select("*")
+      .eq("status", "active")
+      .in("frequency", RECURRING_FREQUENCIES);
+
+    const list = (oblig ?? []) as Obligation[];
+    if (!list.length) return;
+
+    // Generate up to this month + 1 ahead from today
+    const monthsAhead = Math.max(
+      1,
+      (y - today.getFullYear()) * 12 + (m - 1 - today.getMonth()) + 2,
+    );
+    await Promise.all(list.map((o) => generateRecurringInstances(o, monthsAhead)));
+  }, []);
+
   const fetchInstances = useCallback(async (filters: InstanceFilters = {}) => {
+    if (filters.month) {
+      await ensureInstancesForMonth(filters.month);
+    }
     let query = (supabase.from(VIEW) as any).select("*").order("due_date", { ascending: true });
 
     if (filters.month) {
@@ -205,7 +232,7 @@ export function useAdminData() {
     await autoUpdateStaleStatuses(mapped);
     setInstances(mapped);
     return mapped;
-  }, [autoUpdateStaleStatuses]);
+  }, [autoUpdateStaleStatuses, ensureInstancesForMonth]);
 
   const fetchObligations = useCallback(async () => {
     const { data, error } = await (supabase.from(OBLIGATIONS) as any)
