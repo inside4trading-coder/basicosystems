@@ -302,6 +302,12 @@ export function useAdminData() {
       .single();
     if (error) throw error;
     await logAudit({ action: "create_obligation", obligation_id: row.id, new_value: row.name });
+    // Seed 12 months of recurring instances if applicable
+    try {
+      await generateRecurringInstances(row as Obligation, 12);
+    } catch (err) {
+      console.warn("[admin] failed to seed recurring instances", err);
+    }
     await fetchObligations();
     return row as Obligation;
   }, [fetchObligations]);
