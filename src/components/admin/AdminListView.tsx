@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ObligationInstance } from "@/types/admin";
 import { computeUrgency } from "@/types/admin";
+import { parseLocalDate } from "@/lib/dateUtils";
 import {
   IMPORTANCE_BADGE,
   IMPORTANCE_LABEL,
@@ -72,7 +73,7 @@ export function AdminListView({ instances, onRowClick, onPaid, onClearFilters, h
             <tbody>
               {instances.map((i) => {
                 const urgency = i.urgency ?? computeUrgency(i.due_date);
-                const due = new Date(i.due_date);
+                const due = parseLocalDate(i.due_date);
                 return (
                   <tr
                     key={i.id}

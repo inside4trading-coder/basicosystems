@@ -18,6 +18,7 @@ import { useAdminData } from "@/hooks/useAdminData";
 import { useAuth } from "@/hooks/useAuth";
 import { ALL_IMPORTANCE, IMPORTANCE_LABEL, frequencyFromLabel } from "./adminConstants";
 import type { ImportanceLevel, InstanceStatus, ObligationFrequency } from "@/types/admin";
+import { formatLocalDate } from "@/lib/dateUtils";
 
 interface Props {
   open: boolean;
@@ -89,7 +90,7 @@ export function CreateObligationSheet({ open, onOpenChange, onCreated }: Props) 
   const today = useMemo(() => new Date(), []);
   const [inst, setInst] = useState<InstanceInput>({
     period_label: suggestPeriod(today),
-    due_date: today.toISOString().slice(0, 10),
+    due_date: formatLocalDate(today),
     amount: 0,
     currency: "USD",
     status: "pendiente",
@@ -113,7 +114,7 @@ export function CreateObligationSheet({ open, onOpenChange, onCreated }: Props) 
     const t = new Date();
     setInst({
       period_label: suggestPeriod(t),
-      due_date: t.toISOString().slice(0, 10),
+      due_date: formatLocalDate(t),
       amount: 0,
       currency: "USD",
       status: "pendiente",
@@ -142,7 +143,7 @@ export function CreateObligationSheet({ open, onOpenChange, onCreated }: Props) 
     d.setDate(Math.min(tpl.due_day, 28));
     setInst((prev) => ({
       ...prev,
-      due_date: d.toISOString().slice(0, 10),
+      due_date: formatLocalDate(d),
       period_label: suggestPeriod(d),
     }));
   }, [tpl.due_day]);

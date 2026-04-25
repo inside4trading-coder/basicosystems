@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { formatLocalDate } from "@/lib/dateUtils";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
@@ -50,7 +51,7 @@ function suggestNextDueDate(dueDay: number | null): string {
   const d = new Date();
   d.setMonth(d.getMonth() + 1);
   if (dueDay) d.setDate(Math.min(dueDay, 28));
-  return d.toISOString().slice(0, 10);
+  return formatLocalDate(d);
 }
 
 export function NewInstanceSheet({ obligation, open, onOpenChange, onCreated }: Props) {

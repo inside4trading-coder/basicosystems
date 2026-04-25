@@ -6,6 +6,7 @@ import { FileText } from "lucide-react";
 import type { ObligationInstance } from "@/types/admin";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { parseLocalDate } from "@/lib/dateUtils";
 
 interface Props {
   instance: ObligationInstance | null;
@@ -48,7 +49,7 @@ export function AdminInstanceSheet({ instance, open, onOpenChange }: Props) {
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <div className="text-xs uppercase font-bold text-muted-foreground">Vencimiento</div>
-              <div>{new Date(instance.due_date).toLocaleDateString("es-VE")}</div>
+              <div>{parseLocalDate(instance.due_date).toLocaleDateString("es-VE")}</div>
             </div>
             <div>
               <div className="text-xs uppercase font-bold text-muted-foreground">Monto</div>

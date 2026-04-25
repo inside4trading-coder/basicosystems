@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ObligationInstance, InstanceStatus } from "@/types/admin";
 import { cn } from "@/lib/utils";
+import { parseLocalDate } from "@/lib/dateUtils";
 
 interface Props {
   monthDate: Date;
@@ -46,7 +47,7 @@ export function AdminCalendar({ monthDate, instances, onPrevMonth, onNextMonth, 
 
   const byDay = new Map<string, ObligationInstance[]>();
   for (const inst of instances) {
-    const d = new Date(inst.due_date);
+    const d = parseLocalDate(inst.due_date);
     if (d.getFullYear() === y && d.getMonth() === m) {
       const key = String(d.getDate());
       if (!byDay.has(key)) byDay.set(key, []);
