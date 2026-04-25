@@ -289,7 +289,7 @@ export default function CrewProfile() {
             onUpdate={handleUpdateTask}
             onToggle={handleToggleTask}
             onDelete={handleDeleteTask}
-            onReorder={handleReorderTask}
+            onReorderAll={handleReorderTasks}
           />
         </TabsContent>
 
