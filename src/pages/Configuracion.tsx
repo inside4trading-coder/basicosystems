@@ -10,6 +10,7 @@ import {
 import { RRPPConfigSection } from "@/components/rrpp/RRPPConfigSection";
 import { AdminConfigSection } from "@/components/admin/AdminConfigSection";
 import { UserRolesPanel } from "@/components/configuracion/UserRolesPanel";
+import { RolePermissionsPanel } from "@/components/configuracion/RolePermissionsPanel";
 
 
 const integrations = [
@@ -104,6 +105,9 @@ export default function Configuracion() {
 
       {/* Users — gestión real de roles */}
       <UserRolesPanel />
+
+      {/* Permissions matrix — admin only */}
+      <RolePermissionsPanel />
 
       {/* Integrations */}
       <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>

@@ -1044,6 +1044,27 @@ export type Database = {
           },
         ]
       }
+      role_routes: {
+        Row: {
+          role: Database["public"]["Enums"]["app_role"]
+          routes: string[]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          role: Database["public"]["Enums"]["app_role"]
+          routes?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          role?: Database["public"]["Enums"]["app_role"]
+          routes?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       rrpp_audit_log: {
         Row: {
           action: string

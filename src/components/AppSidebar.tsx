@@ -1,7 +1,8 @@
+import { useEffect, useState } from "react";
 import { BarChart3, Package, Users, Users2, ClipboardList, Mail, Phone, Settings, LogOut, Star, Building2 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, canAccessRoute, subscribeRoleRoutes, type ProfileRole } from "@/hooks/useAuth";
 import basicoLogo from "@/assets/basico-logo.png";
 
 import {
@@ -17,12 +18,12 @@ import {
 } from "@/components/ui/sidebar";
 
 const mainItems = [
-  { title: "Resumen de ventas", url: "/dashboard", icon: BarChart3, adminOnly: true },
+  { title: "Resumen de ventas", url: "/dashboard", icon: BarChart3 },
   { title: "Pedidos", url: "/pedidos", icon: Package },
-  { title: "Administración", url: "/administracion", icon: Building2, adminOnly: true },
-  { title: "Crew", url: "/crew", icon: Users2, adminOnly: true },
+  { title: "Administración", url: "/administracion", icon: Building2 },
+  { title: "Crew", url: "/crew", icon: Users2 },
   { title: "Planificación", url: "/planning", icon: ClipboardList },
-  { title: "RRPP", url: "/rrpp", icon: Star, roles: ["admin", "rrpp", "marketing"] },
+  { title: "RRPP", url: "/rrpp", icon: Star },
   { title: "Llamadas", url: "/llamadas", icon: Phone },
   { title: "Campañas", url: "/campaigns", icon: Mail },
   { title: "CRM", url: "/crm", icon: Users },
@@ -37,17 +38,18 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
   const collapsed = state === "collapsed";
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const [, force] = useState(0);
+
+  // Re-render when role permissions change
+  useEffect(() => {
+    const unsub = subscribeRoleRoutes(() => force((n) => n + 1));
+    return () => { unsub; };
+  }, []);
 
   const showAdmin = userRole === "admin";
-  const visibleItems = mainItems.filter(i => {
-    if ((i as any).adminOnly && userRole !== "admin") return false;
-    if ((i as any).roles && !(i as any).roles.includes(userRole)) return false;
-    if (userRole === "partner") return ["/planning"].includes(i.url);
-    if (userRole === "manager") return ["/pedidos", "/crm", "/planning", "/campaigns", "/llamadas"].includes(i.url);
-    if (userRole === "rrpp") return ["/rrpp"].includes(i.url);
-    if (userRole === "marketing") return ["/rrpp", "/campaigns"].includes(i.url);
-    return true;
-  });
+  const role = (userRole as ProfileRole | undefined) ?? null;
+  const visibleItems = mainItems.filter((i) => canAccessRoute(role, i.url));
+
 
   const handleLogout = async () => {
     await signOut();
