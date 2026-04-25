@@ -117,7 +117,7 @@ export default function Dashboard() {
     <div className="space-y-6 w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight">Dashboard</h2>
+        <h2 className="text-xl sm:text-2xl font-black tracking-tight">Resumen de ventas</h2>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center">
             <Button variant="outline" size="sm" onClick={() => handleSync(1)} disabled={syncing} className="gap-2 rounded-r-none">
