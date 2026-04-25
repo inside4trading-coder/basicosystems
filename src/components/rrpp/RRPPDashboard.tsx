@@ -501,6 +501,17 @@ export default function RRPPDashboard() {
     };
   }, [contacts, collabs, interactions, from, to, range]);
 
+  // Monthly goal progress — always current month, independent of range filter
+  const monthProgress = useMemo(() => {
+    const { from: mFrom, to: mTo } = rangeBounds("this_month");
+    const inMonth = (d?: string | null) => inRange(d, mFrom, mTo);
+    const added = contacts.filter((c) => inMonth(c.created_at)).length;
+    const monthCollabs = collabs.filter((co) => inMonth(co.created_at) || inMonth(co.send_date) || inMonth(co.post_date));
+    const activations = monthCollabs.filter((co) => !!co.send_date).length;
+    const successful = new Set(monthCollabs.filter((co) => co.collab_done).map((co) => co.contact_id)).size;
+    return { added, activations, successful };
+  }, [contacts, collabs]);
+
   if (loading) {
     return (
       <div className="kpi-card p-12 text-center">
