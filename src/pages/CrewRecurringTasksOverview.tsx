@@ -291,7 +291,7 @@ export default function CrewRecurringTasksOverview() {
       />
       <Section
         title="Próximas 3 horas"
-        subtitle="Entre 1 y 3 horas a partir de ahora"
+        subtitle="Entre 61 minutos y 3 horas a partir de ahora"
         icon={<Timer className="h-4 w-4 text-[hsl(var(--status-warning))]" />}
         items={buckets.next3h}
         now={now}
