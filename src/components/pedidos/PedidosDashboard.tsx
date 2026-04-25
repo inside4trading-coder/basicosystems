@@ -58,6 +58,8 @@ function periodBounds(p: PeriodKey): { from: string; to: string } {
 // Bucket definitions: each maps user-facing label to a list of order_status slugs.
 type BucketKey =
   | "pago_por_confirmar"
+  | "listo_para_envio"
+  | "pago_confirmado"
   | "pendiente"
   | "cancelado"
   | "completado";
