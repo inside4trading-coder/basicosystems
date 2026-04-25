@@ -10,6 +10,7 @@ export interface RecurringTask {
   area: string;
   responsible: string;
   active: boolean;
+  sort_order?: number;
 }
 
 export interface Employee {
