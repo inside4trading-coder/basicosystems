@@ -107,6 +107,7 @@ export default function Pedidos() {
         totalSynced.payments += json.synced?.payments || 0;
       }
       toast.success(`Sincronización completada: ${totalSynced.orders} pedidos, ${totalSynced.items} items, ${totalSynced.payments} pagos`);
+      await fetchOrders();
       setDashboardKey((k) => k + 1);
     } catch (e: any) {
       if (e.name === "AbortError") toast.error("La sincronización tardó demasiado. Intenta con un período más corto.");
@@ -181,7 +182,7 @@ export default function Pedidos() {
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <div className="flex items-center">
-            <Button variant="destructive" size="sm" onClick={() => handleSync(1)} disabled={syncing} className="gap-2 rounded-r-none">
+            <Button variant="destructive" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="gap-2 rounded-r-none">
               <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
               {syncing ? "Sincronizando…" : "Sincronizar"}
             </Button>
