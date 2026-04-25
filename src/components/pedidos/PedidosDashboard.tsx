@@ -199,8 +199,6 @@ export function PedidosDashboard() {
   const bucketed = useMemo(() => {
     const map: Record<BucketKey, OrderRow[]> = {
       pago_por_confirmar: [],
-      listo_para_envio: [],
-      pago_confirmado: [],
       pendiente: [],
       cancelado: [],
       completado: [],
