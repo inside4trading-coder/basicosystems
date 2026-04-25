@@ -174,6 +174,24 @@ export default function CrewProfile() {
     }
   };
 
+  const handleUpdateTask = async (taskId: string, patch: Partial<RecurringTask>) => {
+    const task = employee.recurring_tasks.find((t) => t.id === taskId);
+    if (task) logAudit({ employee_id: employee.id, action: "Editó tarea", old_value: task.name, new_value: patch.name ?? task.name });
+    try {
+      await updateRecurringTask(taskId, patch);
+    } catch (err: any) {
+      toast.error(err.message ?? "Error al actualizar tarea");
+    }
+  };
+
+  const handleReorderTask = async (taskId: string, direction: "up" | "down") => {
+    try {
+      await reorderRecurringTask(employee.id, taskId, direction);
+    } catch (err: any) {
+      toast.error(err.message ?? "Error al reordenar");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <Link to="/crew" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
