@@ -133,7 +133,25 @@ export default function Login() {
             </div>
           </div>
 
-          <form onSubmit={handleEmailLogin} className="space-y-5">
+          <form onSubmit={mode === "login" ? handleEmailLogin : handleSignup} className="space-y-5">
+            {mode === "signup" && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName" className="text-xs font-bold uppercase tracking-wider text-white/60">
+                  Nombre completo
+                </Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Tu nombre"
+                  required
+                  maxLength={100}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus-visible:ring-white/30"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-white/60">
                 Email
@@ -172,9 +190,30 @@ export default function Login() {
               className="w-full"
               disabled={loading}
             >
-              {loading ? "Cargando..." : "Iniciar sesión"}
+              {loading
+                ? "Cargando..."
+                : mode === "login"
+                ? "Iniciar sesión"
+                : "Crear cuenta"}
             </Button>
           </form>
+
+          <button
+            type="button"
+            onClick={() => setMode(mode === "login" ? "signup" : "login")}
+            className="w-full text-center text-xs text-white/60 hover:text-white mt-5 transition-colors"
+          >
+            {mode === "login"
+              ? "¿No tienes cuenta? Crear una"
+              : "¿Ya tienes cuenta? Inicia sesión"}
+          </button>
+
+          {mode === "signup" && (
+            <p className="text-center text-[10px] text-white/40 mt-3 leading-relaxed">
+              Tras registrarte deberás verificar tu email. Un administrador
+              debe asignarte permisos antes de poder acceder al sistema.
+            </p>
+          )}
 
 
           <p className="text-center text-xs text-white/40 mt-6">
