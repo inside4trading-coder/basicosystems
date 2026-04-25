@@ -20,7 +20,20 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
-const ROLE_ROUTES: Record<ProfileRole, string[]> = {
+export const ALL_ROUTES: { path: string; label: string }[] = [
+  { path: "/dashboard", label: "Resumen de ventas" },
+  { path: "/pedidos", label: "Pedidos" },
+  { path: "/administracion", label: "Administración" },
+  { path: "/crew", label: "Crew" },
+  { path: "/planning", label: "Planificación" },
+  { path: "/rrpp", label: "RRPP" },
+  { path: "/llamadas", label: "Llamadas" },
+  { path: "/campaigns", label: "Campañas" },
+  { path: "/crm", label: "CRM" },
+  { path: "/configuracion", label: "Configuración" },
+];
+
+const DEFAULT_ROLE_ROUTES: Record<ProfileRole, string[]> = {
   admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/crew", "/rrpp", "/campaigns", "/llamadas", "/configuracion", "/administracion"],
   manager: ["/pedidos", "/crm", "/planning", "/campaigns", "/llamadas"],
   partner: ["/planning"],
@@ -28,16 +41,44 @@ const ROLE_ROUTES: Record<ProfileRole, string[]> = {
   marketing: ["/rrpp", "/campaigns"],
 };
 
+// Mutable in-memory cache, hydrated from DB (table: role_routes).
+let ROLE_ROUTES: Record<ProfileRole, string[]> = { ...DEFAULT_ROLE_ROUTES };
+const subscribers = new Set<() => void>();
+
+export function getRoleRoutes(): Record<ProfileRole, string[]> {
+  return ROLE_ROUTES;
+}
+
+export async function loadRoleRoutes() {
+  const { data, error } = await supabase.from("role_routes").select("role, routes");
+  if (error || !data) return;
+  const next: Record<ProfileRole, string[]> = { ...DEFAULT_ROLE_ROUTES };
+  for (const row of data as any[]) {
+    next[row.role as ProfileRole] = row.routes || [];
+  }
+  ROLE_ROUTES = next;
+  subscribers.forEach((cb) => cb());
+}
+
+export function subscribeRoleRoutes(cb: () => void) {
+  subscribers.add(cb);
+  return () => subscribers.delete(cb);
+}
+
 export function canAccessRoute(role: ProfileRole | null, path: string): boolean {
   if (!role) return false;
+  // Admin always has full access — cannot be locked out via UI.
+  if (role === "admin") return true;
   const allowed = ROLE_ROUTES[role] || [];
   return allowed.some((r) => path === r || path.startsWith(r + "/"));
 }
 
 export function defaultRouteForRole(role: ProfileRole | null): string {
   if (!role) return "/login";
+  if (role === "admin") return "/dashboard";
   return ROLE_ROUTES[role]?.[0] || "/login";
 }
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
