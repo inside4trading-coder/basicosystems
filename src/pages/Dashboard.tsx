@@ -120,12 +120,12 @@ export default function Dashboard() {
         <h2 className="text-xl sm:text-2xl font-black tracking-tight">Resumen de ventas</h2>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center">
-            <Button variant="outline" size="sm" onClick={() => handleSync(1)} disabled={syncing} className="gap-2 rounded-r-none">
+            <Button variant="destructive" size="sm" onClick={() => handleSync(1)} disabled={syncing} className="gap-2 rounded-r-none">
               <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Sincronizando…" : "Sync Hoy"}
+              {syncing ? "Sincronizando…" : "Sincronizar"}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleSync(7)} disabled={syncing} className="rounded-none border-l-0 px-2 text-xs">7d</Button>
-            <Button variant="outline" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="rounded-l-none border-l-0 px-2 text-xs">30d</Button>
+            <Button variant="destructive" size="sm" onClick={() => handleSync(7)} disabled={syncing} className="rounded-none border-l-0 px-2 text-xs">7d</Button>
+            <Button variant="destructive" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="rounded-l-none border-l-0 px-2 text-xs">30d</Button>
           </div>
           <div className="flex gap-1 bg-card rounded-lg border border-border p-1">
             {periods.map((p) => (
