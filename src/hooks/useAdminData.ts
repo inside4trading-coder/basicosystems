@@ -67,7 +67,7 @@ function generateDueDates(obligation: Obligation, monthsAhead: number, fromDate 
     while (cursor < endLimit) {
       const d = new Date(cursor);
       out.push({
-        due_date: d.toISOString().slice(0, 10),
+        due_date: formatLocalDate(d),
         period_label: d.toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }),
       });
       cursor.setDate(cursor.getDate() + stepDays);
@@ -82,7 +82,7 @@ function generateDueDates(obligation: Obligation, monthsAhead: number, fromDate 
     d.setDate(Math.min(day, lastDayOfMonth));
     if (d < new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate())) continue;
     out.push({
-      due_date: d.toISOString().slice(0, 10),
+      due_date: formatLocalDate(d),
       period_label: periodLabelFor(d),
     });
   }

@@ -83,7 +83,8 @@ export interface AdminKPIs {
 export function computeUrgency(dueDate: string): UrgencyLevel {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate);
+  const [y, m, d] = dueDate.slice(0, 10).split("-").map(Number);
+  const due = new Date(y, (m ?? 1) - 1, d ?? 1);
   due.setHours(0, 0, 0, 0);
   const days = Math.round((due.getTime() - today.getTime()) / 86400000);
   if (days <= 0) return "critica";

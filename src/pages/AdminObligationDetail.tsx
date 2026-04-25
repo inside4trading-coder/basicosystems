@@ -48,6 +48,7 @@ import {
 import { MarkPaidDialog } from "@/components/admin/MarkPaidDialog";
 import { NewInstanceSheet } from "@/components/admin/NewInstanceSheet";
 import { AdminDetailHeaderSkeleton } from "@/components/admin/AdminSkeletons";
+import { parseLocalDate } from "@/lib/dateUtils";
 
 const FREQUENCIES: { value: ObligationFrequency; label: string }[] = [
   { value: "unica", label: "Única" },
@@ -473,7 +474,7 @@ export default function AdminObligationDetail() {
                       <TableCell className="font-medium">{inst.period_label}</TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {new Date(inst.due_date).toLocaleDateString("es-VE", { day: "2-digit", month: "short" })}
+                          {parseLocalDate(inst.due_date).toLocaleDateString("es-VE", { day: "2-digit", month: "short" })}
                         </div>
                         <div className="text-xs text-muted-foreground">{relativeDate(inst.due_date)}</div>
                       </TableCell>
