@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users2, Plus, Loader2, AlertTriangle, MapPin, Calendar, Search, GraduationCap } from "lucide-react";
+import { Users2, Plus, Loader2, AlertTriangle, MapPin, Calendar, Search, GraduationCap, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { useCrewData } from "@/hooks/useCrewData";
 import { AddEmployeeSheet } from "@/components/crew/AddEmployeeSheet";
@@ -88,10 +88,16 @@ export default function Crew() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Gestión interna del equipo</p>
         </div>
-        <Button onClick={() => setSheetOpen(true)} className="w-full sm:w-auto">
-          <Plus className="h-4 w-4 mr-1" />
-          Agregar empleado
-        </Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={() => navigate("/crew/tareas-recurrentes")} className="flex-1 sm:flex-none">
+            <ListChecks className="h-4 w-4 mr-1" />
+            Tareas recurrentes
+          </Button>
+          <Button onClick={() => setSheetOpen(true)} className="flex-1 sm:flex-none">
+            <Plus className="h-4 w-4 mr-1" />
+            Agregar empleado
+          </Button>
+        </div>
       </div>
 
       {/* Search + Filters */}

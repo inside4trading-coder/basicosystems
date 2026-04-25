@@ -20,6 +20,7 @@ import Llamadas from "./pages/Llamadas";
 import Crew from "./pages/Crew";
 import CrewProfile from "./pages/CrewProfile";
 import CrewIncidencias from "./pages/CrewIncidencias";
+import CrewRecurringTasksOverview from "./pages/CrewRecurringTasksOverview";
 import RRPP from "./pages/RRPP";
 import RRPPProfile from "./pages/RRPPProfile";
 import Administracion from "./pages/Administracion";
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/crm" element={<CRM />} />
               <Route path="/planning" element={<Planning />} />
               <Route path="/crew" element={<Crew />} />
+              <Route path="/crew/tareas-recurrentes" element={<CrewRecurringTasksOverview />} />
               <Route path="/crew/:id" element={<CrewProfile />} />
               <Route path="/rrpp" element={<RRPP />} />
               <Route path="/rrpp/:id" element={<RRPPProfile />} />
