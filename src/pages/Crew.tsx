@@ -4,7 +4,7 @@ import { Users2, Plus, Loader2, AlertTriangle, MapPin, Calendar, Search, Graduat
 import { toast } from "sonner";
 import { useCrewData } from "@/hooks/useCrewData";
 import { AddEmployeeSheet } from "@/components/crew/AddEmployeeSheet";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EmployeeAvatar } from "@/components/crew/EmployeeAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -169,12 +169,11 @@ export default function Crew() {
                 </span>
 
                 <div className="flex items-start gap-3">
-                  <Avatar className="h-12 w-12 shrink-0">
-                    <AvatarImage src={emp.photo_url ?? undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-                      {emp.first_name[0]}{emp.last_name[0]}
-                    </AvatarFallback>
-                  </Avatar>
+                  <EmployeeAvatar
+                    photoUrl={emp.photo_url}
+                    firstName={emp.first_name}
+                    lastName={emp.last_name}
+                  />
 
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="font-semibold text-sm truncate">{emp.first_name} {emp.last_name}</p>
