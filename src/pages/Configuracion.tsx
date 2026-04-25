@@ -106,6 +106,9 @@ export default function Configuracion() {
       {/* Users — gestión real de roles */}
       <UserRolesPanel />
 
+      {/* Permissions matrix — admin only */}
+      <RolePermissionsPanel />
+
       {/* Integrations */}
       <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Integraciones</h3>
