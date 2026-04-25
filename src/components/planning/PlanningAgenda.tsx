@@ -176,8 +176,8 @@ export default function PlanningAgenda({ tasks, loading, error }: PlanningAgenda
       [...arr].sort((a, b) => (a.date?.start || "").localeCompare(b.date?.start || ""));
 
     return [
-      { key: "overdue", title: "Vencidas", hint: "Pasaron de fecha sin completar", tasks: sortByDate(overdue), defaultOpen: overdue.length > 0 },
-      { key: "today", title: "Hoy", hint: "Tareas para el día de hoy", tasks: sortByDate(todayList), defaultOpen: true },
+      { key: "overdue", title: "Vencidas", hint: "Pasaron de fecha sin completar", tasks: sortByDate(overdue) },
+      { key: "today", title: "Hoy", hint: "Tareas para el día de hoy", tasks: sortByDate(todayList) },
       { key: "tomorrow", title: "Mañana", hint: "Tareas para mañana", tasks: sortByDate(tomorrow) },
       { key: "next3", title: "Próximos 3 días", hint: "Entre 2 y 3 días", tasks: sortByDate(next3) },
       { key: "week", title: "Próxima semana", hint: "Entre 4 y 7 días", tasks: sortByDate(nextWeek) },

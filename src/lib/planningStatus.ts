@@ -31,9 +31,9 @@ function classifyStatusName(name: string | undefined | null):
   const n = norm(name);
   if (!n) return "unknown";
 
-  // Done / Completed / Hecho / Listo / Finalizado / Cerrado
+  // Done / Completed / Hecho / Ejecutada / Listo / Finalizado / Cerrado
   if (
-    /(hecho|hecha|listo|completad|finalizad|cerrad|terminad|done|complete|closed|finished|resolved)/.test(n)
+    /(hecho|hecha|ejecutad|listo|completad|finalizad|cerrad|terminad|done|complete|closed|finished|resolved)/.test(n)
   ) return "done";
 
   // In progress / En proceso / En curso / Haciendo / Doing
