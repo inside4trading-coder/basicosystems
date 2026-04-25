@@ -11,10 +11,12 @@ import basicoLogo from "@/assets/basico-logo.png";
 import bgVideo from "@/assets/aibuilders.mp4";
 
 export default function Login() {
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -32,6 +34,37 @@ export default function Login() {
       if (error) throw error;
     } catch (err: any) {
       toast.error(err.message || "Error de autenticación");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 6) {
+      toast.error("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+      if (error) throw error;
+      toast.success(
+        "Cuenta creada. Verifica tu email para iniciar sesión. Un administrador debe asignarte permisos antes de poder acceder al sistema.",
+        { duration: 8000 }
+      );
+      setMode("login");
+      setPassword("");
+      setFullName("");
+    } catch (err: any) {
+      toast.error(err.message || "No se pudo crear la cuenta");
     } finally {
       setLoading(false);
     }
