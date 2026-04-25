@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Star, Search, MapPin, User as UserIcon, Archive } from "lucide-react";
+import { Plus, Star, Search, MapPin, User as UserIcon, Archive, BarChart3, Users } from "lucide-react";
 import { fetchContacts, fetchConfig } from "@/hooks/useRRPPData";
 import type { Contact, ContactType, RelationshipStatus } from "@/types/rrpp";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AddContactSheet } from "@/components/rrpp/AddContactSheet";
+import RRPPDashboard from "@/components/rrpp/RRPPDashboard";
 import {
   RELATIONSHIP_LABELS, CONTACT_TYPE_LABELS, SOCIAL_CONTACT_TYPES,
   relationshipBadgeClass, formatFollowers,
@@ -102,6 +104,18 @@ export default function RRPP() {
           <Plus className="h-4 w-4 mr-2" /> Agregar contacto
         </Button>
       </header>
+
+      <Tabs defaultValue="dashboard" className="space-y-5">
+        <TabsList>
+          <TabsTrigger value="dashboard"><BarChart3 className="h-4 w-4 mr-1.5" /> Dashboard</TabsTrigger>
+          <TabsTrigger value="contacts"><Users className="h-4 w-4 mr-1.5" /> Contactos</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard">
+          <RRPPDashboard />
+        </TabsContent>
+
+        <TabsContent value="contacts" className="space-y-6">
 
       {/* Filters */}
       <div className="kpi-card !p-4 space-y-3">
@@ -267,8 +281,6 @@ export default function RRPP() {
         </div>
       )}
 
-      <AddContactSheet open={sheetOpen} onOpenChange={setSheetOpen} onCreated={load} />
-
       {hasFilters && filtered.length > 0 && (
         <div className="text-center">
           <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-foreground">
@@ -276,6 +288,10 @@ export default function RRPP() {
           </button>
         </div>
       )}
+        </TabsContent>
+      </Tabs>
+
+      <AddContactSheet open={sheetOpen} onOpenChange={setSheetOpen} onCreated={load} />
     </div>
   );
 }
