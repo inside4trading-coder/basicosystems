@@ -7,6 +7,7 @@ import type {
   ObligationInstance,
 } from "@/types/admin";
 import { computeUrgency } from "@/types/admin";
+import { formatLocalDate } from "@/lib/dateUtils";
 
 const VIEW = "admin_instances_view" as any;
 const OBLIGATIONS = "admin_obligations" as any;

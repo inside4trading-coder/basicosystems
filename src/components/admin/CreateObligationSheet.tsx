@@ -18,6 +18,7 @@ import { useAdminData } from "@/hooks/useAdminData";
 import { useAuth } from "@/hooks/useAuth";
 import { ALL_IMPORTANCE, IMPORTANCE_LABEL, frequencyFromLabel } from "./adminConstants";
 import type { ImportanceLevel, InstanceStatus, ObligationFrequency } from "@/types/admin";
+import { formatLocalDate } from "@/lib/dateUtils";
 
 interface Props {
   open: boolean;
