@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { OrderExpandedDetails } from "@/components/pedidos/OrderExpandedDetails";
 import { supabase } from "@/integrations/supabase/client";
 import { isQuickAccess } from "@/config/orderStatuses";
+import { PedidosDashboard } from "@/components/pedidos/PedidosDashboard";
 
 const STATUS_OPTIONS_RAW = [
   { value: "any", label: "Todos" },
@@ -139,6 +140,8 @@ export default function Pedidos() {
           <Input placeholder="Buscar nº pedido o email…" className="pl-9 bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       </div>
+
+      <PedidosDashboard />
 
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
