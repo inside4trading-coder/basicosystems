@@ -1,4 +1,4 @@
-import { Search, Loader2, ChevronLeft, ChevronRight, Filter, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Loader2, ChevronLeft, ChevronRight, Filter, ChevronDown, ChevronUp, ExternalLink, LayoutDashboard, List } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useCallback } from "react";
 import { OrderExpandedDetails } from "@/components/pedidos/OrderExpandedDetails";
