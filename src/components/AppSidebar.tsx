@@ -41,7 +41,10 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
   const [, force] = useState(0);
 
   // Re-render when role permissions change
-  useEffect(() => subscribeRoleRoutes(() => force((n) => n + 1)), []);
+  useEffect(() => {
+    const unsub = subscribeRoleRoutes(() => force((n) => n + 1));
+    return () => { unsub; };
+  }, []);
 
   const showAdmin = userRole === "admin";
   const role = (userRole as ProfileRole | undefined) ?? null;
