@@ -185,9 +185,9 @@ export default function CrewProfile() {
     }
   };
 
-  const handleReorderTask = async (taskId: string, direction: "up" | "down") => {
+  const handleReorderTasks = async (orderedIds: string[]) => {
     try {
-      await reorderRecurringTask(employee.id, taskId, direction);
+      await setRecurringTasksOrder(orderedIds);
     } catch (err: any) {
       toast.error(err.message ?? "Error al reordenar");
     }
