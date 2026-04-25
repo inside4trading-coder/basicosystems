@@ -322,20 +322,32 @@ export function PedidosDashboard() {
             <div className="bg-muted/30 rounded-md p-3 border border-border">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-500" />
-                <span className="text-xs font-bold">Concretado vs Cancelado</span>
+                <span className="text-xs font-bold">Concretado · En espera · Cancelado</span>
                 <span className="ml-auto text-[10px] text-muted-foreground">
-                  {decided} decididos · incluye enviados
+                  {decided} pedidos
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-status-error/30 overflow-hidden flex">
+              <div className="h-2 rounded-full overflow-hidden flex bg-muted">
                 <div
                   className="bg-emerald-700 dark:bg-emerald-600 h-full transition-all"
                   style={{ width: `${successRate}%` }}
+                  title={`Concretado: ${completed}`}
+                />
+                <div
+                  className="bg-status-warning h-full transition-all"
+                  style={{ width: `${waitingRate}%` }}
+                  title={`En espera: ${waiting}`}
+                />
+                <div
+                  className="bg-status-error h-full transition-all"
+                  style={{ width: `${cancelRate}%` }}
+                  title={`Cancelado: ${cancelled}`}
                 />
               </div>
-              <div className="flex justify-between mt-1.5 text-[10px] font-semibold">
-                <span className="text-emerald-700 dark:text-emerald-500">✓ {successRate.toFixed(1)}% concretado</span>
-                <span className="text-status-error">✗ {cancelRate.toFixed(1)}% cancelado</span>
+              <div className="flex justify-between mt-1.5 text-[10px] font-semibold gap-2 flex-wrap">
+                <span className="text-emerald-700 dark:text-emerald-500">✓ {successRate.toFixed(1)}% concretado ({completed})</span>
+                <span className="text-status-warning">⏱ {waitingRate.toFixed(1)}% en espera ({waiting})</span>
+                <span className="text-status-error">✗ {cancelRate.toFixed(1)}% cancelado ({cancelled})</span>
               </div>
             </div>
           )}
