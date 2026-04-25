@@ -58,8 +58,6 @@ function periodBounds(p: PeriodKey): { from: string; to: string } {
 // Bucket definitions: each maps user-facing label to a list of order_status slugs.
 type BucketKey =
   | "pago_por_confirmar"
-  | "listo_para_envio"
-  | "pago_confirmado"
   | "pendiente"
   | "cancelado"
   | "completado";
@@ -83,29 +81,11 @@ const BUCKETS: {
     tone: "warning",
   },
   {
-    key: "listo_para_envio",
-    label: "Listo para envío",
-    description: "Pedidos preparados que deben salir/entregarse.",
-    hint: "Acción: despachar o coordinar entrega/pick-up.",
-    statuses: ["pedido-listo-para", "pick-up-listo-par"],
-    icon: PackageCheck,
-    tone: "info",
-  },
-  {
-    key: "pago_confirmado",
-    label: "Pago confirmado",
-    description: "Pago verificado: pedido listo para procesar y enviar.",
-    hint: "Acción: procesar y enviar.",
-    statuses: ["tu-pago-fue-confi", "processing", "el-pedido-esta-si"],
-    icon: CheckCircle2,
-    tone: "success",
-  },
-  {
     key: "pendiente",
     label: "Pendiente",
     description: "Pedidos sin concretar — falta acción del cliente.",
     hint: "Acción: contactar al cliente para concretar la compra.",
-    statuses: ["pending", "on-hold", "pedido-recibido-p"],
+    statuses: ["pending", "on-hold", "pedido-recibido-p", "el-pedido-esta-si"],
     icon: Clock,
     tone: "muted",
   },
@@ -121,9 +101,18 @@ const BUCKETS: {
   {
     key: "completado",
     label: "Completado",
-    description: "Incluye enviados y entregados. Lo logrado.",
+    description: "Pago confirmado, listos para envío, enviados y entregados.",
     hint: "Lo logrado. Comparativa contra cancelados.",
-    statuses: ["completed", "tu-pedido-ha-sido", "pedido-pick-up-re", "recordartorio-de-"],
+    statuses: [
+      "completed",
+      "tu-pedido-ha-sido",
+      "pedido-pick-up-re",
+      "recordartorio-de-",
+      "processing",
+      "tu-pago-fue-confi",
+      "pedido-listo-para",
+      "pick-up-listo-par",
+    ],
     icon: Trophy,
     tone: "completed",
   },
@@ -159,8 +148,6 @@ export function PedidosDashboard() {
   const [loading, setLoading] = useState(true);
   const [openBuckets, setOpenBuckets] = useState<Record<BucketKey, boolean>>({
     pago_por_confirmar: false,
-    listo_para_envio: false,
-    pago_confirmado: false,
     pendiente: false,
     cancelado: false,
     completado: false,
@@ -212,8 +199,6 @@ export function PedidosDashboard() {
   const bucketed = useMemo(() => {
     const map: Record<BucketKey, OrderRow[]> = {
       pago_por_confirmar: [],
-      listo_para_envio: [],
-      pago_confirmado: [],
       pendiente: [],
       cancelado: [],
       completado: [],
