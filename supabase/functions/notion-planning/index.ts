@@ -62,9 +62,11 @@ function normalizeSource(source: any) {
     props[key] = { type: (val as any).type, name: (val as any).name || key };
   }
 
+  const title = extractRichText(source.title);
+
   return {
     id: source.id,
-    name: extractRichText(source.title) || "Fuente sin título",
+    name: title,
     url: source.url || "",
     properties: props,
   };
@@ -167,7 +169,8 @@ async function listDatabases(token: string) {
   const databases = results
     .filter((source: any) => source.object === "data_source" || source.object === "database")
     .filter((source: any) => Object.keys(source.properties || {}).length > 0)
-    .map(normalizeSource);
+    .map(normalizeSource)
+    .filter((source: any) => source.name && source.name.trim().length > 0);
 
   const uniqueDatabases = Array.from(new Map(databases.map((source: any) => [source.id, source])).values());
 
@@ -336,6 +339,6 @@ serve(async (req) => {
 
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });

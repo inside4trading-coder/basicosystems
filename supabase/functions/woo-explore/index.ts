@@ -32,7 +32,7 @@ serve(async (req) => {
       customers = { status: customersRes.status, body: await customersRes.json().catch(() => customersRes.statusText) };
       products = { status: productsRes.status, body: await productsRes.json().catch(() => productsRes.statusText) };
     } catch (e) {
-      orders = customers = products = { error: e.message };
+      orders = customers = products = { error: e instanceof Error ? e.message : String(e) };
     }
 
     // Also try query param auth as fallback
@@ -47,7 +47,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

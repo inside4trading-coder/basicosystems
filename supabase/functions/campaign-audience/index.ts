@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error("campaign-audience error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
