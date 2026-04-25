@@ -209,6 +209,13 @@ export default function CrewRecurringTasksOverview() {
     weekday: "long",
     day: "2-digit",
     month: "long",
+    timeZone: TZ,
+  });
+  const nowTimeLabel = now.toLocaleTimeString("es-VE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: TZ,
+    hour12: false,
   });
 
   return (
@@ -226,7 +233,7 @@ export default function CrewRecurringTasksOverview() {
             </h1>
             <p className="text-sm text-muted-foreground mt-1 capitalize flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5" />
-              {todayLabel} · {now.toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" })}
+              {todayLabel} · {nowTimeLabel} <span className="normal-case text-[11px] opacity-70">(Caracas)</span>
             </p>
           </div>
         </div>
