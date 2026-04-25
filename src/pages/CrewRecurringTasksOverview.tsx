@@ -284,7 +284,6 @@ export default function CrewRecurringTasksOverview() {
         subtitle="Lo que arranca en los próximos 60 minutos"
         icon={<Flame className="h-4 w-4 text-[hsl(var(--status-error))]" />}
         items={buckets.nextHour}
-        now={now}
         onOpenEmployee={(id) => navigate(`/crew/${id}`)}
         emptyHint="Sin tareas programadas en la próxima hora."
         accent="error"
@@ -294,7 +293,6 @@ export default function CrewRecurringTasksOverview() {
         subtitle="Entre 61 minutos y 3 horas a partir de ahora"
         icon={<Timer className="h-4 w-4 text-[hsl(var(--status-warning))]" />}
         items={buckets.next3h}
-        now={now}
         onOpenEmployee={(id) => navigate(`/crew/${id}`)}
         emptyHint="Nada en la ventana de 3 horas."
         accent="warning"
@@ -304,7 +302,6 @@ export default function CrewRecurringTasksOverview() {
         subtitle="Programadas más tarde hoy"
         icon={<Sun className="h-4 w-4 text-primary" />}
         items={buckets.restOfDay}
-        now={now}
         onOpenEmployee={(id) => navigate(`/crew/${id}`)}
         emptyHint="No hay más tareas con horario hoy."
         accent="info"
@@ -315,7 +312,6 @@ export default function CrewRecurringTasksOverview() {
           subtitle="Tareas del día que no tienen hora asignada"
           icon={<Clock className="h-4 w-4 text-muted-foreground" />}
           items={buckets.untimed}
-          now={now}
           onOpenEmployee={(id) => navigate(`/crew/${id}`)}
           emptyHint=""
           accent="muted"
@@ -327,7 +323,6 @@ export default function CrewRecurringTasksOverview() {
           subtitle="Tareas cuya hora prevista ya pasó hoy"
           icon={<Clock className="h-4 w-4 text-muted-foreground" />}
           items={buckets.past}
-          now={now}
           onOpenEmployee={(id) => navigate(`/crew/${id}`)}
           emptyHint=""
           accent="muted"
