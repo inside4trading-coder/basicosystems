@@ -169,7 +169,8 @@ async function listDatabases(token: string) {
   const databases = results
     .filter((source: any) => source.object === "data_source" || source.object === "database")
     .filter((source: any) => Object.keys(source.properties || {}).length > 0)
-    .map(normalizeSource);
+    .map(normalizeSource)
+    .filter((source: any) => source.name && source.name.trim().length > 0);
 
   const uniqueDatabases = Array.from(new Map(databases.map((source: any) => [source.id, source])).values());
 
