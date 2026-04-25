@@ -241,7 +241,12 @@ export function PedidosDashboard() {
   const totalOrders = orders.length;
 
   // Concretado vs cancelado comparison (only completed vs cancelled buckets)
-  const completed = totalsByBucket.completado.count;
+  // Concretado = completado + pago confirmado + listo para envío
+  // (pago confirmado y listo para envío ya son ventas cerradas, solo falta logística)
+  const completed =
+    totalsByBucket.completado.count +
+    totalsByBucket.pago_confirmado.count +
+    totalsByBucket.listo_para_envio.count;
   const cancelled = totalsByBucket.cancelado.count;
   const decided = completed + cancelled;
   const successRate = decided > 0 ? (completed / decided) * 100 : 0;
