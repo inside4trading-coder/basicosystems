@@ -216,7 +216,7 @@ export default function PlanningCalendar({ tasks, loading, error, selectedDataba
     <div className="space-y-4 animate-fade-in">
       <div className="kpi-card overflow-hidden">
         {/* Navigation */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <button onClick={goPrev} className="p-1 rounded hover:bg-muted transition-colors">
               <ChevronLeft className="h-4 w-4" />
@@ -226,9 +226,31 @@ export default function PlanningCalendar({ tasks, loading, error, selectedDataba
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-          <button onClick={goToday} className="text-xs font-semibold text-primary hover:underline">
-            Hoy
-          </button>
+          <div className="flex items-center gap-3">
+            {showAll && (
+              <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
+                <button
+                  onClick={() => setColorMode("status")}
+                  className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
+                    colorMode === "status" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                  }`}
+                >
+                  Por estado
+                </button>
+                <button
+                  onClick={() => setColorMode("source")}
+                  className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
+                    colorMode === "source" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                  }`}
+                >
+                  Por fuente
+                </button>
+              </div>
+            )}
+            <button onClick={goToday} className="text-xs font-semibold text-primary hover:underline">
+              Hoy
+            </button>
+          </div>
         </div>
 
         {/* Day headers */}
@@ -297,8 +319,8 @@ export default function PlanningCalendar({ tasks, loading, error, selectedDataba
         ))}
       </div>
 
-      {/* Source legend */}
-      {showAll && Object.keys(sourceColors).length > 1 && (
+      {/* Legend */}
+      {colorMode === "source" && showAll && Object.keys(sourceColors).length > 1 ? (
         <div className="flex items-center gap-4 flex-wrap px-1">
           {Object.entries(sourceColors).map(([name, color]) => (
             <div key={name} className="flex items-center gap-1.5">
@@ -306,6 +328,18 @@ export default function PlanningCalendar({ tasks, loading, error, selectedDataba
               <span className="text-xs text-muted-foreground font-semibold">{name}</span>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap px-1">
+          {(["done", "in_progress", "pending", "overdue", "delegated"] as DerivedStatus[]).map((s) => {
+            const v = statusVisual(s);
+            return (
+              <div key={s} className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: v.dot }} />
+                <span className="text-[11px] text-muted-foreground font-semibold">{v.label}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 
