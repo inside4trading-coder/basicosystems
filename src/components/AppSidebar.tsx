@@ -24,7 +24,7 @@ const mainItems = [
   { title: "Crew", url: "/crew", icon: Users2, adminOnly: true },
   { title: "RRPP", url: "/rrpp", icon: Star, roles: ["admin", "rrpp", "marketing"] },
   { title: "Administración", url: "/administracion", icon: Building2, adminOnly: true },
-  { title: "Campaigns", url: "/campaigns", icon: Mail },
+  { title: "Campañas", url: "/campaigns", icon: Mail },
   { title: "Llamadas", url: "/llamadas", icon: Phone },
 ];
 
