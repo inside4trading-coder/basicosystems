@@ -45,10 +45,10 @@ function caracasParts(d: Date): CaracasParts {
 interface TaskWithOwner {
   task: RecurringTask;
   employee: Employee;
-  /** Minutes from "now" to the task time today. Negative = past. null = no time set. */
+  /** Minutes from "now" (Caracas) to the task time today. Negative = past. null = no time set. */
   minutesUntil: number | null;
-  /** Resolved Date for today at the task time. null if no time. */
-  scheduledAt: Date | null;
+  /** Display string "HH:MM" of the task time, or null. */
+  displayTime: string | null;
 }
 
 const dayMap: Record<string, number> = {
@@ -77,36 +77,34 @@ const priorityLabel: Record<string, string> = {
   high: "Alta",
 };
 
-/** Returns true if this recurring task is scheduled for the given date. */
-function taskHappensOn(task: RecurringTask, date: Date): boolean {
+/** Returns true if this recurring task is scheduled for the given Caracas date parts. */
+function taskHappensOn(task: RecurringTask, parts: CaracasParts): boolean {
   if (!task.active) return false;
   if (task.frequency === "daily") return true;
   if (task.frequency === "weekly") {
-    if (!task.day) return true; // assume any day if not specified
+    if (!task.day) return true;
     const wanted = dayMap[task.day.trim().toLowerCase()];
     if (wanted === undefined) return true;
-    return date.getDay() === wanted;
+    return parts.weekday === wanted;
   }
   if (task.frequency === "monthly") {
     if (!task.day) return true;
     const n = parseInt(task.day, 10);
     if (Number.isNaN(n)) return true;
-    return date.getDate() === n;
+    return parts.day === n;
   }
   return false;
 }
 
-/** Parse "HH:MM" → Date set to today (or given date) at that time. Returns null if invalid/empty. */
-function resolveTime(timeStr: string, base: Date): Date | null {
+/** Parse "HH:MM" to {hour, minute} or null. */
+function parseHM(timeStr: string): { hour: number; minute: number } | null {
   if (!timeStr) return null;
   const m = timeStr.match(/^(\d{1,2}):(\d{2})/);
   if (!m) return null;
   const h = parseInt(m[1], 10);
   const min = parseInt(m[2], 10);
   if (h < 0 || h > 23 || min < 0 || min > 59) return null;
-  const d = new Date(base);
-  d.setHours(h, min, 0, 0);
-  return d;
+  return { hour: h, minute: min };
 }
 
 export default function CrewRecurringTasksOverview() {
@@ -124,20 +122,23 @@ export default function CrewRecurringTasksOverview() {
   const [filterArea, setFilterArea] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
 
+  const nowParts = useMemo(() => caracasParts(now), [now]);
+  const nowMinutes = nowParts.hour * 60 + nowParts.minute;
+
   const allTasksToday = useMemo<TaskWithOwner[]>(() => {
     const items: TaskWithOwner[] = [];
     for (const emp of employees) {
       if (emp.status !== "active") continue;
       for (const t of emp.recurring_tasks ?? []) {
-        if (!taskHappensOn(t, now)) continue;
-        const scheduledAt = resolveTime(t.time, now);
-        const minutesUntil = scheduledAt
-          ? Math.round((scheduledAt.getTime() - now.getTime()) / 60000)
+        if (!taskHappensOn(t, nowParts)) continue;
+        const hm = parseHM(t.time);
+        const minutesUntil = hm ? hm.hour * 60 + hm.minute - nowMinutes : null;
+        const displayTime = hm
+          ? `${String(hm.hour).padStart(2, "0")}:${String(hm.minute).padStart(2, "0")}`
           : null;
-        items.push({ task: t, employee: emp, scheduledAt, minutesUntil });
+        items.push({ task: t, employee: emp, minutesUntil, displayTime });
       }
     }
-    // Sort: timed first by time asc, then untimed by name
     items.sort((a, b) => {
       if (a.minutesUntil === null && b.minutesUntil === null) {
         return a.task.name.localeCompare(b.task.name);
@@ -147,7 +148,7 @@ export default function CrewRecurringTasksOverview() {
       return a.minutesUntil - b.minutesUntil;
     });
     return items;
-  }, [employees, now]);
+  }, [employees, nowParts, nowMinutes]);
 
   const uniqueAreas = useMemo(
     () => [...new Set(allTasksToday.map((i) => i.task.area).filter(Boolean))].sort(),
