@@ -112,7 +112,7 @@ async function enrichWithRecordings(
   calls: Array<Record<string, unknown>>,
   key: string,
   secret: string,
-  concurrency = 5,
+  concurrency = 2,
 ): Promise<number> {
   const targets = calls.filter((c) => {
     const pbx = String(c.pbx_call_id || "");
