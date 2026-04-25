@@ -680,6 +680,9 @@ export default function RRPPDashboard() {
           </div>
         </div>
       )}
+
+      {/* Monthly goals */}
+      <MonthlyGoalsCard current={monthProgress} goals={goals} onSave={saveGoals} />
     </div>
   );
 }
