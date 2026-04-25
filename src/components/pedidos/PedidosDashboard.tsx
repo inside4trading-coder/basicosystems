@@ -504,6 +504,12 @@ export function PedidosDashboard() {
                       <div className="text-[10px] text-muted-foreground tabular-nums">
                         {fmtUsd(data.revenue)}
                       </div>
+                      {data.excluded > 0 && (
+                        <div className="text-[9px] text-status-warning font-semibold mt-0.5 flex items-center justify-end gap-0.5" title={`${data.excluded} pedido(s) con monto > $${MAX_REASONABLE_USD} excluido(s) del total`}>
+                          <AlertTriangle className="h-2.5 w-2.5" />
+                          {data.excluded} excluido{data.excluded !== 1 ? "s" : ""}
+                        </div>
+                      )}
                     </div>
                     <ChevronDown
                       className={cn(
