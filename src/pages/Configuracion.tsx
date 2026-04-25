@@ -9,12 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import { RRPPConfigSection } from "@/components/rrpp/RRPPConfigSection";
 import { AdminConfigSection } from "@/components/admin/AdminConfigSection";
+import { UserRolesPanel } from "@/components/configuracion/UserRolesPanel";
 
-const mockUsers = [
-  { name: "Admin Basico", email: "admin@basicoclothes.es", role: "admin" },
-  { name: "Manager Uno", email: "manager@basicoclothes.es", role: "manager" },
-  { name: "Partner Demo", email: "partner@basicoclothes.es", role: "partner" },
-];
 
 const integrations = [
   { name: "WooCommerce", description: "basicoclothes.es — Pedidos, CRM, Dashboard", connected: true },
