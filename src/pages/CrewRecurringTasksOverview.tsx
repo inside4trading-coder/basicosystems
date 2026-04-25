@@ -1,13 +1,46 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, ListChecks, Loader2, AlertTriangle, Calendar, Search, Flame, Timer, Sun } from "lucide-react";
+import { ArrowLeft, Clock, ListChecks, Loader2, AlertTriangle, Calendar, Search, Flame, Timer, Sun, ChevronDown } from "lucide-react";
 import { useCrewData } from "@/hooks/useCrewData";
 import { EmployeeAvatar } from "@/components/crew/EmployeeAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { Employee, RecurringTask } from "@/types/crew";
+
+const TZ = "America/Caracas";
+
+interface CaracasParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  weekday: number; // 0 = Sunday … 6 = Saturday
+}
+
+/** Get the current wall-clock parts in Caracas timezone. */
+function caracasParts(d: Date): CaracasParts {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short",
+  });
+  const parts = fmt.formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "0";
+  const wdMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return {
+    year: parseInt(get("year"), 10),
+    month: parseInt(get("month"), 10),
+    day: parseInt(get("day"), 10),
+    hour: parseInt(get("hour"), 10) % 24,
+    minute: parseInt(get("minute"), 10),
+    weekday: wdMap[get("weekday")] ?? 0,
+  };
+}
+
 
 interface TaskWithOwner {
   task: RecurringTask;
