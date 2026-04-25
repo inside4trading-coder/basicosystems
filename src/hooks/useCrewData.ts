@@ -20,7 +20,9 @@ export function useCrewData() {
 
       const { data: taskRows, error: taskErr } = await supabase
         .from("recurring_tasks")
-        .select("*");
+        .select("*")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
 
       if (taskErr) throw taskErr;
 
@@ -37,6 +39,7 @@ export function useCrewData() {
           area: t.area ?? "",
           responsible: t.responsible ?? "",
           active: t.active,
+          sort_order: (t as any).sort_order ?? 0,
         });
         tasksByEmployee.set(t.employee_id, list);
       }
