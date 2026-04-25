@@ -64,7 +64,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   // Role-based route guard
   if (!canAccessRoute(role, location.pathname)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={defaultRouteForRole(role)} replace />;
   }
 
   return <>{children}</>;
