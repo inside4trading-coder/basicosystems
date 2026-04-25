@@ -11,6 +11,7 @@ import {
   XCircle,
   Trophy,
   TrendingUp,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
