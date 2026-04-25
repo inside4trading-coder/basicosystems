@@ -124,7 +124,7 @@ const BUCKETS: {
     hint: "Lo logrado. Comparativa contra cancelados.",
     statuses: ["completed", "tu-pedido-ha-sido", "pedido-pick-up-re", "recordartorio-de-"],
     icon: Trophy,
-    tone: "primary",
+    tone: "completed",
   },
 ];
 
@@ -135,6 +135,7 @@ const TONE_CLASSES: Record<string, { bg: string; text: string; border: string; r
   muted: { bg: "bg-muted", text: "text-muted-foreground", border: "border-border", ring: "ring-border" },
   error: { bg: "bg-status-error/10", text: "text-status-error", border: "border-status-error/30", ring: "ring-status-error/20" },
   primary: { bg: "bg-primary/10", text: "text-primary", border: "border-primary/30", ring: "ring-primary/20" },
+  completed: { bg: "bg-emerald-700/15", text: "text-emerald-700 dark:text-emerald-500", border: "border-emerald-700/40", ring: "ring-emerald-700/20" },
 };
 
 const fmtUsd = (n: number) =>
