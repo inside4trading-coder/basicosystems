@@ -179,12 +179,22 @@ export default function Pedidos() {
           <h2 className="text-2xl font-black tracking-tight">Pedidos</h2>
           {view === "list" && !loading && <p className="text-sm text-muted-foreground mt-1">{total} pedidos</p>}
         </div>
-        {view === "list" && (
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar nº pedido o email…" className="pl-9 bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="flex items-center">
+            <Button variant="destructive" size="sm" onClick={() => handleSync(1)} disabled={syncing} className="gap-2 rounded-r-none">
+              <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Sincronizando…" : "Sincronizar"}
+            </Button>
+            <Button variant="destructive" size="sm" onClick={() => handleSync(7)} disabled={syncing} className="rounded-none border-l-0 px-2 text-xs">7d</Button>
+            <Button variant="destructive" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="rounded-l-none border-l-0 px-2 text-xs">30d</Button>
           </div>
-        )}
+          {view === "list" && (
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar nº pedido o email…" className="pl-9 bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* View tabs */}
