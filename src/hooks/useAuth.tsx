@@ -59,7 +59,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select("role")
       .eq("id", userId)
       .maybeSingle();
-    setRole((profile?.role as ProfileRole) ?? "partner");
+    // No role assigned → user is in "pending approval" state.
+    // Do NOT fall back to a default role; ProtectedRoute shows a "pending" screen.
+    setRole((profile?.role as ProfileRole) ?? null);
   };
 
   useEffect(() => {
