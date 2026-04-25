@@ -62,9 +62,11 @@ function normalizeSource(source: any) {
     props[key] = { type: (val as any).type, name: (val as any).name || key };
   }
 
+  const title = extractRichText(source.title);
+
   return {
     id: source.id,
-    name: extractRichText(source.title) || "Fuente sin título",
+    name: title,
     url: source.url || "",
     properties: props,
   };
