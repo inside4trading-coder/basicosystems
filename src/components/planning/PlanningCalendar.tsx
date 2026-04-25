@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, CalendarDays, ExternalLink, ChevronDown } fr
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { NotionTask } from "@/hooks/usePlanningData";
+import { deriveStatus, statusVisual, type DerivedStatus } from "@/lib/planningStatus";
 
 interface PlanningCalendarProps {
   tasks: NotionTask[];
@@ -131,6 +132,7 @@ export default function PlanningCalendar({ tasks, loading, error, selectedDataba
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [undatedOpen, setUndatedOpen] = useState(false);
+  const [colorMode, setColorMode] = useState<"status" | "source">("status");
 
   const showAll = selectedDatabaseId === "all";
 
@@ -143,8 +145,8 @@ export default function PlanningCalendar({ tasks, loading, error, selectedDataba
   }, [tasks]);
 
   const getDotColor = (task: NotionTask) => {
-    if (showAll) return sourceColors[task.database_name] || SOURCE_PALETTE[0];
-    return NOTION_DOT[task.status?.color || "default"] || NOTION_DOT.default;
+    if (colorMode === "source" && showAll) return sourceColors[task.database_name] || SOURCE_PALETTE[0];
+    return statusVisual(deriveStatus(task)).dot;
   };
 
   // Tasks grouped by date string
