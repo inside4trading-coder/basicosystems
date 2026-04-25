@@ -336,6 +336,12 @@ export default function RRPPDashboard() {
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [goals, setGoals] = useState<MonthlyGoals>(() => loadGoals());
+
+  const saveGoals = (g: MonthlyGoals) => {
+    setGoals(g);
+    try { localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(g)); } catch { /* ignore */ }
+  };
 
   useEffect(() => {
     let cancelled = false;
