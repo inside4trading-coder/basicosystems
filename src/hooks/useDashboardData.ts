@@ -323,6 +323,8 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         transactionsAnalyzed,
         hourlyDistribution,
         categoryBreakdown,
+        sizeBreakdown,
+        totalSizedItems,
       });
     } catch (e: any) {
       setError(e.message || "Error al cargar datos");
