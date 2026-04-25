@@ -261,13 +261,25 @@ Deno.serve(async (req) => {
         if (String(s.destination).length <= 4) direction = "incoming";
       }
 
+      const pbxCallId = String(s.pbx_call_id || "");
+      const resolvedCost = costMap[callId]
+        ?? costMap[pbxCallId]
+        ?? Number(s.cost || s.bill_cost || 0);
+
       return {
         call_id: callId,
-        pbx_call_id: String(s.pbx_call_id || ""),
+        pbx_call_id: pbxCallId,
         call_start: parseZadarmaDateTime(s.callstart || s.call_start, zadarmaTimeZone),
         call_end: parseZadarmaDateTime(s.callend, zadarmaTimeZone),
         caller: String(s.clid || s.caller_id || s.from || ""),
         destination: String(s.destination || s.called_did || s.to || ""),
+        direction,
+        status: mapStatus(String(s.disposition || ""), seconds),
+        duration: seconds,
+        talk_duration: talkSeconds,
+        sip,
+        agent_name: sipMap[sip] || sip || "Sin asignar",
+        cost: resolvedCost,
         direction,
         status: mapStatus(String(s.disposition || ""), seconds),
         duration: seconds,
