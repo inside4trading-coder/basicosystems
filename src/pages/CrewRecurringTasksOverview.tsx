@@ -359,18 +359,19 @@ function SummaryCard({
 }
 
 function Section({
-  title, subtitle, icon, items, now, onOpenEmployee, emptyHint, accent, dimmed,
+  title, subtitle, icon, items, onOpenEmployee, emptyHint, accent, dimmed,
 }: {
   title: string;
   subtitle: string;
   icon: React.ReactNode;
   items: TaskWithOwner[];
-  now: Date;
   onOpenEmployee: (id: string) => void;
   emptyHint: string;
   accent: "error" | "warning" | "info" | "muted";
   dimmed?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+
   const accentBorder = {
     error: "border-l-[hsl(var(--status-error))]",
     warning: "border-l-[hsl(var(--status-warning))]",
@@ -378,81 +379,105 @@ function Section({
     muted: "border-l-border",
   }[accent];
 
+  const accentCount = {
+    error: "text-[hsl(var(--status-error))]",
+    warning: "text-[hsl(var(--status-warning))]",
+    info: "text-primary",
+    muted: "text-muted-foreground",
+  }[accent];
+
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-bold flex items-center gap-2">
-            {icon}
-            {title}
-            <span className="text-xs font-medium text-muted-foreground">({items.length})</span>
-          </h2>
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
-        </div>
-      </div>
-      {items.length === 0 ? (
-        emptyHint && (
-          <div className="text-xs text-muted-foreground border border-dashed border-border rounded-md py-4 px-3 text-center">
-            {emptyHint}
-          </div>
-        )
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          {items.map(({ task, employee, scheduledAt, minutesUntil }) => (
-            <div
-              key={task.id}
+    <Collapsible open={open} onOpenChange={setOpen} asChild>
+      <section className="space-y-3">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between gap-3 text-left rounded-md hover:bg-muted/40 transition-colors px-2 py-2 -mx-2"
+          >
+            <div className="flex-1 min-w-0">
+              <h2 className="text-sm font-bold flex items-center gap-2">
+                {icon}
+                {title}
+                <span className={cn("text-xs font-bold tabular-nums", accentCount)}>
+                  ({items.length})
+                </span>
+              </h2>
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
+            </div>
+            <ChevronDown
               className={cn(
-                "kpi-card border-l-4 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all",
-                accentBorder,
-                dimmed && "opacity-60",
+                "h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200",
+                open && "rotate-180",
               )}
-              onClick={() => onOpenEmployee(employee.id)}
-            >
-              <div className="flex items-start gap-3">
-                <EmployeeAvatar
-                  photoUrl={employee.photo_url}
-                  firstName={employee.first_name}
-                  lastName={employee.last_name}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold text-sm leading-tight">{task.name}</p>
-                    <TimeChip scheduledAt={scheduledAt} minutesUntil={minutesUntil} now={now} />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {employee.first_name} {employee.last_name} · {employee.position}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-[11px] text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <span className={cn("h-1.5 w-1.5 rounded-full", priorityDot[task.priority])} />
-                      {priorityLabel[task.priority]}
-                    </span>
-                    <span>·</span>
-                    <span>{freqLabel[task.frequency]}</span>
-                    {task.area && (<><span>·</span><span>{task.area}</span></>)}
-                    {task.responsible && (<><span>·</span><span>Resp: {task.responsible}</span></>)}
+            />
+          </button>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent className="data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up overflow-hidden">
+          {items.length === 0 ? (
+            emptyHint && (
+              <div className="text-xs text-muted-foreground border border-dashed border-border rounded-md py-4 px-3 text-center">
+                {emptyHint}
+              </div>
+            )
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {items.map(({ task, employee, displayTime, minutesUntil }) => (
+                <div
+                  key={task.id}
+                  className={cn(
+                    "kpi-card border-l-4 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all",
+                    accentBorder,
+                    dimmed && "opacity-60",
+                  )}
+                  onClick={() => onOpenEmployee(employee.id)}
+                >
+                  <div className="flex items-start gap-3">
+                    <EmployeeAvatar
+                      photoUrl={employee.photo_url}
+                      firstName={employee.first_name}
+                      lastName={employee.last_name}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm leading-tight">{task.name}</p>
+                        <TimeChip displayTime={displayTime} minutesUntil={minutesUntil} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {employee.first_name} {employee.last_name} · {employee.position}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-[11px] text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <span className={cn("h-1.5 w-1.5 rounded-full", priorityDot[task.priority])} />
+                          {priorityLabel[task.priority]}
+                        </span>
+                        <span>·</span>
+                        <span>{freqLabel[task.frequency]}</span>
+                        {task.area && (<><span>·</span><span>{task.area}</span></>)}
+                        {task.responsible && (<><span>·</span><span>Resp: {task.responsible}</span></>)}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-    </section>
+          )}
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
   );
 }
 
 function TimeChip({
-  scheduledAt, minutesUntil, now,
-}: { scheduledAt: Date | null; minutesUntil: number | null; now: Date }) {
-  if (!scheduledAt || minutesUntil === null) {
+  displayTime, minutesUntil,
+}: { displayTime: string | null; minutesUntil: number | null }) {
+  if (!displayTime || minutesUntil === null) {
     return (
       <span className="text-[11px] text-muted-foreground bg-muted rounded-full px-2 py-0.5 whitespace-nowrap">
         sin hora
       </span>
     );
   }
-  const hhmm = scheduledAt.toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" });
   let label: string;
   let cls: string;
   if (minutesUntil < 0) {
@@ -471,7 +496,7 @@ function TimeChip({
   return (
     <span className={cn("text-[11px] font-medium rounded-full px-2 py-0.5 whitespace-nowrap flex items-center gap-1", cls)}>
       <Clock className="h-3 w-3" />
-      {hhmm} · {label}
+      {displayTime} · {label}
     </span>
   );
 }
@@ -483,3 +508,4 @@ function formatRel(minutes: number): string {
   if (m === 0) return `${h} h`;
   return `${h} h ${m} min`;
 }
+
