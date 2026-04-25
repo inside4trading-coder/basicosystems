@@ -1,6 +1,23 @@
 import { useEffect, useState } from "react";
-import { Clock, User, Plus, X, CheckSquare, Pencil, ArrowUp, ArrowDown } from "lucide-react";
+import { Clock, User, Plus, X, CheckSquare, Pencil, GripVertical } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 import type { RecurringTask } from "@/types/crew";
 
 interface CrewRecurringTasksProps {
@@ -16,7 +34,7 @@ interface CrewRecurringTasksProps {
   onUpdate: (taskId: string, patch: Partial<RecurringTask>) => void;
   onToggle: (taskId: string) => void;
   onDelete: (taskId: string) => void;
-  onReorder: (taskId: string, direction: "up" | "down") => void;
+  onReorderAll: (orderedIds: string[]) => void;
 }
 
 const priorityDot: Record<string, string> = {
@@ -31,7 +49,7 @@ const freqLabel: Record<string, string> = {
   monthly: "Mensual",
 };
 
-export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete, onReorder }: CrewRecurringTasksProps) {
+export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete, onReorderAll }: CrewRecurringTasksProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringTask | null>(null);
 
@@ -43,6 +61,21 @@ export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete,
   const openAdd = () => {
     setEditing(null);
     setSheetOpen(true);
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = tasks.findIndex((t) => t.id === active.id);
+    const newIndex = tasks.findIndex((t) => t.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const reordered = arrayMove(tasks, oldIndex, newIndex);
+    onReorderAll(reordered.map((t) => t.id));
   };
 
   if (tasks.length === 0 && !sheetOpen) {
@@ -69,66 +102,21 @@ export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete,
 
   return (
     <div className="space-y-4">
-      <div className="space-y-3">
-        {tasks.map((t, idx) => (
-          <div key={t.id} className="kpi-card flex items-center gap-3">
-            {/* Reorder controls */}
-            <div className="flex flex-col gap-0.5 shrink-0">
-              <button
-                onClick={() => onReorder(t.id, "up")}
-                disabled={idx === 0}
-                className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                aria-label="Subir"
-              >
-                <ArrowUp className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={() => onReorder(t.id, "down")}
-                disabled={idx === tasks.length - 1}
-                className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                aria-label="Bajar"
-              >
-                <ArrowDown className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            {/* Priority dot */}
-            <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${priorityDot[t.priority] ?? priorityDot.low}`} />
-
-            {/* Info */}
-            <div className="flex-1 min-w-0 space-y-0.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-semibold text-sm">{t.name}</p>
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0">{freqLabel[t.frequency]}</Badge>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t.day} · {t.time}</span>
-                {t.area && <span>{t.area}</span>}
-                {t.responsible && <span className="flex items-center gap-1"><User className="h-3 w-3" />{t.responsible}</span>}
-              </div>
-            </div>
-
-            {/* Toggle + edit + delete */}
-            <div className="flex items-center gap-2 shrink-0">
-              <Switch checked={t.active} onCheckedChange={() => onToggle(t.id)} />
-              <button
-                onClick={() => openEdit(t)}
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                aria-label="Editar"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => onDelete(t.id)}
-                className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                aria-label="Eliminar"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-3">
+            {tasks.map((t) => (
+              <SortableTaskItem
+                key={t.id}
+                task={t}
+                onToggle={onToggle}
+                onDelete={onDelete}
+                onEdit={openEdit}
+              />
+            ))}
           </div>
-        ))}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       <Button variant="outline" size="sm" onClick={openAdd}>
         <Plus className="h-4 w-4 mr-1" />Agregar tarea
@@ -141,6 +129,83 @@ export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete,
         onSaveNew={onAdd}
         onSaveEdit={onUpdate}
       />
+    </div>
+  );
+}
+
+function SortableTaskItem({
+  task: t,
+  onToggle,
+  onDelete,
+  onEdit,
+}: {
+  task: RecurringTask;
+  onToggle: (id: string) => void;
+  onDelete: (id: string) => void;
+  onEdit: (t: RecurringTask) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: t.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "kpi-card flex items-center gap-3 transition-shadow",
+        isDragging && "shadow-lg ring-2 ring-primary/40 opacity-90",
+      )}
+    >
+      {/* Drag handle */}
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="shrink-0 p-1 -ml-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-grab active:cursor-grabbing touch-none"
+        aria-label="Arrastrar para reordenar"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+
+      {/* Priority dot */}
+      <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${priorityDot[t.priority] ?? priorityDot.low}`} />
+
+      {/* Info */}
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-semibold text-sm">{t.name}</p>
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0">{freqLabel[t.frequency]}</Badge>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t.day} · {t.time}</span>
+          {t.area && <span>{t.area}</span>}
+          {t.responsible && <span className="flex items-center gap-1"><User className="h-3 w-3" />{t.responsible}</span>}
+        </div>
+      </div>
+
+      {/* Toggle + edit + delete */}
+      <div className="flex items-center gap-2 shrink-0">
+        <Switch checked={t.active} onCheckedChange={() => onToggle(t.id)} />
+        <button
+          onClick={() => onEdit(t)}
+          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          aria-label="Editar"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => onDelete(t.id)}
+          className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          aria-label="Eliminar"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }

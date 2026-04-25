@@ -42,7 +42,8 @@ export default function CrewProfile() {
   const navigate = useNavigate();
   const {
     employees, loading, updateEmployee, deleteEmployee, changeStatus,
-    addRecurringTask, updateRecurringTask, toggleRecurringTask, deleteRecurringTask, reorderRecurringTask,
+    addRecurringTask, updateRecurringTask, toggleRecurringTask, deleteRecurringTask,
+    setRecurringTasksOrder,
   } = useCrewData();
 
   const employee = employees.find((e) => e.id === id);
@@ -184,9 +185,9 @@ export default function CrewProfile() {
     }
   };
 
-  const handleReorderTask = async (taskId: string, direction: "up" | "down") => {
+  const handleReorderTasks = async (orderedIds: string[]) => {
     try {
-      await reorderRecurringTask(employee.id, taskId, direction);
+      await setRecurringTasksOrder(orderedIds);
     } catch (err: any) {
       toast.error(err.message ?? "Error al reordenar");
     }
@@ -288,7 +289,7 @@ export default function CrewProfile() {
             onUpdate={handleUpdateTask}
             onToggle={handleToggleTask}
             onDelete={handleDeleteTask}
-            onReorder={handleReorderTask}
+            onReorderAll={handleReorderTasks}
           />
         </TabsContent>
 

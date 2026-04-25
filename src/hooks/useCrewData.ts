@@ -218,9 +218,33 @@ export function useCrewData() {
     await fetchEmployees();
   }, [employees, fetchEmployees]);
 
+  const setRecurringTasksOrder = useCallback(async (orderedIds: string[]) => {
+    // Optimistic local update
+    setEmployees((prev) => prev.map((e) => {
+      const ids = new Set(e.recurring_tasks.map((t) => t.id));
+      if (!orderedIds.some((id) => ids.has(id))) return e;
+      const byId = new Map(e.recurring_tasks.map((t) => [t.id, t]));
+      const reordered = orderedIds
+        .map((id, idx) => {
+          const t = byId.get(id);
+          return t ? { ...t, sort_order: idx } : null;
+        })
+        .filter(Boolean) as RecurringTask[];
+      return { ...e, recurring_tasks: reordered };
+    }));
+
+    const updates = await Promise.all(
+      orderedIds.map((id, idx) =>
+        supabase.from("recurring_tasks").update({ sort_order: idx } as any).eq("id", id),
+      ),
+    );
+    for (const u of updates) if (u.error) throw u.error;
+  }, []);
+
   return {
     employees, loading, error, refetch: fetchEmployees,
     addEmployee, updateEmployee, deleteEmployee, changeStatus,
-    addRecurringTask, updateRecurringTask, toggleRecurringTask, deleteRecurringTask, reorderRecurringTask,
+    addRecurringTask, updateRecurringTask, toggleRecurringTask, deleteRecurringTask,
+    reorderRecurringTask, setRecurringTasksOrder,
   };
 }
