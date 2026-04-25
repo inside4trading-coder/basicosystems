@@ -169,39 +169,60 @@ export function PedidosDashboard() {
     completado: false,
   });
 
+  const [syncing, setSyncing] = useState(false);
+
   const { from, to } = useMemo(() => periodBounds(period), [period]);
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    const effectiveFrom = from < CUTOFF ? CUTOFF : from;
+    const all: OrderRow[] = [];
+    const PAGE = 1000;
+    let offset = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("order_id, order_status, order_date, order_datetime, total_amount, total_amount_usd, exchange_rate, order_currency")
+        .gte("order_date", effectiveFrom)
+        .lte("order_date", to)
+        .order("order_date", { ascending: false })
+        .range(offset, offset + PAGE - 1);
+      if (error) break;
+      const chunk = data || [];
+      all.push(...(chunk as OrderRow[]));
+      if (chunk.length < PAGE) break;
+      offset += PAGE;
+    }
+    setOrders(all);
+    setLoading(false);
+  }, [from, to]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true);
-      // Always enforce 2026+ cutoff regardless of period
-      const effectiveFrom = from < CUTOFF ? CUTOFF : from;
-      const all: OrderRow[] = [];
-      const PAGE = 1000;
-      let offset = 0;
-      // paginate to bypass the 1000-row limit
-      while (true) {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("order_id, order_status, order_date, order_datetime, total_amount, total_amount_usd, exchange_rate, order_currency")
-          .gte("order_date", effectiveFrom)
-          .lte("order_date", to)
-          .order("order_date", { ascending: false })
-          .range(offset, offset + PAGE - 1);
-        if (error) break;
-        const chunk = data || [];
-        all.push(...(chunk as OrderRow[]));
-        if (chunk.length < PAGE) break;
-        offset += PAGE;
-      }
-      if (!cancelled) {
-        setOrders(all);
-        setLoading(false);
-      }
+      await fetchOrders();
+      if (cancelled) return;
     })();
     return () => { cancelled = true; };
-  }, [from, to]);
+  }, [fetchOrders]);
+
+  const handleResync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    const t = toast.loading("Sincronizando pedidos con WooCommerce…");
+    try {
+      const { error } = await supabase.functions.invoke("woo-sync", {
+        body: { days: 60 },
+      });
+      if (error) throw error;
+      toast.success("Sincronización completa. Refrescando…", { id: t });
+      await fetchOrders();
+    } catch (e: any) {
+      toast.error(`Error al sincronizar: ${e?.message || "desconocido"}`, { id: t });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const toUsd = (o: OrderRow) => {
     const usd = Number(o.total_amount_usd ?? 0);
