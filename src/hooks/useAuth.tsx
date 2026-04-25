@@ -34,6 +34,11 @@ export function canAccessRoute(role: ProfileRole | null, path: string): boolean 
   return allowed.some((r) => path === r || path.startsWith(r + "/"));
 }
 
+export function defaultRouteForRole(role: ProfileRole | null): string {
+  if (!role) return "/login";
+  return ROLE_ROUTES[role]?.[0] || "/login";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
