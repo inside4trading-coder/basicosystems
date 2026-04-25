@@ -1003,6 +1003,7 @@ export type Database = {
           name: string
           priority: string
           responsible: string | null
+          sort_order: number
           time: string | null
         }
         Insert: {
@@ -1016,6 +1017,7 @@ export type Database = {
           name: string
           priority?: string
           responsible?: string | null
+          sort_order?: number
           time?: string | null
         }
         Update: {
@@ -1029,6 +1031,7 @@ export type Database = {
           name?: string
           priority?: string
           responsible?: string | null
+          sort_order?: number
           time?: string | null
         }
         Relationships: [
