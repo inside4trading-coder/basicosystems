@@ -26,6 +26,8 @@ export interface DashboardData {
   transactionsAnalyzed: number;
   hourlyDistribution: { hour: number; count: number }[];
   categoryBreakdown: { category: string; revenue: number; quantity: number }[];
+  sizeBreakdown: { size: string; quantity: number; pct: number }[];
+  totalSizedItems: number;
 }
 
 function getDateRange(period: Period, customRange?: { start: Date; end: Date }): { start: Date; end: Date } {
@@ -263,6 +265,47 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         .sort((a, b) => b.quantity - a.quantity)
         .slice(0, 10);
 
+      // Size breakdown — normalize variant size labels (Talla M / m / M -> M)
+      const normalizeSize = (raw: string | null | undefined): string | null => {
+        if (!raw) return null;
+        let s = String(raw).trim();
+        if (!s) return null;
+        // strip "Talla " prefix (case-insensitive)
+        s = s.replace(/^talla\s+/i, "").trim();
+        if (!s) return null;
+        // letter sizes -> uppercase, numeric sizes stay as-is
+        if (/^[a-zA-Z]+$/.test(s)) s = s.toUpperCase();
+        return s;
+      };
+      const sizeMap: Record<string, number> = {};
+      let totalSizedItems = 0;
+      for (const item of items) {
+        if (!paidIds.has(item.order_id)) continue;
+        const norm = normalizeSize((item as any).size);
+        if (!norm) continue;
+        const qty = item.quantity || 0;
+        sizeMap[norm] = (sizeMap[norm] || 0) + qty;
+        totalSizedItems += qty;
+      }
+      // Sort: letter sizes (XS,S,M,L,XL,XXL) in canonical order then numerics ascending
+      const LETTER_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "U"];
+      const sizeBreakdown = Object.entries(sizeMap)
+        .map(([size, quantity]) => ({
+          size,
+          quantity,
+          pct: totalSizedItems > 0 ? Math.round((quantity / totalSizedItems) * 1000) / 10 : 0,
+        }))
+        .sort((a, b) => {
+          const ai = LETTER_ORDER.indexOf(a.size);
+          const bi = LETTER_ORDER.indexOf(b.size);
+          if (ai >= 0 && bi >= 0) return ai - bi;
+          if (ai >= 0) return -1;
+          if (bi >= 0) return 1;
+          const an = Number(a.size), bn = Number(b.size);
+          if (!isNaN(an) && !isNaN(bn)) return an - bn;
+          return b.quantity - a.quantity;
+        });
+
       setData({
         kpis: {
           revenue: { value: revenue, change: pct(revenue, prevRevenue) },
@@ -280,6 +323,8 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         transactionsAnalyzed,
         hourlyDistribution,
         categoryBreakdown,
+        sizeBreakdown,
+        totalSizedItems,
       });
     } catch (e: any) {
       setError(e.message || "Error al cargar datos");
