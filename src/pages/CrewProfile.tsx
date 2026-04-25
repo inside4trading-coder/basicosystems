@@ -282,7 +282,14 @@ export default function CrewProfile() {
         </TabsContent>
 
         <TabsContent value="tasks">
-          <CrewRecurringTasks tasks={employee.recurring_tasks} onAdd={handleAddTask} onToggle={handleToggleTask} onDelete={handleDeleteTask} />
+          <CrewRecurringTasks
+            tasks={employee.recurring_tasks}
+            onAdd={handleAddTask}
+            onUpdate={handleUpdateTask}
+            onToggle={handleToggleTask}
+            onDelete={handleDeleteTask}
+            onReorder={handleReorderTask}
+          />
         </TabsContent>
 
         <TabsContent value="incidents">
