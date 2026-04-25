@@ -395,6 +395,68 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+
+          {/* Row 4: Sizes breakdown (variantes de tallas) */}
+          <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.65s" }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Top tallas vendidas</h3>
+              <span className="text-xs text-muted-foreground">
+                Items con talla: <span className="font-bold text-foreground">{data.totalSizedItems}</span>
+              </span>
+            </div>
+            {data.sizeBreakdown.length > 0 ? (
+              <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+                <div className="w-full md:w-1/2 h-[260px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={data.sizeBreakdown}
+                        dataKey="quantity"
+                        nameKey="size"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={95}
+                        strokeWidth={2}
+                        label={(e: any) => `${e.size} ${e.pct}%`}
+                        labelLine={false}
+                      >
+                        {data.sizeBreakdown.map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(v: number, _name: string, entry: any) => [`${v} unid. (${entry.payload.pct}%)`, `Talla ${entry.payload.size}`]}
+                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex-1 space-y-2">
+                  {data.sizeBreakdown.map((s, i) => (
+                    <div key={s.size}>
+                      <div className="flex items-center gap-2 text-xs mb-1">
+                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                        <span className="font-bold tracking-wide">Talla {s.size}</span>
+                        <span className="ml-auto text-muted-foreground tabular-nums">
+                          {s.quantity} <span className="font-bold text-foreground">({s.pct}%)</span>
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden ml-5">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${s.pct}%`, backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
+                No hay tallas registradas en los items del período
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
