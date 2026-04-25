@@ -10,6 +10,7 @@ import {
 import { RRPPConfigSection } from "@/components/rrpp/RRPPConfigSection";
 import { AdminConfigSection } from "@/components/admin/AdminConfigSection";
 import { UserRolesPanel } from "@/components/configuracion/UserRolesPanel";
+import { RolePermissionsPanel } from "@/components/configuracion/RolePermissionsPanel";
 
 
 const integrations = [
