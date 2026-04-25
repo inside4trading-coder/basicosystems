@@ -1,10 +1,12 @@
-import { Search, Loader2, ChevronLeft, ChevronRight, Filter, ChevronDown, ChevronUp, ExternalLink, LayoutDashboard, List } from "lucide-react";
+import { Search, Loader2, ChevronLeft, ChevronRight, Filter, ChevronDown, ChevronUp, ExternalLink, LayoutDashboard, List, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useState, useEffect, useCallback } from "react";
 import { OrderExpandedDetails } from "@/components/pedidos/OrderExpandedDetails";
 import { supabase } from "@/integrations/supabase/client";
 import { isQuickAccess } from "@/config/orderStatuses";
 import { PedidosDashboard } from "@/components/pedidos/PedidosDashboard";
+import { toast } from "sonner";
 
 const STATUS_OPTIONS_RAW = [
   { value: "any", label: "Todos" },
@@ -72,6 +74,47 @@ export default function Pedidos() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
   const [orderItems, setOrderItems] = useState<Record<number, any[]>>({});
+  const [syncing, setSyncing] = useState(false);
+  const [dashboardKey, setDashboardKey] = useState(0);
+
+  const handleSync = async (totalDays = 7) => {
+    setSyncing(true);
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const batchSize = 7;
+      const batches: number[] = totalDays <= 10 ? [totalDays] : [];
+      if (totalDays > 10) {
+        for (let d = totalDays; d > 0; d -= batchSize) batches.push(Math.min(d, batchSize));
+      }
+      let totalSynced = { orders: 0, items: 0, payments: 0 };
+      for (let i = 0; i < batches.length; i++) {
+        const days = batches[i];
+        const offsetDays = totalDays > 10 ? totalDays - (i * batchSize) : days;
+        const sinceDays = totalDays > 10 ? offsetDays : days;
+        toast.info(`Sincronizando lote ${i + 1}/${batches.length}...`);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 300000);
+        const res = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/woo-sync?days=${sinceDays}`,
+          { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey }, signal: controller.signal }
+        );
+        clearTimeout(timeout);
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        totalSynced.orders += json.synced?.orders || 0;
+        totalSynced.items += json.synced?.items || 0;
+        totalSynced.payments += json.synced?.payments || 0;
+      }
+      toast.success(`Sincronización completada: ${totalSynced.orders} pedidos, ${totalSynced.items} items, ${totalSynced.payments} pagos`);
+      setDashboardKey((k) => k + 1);
+    } catch (e: any) {
+      if (e.name === "AbortError") toast.error("La sincronización tardó demasiado. Intenta con un período más corto.");
+      else toast.error(e.message || "Error al sincronizar");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 400);
@@ -136,12 +179,22 @@ export default function Pedidos() {
           <h2 className="text-2xl font-black tracking-tight">Pedidos</h2>
           {view === "list" && !loading && <p className="text-sm text-muted-foreground mt-1">{total} pedidos</p>}
         </div>
-        {view === "list" && (
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar nº pedido o email…" className="pl-9 bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="flex items-center">
+            <Button variant="destructive" size="sm" onClick={() => handleSync(1)} disabled={syncing} className="gap-2 rounded-r-none">
+              <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Sincronizando…" : "Sincronizar"}
+            </Button>
+            <Button variant="destructive" size="sm" onClick={() => handleSync(7)} disabled={syncing} className="rounded-none border-l-0 px-2 text-xs">7d</Button>
+            <Button variant="destructive" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="rounded-l-none border-l-0 px-2 text-xs">30d</Button>
           </div>
-        )}
+          {view === "list" && (
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar nº pedido o email…" className="pl-9 bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* View tabs */}
@@ -166,7 +219,7 @@ export default function Pedidos() {
         </button>
       </div>
 
-      {view === "dashboard" && <PedidosDashboard />}
+      {view === "dashboard" && <PedidosDashboard key={dashboardKey} />}
 
       {view === "list" && (
         <>
