@@ -139,7 +139,8 @@ async function zadarmaRequest(
   apiMethod: string,
   params: Record<string, string>,
   key: string,
-  secret: string
+  secret: string,
+  retries = 3,
 ) {
   const method = `/v1/${apiMethod}/`;
   const paramsStr = httpBuildQuery(params);
@@ -150,18 +151,23 @@ async function zadarmaRequest(
 
   const url = `https://api.zadarma.com${method}?${paramsStr}`;
 
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `${key}:${signature}`,
-    },
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Zadarma API error ${res.status}: ${text}`);
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(url, { headers: { Authorization: `${key}:${signature}` } });
+    if (res.status === 429 && attempt < retries) {
+      const wait = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s
+      console.warn(`Zadarma 429 on ${apiMethod}, retrying in ${wait}ms (attempt ${attempt + 1}/${retries})`);
+      await new Promise((r) => setTimeout(r, wait));
+      continue;
+    }
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Zadarma API error ${res.status}: ${text}`);
+    }
+    return res.json();
   }
-  return res.json();
+  throw new Error(`Zadarma API error: exhausted retries for ${apiMethod}`);
 }
+
 
 function mapStatus(disposition: string | undefined, seconds: number): string {
   if (!disposition) return seconds > 0 ? "answered" : "no_answer";
