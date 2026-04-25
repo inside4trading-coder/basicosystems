@@ -74,6 +74,47 @@ export default function Pedidos() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
   const [orderItems, setOrderItems] = useState<Record<number, any[]>>({});
+  const [syncing, setSyncing] = useState(false);
+  const [dashboardKey, setDashboardKey] = useState(0);
+
+  const handleSync = async (totalDays = 7) => {
+    setSyncing(true);
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const batchSize = 7;
+      const batches: number[] = totalDays <= 10 ? [totalDays] : [];
+      if (totalDays > 10) {
+        for (let d = totalDays; d > 0; d -= batchSize) batches.push(Math.min(d, batchSize));
+      }
+      let totalSynced = { orders: 0, items: 0, payments: 0 };
+      for (let i = 0; i < batches.length; i++) {
+        const days = batches[i];
+        const offsetDays = totalDays > 10 ? totalDays - (i * batchSize) : days;
+        const sinceDays = totalDays > 10 ? offsetDays : days;
+        toast.info(`Sincronizando lote ${i + 1}/${batches.length}...`);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 300000);
+        const res = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/woo-sync?days=${sinceDays}`,
+          { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey }, signal: controller.signal }
+        );
+        clearTimeout(timeout);
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        totalSynced.orders += json.synced?.orders || 0;
+        totalSynced.items += json.synced?.items || 0;
+        totalSynced.payments += json.synced?.payments || 0;
+      }
+      toast.success(`Sincronización completada: ${totalSynced.orders} pedidos, ${totalSynced.items} items, ${totalSynced.payments} pagos`);
+      setDashboardKey((k) => k + 1);
+    } catch (e: any) {
+      if (e.name === "AbortError") toast.error("La sincronización tardó demasiado. Intenta con un período más corto.");
+      else toast.error(e.message || "Error al sincronizar");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 400);
