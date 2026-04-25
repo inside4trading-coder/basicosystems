@@ -11,6 +11,7 @@ import {
   XCircle,
   Trophy,
   TrendingUp,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -70,7 +71,7 @@ const BUCKETS: {
   hint: string;
   statuses: string[];
   icon: React.ElementType;
-  tone: "warning" | "info" | "success" | "muted" | "error" | "primary";
+  tone: "warning" | "info" | "success" | "muted" | "error" | "primary" | "completed";
 }[] = [
   {
     key: "pago_por_confirmar",
@@ -120,11 +121,11 @@ const BUCKETS: {
   {
     key: "completado",
     label: "Completado",
-    description: "Pedidos exitosamente entregados/finalizados.",
+    description: "Incluye enviados y entregados. Lo logrado.",
     hint: "Lo logrado. Comparativa contra cancelados.",
     statuses: ["completed", "tu-pedido-ha-sido", "pedido-pick-up-re", "recordartorio-de-"],
     icon: Trophy,
-    tone: "primary",
+    tone: "completed",
   },
 ];
 
@@ -135,6 +136,7 @@ const TONE_CLASSES: Record<string, { bg: string; text: string; border: string; r
   muted: { bg: "bg-muted", text: "text-muted-foreground", border: "border-border", ring: "ring-border" },
   error: { bg: "bg-status-error/10", text: "text-status-error", border: "border-status-error/30", ring: "ring-status-error/20" },
   primary: { bg: "bg-primary/10", text: "text-primary", border: "border-primary/30", ring: "ring-primary/20" },
+  completed: { bg: "bg-emerald-700/15", text: "text-emerald-700 dark:text-emerald-500", border: "border-emerald-700/40", ring: "ring-emerald-700/20" },
 };
 
 const fmtUsd = (n: number) =>
@@ -289,17 +291,20 @@ export function PedidosDashboard() {
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Pedidos</div>
               <div className="text-xl font-black tabular-nums mt-0.5">{totalOrders}</div>
             </div>
-            <div className="bg-muted/40 rounded-md p-3 border border-border">
+            <div className="bg-muted/40 rounded-md p-3 border border-border" title="Incluye completados y enviados">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Completados</div>
-              <div className="text-xl font-black tabular-nums mt-0.5 text-status-success">{completed}</div>
+              <div className="text-xl font-black tabular-nums mt-0.5 text-emerald-700 dark:text-emerald-500">{completed}</div>
             </div>
             <div className="bg-muted/40 rounded-md p-3 border border-border">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Cancelados</div>
               <div className="text-xl font-black tabular-nums mt-0.5 text-status-error">{cancelled}</div>
             </div>
-            <div className="bg-muted/40 rounded-md p-3 border border-border">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Tasa éxito</div>
-              <div className="text-xl font-black tabular-nums mt-0.5 text-primary">{successRate.toFixed(1)}%</div>
+            <div
+              className="bg-muted/40 rounded-md p-3 border border-border"
+              title="Sobre pedidos finalizados: completados + enviados vs cancelados/fallidos/reembolsados"
+            >
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Éxito (decididos)</div>
+              <div className="text-xl font-black tabular-nums mt-0.5 text-emerald-700 dark:text-emerald-500">{successRate.toFixed(1)}%</div>
             </div>
           </div>
 
@@ -307,20 +312,20 @@ export function PedidosDashboard() {
           {decided > 0 && (
             <div className="bg-muted/30 rounded-md p-3 border border-border">
               <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                <TrendingUp className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-500" />
                 <span className="text-xs font-bold">Concretado vs Cancelado</span>
                 <span className="ml-auto text-[10px] text-muted-foreground">
-                  {decided} pedidos decididos
+                  {decided} decididos · incluye enviados
                 </span>
               </div>
               <div className="h-2 rounded-full bg-status-error/30 overflow-hidden flex">
                 <div
-                  className="bg-status-success h-full transition-all"
+                  className="bg-emerald-700 dark:bg-emerald-600 h-full transition-all"
                   style={{ width: `${successRate}%` }}
                 />
               </div>
               <div className="flex justify-between mt-1.5 text-[10px] font-semibold">
-                <span className="text-status-success">✓ {successRate.toFixed(1)}% concretado</span>
+                <span className="text-emerald-700 dark:text-emerald-500">✓ {successRate.toFixed(1)}% concretado</span>
                 <span className="text-status-error">✗ {cancelRate.toFixed(1)}% cancelado</span>
               </div>
             </div>
@@ -389,6 +394,7 @@ export function PedidosDashboard() {
                                 <th className="text-left px-2 py-1.5 font-semibold">Estado raw</th>
                                 <th className="text-left px-2 py-1.5 font-semibold">Fecha</th>
                                 <th className="text-right px-2 py-1.5 font-semibold">Total</th>
+                                <th className="w-8 px-2"></th>
                               </tr>
                             </thead>
                             <tbody>
@@ -398,6 +404,17 @@ export function PedidosDashboard() {
                                   <td className="px-2 py-1 text-muted-foreground truncate max-w-[180px]">{o.order_status}</td>
                                   <td className="px-2 py-1 text-muted-foreground">{fmtDate(o.order_date)}</td>
                                   <td className="px-2 py-1 text-right tabular-nums font-semibold">{fmtUsd(toUsd(o))}</td>
+                                  <td className="px-2 py-1 text-right">
+                                    <a
+                                      href={`https://basicoclothes.com/wp-admin/post.php?post=${o.order_id}&action=edit`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title="Abrir en WooCommerce"
+                                      className="inline-flex items-center text-muted-foreground hover:text-primary"
+                                    >
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
