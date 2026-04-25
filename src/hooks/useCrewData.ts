@@ -143,6 +143,15 @@ export function useCrewData() {
 
   // Recurring tasks helpers
   const addRecurringTask = useCallback(async (employeeId: string, task: Omit<RecurringTask, "id">) => {
+    const { data: maxRow } = await supabase
+      .from("recurring_tasks")
+      .select("sort_order")
+      .eq("employee_id", employeeId)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const nextOrder = ((maxRow as any)?.sort_order ?? -1) + 1;
+
     const { error: insertErr } = await supabase.from("recurring_tasks").insert({
       employee_id: employeeId,
       name: task.name,
@@ -153,8 +162,19 @@ export function useCrewData() {
       area: task.area,
       responsible: task.responsible,
       active: task.active,
-    });
+      sort_order: nextOrder,
+    } as any);
     if (insertErr) throw insertErr;
+    await fetchEmployees();
+  }, [fetchEmployees]);
+
+  const updateRecurringTask = useCallback(async (taskId: string, patch: Partial<RecurringTask>) => {
+    const { id, sort_order, ...rest } = patch as any;
+    const { error: upErr } = await supabase
+      .from("recurring_tasks")
+      .update(rest)
+      .eq("id", taskId);
+    if (upErr) throw upErr;
     await fetchEmployees();
   }, [fetchEmployees]);
 
@@ -176,9 +196,31 @@ export function useCrewData() {
     await fetchEmployees();
   }, [fetchEmployees]);
 
+  const reorderRecurringTask = useCallback(async (employeeId: string, taskId: string, direction: "up" | "down") => {
+    const emp = employees.find((e) => e.id === employeeId);
+    if (!emp) return;
+    const list = [...emp.recurring_tasks];
+    const idx = list.findIndex((t) => t.id === taskId);
+    if (idx < 0) return;
+    const swapWith = direction === "up" ? idx - 1 : idx + 1;
+    if (swapWith < 0 || swapWith >= list.length) return;
+
+    const a = list[idx];
+    const b = list[swapWith];
+    const aOrder = a.sort_order ?? idx;
+    const bOrder = b.sort_order ?? swapWith;
+
+    const updates = await Promise.all([
+      supabase.from("recurring_tasks").update({ sort_order: bOrder } as any).eq("id", a.id),
+      supabase.from("recurring_tasks").update({ sort_order: aOrder } as any).eq("id", b.id),
+    ]);
+    for (const u of updates) if (u.error) throw u.error;
+    await fetchEmployees();
+  }, [employees, fetchEmployees]);
+
   return {
     employees, loading, error, refetch: fetchEmployees,
     addEmployee, updateEmployee, deleteEmployee, changeStatus,
-    addRecurringTask, toggleRecurringTask, deleteRecurringTask,
+    addRecurringTask, updateRecurringTask, toggleRecurringTask, deleteRecurringTask, reorderRecurringTask,
   };
 }
