@@ -326,18 +326,6 @@ export function PedidosDashboard() {
               </button>
             ))}
           </div>
-          <button
-            onClick={handleResync}
-            disabled={syncing || loading}
-            title="Re-sincronizar pedidos con WooCommerce (últimos 60 días)"
-            className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full transition-colors border",
-              "bg-card border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-            )}
-          >
-            <RefreshCw className={cn("h-3 w-3", syncing && "animate-spin")} />
-            {syncing ? "Sincronizando…" : "Re-sincronizar"}
-          </button>
         </div>
       </div>
 
