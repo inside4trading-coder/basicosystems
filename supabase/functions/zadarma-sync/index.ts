@@ -211,19 +211,20 @@ Deno.serve(async (req) => {
       version: "2",
     };
 
+    // Serialize calls to avoid Zadarma rate limits (User Limits = 429).
     // 1) PBX details (no cost info in this endpoint)
+    const data = await zadarmaRequest("statistics/pbx", params, zadarmaKey, zadarmaSecret);
+    // small gap before next call
+    await new Promise((r) => setTimeout(r, 400));
     // 2) Account statistics (contains real `cost` per outgoing call)
-    const [data, billing] = await Promise.all([
-      zadarmaRequest("statistics/pbx", params, zadarmaKey, zadarmaSecret),
-      zadarmaRequest("statistics", {
-        start: zadarmaStart,
-        end: zadarmaEnd,
-        format: "json",
-      }, zadarmaKey, zadarmaSecret).catch((err) => {
-        console.warn("statistics (billing) endpoint failed:", err instanceof Error ? err.message : err);
-        return { status: "error", stats: [] };
-      }),
-    ]);
+    const billing = await zadarmaRequest("statistics", {
+      start: zadarmaStart,
+      end: zadarmaEnd,
+      format: "json",
+    }, zadarmaKey, zadarmaSecret).catch((err) => {
+      console.warn("statistics (billing) endpoint failed:", err instanceof Error ? err.message : err);
+      return { status: "error", stats: [] };
+    });
 
     if (data.status !== "success") {
       throw new Error(`Zadarma returned status: ${data.status} - ${JSON.stringify(data)}`);
