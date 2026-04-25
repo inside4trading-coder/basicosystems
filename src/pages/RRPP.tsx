@@ -281,8 +281,6 @@ export default function RRPP() {
         </div>
       )}
 
-      <AddContactSheet open={sheetOpen} onOpenChange={setSheetOpen} onCreated={load} />
-
       {hasFilters && filtered.length > 0 && (
         <div className="text-center">
           <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-foreground">
@@ -290,6 +288,10 @@ export default function RRPP() {
           </button>
         </div>
       )}
+        </TabsContent>
+      </Tabs>
+
+      <AddContactSheet open={sheetOpen} onOpenChange={setSheetOpen} onCreated={load} />
     </div>
   );
 }
