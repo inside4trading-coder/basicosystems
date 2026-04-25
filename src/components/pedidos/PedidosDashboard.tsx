@@ -209,6 +209,14 @@ export function PedidosDashboard() {
     return rate > 0 ? amt / rate : amt;
   };
 
+  // Sanity threshold: ningún producto > $20, ticket realista < $4000.
+  // Pedidos por encima son errores de conversión BS/USD y no se contabilizan en montos.
+  const MAX_REASONABLE_USD = 4000;
+  const safeRevenue = (o: OrderRow) => {
+    const v = toUsd(o);
+    return v > MAX_REASONABLE_USD ? 0 : v;
+  };
+
   const bucketed = useMemo(() => {
     const map: Record<BucketKey, OrderRow[]> = {
       pago_por_confirmar: [],
@@ -227,12 +235,14 @@ export function PedidosDashboard() {
   }, [orders]);
 
   const totalsByBucket = useMemo(() => {
-    const out: Record<BucketKey, { count: number; revenue: number }> = {} as any;
+    const out: Record<BucketKey, { count: number; revenue: number; excluded: number }> = {} as any;
     (Object.keys(bucketed) as BucketKey[]).forEach((k) => {
       const list = bucketed[k];
+      const excluded = list.filter((o) => toUsd(o) > MAX_REASONABLE_USD).length;
       out[k] = {
         count: list.length,
-        revenue: list.reduce((s, o) => s + toUsd(o), 0),
+        revenue: list.reduce((s, o) => s + safeRevenue(o), 0),
+        excluded,
       };
     });
     return out;
