@@ -26,6 +26,8 @@ export interface DashboardData {
   transactionsAnalyzed: number;
   hourlyDistribution: { hour: number; count: number }[];
   categoryBreakdown: { category: string; revenue: number; quantity: number }[];
+  sizeBreakdown: { size: string; quantity: number; pct: number }[];
+  totalSizedItems: number;
 }
 
 function getDateRange(period: Period, customRange?: { start: Date; end: Date }): { start: Date; end: Date } {
