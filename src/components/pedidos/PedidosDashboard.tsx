@@ -70,7 +70,7 @@ const BUCKETS: {
   hint: string;
   statuses: string[];
   icon: React.ElementType;
-  tone: "warning" | "info" | "success" | "muted" | "error" | "primary";
+  tone: "warning" | "info" | "success" | "muted" | "error" | "primary" | "completed";
 }[] = [
   {
     key: "pago_por_confirmar",
