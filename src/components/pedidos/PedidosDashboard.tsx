@@ -394,6 +394,7 @@ export function PedidosDashboard() {
                                 <th className="text-left px-2 py-1.5 font-semibold">Estado raw</th>
                                 <th className="text-left px-2 py-1.5 font-semibold">Fecha</th>
                                 <th className="text-right px-2 py-1.5 font-semibold">Total</th>
+                                <th className="w-8 px-2"></th>
                               </tr>
                             </thead>
                             <tbody>
@@ -403,6 +404,17 @@ export function PedidosDashboard() {
                                   <td className="px-2 py-1 text-muted-foreground truncate max-w-[180px]">{o.order_status}</td>
                                   <td className="px-2 py-1 text-muted-foreground">{fmtDate(o.order_date)}</td>
                                   <td className="px-2 py-1 text-right tabular-nums font-semibold">{fmtUsd(toUsd(o))}</td>
+                                  <td className="px-2 py-1 text-right">
+                                    <a
+                                      href={`https://basicoclothes.com/wp-admin/post.php?post=${o.order_id}&action=edit`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title="Abrir en WooCommerce"
+                                      className="inline-flex items-center text-muted-foreground hover:text-primary"
+                                    >
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
