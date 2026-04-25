@@ -42,7 +42,8 @@ export default function CrewProfile() {
   const navigate = useNavigate();
   const {
     employees, loading, updateEmployee, deleteEmployee, changeStatus,
-    addRecurringTask, updateRecurringTask, toggleRecurringTask, deleteRecurringTask, reorderRecurringTask,
+    addRecurringTask, updateRecurringTask, toggleRecurringTask, deleteRecurringTask,
+    setRecurringTasksOrder,
   } = useCrewData();
 
   const employee = employees.find((e) => e.id === id);
