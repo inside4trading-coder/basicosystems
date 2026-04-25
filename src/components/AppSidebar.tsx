@@ -20,7 +20,7 @@ const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
   { title: "Pedidos", url: "/pedidos", icon: Package },
   { title: "CRM", url: "/crm", icon: Users },
-  { title: "Planning", url: "/planning", icon: ClipboardList },
+  { title: "Planificación", url: "/planning", icon: ClipboardList },
   { title: "Crew", url: "/crew", icon: Users2, adminOnly: true },
   { title: "RRPP", url: "/rrpp", icon: Star, roles: ["admin", "rrpp", "marketing"] },
   { title: "Administración", url: "/administracion", icon: Building2, adminOnly: true },
