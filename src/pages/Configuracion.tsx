@@ -102,31 +102,8 @@ export default function Configuracion() {
     <div className="space-y-6 sm:space-y-8 max-w-4xl">
       <h2 className="text-xl sm:text-2xl font-black tracking-tight">Configuración</h2>
 
-      {/* Users */}
-      <section className="animate-fade-in">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Usuarios del hub</h3>
-          <Button variant="outline" size="sm">
-            <UserPlus className="h-4 w-4 mr-1" /> Invitar usuario
-          </Button>
-        </div>
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
-          {mockUsers.map((user) => (
-            <div key={user.email} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 border-b border-border last:border-0">
-              <div className="min-w-0">
-                <p className="font-bold text-sm truncate">{user.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-              </div>
-              <select defaultValue={user.role}
-                className="text-xs border border-border rounded-md px-2 py-1 bg-background font-semibold w-full sm:w-auto">
-                <option value="admin">Admin Basico</option>
-                <option value="manager">Manager Basico</option>
-                <option value="partner">Partner Basico</option>
-              </select>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Users — gestión real de roles */}
+      <UserRolesPanel />
 
       {/* Integrations */}
       <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
