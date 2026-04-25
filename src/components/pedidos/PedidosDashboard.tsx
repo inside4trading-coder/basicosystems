@@ -148,8 +148,6 @@ export function PedidosDashboard() {
   const [loading, setLoading] = useState(true);
   const [openBuckets, setOpenBuckets] = useState<Record<BucketKey, boolean>>({
     pago_por_confirmar: false,
-    listo_para_envio: false,
-    pago_confirmado: false,
     pendiente: false,
     cancelado: false,
     completado: false,
