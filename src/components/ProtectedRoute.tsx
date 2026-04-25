@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth, canAccessRoute } from "@/hooks/useAuth";
+import { useAuth, canAccessRoute, defaultRouteForRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Mail, ShieldAlert, LogOut } from "lucide-react";
 import basicoLogo from "@/assets/basico-logo.png";
@@ -64,7 +64,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   // Role-based route guard
   if (!canAccessRoute(role, location.pathname)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={defaultRouteForRole(role)} replace />;
   }
 
   return <>{children}</>;

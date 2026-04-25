@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, defaultRouteForRole } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { toast } from "sonner";
@@ -17,14 +17,14 @@ export default function Login() {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { user, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate("/dashboard", { replace: true });
+      navigate(defaultRouteForRole(role), { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, role, authLoading, navigate]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();

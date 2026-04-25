@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const mainItems = [
-  { title: "Resumen de ventas", url: "/dashboard", icon: BarChart3 },
+  { title: "Resumen de ventas", url: "/dashboard", icon: BarChart3, adminOnly: true },
   { title: "Pedidos", url: "/pedidos", icon: Package },
   { title: "Administración", url: "/administracion", icon: Building2, adminOnly: true },
   { title: "Crew", url: "/crew", icon: Users2, adminOnly: true },
@@ -42,7 +42,10 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
   const visibleItems = mainItems.filter(i => {
     if ((i as any).adminOnly && userRole !== "admin") return false;
     if ((i as any).roles && !(i as any).roles.includes(userRole)) return false;
-    if (userRole === "partner") return ["/dashboard", "/planning"].includes(i.url);
+    if (userRole === "partner") return ["/planning"].includes(i.url);
+    if (userRole === "manager") return ["/pedidos", "/crm", "/planning", "/campaigns", "/llamadas"].includes(i.url);
+    if (userRole === "rrpp") return ["/rrpp"].includes(i.url);
+    if (userRole === "marketing") return ["/rrpp", "/campaigns"].includes(i.url);
     return true;
   });
 

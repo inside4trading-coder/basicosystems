@@ -22,16 +22,21 @@ const AuthContext = createContext<AuthContextType>({
 
 const ROLE_ROUTES: Record<ProfileRole, string[]> = {
   admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/crew", "/rrpp", "/campaigns", "/llamadas", "/configuracion", "/administracion"],
-  manager: ["/dashboard", "/pedidos", "/crm", "/planning", "/campaigns", "/llamadas"],
-  partner: ["/dashboard", "/planning"],
-  rrpp: ["/dashboard", "/rrpp"],
-  marketing: ["/dashboard", "/rrpp", "/campaigns"],
+  manager: ["/pedidos", "/crm", "/planning", "/campaigns", "/llamadas"],
+  partner: ["/planning"],
+  rrpp: ["/rrpp"],
+  marketing: ["/rrpp", "/campaigns"],
 };
 
 export function canAccessRoute(role: ProfileRole | null, path: string): boolean {
   if (!role) return false;
   const allowed = ROLE_ROUTES[role] || [];
   return allowed.some((r) => path === r || path.startsWith(r + "/"));
+}
+
+export function defaultRouteForRole(role: ProfileRole | null): string {
+  if (!role) return "/login";
+  return ROLE_ROUTES[role]?.[0] || "/login";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
