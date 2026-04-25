@@ -134,114 +134,156 @@ export default function Pedidos() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black tracking-tight">Pedidos</h2>
-          {!loading && <p className="text-sm text-muted-foreground mt-1">{total} pedidos</p>}
+          {view === "list" && !loading && <p className="text-sm text-muted-foreground mt-1">{total} pedidos</p>}
         </div>
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar nº pedido o email…" className="pl-9 bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
+        {view === "list" && (
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Buscar nº pedido o email…" className="pl-9 bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+        )}
       </div>
 
-      <PedidosDashboard />
-
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-        {STATUS_OPTIONS.map((s) => (
-          <button key={s.value} onClick={() => setStatusFilter(s.value)}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${
-              statusFilter === s.value ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground hover:text-foreground"
-            }`}>
-            {s.label}
-          </button>
-        ))}
+      {/* View tabs */}
+      <div className="inline-flex p-1 bg-muted rounded-lg">
+        <button
+          onClick={() => setView("dashboard")}
+          className={`px-4 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1.5 ${
+            view === "dashboard" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <LayoutDashboard className="h-3.5 w-3.5" />
+          Dashboard
+        </button>
+        <button
+          onClick={() => setView("list")}
+          className={`px-4 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1.5 ${
+            view === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <List className="h-3.5 w-3.5" />
+          Pedidos
+        </button>
       </div>
 
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-3 text-sm text-muted-foreground font-semibold">Cargando pedidos…</span>
-        </div>
-      )}
+      {view === "dashboard" && <PedidosDashboard />}
 
-      {error && !loading && (
-        <div className="bg-status-error/10 border border-status-error/20 rounded-lg p-4">
-          <p className="text-sm font-bold text-status-error">{error}</p>
-          <button onClick={fetchOrders} className="mt-2 text-xs font-semibold text-primary hover:underline">Reintentar</button>
-        </div>
-      )}
-
-      {!loading && !error && (
-        <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  <th className="w-8 px-2"></th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Nº</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Cliente</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Estado</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Pago</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Canal</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.length === 0 ? (
-                  <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">No se encontraron pedidos. Sincroniza primero desde el Dashboard.</td></tr>
-                ) : (
-                  orders.map((o) => (
-                    <>
-                      <tr key={o.order_id} onClick={() => toggleExpand(o.order_id)}
-                        className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors">
-                        <td className="px-2 text-muted-foreground">
-                          {expandedOrder === o.order_id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </td>
-                        <td className="px-4 py-3 font-bold">#{o.order_number}</td>
-                        <td className="px-4 py-3">
-                          <div className="font-semibold text-xs">{o.customer_email || "—"}</div>
-                          {o.billing_state && <div className="text-xs text-muted-foreground">{o.billing_state}</div>}
-                        </td>
-                        <td className="px-4 py-3 font-bold tabular-nums">{fmt(o.total_amount_usd ?? toUsd(o.total_amount, o))}</td>
-                        <td className="px-4 py-3">
-                          <span className={statusClass[o.order_status] || "status-badge-inactive"}>
-                            {statusLabel[o.order_status] || o.order_status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs">{o.payment_method || "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs capitalize">{o.sale_channel || "web"}</td>
-                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell whitespace-nowrap text-xs">{fmtDate(o.order_datetime)}</td>
-                      </tr>
-                      {expandedOrder === o.order_id && (
-                        <tr key={`${o.order_id}-items`} className="bg-muted/20">
-                          <td colSpan={8} className="px-4 py-4">
-                            <OrderExpandedDetails order={o} items={orderItems[o.order_id]} fmt={fmt} toUsd={toUsd} />
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  ))
-                )}
-              </tbody>
-            </table>
+      {view === "list" && (
+        <>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+            {STATUS_OPTIONS.map((s) => (
+              <button key={s.value} onClick={() => setStatusFilter(s.value)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${
+                  statusFilter === s.value ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground hover:text-foreground"
+                }`}>
+                {s.label}
+              </button>
+            ))}
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/30">
-              <span className="text-xs text-muted-foreground">Página {page + 1} de {totalPages}</span>
-              <div className="flex gap-2">
-                <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page <= 0}
-                  className="p-1.5 rounded-md border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
-                  className="p-1.5 rounded-md border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
+          {loading && (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-3 text-sm text-muted-foreground font-semibold">Cargando pedidos…</span>
             </div>
           )}
-        </div>
+
+          {error && !loading && (
+            <div className="bg-status-error/10 border border-status-error/20 rounded-lg p-4">
+              <p className="text-sm font-bold text-status-error">{error}</p>
+              <button onClick={fetchOrders} className="mt-2 text-xs font-semibold text-primary hover:underline">Reintentar</button>
+            </div>
+          )}
+
+          {!loading && !error && (
+            <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/50">
+                      <th className="w-8 px-2"></th>
+                      <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Nº</th>
+                      <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Cliente</th>
+                      <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</th>
+                      <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Estado</th>
+                      <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Pago</th>
+                      <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Canal</th>
+                      <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Fecha</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.length === 0 ? (
+                      <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">No se encontraron pedidos. Sincroniza primero desde el Dashboard.</td></tr>
+                    ) : (
+                      orders.map((o) => (
+                        <>
+                          <tr key={o.order_id} onClick={() => toggleExpand(o.order_id)}
+                            className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors">
+                            <td className="px-2 text-muted-foreground">
+                              {expandedOrder === o.order_id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </td>
+                            <td className="px-4 py-3 font-bold">
+                              <div className="flex items-center gap-1.5">
+                                <span>#{o.order_number}</span>
+                                <a
+                                  href={`https://basicoclothes.com/wp-admin/post.php?post=${o.order_id}&action=edit`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Abrir en WooCommerce"
+                                  className="text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-xs">{o.customer_email || "—"}</div>
+                              {o.billing_state && <div className="text-xs text-muted-foreground">{o.billing_state}</div>}
+                            </td>
+                            <td className="px-4 py-3 font-bold tabular-nums">{fmt(o.total_amount_usd ?? toUsd(o.total_amount, o))}</td>
+                            <td className="px-4 py-3">
+                              <span className={statusClass[o.order_status] || "status-badge-inactive"}>
+                                {statusLabel[o.order_status] || o.order_status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs">{o.payment_method || "—"}</td>
+                            <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs capitalize">{o.sale_channel || "web"}</td>
+                            <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell whitespace-nowrap text-xs">{fmtDate(o.order_datetime)}</td>
+                          </tr>
+                          {expandedOrder === o.order_id && (
+                            <tr key={`${o.order_id}-items`} className="bg-muted/20">
+                              <td colSpan={8} className="px-4 py-4">
+                                <OrderExpandedDetails order={o} items={orderItems[o.order_id]} fmt={fmt} toUsd={toUsd} />
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/30">
+                  <span className="text-xs text-muted-foreground">Página {page + 1} de {totalPages}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page <= 0}
+                      className="p-1.5 rounded-md border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
+                      className="p-1.5 rounded-md border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
