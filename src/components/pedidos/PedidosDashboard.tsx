@@ -291,17 +291,20 @@ export function PedidosDashboard() {
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Pedidos</div>
               <div className="text-xl font-black tabular-nums mt-0.5">{totalOrders}</div>
             </div>
-            <div className="bg-muted/40 rounded-md p-3 border border-border">
+            <div className="bg-muted/40 rounded-md p-3 border border-border" title="Incluye completados y enviados">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Completados</div>
-              <div className="text-xl font-black tabular-nums mt-0.5 text-status-success">{completed}</div>
+              <div className="text-xl font-black tabular-nums mt-0.5 text-emerald-700 dark:text-emerald-500">{completed}</div>
             </div>
             <div className="bg-muted/40 rounded-md p-3 border border-border">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Cancelados</div>
               <div className="text-xl font-black tabular-nums mt-0.5 text-status-error">{cancelled}</div>
             </div>
-            <div className="bg-muted/40 rounded-md p-3 border border-border">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Tasa éxito</div>
-              <div className="text-xl font-black tabular-nums mt-0.5 text-primary">{successRate.toFixed(1)}%</div>
+            <div
+              className="bg-muted/40 rounded-md p-3 border border-border"
+              title="Sobre pedidos finalizados: completados + enviados vs cancelados/fallidos/reembolsados"
+            >
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Éxito (decididos)</div>
+              <div className="text-xl font-black tabular-nums mt-0.5 text-emerald-700 dark:text-emerald-500">{successRate.toFixed(1)}%</div>
             </div>
           </div>
 
