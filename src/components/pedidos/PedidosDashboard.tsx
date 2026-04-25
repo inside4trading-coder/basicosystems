@@ -121,7 +121,7 @@ const BUCKETS: {
   {
     key: "completado",
     label: "Completado",
-    description: "Pedidos exitosamente entregados/finalizados.",
+    description: "Incluye enviados y entregados. Lo logrado.",
     hint: "Lo logrado. Comparativa contra cancelados.",
     statuses: ["completed", "tu-pedido-ha-sido", "pedido-pick-up-re", "recordartorio-de-"],
     icon: Trophy,
