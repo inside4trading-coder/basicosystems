@@ -11,10 +11,12 @@ import basicoLogo from "@/assets/basico-logo.png";
 import bgVideo from "@/assets/aibuilders.mp4";
 
 export default function Login() {
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -32,6 +34,37 @@ export default function Login() {
       if (error) throw error;
     } catch (err: any) {
       toast.error(err.message || "Error de autenticación");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 6) {
+      toast.error("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+      if (error) throw error;
+      toast.success(
+        "Cuenta creada. Verifica tu email para iniciar sesión. Un administrador debe asignarte permisos antes de poder acceder al sistema.",
+        { duration: 8000 }
+      );
+      setMode("login");
+      setPassword("");
+      setFullName("");
+    } catch (err: any) {
+      toast.error(err.message || "No se pudo crear la cuenta");
     } finally {
       setLoading(false);
     }
@@ -100,7 +133,25 @@ export default function Login() {
             </div>
           </div>
 
-          <form onSubmit={handleEmailLogin} className="space-y-5">
+          <form onSubmit={mode === "login" ? handleEmailLogin : handleSignup} className="space-y-5">
+            {mode === "signup" && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName" className="text-xs font-bold uppercase tracking-wider text-white/60">
+                  Nombre completo
+                </Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Tu nombre"
+                  required
+                  maxLength={100}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus-visible:ring-white/30"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-white/60">
                 Email
@@ -139,9 +190,30 @@ export default function Login() {
               className="w-full"
               disabled={loading}
             >
-              {loading ? "Cargando..." : "Iniciar sesión"}
+              {loading
+                ? "Cargando..."
+                : mode === "login"
+                ? "Iniciar sesión"
+                : "Crear cuenta"}
             </Button>
           </form>
+
+          <button
+            type="button"
+            onClick={() => setMode(mode === "login" ? "signup" : "login")}
+            className="w-full text-center text-xs text-white/60 hover:text-white mt-5 transition-colors"
+          >
+            {mode === "login"
+              ? "¿No tienes cuenta? Crear una"
+              : "¿Ya tienes cuenta? Inicia sesión"}
+          </button>
+
+          {mode === "signup" && (
+            <p className="text-center text-[10px] text-white/40 mt-3 leading-relaxed">
+              Tras registrarte deberás verificar tu email. Un administrador
+              debe asignarte permisos antes de poder acceder al sistema.
+            </p>
+          )}
 
 
           <p className="text-center text-xs text-white/40 mt-6">
