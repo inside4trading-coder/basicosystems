@@ -1,21 +1,54 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, ListChecks, Loader2, AlertTriangle, Calendar, Search, Flame, Timer, Sun } from "lucide-react";
+import { ArrowLeft, Clock, ListChecks, Loader2, AlertTriangle, Calendar, Search, Flame, Timer, Sun, ChevronDown } from "lucide-react";
 import { useCrewData } from "@/hooks/useCrewData";
 import { EmployeeAvatar } from "@/components/crew/EmployeeAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { Employee, RecurringTask } from "@/types/crew";
+
+const TZ = "America/Caracas";
+
+interface CaracasParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  weekday: number; // 0 = Sunday … 6 = Saturday
+}
+
+/** Get the current wall-clock parts in Caracas timezone. */
+function caracasParts(d: Date): CaracasParts {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short",
+  });
+  const parts = fmt.formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "0";
+  const wdMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return {
+    year: parseInt(get("year"), 10),
+    month: parseInt(get("month"), 10),
+    day: parseInt(get("day"), 10),
+    hour: parseInt(get("hour"), 10) % 24,
+    minute: parseInt(get("minute"), 10),
+    weekday: wdMap[get("weekday")] ?? 0,
+  };
+}
+
 
 interface TaskWithOwner {
   task: RecurringTask;
   employee: Employee;
-  /** Minutes from "now" to the task time today. Negative = past. null = no time set. */
+  /** Minutes from "now" (Caracas) to the task time today. Negative = past. null = no time set. */
   minutesUntil: number | null;
-  /** Resolved Date for today at the task time. null if no time. */
-  scheduledAt: Date | null;
+  /** Display string "HH:MM" of the task time, or null. */
+  displayTime: string | null;
 }
 
 const dayMap: Record<string, number> = {
@@ -44,36 +77,34 @@ const priorityLabel: Record<string, string> = {
   high: "Alta",
 };
 
-/** Returns true if this recurring task is scheduled for the given date. */
-function taskHappensOn(task: RecurringTask, date: Date): boolean {
+/** Returns true if this recurring task is scheduled for the given Caracas date parts. */
+function taskHappensOn(task: RecurringTask, parts: CaracasParts): boolean {
   if (!task.active) return false;
   if (task.frequency === "daily") return true;
   if (task.frequency === "weekly") {
-    if (!task.day) return true; // assume any day if not specified
+    if (!task.day) return true;
     const wanted = dayMap[task.day.trim().toLowerCase()];
     if (wanted === undefined) return true;
-    return date.getDay() === wanted;
+    return parts.weekday === wanted;
   }
   if (task.frequency === "monthly") {
     if (!task.day) return true;
     const n = parseInt(task.day, 10);
     if (Number.isNaN(n)) return true;
-    return date.getDate() === n;
+    return parts.day === n;
   }
   return false;
 }
 
-/** Parse "HH:MM" → Date set to today (or given date) at that time. Returns null if invalid/empty. */
-function resolveTime(timeStr: string, base: Date): Date | null {
+/** Parse "HH:MM" to {hour, minute} or null. */
+function parseHM(timeStr: string): { hour: number; minute: number } | null {
   if (!timeStr) return null;
   const m = timeStr.match(/^(\d{1,2}):(\d{2})/);
   if (!m) return null;
   const h = parseInt(m[1], 10);
   const min = parseInt(m[2], 10);
   if (h < 0 || h > 23 || min < 0 || min > 59) return null;
-  const d = new Date(base);
-  d.setHours(h, min, 0, 0);
-  return d;
+  return { hour: h, minute: min };
 }
 
 export default function CrewRecurringTasksOverview() {
@@ -91,20 +122,23 @@ export default function CrewRecurringTasksOverview() {
   const [filterArea, setFilterArea] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
 
+  const nowParts = useMemo(() => caracasParts(now), [now]);
+  const nowMinutes = nowParts.hour * 60 + nowParts.minute;
+
   const allTasksToday = useMemo<TaskWithOwner[]>(() => {
     const items: TaskWithOwner[] = [];
     for (const emp of employees) {
       if (emp.status !== "active") continue;
       for (const t of emp.recurring_tasks ?? []) {
-        if (!taskHappensOn(t, now)) continue;
-        const scheduledAt = resolveTime(t.time, now);
-        const minutesUntil = scheduledAt
-          ? Math.round((scheduledAt.getTime() - now.getTime()) / 60000)
+        if (!taskHappensOn(t, nowParts)) continue;
+        const hm = parseHM(t.time);
+        const minutesUntil = hm ? hm.hour * 60 + hm.minute - nowMinutes : null;
+        const displayTime = hm
+          ? `${String(hm.hour).padStart(2, "0")}:${String(hm.minute).padStart(2, "0")}`
           : null;
-        items.push({ task: t, employee: emp, scheduledAt, minutesUntil });
+        items.push({ task: t, employee: emp, minutesUntil, displayTime });
       }
     }
-    // Sort: timed first by time asc, then untimed by name
     items.sort((a, b) => {
       if (a.minutesUntil === null && b.minutesUntil === null) {
         return a.task.name.localeCompare(b.task.name);
@@ -114,7 +148,7 @@ export default function CrewRecurringTasksOverview() {
       return a.minutesUntil - b.minutesUntil;
     });
     return items;
-  }, [employees, now]);
+  }, [employees, nowParts, nowMinutes]);
 
   const uniqueAreas = useMemo(
     () => [...new Set(allTasksToday.map((i) => i.task.area).filter(Boolean))].sort(),
@@ -175,6 +209,13 @@ export default function CrewRecurringTasksOverview() {
     weekday: "long",
     day: "2-digit",
     month: "long",
+    timeZone: TZ,
+  });
+  const nowTimeLabel = now.toLocaleTimeString("es-VE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: TZ,
+    hour12: false,
   });
 
   return (
@@ -192,7 +233,7 @@ export default function CrewRecurringTasksOverview() {
             </h1>
             <p className="text-sm text-muted-foreground mt-1 capitalize flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5" />
-              {todayLabel} · {now.toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" })}
+              {todayLabel} · {nowTimeLabel} <span className="normal-case text-[11px] opacity-70">(Caracas)</span>
             </p>
           </div>
         </div>
@@ -243,17 +284,15 @@ export default function CrewRecurringTasksOverview() {
         subtitle="Lo que arranca en los próximos 60 minutos"
         icon={<Flame className="h-4 w-4 text-[hsl(var(--status-error))]" />}
         items={buckets.nextHour}
-        now={now}
         onOpenEmployee={(id) => navigate(`/crew/${id}`)}
         emptyHint="Sin tareas programadas en la próxima hora."
         accent="error"
       />
       <Section
         title="Próximas 3 horas"
-        subtitle="Entre 1 y 3 horas a partir de ahora"
+        subtitle="Entre 61 minutos y 3 horas a partir de ahora"
         icon={<Timer className="h-4 w-4 text-[hsl(var(--status-warning))]" />}
         items={buckets.next3h}
-        now={now}
         onOpenEmployee={(id) => navigate(`/crew/${id}`)}
         emptyHint="Nada en la ventana de 3 horas."
         accent="warning"
@@ -263,7 +302,6 @@ export default function CrewRecurringTasksOverview() {
         subtitle="Programadas más tarde hoy"
         icon={<Sun className="h-4 w-4 text-primary" />}
         items={buckets.restOfDay}
-        now={now}
         onOpenEmployee={(id) => navigate(`/crew/${id}`)}
         emptyHint="No hay más tareas con horario hoy."
         accent="info"
@@ -274,7 +312,6 @@ export default function CrewRecurringTasksOverview() {
           subtitle="Tareas del día que no tienen hora asignada"
           icon={<Clock className="h-4 w-4 text-muted-foreground" />}
           items={buckets.untimed}
-          now={now}
           onOpenEmployee={(id) => navigate(`/crew/${id}`)}
           emptyHint=""
           accent="muted"
@@ -286,7 +323,6 @@ export default function CrewRecurringTasksOverview() {
           subtitle="Tareas cuya hora prevista ya pasó hoy"
           icon={<Clock className="h-4 w-4 text-muted-foreground" />}
           items={buckets.past}
-          now={now}
           onOpenEmployee={(id) => navigate(`/crew/${id}`)}
           emptyHint=""
           accent="muted"
@@ -318,18 +354,19 @@ function SummaryCard({
 }
 
 function Section({
-  title, subtitle, icon, items, now, onOpenEmployee, emptyHint, accent, dimmed,
+  title, subtitle, icon, items, onOpenEmployee, emptyHint, accent, dimmed,
 }: {
   title: string;
   subtitle: string;
   icon: React.ReactNode;
   items: TaskWithOwner[];
-  now: Date;
   onOpenEmployee: (id: string) => void;
   emptyHint: string;
   accent: "error" | "warning" | "info" | "muted";
   dimmed?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+
   const accentBorder = {
     error: "border-l-[hsl(var(--status-error))]",
     warning: "border-l-[hsl(var(--status-warning))]",
@@ -337,81 +374,105 @@ function Section({
     muted: "border-l-border",
   }[accent];
 
+  const accentCount = {
+    error: "text-[hsl(var(--status-error))]",
+    warning: "text-[hsl(var(--status-warning))]",
+    info: "text-primary",
+    muted: "text-muted-foreground",
+  }[accent];
+
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-bold flex items-center gap-2">
-            {icon}
-            {title}
-            <span className="text-xs font-medium text-muted-foreground">({items.length})</span>
-          </h2>
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
-        </div>
-      </div>
-      {items.length === 0 ? (
-        emptyHint && (
-          <div className="text-xs text-muted-foreground border border-dashed border-border rounded-md py-4 px-3 text-center">
-            {emptyHint}
-          </div>
-        )
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          {items.map(({ task, employee, scheduledAt, minutesUntil }) => (
-            <div
-              key={task.id}
+    <Collapsible open={open} onOpenChange={setOpen} asChild>
+      <section className="space-y-3">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between gap-3 text-left rounded-md hover:bg-muted/40 transition-colors px-2 py-2 -mx-2"
+          >
+            <div className="flex-1 min-w-0">
+              <h2 className="text-sm font-bold flex items-center gap-2">
+                {icon}
+                {title}
+                <span className={cn("text-xs font-bold tabular-nums", accentCount)}>
+                  ({items.length})
+                </span>
+              </h2>
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
+            </div>
+            <ChevronDown
               className={cn(
-                "kpi-card border-l-4 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all",
-                accentBorder,
-                dimmed && "opacity-60",
+                "h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200",
+                open && "rotate-180",
               )}
-              onClick={() => onOpenEmployee(employee.id)}
-            >
-              <div className="flex items-start gap-3">
-                <EmployeeAvatar
-                  photoUrl={employee.photo_url}
-                  firstName={employee.first_name}
-                  lastName={employee.last_name}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold text-sm leading-tight">{task.name}</p>
-                    <TimeChip scheduledAt={scheduledAt} minutesUntil={minutesUntil} now={now} />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {employee.first_name} {employee.last_name} · {employee.position}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-[11px] text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <span className={cn("h-1.5 w-1.5 rounded-full", priorityDot[task.priority])} />
-                      {priorityLabel[task.priority]}
-                    </span>
-                    <span>·</span>
-                    <span>{freqLabel[task.frequency]}</span>
-                    {task.area && (<><span>·</span><span>{task.area}</span></>)}
-                    {task.responsible && (<><span>·</span><span>Resp: {task.responsible}</span></>)}
+            />
+          </button>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent className="data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up overflow-hidden">
+          {items.length === 0 ? (
+            emptyHint && (
+              <div className="text-xs text-muted-foreground border border-dashed border-border rounded-md py-4 px-3 text-center">
+                {emptyHint}
+              </div>
+            )
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {items.map(({ task, employee, displayTime, minutesUntil }) => (
+                <div
+                  key={task.id}
+                  className={cn(
+                    "kpi-card border-l-4 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all",
+                    accentBorder,
+                    dimmed && "opacity-60",
+                  )}
+                  onClick={() => onOpenEmployee(employee.id)}
+                >
+                  <div className="flex items-start gap-3">
+                    <EmployeeAvatar
+                      photoUrl={employee.photo_url}
+                      firstName={employee.first_name}
+                      lastName={employee.last_name}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm leading-tight">{task.name}</p>
+                        <TimeChip displayTime={displayTime} minutesUntil={minutesUntil} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {employee.first_name} {employee.last_name} · {employee.position}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-[11px] text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <span className={cn("h-1.5 w-1.5 rounded-full", priorityDot[task.priority])} />
+                          {priorityLabel[task.priority]}
+                        </span>
+                        <span>·</span>
+                        <span>{freqLabel[task.frequency]}</span>
+                        {task.area && (<><span>·</span><span>{task.area}</span></>)}
+                        {task.responsible && (<><span>·</span><span>Resp: {task.responsible}</span></>)}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-    </section>
+          )}
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
   );
 }
 
 function TimeChip({
-  scheduledAt, minutesUntil, now,
-}: { scheduledAt: Date | null; minutesUntil: number | null; now: Date }) {
-  if (!scheduledAt || minutesUntil === null) {
+  displayTime, minutesUntil,
+}: { displayTime: string | null; minutesUntil: number | null }) {
+  if (!displayTime || minutesUntil === null) {
     return (
       <span className="text-[11px] text-muted-foreground bg-muted rounded-full px-2 py-0.5 whitespace-nowrap">
         sin hora
       </span>
     );
   }
-  const hhmm = scheduledAt.toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" });
   let label: string;
   let cls: string;
   if (minutesUntil < 0) {
@@ -430,7 +491,7 @@ function TimeChip({
   return (
     <span className={cn("text-[11px] font-medium rounded-full px-2 py-0.5 whitespace-nowrap flex items-center gap-1", cls)}>
       <Clock className="h-3 w-3" />
-      {hhmm} · {label}
+      {displayTime} · {label}
     </span>
   );
 }
@@ -442,3 +503,4 @@ function formatRel(minutes: number): string {
   if (m === 0) return `${h} h`;
   return `${h} h ${m} min`;
 }
+

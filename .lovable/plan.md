@@ -1,44 +1,33 @@
-## Problema
+## Cambios en "Tareas recurrentes"
 
-Si configuras un vencimiento el **5 de mayo**, el calendario lo muestra el **4 de mayo**. Es un bug clásico de zona horaria.
+### 1. Zona horaria fija a Caracas (America/Caracas)
 
-## Lógica actual
+Hoy todo se calcula con la hora local del navegador. Lo cambio para que **siempre** se use la hora de Caracas, sin importar dónde esté el usuario.
 
-1. Las obligaciones recurrentes generan fechas con `new Date(year, month, day)` (medianoche local).
-2. Al guardar en BD se serializan con `toISOString().slice(0, 10)` → convierte primero a **UTC**. En Venezuela (UTC-4), la medianoche local del 5 mayo = `2026-05-05T04:00:00Z`, que aún slicea a `"2026-05-05"` ✅.
-3. **Pero** al leer del backend, `AdminCalendar.tsx` hace `new Date("2026-05-05")`. JS interpreta strings `YYYY-MM-DD` como **UTC midnight** → en local UTC-4 = `4 de mayo 20:00`. Por eso aparece un día antes ❌.
-4. El mismo problema potencial existe al generar instancias recurrentes (`generateDueDates`) y al crear instancias únicas (`NewInstanceSheet`), donde un input `<input type="date">` también puede sufrir desfase si se reconvierte vía `Date`.
+- Helper interno `caracasParts(date)` que usa `Intl.DateTimeFormat` con `timeZone: "America/Caracas"` para obtener año/mes/día/hora/minuto/día-de-semana en hora venezolana.
+- `taskHappensOn` recibe esos parts en vez de un `Date` local (afecta lunes/martes/etc. en frecuencia semanal y día del mes en mensual).
+- `minutesUntil` se calcula como `(hora_tarea − hora_actual_caracas)` en minutos.
+- Header muestra fecha y hora con `timeZone: "America/Caracas"` y un sufijo `(Caracas)` para que quede explícito.
+- Las horas guardadas en `task.time` (`"HH:MM"`) se interpretan como hora local de Caracas — que es como ya las introduce el usuario.
 
-## Solución
+### 2. Sin duplicados entre buckets
 
-Tratar `due_date` como **fecha pura (date-only) sin timezone** en todos los puntos:
+Las cuatro bandas son disjuntas y excluyentes:
+- Próxima hora: 0–60 min
+- Próximas 3 h: 61–180 min
+- Resto del día: > 180 min
+- Sin horario / Ya pasaron: como hoy
 
-### 1. `src/types/admin.ts` (o nuevo `src/lib/dateUtils.ts`)
-Añadir helpers:
-- `parseLocalDate(str: "YYYY-MM-DD"): Date` → construye `new Date(y, m-1, d)` (medianoche **local**, no UTC).
-- `formatLocalDate(d: Date): string` → retorna `YYYY-MM-DD` usando getFullYear/getMonth/getDate (sin pasar por UTC).
+(La lógica de buckets ya era disjunta; ajusto el subtítulo de "Próximas 3 horas" a "Entre 1 y 3 horas" para dejarlo claro visualmente.)
 
-### 2. `src/components/admin/AdminCalendar.tsx`
-- Reemplazar `new Date(inst.due_date)` (línea ~53) por `parseLocalDate(inst.due_date)`.
-- Igual en `computeUrgency` de `types/admin.ts` (línea ~93).
+### 3. Secciones colapsables, cerradas por defecto
 
-### 3. `src/hooks/useAdminData.ts` — `generateDueDates`
-- Reemplazar todos los `d.toISOString().slice(0, 10)` (líneas 70 y 85) por `formatLocalDate(d)` para evitar dependencia de offset.
+- Reemplazo el componente `Section` para envolver el contenido en `Collapsible` (shadcn, ya disponible en `@/components/ui/collapsible`).
+- Cada sección: header clickable con ícono + título + contador + chevron animado que rota 180° al abrir.
+- Estado individual con `useState(false)` por sección → todas cerradas al cargar.
+- Los **KPIs de resumen** arriba se mantienen visibles siempre, así de un vistazo ves los conteos sin abrir nada.
+- Las secciones vacías muestran solo el header (sin tarjetas dentro), pero siguen siendo clickables para mostrar el "empty hint".
 
-### 4. `src/components/admin/CreateObligationSheet.tsx`
-- Líneas 92, 116, 145: usar `formatLocalDate(today/d)` en lugar de `toISOString().slice(0,10)`.
+### Archivos a tocar
 
-### 5. `src/components/admin/NewInstanceSheet.tsx`
-- Línea 53: misma sustitución.
-
-### 6. Otros consumidores de `due_date`
-Revisar `AdminListView`, `AdminInstanceSheet`, `AdminKPIs`, `AdminObligationDetail` y reemplazar cualquier `new Date(due_date)` por `parseLocalDate(due_date)` para que el día mostrado coincida exactamente con el guardado.
-
-## Resultado esperado
-
-Si pones vencimiento el 5 de mayo → en el calendario aparece el **5 de mayo**, sin importar la zona horaria del navegador. Los vencimientos recurrentes generados (día 15, etc.) caerán siempre el día exacto configurado.
-
-## Fuera de alcance
-
-- Migración de datos existentes (las fechas ya en BD están correctas como `YYYY-MM-DD`; solo cambia cómo se leen/renderizan).
-- Manejo de timezones por usuario (se asume timezone del navegador como referencia local).
+- `src/pages/CrewRecurringTasksOverview.tsx` (único archivo; sin cambios en DB ni en otros componentes).
