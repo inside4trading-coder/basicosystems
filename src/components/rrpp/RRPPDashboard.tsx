@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Users, UserPlus, Trophy, TrendingUp, Send, Megaphone, Gift, DollarSign,
-  PhoneCall, AlertTriangle, Loader2, Sparkles,
+  PhoneCall, AlertTriangle, Loader2, Sparkles, Target, Pencil, Check, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
