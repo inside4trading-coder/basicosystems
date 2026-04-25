@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const mainItems = [
-  { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
+  { title: "Resumen de ventas", url: "/dashboard", icon: BarChart3 },
   { title: "Pedidos", url: "/pedidos", icon: Package },
   { title: "CRM", url: "/crm", icon: Users },
   { title: "Planificación", url: "/planning", icon: ClipboardList },
