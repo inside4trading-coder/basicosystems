@@ -175,6 +175,160 @@ function MonthlyTrendCard({ data }: { data: { label: string; added: number; conv
   );
 }
 
+// ---------------- Monthly Goals ----------------
+
+interface MonthlyGoals {
+  added: number;
+  activations: number;
+  successful: number;
+}
+
+const DEFAULT_GOALS: MonthlyGoals = { added: 10, activations: 8, successful: 7 };
+const GOALS_STORAGE_KEY = "rrpp_monthly_goals_v1";
+
+function loadGoals(): MonthlyGoals {
+  try {
+    const raw = localStorage.getItem(GOALS_STORAGE_KEY);
+    if (!raw) return DEFAULT_GOALS;
+    const parsed = JSON.parse(raw);
+    return {
+      added: Number(parsed.added) || DEFAULT_GOALS.added,
+      activations: Number(parsed.activations) || DEFAULT_GOALS.activations,
+      successful: Number(parsed.successful) || DEFAULT_GOALS.successful,
+    };
+  } catch {
+    return DEFAULT_GOALS;
+  }
+}
+
+function GoalRow({
+  label,
+  current,
+  goal,
+  accent,
+}: {
+  label: string;
+  current: number;
+  goal: number;
+  accent: "primary" | "warning" | "success";
+}) {
+  const pct = goal > 0 ? Math.min(100, (current / goal) * 100) : 0;
+  const reached = current >= goal && goal > 0;
+  const remaining = Math.max(0, goal - current);
+  const barColor =
+    reached ? "bg-status-success"
+    : accent === "primary" ? "bg-primary"
+    : accent === "warning" ? "bg-status-warning"
+    : "bg-status-success";
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs font-bold">{label}</span>
+        <span className="text-xs tabular-nums font-semibold">
+          <span className={reached ? "text-status-success" : "text-foreground"}>{current}</span>
+          <span className="text-muted-foreground"> / {goal}</span>
+        </span>
+      </div>
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+      </div>
+      <div className="flex items-center justify-between mt-1">
+        <span className="text-[10px] text-muted-foreground">{pct.toFixed(0)}% completado</span>
+        <span className={`text-[10px] font-semibold ${reached ? "text-status-success" : "text-muted-foreground"}`}>
+          {reached ? "✓ Meta alcanzada" : `Faltan ${remaining}`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function MonthlyGoalsCard({
+  current,
+  goals,
+  onSave,
+}: {
+  current: { added: number; activations: number; successful: number };
+  goals: MonthlyGoals;
+  onSave: (g: MonthlyGoals) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<MonthlyGoals>(goals);
+
+  useEffect(() => { setDraft(goals); }, [goals]);
+
+  const monthLabel = new Date().toLocaleDateString("es-VE", { month: "long", year: "numeric" });
+
+  return (
+    <div className="kpi-card">
+      <div className="flex items-start justify-between mb-4 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Target className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-bold text-sm">Metas del mes</h3>
+            <p className="text-[11px] text-muted-foreground capitalize truncate">{monthLabel}</p>
+          </div>
+        </div>
+        {editing ? (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => { onSave(draft); setEditing(false); }}
+              className="p-1.5 rounded-md bg-status-success/10 text-status-success hover:bg-status-success/20"
+              title="Guardar"
+            >
+              <Check className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => { setDraft(goals); setEditing(false); }}
+              className="p-1.5 rounded-md bg-muted text-muted-foreground hover:text-foreground"
+              title="Cancelar"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setEditing(true)}
+            className="p-1.5 rounded-md bg-muted text-muted-foreground hover:text-foreground"
+            title="Editar metas"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="space-y-3">
+          {[
+            { key: "added" as const, label: "Personas agregadas" },
+            { key: "activations" as const, label: "Activaciones (productos enviados)" },
+            { key: "successful" as const, label: "Colaboraciones exitosas" },
+          ].map((f) => (
+            <div key={f.key}>
+              <label className="text-[11px] font-semibold text-muted-foreground block mb-1">{f.label}</label>
+              <input
+                type="number"
+                min={0}
+                value={draft[f.key]}
+                onChange={(e) => setDraft({ ...draft, [f.key]: Math.max(0, Number(e.target.value) || 0) })}
+                className="w-full px-3 py-1.5 rounded-md border border-border bg-background text-sm"
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <GoalRow label="Personas agregadas" current={current.added} goal={goals.added} accent="primary" />
+          <GoalRow label="Activaciones" current={current.activations} goal={goals.activations} accent="warning" />
+          <GoalRow label="Colaboraciones exitosas" current={current.successful} goal={goals.successful} accent="success" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function RRPPDashboard() {
   const [range, setRange] = useState<RangeKey>("this_month");
   const [contacts, setContacts] = useState<Contact[]>([]);
