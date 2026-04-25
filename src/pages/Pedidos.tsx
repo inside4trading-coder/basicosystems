@@ -219,7 +219,7 @@ export default function Pedidos() {
         </button>
       </div>
 
-      {view === "dashboard" && <PedidosDashboard />}
+      {view === "dashboard" && <PedidosDashboard key={dashboardKey} />}
 
       {view === "list" && (
         <>
