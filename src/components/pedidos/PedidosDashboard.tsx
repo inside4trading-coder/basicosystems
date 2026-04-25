@@ -248,9 +248,13 @@ export function PedidosDashboard() {
     totalsByBucket.pago_confirmado.count +
     totalsByBucket.listo_para_envio.count;
   const cancelled = totalsByBucket.cancelado.count;
-  const decided = completed + cancelled;
+  // En espera = pedidos sin acción del cliente (on-hold, pedido-recibido-p)
+  const WAITING_STATUSES = new Set(["on-hold", "pedido-recibido-p"]);
+  const waiting = orders.filter((o) => WAITING_STATUSES.has(o.order_status || "")).length;
+  const decided = completed + cancelled + waiting;
   const successRate = decided > 0 ? (completed / decided) * 100 : 0;
   const cancelRate = decided > 0 ? (cancelled / decided) * 100 : 0;
+  const waitingRate = decided > 0 ? (waiting / decided) * 100 : 0;
 
   const fmtDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short" }) : "—";
