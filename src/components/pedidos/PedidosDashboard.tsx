@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -12,6 +13,8 @@ import {
   Trophy,
   TrendingUp,
   ExternalLink,
+  RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -166,39 +169,60 @@ export function PedidosDashboard() {
     completado: false,
   });
 
+  const [syncing, setSyncing] = useState(false);
+
   const { from, to } = useMemo(() => periodBounds(period), [period]);
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    const effectiveFrom = from < CUTOFF ? CUTOFF : from;
+    const all: OrderRow[] = [];
+    const PAGE = 1000;
+    let offset = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("order_id, order_status, order_date, order_datetime, total_amount, total_amount_usd, exchange_rate, order_currency")
+        .gte("order_date", effectiveFrom)
+        .lte("order_date", to)
+        .order("order_date", { ascending: false })
+        .range(offset, offset + PAGE - 1);
+      if (error) break;
+      const chunk = data || [];
+      all.push(...(chunk as OrderRow[]));
+      if (chunk.length < PAGE) break;
+      offset += PAGE;
+    }
+    setOrders(all);
+    setLoading(false);
+  }, [from, to]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true);
-      // Always enforce 2026+ cutoff regardless of period
-      const effectiveFrom = from < CUTOFF ? CUTOFF : from;
-      const all: OrderRow[] = [];
-      const PAGE = 1000;
-      let offset = 0;
-      // paginate to bypass the 1000-row limit
-      while (true) {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("order_id, order_status, order_date, order_datetime, total_amount, total_amount_usd, exchange_rate, order_currency")
-          .gte("order_date", effectiveFrom)
-          .lte("order_date", to)
-          .order("order_date", { ascending: false })
-          .range(offset, offset + PAGE - 1);
-        if (error) break;
-        const chunk = data || [];
-        all.push(...(chunk as OrderRow[]));
-        if (chunk.length < PAGE) break;
-        offset += PAGE;
-      }
-      if (!cancelled) {
-        setOrders(all);
-        setLoading(false);
-      }
+      await fetchOrders();
+      if (cancelled) return;
     })();
     return () => { cancelled = true; };
-  }, [from, to]);
+  }, [fetchOrders]);
+
+  const handleResync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    const t = toast.loading("Sincronizando pedidos con WooCommerce…");
+    try {
+      const { error } = await supabase.functions.invoke("woo-sync", {
+        body: { days: 60 },
+      });
+      if (error) throw error;
+      toast.success("Sincronización completa. Refrescando…", { id: t });
+      await fetchOrders();
+    } catch (e: any) {
+      toast.error(`Error al sincronizar: ${e?.message || "desconocido"}`, { id: t });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const toUsd = (o: OrderRow) => {
     const usd = Number(o.total_amount_usd ?? 0);
@@ -266,6 +290,12 @@ export function PedidosDashboard() {
   const cancelRate = decided > 0 ? (cancelled / decided) * 100 : 0;
   const waitingRate = decided > 0 ? (waiting / decided) * 100 : 0;
 
+  // Pedidos excluidos del cálculo de monto por superar el threshold (errores BS/USD)
+  const excludedOrders = useMemo(
+    () => orders.filter((o) => toUsd(o) > MAX_REASONABLE_USD),
+    [orders]
+  );
+
   const fmtDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short" }) : "—";
 
@@ -279,23 +309,94 @@ export function PedidosDashboard() {
             Conteo desde <span className="font-semibold">2026</span> en adelante.
           </p>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {PERIOD_OPTIONS.map((p) => (
-            <button
-              key={p.value}
-              onClick={() => setPeriod(p.value)}
-              className={cn(
-                "px-2.5 py-1 text-xs font-semibold rounded-full transition-colors",
-                period === p.value
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-wrap gap-1.5">
+            {PERIOD_OPTIONS.map((p) => (
+              <button
+                key={p.value}
+                onClick={() => setPeriod(p.value)}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-semibold rounded-full transition-colors",
+                  period === p.value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={handleResync}
+            disabled={syncing || loading}
+            title="Re-sincronizar pedidos con WooCommerce (últimos 60 días)"
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full transition-colors border",
+              "bg-card border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            )}
+          >
+            <RefreshCw className={cn("h-3 w-3", syncing && "animate-spin")} />
+            {syncing ? "Sincronizando…" : "Re-sincronizar"}
+          </button>
         </div>
       </div>
+
+      {/* Aviso global de pedidos excluidos por monto anormal */}
+      {!loading && excludedOrders.length > 0 && (
+        <div className="rounded-md border border-status-warning/40 bg-status-warning/10 p-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-status-warning shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-bold text-status-warning">
+                {excludedOrders.length} pedido{excludedOrders.length !== 1 ? "s" : ""} excluido{excludedOrders.length !== 1 ? "s" : ""} del monto en $
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Superan ${MAX_REASONABLE_USD.toLocaleString()} USD — probable error de conversión BS/USD.
+                Siguen contando como pedidos pero no se suman a los montos.
+              </p>
+              <details className="mt-1.5">
+                <summary className="text-[10px] font-semibold text-status-warning cursor-pointer hover:underline">
+                  Ver pedidos
+                </summary>
+                <div className="mt-1.5 max-h-40 overflow-y-auto rounded border border-status-warning/30 bg-background/50">
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-muted/40 sticky top-0">
+                      <tr>
+                        <th className="text-left px-2 py-1 font-semibold">Nº</th>
+                        <th className="text-left px-2 py-1 font-semibold">Estado</th>
+                        <th className="text-right px-2 py-1 font-semibold">Monto raw</th>
+                        <th className="text-left px-2 py-1 font-semibold">Moneda</th>
+                        <th className="w-6 px-1"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {excludedOrders.map((o) => (
+                        <tr key={o.order_id} className="border-t border-border/50">
+                          <td className="px-2 py-0.5 font-bold">#{o.order_id}</td>
+                          <td className="px-2 py-0.5 text-muted-foreground truncate max-w-[120px]">{o.order_status}</td>
+                          <td className="px-2 py-0.5 text-right tabular-nums">{toUsd(o).toFixed(0)}</td>
+                          <td className="px-2 py-0.5 text-muted-foreground">{o.order_currency || "USD"}</td>
+                          <td className="px-1 py-0.5">
+                            <a
+                              href={`https://basicoclothes.com/wp-admin/post.php?post=${o.order_id}&action=edit`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-muted-foreground hover:text-primary"
+                              title="Abrir en WooCommerce"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-10">
@@ -403,6 +504,12 @@ export function PedidosDashboard() {
                       <div className="text-[10px] text-muted-foreground tabular-nums">
                         {fmtUsd(data.revenue)}
                       </div>
+                      {data.excluded > 0 && (
+                        <div className="text-[9px] text-status-warning font-semibold mt-0.5 flex items-center justify-end gap-0.5" title={`${data.excluded} pedido(s) con monto > $${MAX_REASONABLE_USD} excluido(s) del total`}>
+                          <AlertTriangle className="h-2.5 w-2.5" />
+                          {data.excluded} excluido{data.excluded !== 1 ? "s" : ""}
+                        </div>
+                      )}
                     </div>
                     <ChevronDown
                       className={cn(
