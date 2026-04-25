@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { Loader2, AlertTriangle, RefreshCw, ExternalLink, Database, Table, Calendar } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw, ExternalLink, Database, Table, Calendar, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { usePlanningDatabases, usePlanningTasks } from "@/hooks/usePlanningData";
 import PlanningTable from "@/components/planning/PlanningTable";
 import PlanningCalendar from "@/components/planning/PlanningCalendar";
+import PlanningAgenda from "@/components/planning/PlanningAgenda";
 
 export default function Planning() {
   const { databases, loading: loadingDbs, error: dbError, refetch: refetchDbs } = usePlanningDatabases();
   const [selectedSource, setSelectedSource] = useState<string>("all");
-  const [view, setView] = useState<"tabla" | "calendario">("tabla");
+  const [view, setView] = useState<"agenda" | "tabla" | "calendario">("agenda");
   const { tasks, loading: loadingTasks, error: taskError, refetch: refetchTasks } = usePlanningTasks(selectedSource, databases);
   const [syncing, setSyncing] = useState(false);
 
@@ -142,6 +143,14 @@ export default function Planning() {
 
         <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
           <button
+            onClick={() => setView("agenda")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+              view === "agenda" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ListChecks className="h-3.5 w-3.5" /> Agenda
+          </button>
+          <button
             onClick={() => setView("tabla")}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
               view === "tabla" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
@@ -161,7 +170,9 @@ export default function Planning() {
       </div>
 
       {/* Content */}
-      {view === "tabla" ? (
+      {view === "agenda" ? (
+        <PlanningAgenda tasks={tasks} loading={loadingTasks} error={taskError} />
+      ) : view === "tabla" ? (
         <PlanningTable tasks={tasks} loading={loadingTasks} error={taskError} selectedDatabaseId={selectedSource} />
       ) : (
         <PlanningCalendar tasks={tasks} loading={loadingTasks} error={taskError} selectedDatabaseId={selectedSource} />
