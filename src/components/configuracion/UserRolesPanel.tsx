@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, ShieldAlert, UserPlus, Mail, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, RefreshCw, UserPlus, Mail, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 type AppRole = "admin" | "manager" | "partner" | "rrpp" | "marketing";
