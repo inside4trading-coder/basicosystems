@@ -86,6 +86,7 @@ export default function Landing() {
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [interest, setInterest] = useState<"saas" | "tailor" | "unsure">("unsure");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
