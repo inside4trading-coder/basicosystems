@@ -22,12 +22,14 @@ import {
   Store,
   ArrowRight,
   Check,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -84,6 +86,7 @@ export default function Landing() {
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [interest, setInterest] = useState<"saas" | "tailor" | "unsure">("unsure");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -140,10 +143,61 @@ export default function Landing() {
             <button onClick={scrollTo("contacto")} className="hover:text-primary transition-colors">Proceso</button>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link to="/login" className="hidden sm:inline text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/login" className="hidden md:inline text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
               {user ? "Panel" : "Acceso equipo"}
             </Link>
             <Button variant="brand" size="sm" onClick={scrollTo("contacto")}>Hablemos</Button>
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Abrir menú"
+                  className="md:hidden inline-flex items-center justify-center h-11 w-11 rounded-md hover:bg-muted/50 transition-colors"
+                >
+                  <Menu className="h-6 w-6" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[80vw] max-w-sm flex flex-col gap-6 pt-10">
+                <nav className="flex flex-col gap-1 text-base font-medium uppercase tracking-wide">
+                  {[
+                    { id: "dos-formas", label: "Empezar" },
+                    { id: "modulos", label: "Módulos" },
+                    { id: "caso", label: "Caso" },
+                    { id: "contacto", label: "Proceso" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        setTimeout(() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" }), 100);
+                      }}
+                      className="text-left py-3 px-2 rounded-md hover:bg-muted/50 hover:text-primary transition-colors"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </nav>
+                <div className="border-t border-border pt-4 flex flex-col gap-3">
+                  <Link
+                    to="/login"
+                    onClick={() => setMobileNavOpen(false)}
+                    className="text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors py-2 px-2"
+                  >
+                    {user ? "Panel" : "Acceso equipo"}
+                  </Link>
+                  <Button
+                    variant="brand"
+                    onClick={() => {
+                      setMobileNavOpen(false);
+                      setTimeout(() => document.getElementById("contacto")?.scrollIntoView({ behavior: "smooth" }), 100);
+                    }}
+                  >
+                    Hablemos
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </nav>
       </header>
