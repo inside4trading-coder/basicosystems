@@ -25,14 +25,6 @@ const ROLE_OPTIONS: { value: AppRole | ""; label: string }[] = [
   { value: "marketing", label: "Marketing" },
 ];
 
-const ROLE_CAPABILITIES: { role: string; access: string }[] = [
-  { role: "Admin", access: "Acceso total: dashboard, pedidos, CRM, planning, crew, RRPP, campañas, llamadas, configuración, administración." },
-  { role: "Manager", access: "Dashboard, pedidos, CRM, planning, campañas, llamadas. Sin acceso a configuración ni crew." },
-  { role: "Partner", access: "Solo lectura: dashboard y planning. Pensado para socios externos." },
-  { role: "RRPP", access: "Dashboard y RRPP (contactos, colaboraciones, notas privadas)." },
-  { role: "Marketing", access: "Dashboard, RRPP (sin notas privadas) y campañas." },
-  { role: "Sin rol", access: "No ve nada del sistema. Pantalla de cuenta pendiente de aprobación." },
-];
 
 export function UserRolesPanel() {
   const [users, setUsers] = useState<HubUser[]>([]);
