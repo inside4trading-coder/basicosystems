@@ -1,79 +1,43 @@
-# Por qué los costes salen siempre en $0.00
+## Problema
 
-## Causa raíz (confirmada con datos)
+En la landing (`src/pages/Landing.tsx`), los enlaces del header (`Empezar`, `Módulos`, `Caso`, `Proceso`) y el enlace `Acceso equipo` están ocultos en móvil:
 
-Revisé las 17 llamadas en `calls_cache`:
-- `total_cost = 0` y `max_cost = 0` para todas, incluso las contestadas con duración > 0.
-- Inspeccionando `raw_data` de las llamadas contestadas, el payload de Zadarma se ve así:
+- `div` con enlaces: `hidden md:flex` → invisible bajo 768px
+- `Acceso equipo`: `hidden sm:inline` → invisible bajo 640px
 
-```json
-{
-  "sip": "100",
-  "clid": "Vendedor 1 basico (100)",
-  "call_id": "1776517648.11580",
-  "seconds": 7,
-  "callstart": "2026-04-18 15:07:28",
-  "destination": 34627596999,
-  "disposition": "answered",
-  "is_recorded": "false",
-  "pbx_call_id": "out_2d7f..."
-}
-```
+En móvil sólo queda visible el botón rojo `Hablemos`, dejando la navegación inaccesible.
 
-**No existe ningún campo `cost`, `bill_cost`, `price`, etc.** El edge function `zadarma-sync` lee `Number(s.cost || s.bill_cost || 0)` → siempre 0.
+## Solución
 
-El motivo es que estamos llamando al endpoint `statistics/pbx` con `version=2`, que devuelve el **detalle de llamadas de la centralita PBX** pero **no incluye facturación**. En la API de Zadarma, los costes viven en un endpoint distinto: `statistics` (estadísticas de SIP/cuenta), que devuelve por cada llamada saliente campos como `cost` y `billsec`.
+Añadir un menú hamburguesa que aparezca exclusivamente en móvil/tablet (`<md`), reutilizando el componente `Sheet` de shadcn (ya presente en el proyecto) para abrir un panel lateral con todos los enlaces. En desktop (≥md) se mantiene exactamente la barra horizontal actual — ningún cambio visual.
 
-El frontend (`useCallsData.ts` y la tabla en `Llamadas.tsx`) ya lee correctamente `cost` — el bug está 100% en el lado de sincronización.
+### Cambios en `src/pages/Landing.tsx`
 
-## Solución propuesta
+1. **Imports**: añadir `Menu` (lucide-react) y `Sheet, SheetContent, SheetTrigger, SheetClose` desde `@/components/ui/sheet`. Añadir `useState` para controlar apertura.
 
-Modificar `supabase/functions/zadarma-sync/index.ts` para enriquecer cada llamada con su coste real.
+2. **Header (líneas 131-149)** — mantener la barra desktop intacta y añadir, junto al botón `Hablemos`:
+   - Un `SheetTrigger` con icono `Menu` visible sólo en `<md` (`md:hidden`), tamaño táctil ≥44px.
+   - Un `SheetContent` lateral (side="right", width responsive) que liste:
+     - Empezar, Módulos, Caso, Proceso (mismos `scrollTo` handlers)
+     - Separador
+     - Acceso equipo / Panel (Link a `/login`)
+     - Botón `Hablemos` (cierra menú + scroll a contacto)
+   - Cada enlace cierra el sheet al pulsarse (vía `setOpen(false)` o `SheetClose asChild`).
 
-### Paso 1 — Llamar también al endpoint de facturación
+3. **Eliminar `hidden sm:inline`** del enlace `Acceso equipo` desktop ya no es necesario; quedará dentro del sheet en móvil y dentro de la barra desktop como ahora (se mantiene `hidden md:inline` para coherencia con los demás enlaces desktop).
 
-Después de obtener `stats` desde `statistics/pbx`, hacer una segunda llamada paralela a:
+4. **Accesibilidad / UX**:
+   - `aria-label="Abrir menú"` en el trigger.
+   - Tipografía consistente (`uppercase tracking-wide font-medium`).
+   - Cerrar automáticamente al navegar.
 
-```
-GET /v1/statistics/?start=...&end=...&type=all
-```
+### Breakpoints
 
-Este endpoint devuelve un array donde cada elemento tiene (entre otros): `id` (call_id de la PBX), `sip`, `clid`, `destination`, `seconds`, **`cost`**, **`billsec`**, `disposition`.
+- `<768px` (móvil + tablet pequeño): hamburguesa visible, barra horizontal oculta.
+- `≥768px`: barra horizontal visible, hamburguesa oculta. Sin cambios respecto al estado actual.
 
-### Paso 2 — Construir un mapa de costes
+### Archivos modificados
 
-Indexar los resultados por `call_id` y, como fallback, por la combinación `(pbx_call_id || sip + callstart + destination)` por si algún registro de PBX no matchea por id directo.
+- `src/pages/Landing.tsx` (único cambio)
 
-### Paso 3 — Mergear en el upsert
-
-En el `.map(...)` actual, sustituir:
-
-```ts
-cost: Number(s.cost || s.bill_cost || 0),
-```
-
-por una búsqueda en el mapa de costes:
-
-```ts
-cost: costMap[callId] ?? costMap[pbxCallId] ?? 0,
-```
-
-### Paso 4 — Re-sincronizar histórico
-
-Tras desplegar, ejecutar manualmente el botón "Sincronizar" en `/llamadas` para el rango deseado para que las 17 llamadas existentes reciban sus costes (el upsert por `call_id` los actualizará in place).
-
-## Notas técnicas
-
-- Si Zadarma devuelve costes en EUR (no USD), el label `$` en `Llamadas.tsx` (líneas 290 y 338) puede quedarse o cambiarse a `€` — confirmar moneda real con la primera respuesta y ajustar el símbolo.
-- El endpoint `statistics/` también respeta zona horaria y formato `YYYY-MM-DD HH:MM:SS`, por lo que reutilizamos `formatForZadarma()` y la firma HMAC ya existente.
-- No requiere cambios en frontend, tipos ni base de datos. Sólo edge function.
-
-## Archivos a modificar
-
-- `supabase/functions/zadarma-sync/index.ts` — añadir fetch del endpoint `statistics/`, construir `costMap`, aplicar en el map final.
-
-## Verificación
-
-1. Tras el deploy, pulsar "Sincronizar" en `/llamadas` con un rango que incluya llamadas contestadas.
-2. Confirmar en DB: `SELECT call_id, talk_duration, cost FROM calls_cache WHERE cost > 0 LIMIT 5;`
-3. Confirmar en UI que la columna "Coste" muestra valores > 0 para llamadas contestadas con duración.
+No se requieren migraciones, edge functions ni nuevas dependencias.
