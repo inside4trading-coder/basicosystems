@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, ShieldAlert, UserPlus, Mail, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, RefreshCw, UserPlus, Mail, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 type AppRole = "admin" | "manager" | "partner" | "rrpp" | "marketing";
@@ -25,14 +25,6 @@ const ROLE_OPTIONS: { value: AppRole | ""; label: string }[] = [
   { value: "marketing", label: "Marketing" },
 ];
 
-const ROLE_CAPABILITIES: { role: string; access: string }[] = [
-  { role: "Admin", access: "Acceso total: dashboard, pedidos, CRM, planning, crew, RRPP, campañas, llamadas, configuración, administración." },
-  { role: "Manager", access: "Dashboard, pedidos, CRM, planning, campañas, llamadas. Sin acceso a configuración ni crew." },
-  { role: "Partner", access: "Solo lectura: dashboard y planning. Pensado para socios externos." },
-  { role: "RRPP", access: "Dashboard y RRPP (contactos, colaboraciones, notas privadas)." },
-  { role: "Marketing", access: "Dashboard, RRPP (sin notas privadas) y campañas." },
-  { role: "Sin rol", access: "No ve nada del sistema. Pantalla de cuenta pendiente de aprobación." },
-];
 
 export function UserRolesPanel() {
   const [users, setUsers] = useState<HubUser[]>([]);
@@ -181,29 +173,6 @@ export function UserRolesPanel() {
             );
           })
         )}
-      </div>
-
-      {/* Capabilities legend */}
-      <div className="mt-4 bg-muted/40 rounded-lg border border-border p-4">
-        <div className="flex items-start gap-2 mb-3">
-          <ShieldAlert className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Permisos por rol
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Los nuevos registros llegan sin rol y no ven nada hasta que les asignes uno aquí.
-            </p>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          {ROLE_CAPABILITIES.map((c) => (
-            <div key={c.role} className="text-xs flex gap-2">
-              <span className="font-bold w-20 shrink-0">{c.role}</span>
-              <span className="text-muted-foreground">{c.access}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* How to add new users */}
