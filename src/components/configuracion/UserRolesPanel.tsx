@@ -183,29 +183,6 @@ export function UserRolesPanel() {
         )}
       </div>
 
-      {/* Capabilities legend */}
-      <div className="mt-4 bg-muted/40 rounded-lg border border-border p-4">
-        <div className="flex items-start gap-2 mb-3">
-          <ShieldAlert className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Permisos por rol
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Los nuevos registros llegan sin rol y no ven nada hasta que les asignes uno aquí.
-            </p>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          {ROLE_CAPABILITIES.map((c) => (
-            <div key={c.role} className="text-xs flex gap-2">
-              <span className="font-bold w-20 shrink-0">{c.role}</span>
-              <span className="text-muted-foreground">{c.access}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* How to add new users */}
       <div className="mt-3 text-xs text-muted-foreground flex items-start gap-2">
         <UserPlus className="h-3.5 w-3.5 mt-0.5 shrink-0" />
