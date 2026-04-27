@@ -137,6 +137,11 @@ export function AdminListView({ instances, onRowClick, onEdit, onPaid, onClearFi
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => onRowClick(i)}>Ver detalle</DropdownMenuItem>
+                            {onEdit && (
+                              <DropdownMenuItem onClick={() => onEdit(i)}>
+                                <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                              </DropdownMenuItem>
+                            )}
                             {i.obligation_id && (
                               <DropdownMenuItem asChild>
                                 <Link to={`/administracion/${i.obligation_id}`}>Editar plantilla</Link>
