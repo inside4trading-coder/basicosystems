@@ -237,13 +237,14 @@ function TaskSheet({
   const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly">("daily");
   const [day, setDay] = useState("");
   const [time, setTime] = useState("09:00");
+  const [hasTime, setHasTime] = useState(true);
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [area, setArea] = useState("");
   const [responsible, setResponsible] = useState("");
   const [active, setActive] = useState(true);
 
   const reset = () => {
-    setName(""); setDescription(""); setFrequency("daily"); setDay(""); setTime("09:00");
+    setName(""); setDescription(""); setFrequency("daily"); setDay(""); setTime("09:00"); setHasTime(true);
     setPriority("medium"); setArea(""); setResponsible(""); setActive(true);
   };
 
