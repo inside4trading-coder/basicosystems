@@ -47,6 +47,7 @@ export default function CrewProfile() {
   } = useCrewData();
 
   const employee = employees.find((e) => e.id === id);
+  const [activeTab, setActiveTab] = useState("general");
 
   const [editing, setEditing] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<Partial<Employee>>({});
