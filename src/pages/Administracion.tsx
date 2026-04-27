@@ -9,6 +9,7 @@ import { AdminInstanceSheet } from "@/components/admin/AdminInstanceSheet";
 import { AdminListView } from "@/components/admin/AdminListView";
 import { AdminListFilters, type ListFilters } from "@/components/admin/AdminListFilters";
 import { CreateObligationSheet } from "@/components/admin/CreateObligationSheet";
+import { EditInstanceSheet } from "@/components/admin/EditInstanceSheet";
 import {
   AdminCalendarSkeleton,
   AdminKPIsSkeleton,
