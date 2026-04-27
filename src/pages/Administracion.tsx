@@ -356,6 +356,7 @@ export default function Administracion() {
               <AdminListView
                 instances={listInstances}
                 onRowClick={(inst) => setSheetInstance(inst)}
+                onEdit={(inst) => setEditInstance(inst)}
                 onPaid={() => refetch()}
                 onClearFilters={clearListFilters}
                 hasActiveFilters={hasActiveListFilters}
@@ -369,6 +370,17 @@ export default function Administracion() {
         instance={sheetInstance}
         open={!!sheetInstance}
         onOpenChange={(v) => !v && setSheetInstance(null)}
+        onEdit={(inst) => {
+          setSheetInstance(null);
+          setEditInstance(inst);
+        }}
+      />
+
+      <EditInstanceSheet
+        instance={editInstance}
+        open={!!editInstance}
+        onOpenChange={(v) => !v && setEditInstance(null)}
+        onSaved={() => refetch()}
       />
 
       <CreateObligationSheet
