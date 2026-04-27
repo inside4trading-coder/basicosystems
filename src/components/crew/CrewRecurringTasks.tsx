@@ -256,6 +256,7 @@ function TaskSheet({
       setDescription(editing.description ?? "");
       setFrequency(editing.frequency);
       setDay(editing.day);
+      setHasTime(Boolean(editing.time));
       setTime(editing.time || "09:00");
       setPriority(editing.priority);
       setArea(editing.area);
