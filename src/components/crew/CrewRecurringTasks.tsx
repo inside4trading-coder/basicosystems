@@ -21,6 +21,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -181,6 +182,9 @@ function SortableTaskItem({
           <p className="font-semibold text-sm">{t.name}</p>
           <Badge variant="outline" className="text-[10px] px-1.5 py-0">{freqLabel[t.frequency]}</Badge>
         </div>
+        {t.description && (
+          <p className="text-xs text-muted-foreground/90 leading-snug whitespace-pre-wrap">{t.description}</p>
+        )}
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t.day} · {t.time}</span>
           {t.area && <span>{t.area}</span>}
@@ -224,6 +228,7 @@ function TaskSheet({
   onSaveEdit: (taskId: string, patch: Partial<RecurringTask>) => void;
 }) {
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly">("daily");
   const [day, setDay] = useState("");
   const [time, setTime] = useState("09:00");
@@ -233,7 +238,7 @@ function TaskSheet({
   const [active, setActive] = useState(true);
 
   const reset = () => {
-    setName(""); setFrequency("daily"); setDay(""); setTime("09:00");
+    setName(""); setDescription(""); setFrequency("daily"); setDay(""); setTime("09:00");
     setPriority("medium"); setArea(""); setResponsible(""); setActive(true);
   };
 
@@ -242,6 +247,7 @@ function TaskSheet({
     if (!open) return;
     if (editing) {
       setName(editing.name);
+      setDescription(editing.description ?? "");
       setFrequency(editing.frequency);
       setDay(editing.day);
       setTime(editing.time || "09:00");
@@ -261,6 +267,7 @@ function TaskSheet({
     }
     const payload = {
       name: name.trim(),
+      description: description.trim(),
       frequency,
       day: day.trim(),
       time,
@@ -291,6 +298,16 @@ function TaskSheet({
           <div className="space-y-1.5">
             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nombre de la tarea *</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Descripción</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Detalles, pasos o notas sobre esta tarea recurrente"
+              rows={3}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
