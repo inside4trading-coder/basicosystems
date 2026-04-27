@@ -266,7 +266,7 @@ export default function CrewProfile() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="general" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
         <TabsList className="w-max">
           <TabsTrigger value="general" className="whitespace-nowrap">Datos generales</TabsTrigger>
