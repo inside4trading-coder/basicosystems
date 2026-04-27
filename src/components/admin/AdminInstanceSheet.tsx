@@ -18,7 +18,7 @@ interface Props {
 const fmtMoney = (n: number, c = "USD") =>
   new Intl.NumberFormat("es-VE", { style: "currency", currency: c }).format(n);
 
-export function AdminInstanceSheet({ instance, open, onOpenChange }: Props) {
+export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit }: Props) {
   const [proofUrl, setProofUrl] = useState<string | null>(null);
 
   useEffect(() => {
