@@ -277,7 +277,7 @@ function TaskSheet({
       description: description.trim(),
       frequency,
       day: day.trim(),
-      time,
+      time: hasTime ? time : "",
       priority,
       area: area.trim(),
       responsible: responsible.trim(),
