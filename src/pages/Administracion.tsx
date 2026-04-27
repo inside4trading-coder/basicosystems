@@ -9,6 +9,7 @@ import { AdminInstanceSheet } from "@/components/admin/AdminInstanceSheet";
 import { AdminListView } from "@/components/admin/AdminListView";
 import { AdminListFilters, type ListFilters } from "@/components/admin/AdminListFilters";
 import { CreateObligationSheet } from "@/components/admin/CreateObligationSheet";
+import { EditInstanceSheet } from "@/components/admin/EditInstanceSheet";
 import {
   AdminCalendarSkeleton,
   AdminKPIsSkeleton,
@@ -41,6 +42,7 @@ export default function Administracion() {
   });
 
   const [sheetInstance, setSheetInstance] = useState<ObligationInstance | null>(null);
+  const [editInstance, setEditInstance] = useState<ObligationInstance | null>(null);
   const [dismissedOverdue, setDismissedOverdue] = useState(false);
   const [dismissedCritical, setDismissedCritical] = useState(false);
   const [dismissedSoon, setDismissedSoon] = useState(false);
@@ -354,6 +356,7 @@ export default function Administracion() {
               <AdminListView
                 instances={listInstances}
                 onRowClick={(inst) => setSheetInstance(inst)}
+                onEdit={(inst) => setEditInstance(inst)}
                 onPaid={() => refetch()}
                 onClearFilters={clearListFilters}
                 hasActiveFilters={hasActiveListFilters}
@@ -367,6 +370,17 @@ export default function Administracion() {
         instance={sheetInstance}
         open={!!sheetInstance}
         onOpenChange={(v) => !v && setSheetInstance(null)}
+        onEdit={(inst) => {
+          setSheetInstance(null);
+          setEditInstance(inst);
+        }}
+      />
+
+      <EditInstanceSheet
+        instance={editInstance}
+        open={!!editInstance}
+        onOpenChange={(v) => !v && setEditInstance(null)}
+        onSaved={() => refetch()}
       />
 
       <CreateObligationSheet

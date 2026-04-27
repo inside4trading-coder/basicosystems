@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { FileText, Pencil } from "lucide-react";
 import type { ObligationInstance } from "@/types/admin";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,12 +12,13 @@ interface Props {
   instance: ObligationInstance | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  onEdit?: (inst: ObligationInstance) => void;
 }
 
 const fmtMoney = (n: number, c = "USD") =>
   new Intl.NumberFormat("es-VE", { style: "currency", currency: c }).format(n);
 
-export function AdminInstanceSheet({ instance, open, onOpenChange }: Props) {
+export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit }: Props) {
   const [proofUrl, setProofUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -98,6 +99,12 @@ export function AdminInstanceSheet({ instance, open, onOpenChange }: Props) {
                 <div className="text-xs text-muted-foreground">Cargando…</div>
               )}
             </div>
+          )}
+
+          {onEdit && (
+            <Button className="w-full gap-1.5" onClick={() => onEdit(instance)}>
+              <Pencil className="h-4 w-4" /> Editar obligación
+            </Button>
           )}
 
           {instance.obligation_id && (

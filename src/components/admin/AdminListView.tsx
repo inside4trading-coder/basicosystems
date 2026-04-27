@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle, MoreVertical, Search, User } from "lucide-react";
+import { CheckCircle, MoreVertical, Pencil, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -27,12 +27,13 @@ import { Link } from "react-router-dom";
 interface Props {
   instances: ObligationInstance[];
   onRowClick: (inst: ObligationInstance) => void;
+  onEdit?: (inst: ObligationInstance) => void;
   onPaid: () => void;
   onClearFilters?: () => void;
   hasActiveFilters?: boolean;
 }
 
-export function AdminListView({ instances, onRowClick, onPaid, onClearFilters, hasActiveFilters }: Props) {
+export function AdminListView({ instances, onRowClick, onEdit, onPaid, onClearFilters, hasActiveFilters }: Props) {
   const [paying, setPaying] = useState<ObligationInstance | null>(null);
 
   if (instances.length === 0) {
@@ -136,6 +137,11 @@ export function AdminListView({ instances, onRowClick, onPaid, onClearFilters, h
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => onRowClick(i)}>Ver detalle</DropdownMenuItem>
+                            {onEdit && (
+                              <DropdownMenuItem onClick={() => onEdit(i)}>
+                                <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                              </DropdownMenuItem>
+                            )}
                             {i.obligation_id && (
                               <DropdownMenuItem asChild>
                                 <Link to={`/administracion/${i.obligation_id}`}>Editar plantilla</Link>
