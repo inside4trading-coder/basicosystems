@@ -348,8 +348,19 @@ function TaskSheet({
               <Input value={day} onChange={(e) => setDay(e.target.value)} placeholder="Ej: Lunes, 15 de cada mes" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Hora</Label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Hora</Label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">Sin hora</span>
+                  <Switch checked={!hasTime} onCheckedChange={(v) => setHasTime(!v)} />
+                </div>
+              </div>
+              <Input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                disabled={!hasTime}
+              />
             </div>
           </div>
 
