@@ -101,6 +101,12 @@ export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit }: Pro
             </div>
           )}
 
+          {onEdit && (
+            <Button className="w-full gap-1.5" onClick={() => onEdit(instance)}>
+              <Pencil className="h-4 w-4" /> Editar obligación
+            </Button>
+          )}
+
           {instance.obligation_id && (
             <Button asChild className="w-full" variant="outline">
               <Link to={`/administracion/${instance.obligation_id}`}>Ver obligación completa</Link>
