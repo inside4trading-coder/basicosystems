@@ -186,7 +186,12 @@ function SortableTaskItem({
           <p className="text-xs text-muted-foreground/90 leading-snug whitespace-pre-wrap">{t.description}</p>
         )}
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t.day} · {t.time}</span>
+          {(t.day || t.time) && (
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {[t.day, t.time].filter(Boolean).join(" · ")}
+            </span>
+          )}
           {t.area && <span>{t.area}</span>}
           {t.responsible && <span className="flex items-center gap-1"><User className="h-3 w-3" />{t.responsible}</span>}
         </div>
