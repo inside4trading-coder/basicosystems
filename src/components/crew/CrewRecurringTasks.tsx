@@ -186,7 +186,12 @@ function SortableTaskItem({
           <p className="text-xs text-muted-foreground/90 leading-snug whitespace-pre-wrap">{t.description}</p>
         )}
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t.day} · {t.time}</span>
+          {(t.day || t.time) && (
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {[t.day, t.time].filter(Boolean).join(" · ")}
+            </span>
+          )}
           {t.area && <span>{t.area}</span>}
           {t.responsible && <span className="flex items-center gap-1"><User className="h-3 w-3" />{t.responsible}</span>}
         </div>
@@ -232,13 +237,14 @@ function TaskSheet({
   const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly">("daily");
   const [day, setDay] = useState("");
   const [time, setTime] = useState("09:00");
+  const [hasTime, setHasTime] = useState(true);
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [area, setArea] = useState("");
   const [responsible, setResponsible] = useState("");
   const [active, setActive] = useState(true);
 
   const reset = () => {
-    setName(""); setDescription(""); setFrequency("daily"); setDay(""); setTime("09:00");
+    setName(""); setDescription(""); setFrequency("daily"); setDay(""); setTime("09:00"); setHasTime(true);
     setPriority("medium"); setArea(""); setResponsible(""); setActive(true);
   };
 
@@ -250,6 +256,7 @@ function TaskSheet({
       setDescription(editing.description ?? "");
       setFrequency(editing.frequency);
       setDay(editing.day);
+      setHasTime(Boolean(editing.time));
       setTime(editing.time || "09:00");
       setPriority(editing.priority);
       setArea(editing.area);
@@ -270,7 +277,7 @@ function TaskSheet({
       description: description.trim(),
       frequency,
       day: day.trim(),
-      time,
+      time: hasTime ? time : "",
       priority,
       area: area.trim(),
       responsible: responsible.trim(),
@@ -341,8 +348,19 @@ function TaskSheet({
               <Input value={day} onChange={(e) => setDay(e.target.value)} placeholder="Ej: Lunes, 15 de cada mes" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Hora</Label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Hora</Label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">Sin hora</span>
+                  <Switch checked={!hasTime} onCheckedChange={(v) => setHasTime(!v)} />
+                </div>
+              </div>
+              <Input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                disabled={!hasTime}
+              />
             </div>
           </div>
 
