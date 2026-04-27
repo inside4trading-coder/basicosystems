@@ -3,6 +3,7 @@ export type EmployeeStatus = "active" | "inactive" | "archived" | "graduated";
 export interface RecurringTask {
   id: string;
   name: string;
+  description?: string;
   frequency: "daily" | "weekly" | "monthly";
   day: string;
   time: string;

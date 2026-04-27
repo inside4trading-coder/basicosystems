@@ -32,6 +32,7 @@ export function useCrewData() {
         list.push({
           id: t.id,
           name: t.name,
+          description: (t as any).description ?? "",
           frequency: t.frequency as RecurringTask["frequency"],
           day: t.day ?? "",
           time: t.time ?? "",
@@ -155,6 +156,7 @@ export function useCrewData() {
     const { error: insertErr } = await supabase.from("recurring_tasks").insert({
       employee_id: employeeId,
       name: task.name,
+      description: task.description ?? "",
       frequency: task.frequency,
       day: task.day,
       time: task.time,

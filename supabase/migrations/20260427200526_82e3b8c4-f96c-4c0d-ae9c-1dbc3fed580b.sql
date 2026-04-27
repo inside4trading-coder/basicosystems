@@ -1,0 +1,1 @@
+ALTER TABLE public.recurring_tasks ADD COLUMN IF NOT EXISTS description text NOT NULL DEFAULT '';

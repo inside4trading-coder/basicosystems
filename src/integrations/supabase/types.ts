@@ -997,6 +997,7 @@ export type Database = {
           area: string | null
           created_at: string
           day: string | null
+          description: string
           employee_id: string
           frequency: string
           id: string
@@ -1011,6 +1012,7 @@ export type Database = {
           area?: string | null
           created_at?: string
           day?: string | null
+          description?: string
           employee_id: string
           frequency?: string
           id?: string
@@ -1025,6 +1027,7 @@ export type Database = {
           area?: string | null
           created_at?: string
           day?: string | null
+          description?: string
           employee_id?: string
           frequency?: string
           id?: string
