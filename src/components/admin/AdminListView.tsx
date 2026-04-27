@@ -27,12 +27,13 @@ import { Link } from "react-router-dom";
 interface Props {
   instances: ObligationInstance[];
   onRowClick: (inst: ObligationInstance) => void;
+  onEdit?: (inst: ObligationInstance) => void;
   onPaid: () => void;
   onClearFilters?: () => void;
   hasActiveFilters?: boolean;
 }
 
-export function AdminListView({ instances, onRowClick, onPaid, onClearFilters, hasActiveFilters }: Props) {
+export function AdminListView({ instances, onRowClick, onEdit, onPaid, onClearFilters, hasActiveFilters }: Props) {
   const [paying, setPaying] = useState<ObligationInstance | null>(null);
 
   if (instances.length === 0) {
