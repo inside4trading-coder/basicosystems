@@ -42,6 +42,7 @@ export default function Administracion() {
   });
 
   const [sheetInstance, setSheetInstance] = useState<ObligationInstance | null>(null);
+  const [editInstance, setEditInstance] = useState<ObligationInstance | null>(null);
   const [dismissedOverdue, setDismissedOverdue] = useState(false);
   const [dismissedCritical, setDismissedCritical] = useState(false);
   const [dismissedSoon, setDismissedSoon] = useState(false);
