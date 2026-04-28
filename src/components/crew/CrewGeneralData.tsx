@@ -16,6 +16,7 @@ interface CrewGeneralDataProps {
   employee: Employee;
   editMode: boolean;
   onUpdate: (updates: Partial<Employee>) => void;
+  canViewSalary?: boolean;
 }
 
 /** Resolve a storage path to a signed URL for display */
@@ -28,7 +29,7 @@ async function resolvePhotoUrl(path: string | null | undefined): Promise<string 
   return data.signedUrl;
 }
 
-export function CrewGeneralData({ employee, editMode, onUpdate }: CrewGeneralDataProps) {
+export function CrewGeneralData({ employee, editMode, onUpdate, canViewSalary = true }: CrewGeneralDataProps) {
   const [draft, setDraft] = useState<Partial<Employee>>({});
   const [skillInput, setSkillInput] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -192,7 +193,9 @@ export function CrewGeneralData({ employee, editMode, onUpdate }: CrewGeneralDat
 
         {/* Sueldo actual */}
         <FieldCell label="Sueldo actual" editing={editMode}>
-          {editMode ? (
+          {!canViewSalary ? (
+            <p className="text-sm font-semibold"><Placeholder /></p>
+          ) : editMode ? (
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
               <Input
