@@ -563,6 +563,7 @@ export type Database = {
       }
       employees: {
         Row: {
+          birth_date: string | null
           cedula: string | null
           created_at: string
           current_salary: number | null
@@ -581,6 +582,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          birth_date?: string | null
           cedula?: string | null
           created_at?: string
           current_salary?: number | null
@@ -599,6 +601,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          birth_date?: string | null
           cedula?: string | null
           created_at?: string
           current_salary?: number | null
@@ -1534,6 +1537,7 @@ export type Database = {
       get_crew_employees: {
         Args: never
         Returns: {
+          birth_date: string
           cedula: string
           created_at: string
           current_salary: number
