@@ -75,7 +75,7 @@ export function useCrewData() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     fetchEmployees();
