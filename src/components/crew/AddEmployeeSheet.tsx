@@ -172,6 +172,22 @@ export function AddEmployeeSheet({ open, onOpenChange, onSave }: AddEmployeeShee
             </Popover>
           </div>
 
+          {/* Birth date */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Fecha de nacimiento</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !birthDate && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {birthDate ? format(birthDate, "dd/MM/yyyy") : "Seleccionar fecha"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={birthDate} onSelect={setBirthDate} initialFocus captionLayout="dropdown-buttons" fromYear={1940} toYear={new Date().getFullYear()} className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+          </div>
+
           {/* Status */}
           <div className="space-y-1.5">
             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Estado</Label>
