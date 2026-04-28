@@ -1,43 +1,43 @@
-## Problema
+## Objetivo
 
-En la landing (`src/pages/Landing.tsx`), los enlaces del header (`Empezar`, `Módulos`, `Caso`, `Proceso`) y el enlace `Acceso equipo` están ocultos en móvil:
+En el módulo **Crew**, restringir el acceso del rol **manager** (y cualquier rol distinto de admin) a información sensible: salarios e historial salarial deben mostrarse como `—`, y la pestaña de notas privadas debe ocultarse por completo.
 
-- `div` con enlaces: `hidden md:flex` → invisible bajo 768px
-- `Acceso equipo`: `hidden sm:inline` → invisible bajo 640px
+## Cambios
 
-En móvil sólo queda visible el botón rojo `Hablemos`, dejando la navegación inaccesible.
+### 1. `src/pages/CrewProfile.tsx`
+- Importar `useAuth` y leer `role`.
+- Calcular `isAdmin = role === "admin"`.
+- En el `TabsList`:
+  - Ocultar el `<TabsTrigger value="notes">` cuando no es admin.
+  - Cambiar la etiqueta de la pestaña de salario a "Sueldo" y ocultar el `<TabsTrigger value="salary">` por completo si no es admin (no la dejamos vacía; el sueldo aún sale en "Datos generales" como `—`).
+- Eliminar/condicionar `<TabsContent value="salary">` y `<TabsContent value="notes">` cuando no es admin.
+- Si la URL anterior hace que `activeTab` quede en "salary" o "notes" sin permiso, forzar reset a `"general"` con un `useEffect`.
 
-## Solución
+### 2. `src/components/crew/CrewGeneralData.tsx`
+- Aceptar nuevo prop `canViewSalary: boolean` (o leer rol con `useAuth` directamente, más simple).
+- En el campo "Sueldo actual":
+  - Si `!isAdmin`: mostrar siempre `<Placeholder />` (`—`), sin importar el valor real.
+  - En `editMode`, no mostrar el input de sueldo a no-admin (mantener `—`).
 
-Añadir un menú hamburguesa que aparezca exclusivamente en móvil/tablet (`<md`), reutilizando el componente `Sheet` de shadcn (ya presente en el proyecto) para abrir un panel lateral con todos los enlaces. En desktop (≥md) se mantiene exactamente la barra horizontal actual — ningún cambio visual.
+### 3. Ocultar también el botón "Cambiar sueldo" / acceso al historial
+- Como ya quitamos la pestaña "Historial salarial", `CrewSalaryHistory` no se renderiza para manager → no se hacen queries a `salary_history`. No se requieren cambios en ese componente.
 
-### Cambios en `src/pages/Landing.tsx`
+### 4. RLS (defensa en profundidad)
+Las políticas actuales ya son seguras:
+- `salary_history`: solo admin puede gestionar (no hay policy de SELECT para manager → no puede leer). ✅
+- `private_notes`: solo admin. ✅
+- `employees.current_salary`: la tabla `employees` solo es accesible por admin a nivel RLS. Manager no la lee directamente — pero el módulo Crew usa el cliente con sesión de manager, por lo que `useCrewData` probablemente ya falla para manager.
 
-1. **Imports**: añadir `Menu` (lucide-react) y `Sheet, SheetContent, SheetTrigger, SheetClose` desde `@/components/ui/sheet`. Añadir `useState` para controlar apertura.
+> **Verificación pendiente**: confirmar cómo `useCrewData` está obteniendo empleados para manager (si pasa por edge function con service role o usa el cliente directo). Si pasa por el cliente directo, manager no puede leer `employees` actualmente. Esto se revisa en la implementación; si hace falta, se añade una policy SELECT para manager sobre `employees` excluyendo `current_salary` (vía vista) — pero el enfoque más simple es **mantener RLS estricta y ocultar el campo en UI**, asumiendo que la lectura de empleados funciona vía el flujo existente.
 
-2. **Header (líneas 131-149)** — mantener la barra desktop intacta y añadir, junto al botón `Hablemos`:
-   - Un `SheetTrigger` con icono `Menu` visible sólo en `<md` (`md:hidden`), tamaño táctil ≥44px.
-   - Un `SheetContent` lateral (side="right", width responsive) que liste:
-     - Empezar, Módulos, Caso, Proceso (mismos `scrollTo` handlers)
-     - Separador
-     - Acceso equipo / Panel (Link a `/login`)
-     - Botón `Hablemos` (cierra menú + scroll a contacto)
-   - Cada enlace cierra el sheet al pulsarse (vía `setOpen(false)` o `SheetClose asChild`).
+### Resultado esperado para manager
+- Pestaña "Datos generales": ve todo excepto el sueldo, que aparece como `—` y no es editable.
+- Pestaña "Historial salarial": **no aparece**.
+- Pestaña "Notas privadas": **no aparece**.
+- Las pestañas restantes (tareas recurrentes, incidencias, documentos) siguen disponibles según RLS existentes.
 
-3. **Eliminar `hidden sm:inline`** del enlace `Acceso equipo` desktop ya no es necesario; quedará dentro del sheet en móvil y dentro de la barra desktop como ahora (se mantiene `hidden md:inline` para coherencia con los demás enlaces desktop).
+Admin no se ve afectado: sigue viendo todo.
 
-4. **Accesibilidad / UX**:
-   - `aria-label="Abrir menú"` en el trigger.
-   - Tipografía consistente (`uppercase tracking-wide font-medium`).
-   - Cerrar automáticamente al navegar.
-
-### Breakpoints
-
-- `<768px` (móvil + tablet pequeño): hamburguesa visible, barra horizontal oculta.
-- `≥768px`: barra horizontal visible, hamburguesa oculta. Sin cambios respecto al estado actual.
-
-### Archivos modificados
-
-- `src/pages/Landing.tsx` (único cambio)
-
-No se requieren migraciones, edge functions ni nuevas dependencias.
+## Archivos modificados
+- `src/pages/CrewProfile.tsx`
+- `src/components/crew/CrewGeneralData.tsx`

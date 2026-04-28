@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import {
   ArrowLeft, MapPin, Calendar, Pencil, MoreVertical,
   AlertTriangle, GraduationCap, Archive, Trash2, Loader2,
@@ -46,8 +47,18 @@ export default function CrewProfile() {
     setRecurringTasksOrder,
   } = useCrewData();
 
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+
   const employee = employees.find((e) => e.id === id);
   const [activeTab, setActiveTab] = useState("general");
+
+  // If non-admin somehow lands on a restricted tab, fall back to "general"
+  useEffect(() => {
+    if (!isAdmin && (activeTab === "salary" || activeTab === "notes")) {
+      setActiveTab("general");
+    }
+  }, [isAdmin, activeTab]);
 
   const [editing, setEditing] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<Partial<Employee>>({});
@@ -274,13 +285,17 @@ export default function CrewProfile() {
           <TabsTrigger value="tasks" className="whitespace-nowrap">Tareas recurrentes</TabsTrigger>
           <TabsTrigger value="incidents" className="whitespace-nowrap">Incidencias</TabsTrigger>
           <TabsTrigger value="docs" className="whitespace-nowrap">Documentos</TabsTrigger>
-          <TabsTrigger value="salary" className="whitespace-nowrap">Historial salarial</TabsTrigger>
-          <TabsTrigger value="notes" className="whitespace-nowrap">Notas privadas</TabsTrigger>
+          {isAdmin && (
+            <>
+              <TabsTrigger value="salary" className="whitespace-nowrap">Historial salarial</TabsTrigger>
+              <TabsTrigger value="notes" className="whitespace-nowrap">Notas privadas</TabsTrigger>
+            </>
+          )}
         </TabsList>
         </div>
 
         <TabsContent value="general">
-          <CrewGeneralData employee={employee} editMode={editing} onUpdate={setPendingUpdates} />
+          <CrewGeneralData employee={employee} editMode={editing} onUpdate={setPendingUpdates} canViewSalary={isAdmin} />
         </TabsContent>
 
         <TabsContent value="tasks">
@@ -302,13 +317,17 @@ export default function CrewProfile() {
           <CrewDocuments employeeId={employee.id} />
         </TabsContent>
 
-        <TabsContent value="salary">
-          <CrewSalaryHistory employeeId={employee.id} currentSalary={employee.current_salary} />
-        </TabsContent>
+        {isAdmin && (
+          <>
+            <TabsContent value="salary">
+              <CrewSalaryHistory employeeId={employee.id} currentSalary={employee.current_salary} />
+            </TabsContent>
 
-        <TabsContent value="notes">
-          <CrewPrivateNotes employeeId={employee.id} />
-        </TabsContent>
+            <TabsContent value="notes">
+              <CrewPrivateNotes employeeId={employee.id} />
+            </TabsContent>
+          </>
+        )}
       </Tabs>
 
       {/* Audit trail */}
