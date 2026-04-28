@@ -65,10 +65,10 @@ export default function CrewProfile() {
       .rpc("has_role", { _user_id: user.id, _role: "admin" })
       .then(({ data }) => {
         if (!cancelled) setCanViewSensitiveCrewData(Boolean(data));
-      })
-      .catch(() => {
+      }, () => {
         if (!cancelled) setCanViewSensitiveCrewData(false);
-      });
+      })
+      ;
 
     return () => { cancelled = true; };
   }, [user?.id, role]);
