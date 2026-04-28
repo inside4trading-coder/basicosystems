@@ -191,27 +191,6 @@ export function CrewGeneralData({ employee, editMode, onUpdate, canViewSalary = 
           )}
         </FieldCell>
 
-        {/* Sueldo actual */}
-        <FieldCell label="Sueldo actual" editing={editMode}>
-          {!canViewSalary ? (
-            <p className="text-sm font-semibold"><Placeholder /></p>
-          ) : editMode ? (
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-              <Input
-                type="number"
-                className="pl-7"
-                value={val("current_salary") ?? ""}
-                onChange={(e) => set("current_salary", e.target.value ? Number(e.target.value) : null)}
-              />
-            </div>
-          ) : (
-            <p className="text-sm font-semibold">
-              {employee.current_salary != null ? `$${employee.current_salary.toLocaleString("es-VE")}` : <Placeholder />}
-            </p>
-          )}
-        </FieldCell>
-
         {/* Estado */}
         <FieldCell label="Estado" editing={editMode}>
           {editMode ? (
