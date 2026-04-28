@@ -57,6 +57,7 @@ export function useCrewData() {
         position: e.position,
         location: e.location ?? "",
         start_date: e.start_date,
+        birth_date: (e as any).birth_date ?? null,
         current_salary: isAdmin && e.current_salary != null ? Number(e.current_salary) : null,
         skills: e.skills ?? [],
         status: (e.status ?? "active") as EmployeeStatus,
@@ -87,6 +88,7 @@ export function useCrewData() {
     position: string;
     location: string;
     start_date: string;
+    birth_date: string | null;
     status: EmployeeStatus;
     photo_url: string | null;
   }) => {
@@ -98,10 +100,11 @@ export function useCrewData() {
       position: data.position,
       location: data.location,
       start_date: data.start_date,
+      birth_date: data.birth_date,
       status: data.status,
       photo_url: data.photo_url,
       internal_id: "", // trigger will auto-generate
-    });
+    } as any);
     if (insertErr) throw insertErr;
     await fetchEmployees();
   }, [fetchEmployees]);

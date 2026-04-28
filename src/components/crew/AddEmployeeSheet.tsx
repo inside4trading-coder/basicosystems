@@ -23,6 +23,7 @@ interface AddEmployeeSheetProps {
     position: string;
     location: string;
     start_date: string;
+    birth_date: string | null;
     status: EmployeeStatus;
     photo_url: string | null;
   }) => void;
@@ -36,6 +37,7 @@ export function AddEmployeeSheet({ open, onOpenChange, onSave }: AddEmployeeShee
   const [position, setPosition] = useState("");
   const [location, setLocation] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>();
+  const [birthDate, setBirthDate] = useState<Date | undefined>();
   const [status, setStatus] = useState<EmployeeStatus>("active");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
@@ -48,6 +50,7 @@ export function AddEmployeeSheet({ open, onOpenChange, onSave }: AddEmployeeShee
     setPosition("");
     setLocation("");
     setStartDate(undefined);
+    setBirthDate(undefined);
     setStatus("active");
     setPhotoPreview(null);
     setErrors({});
@@ -80,6 +83,7 @@ export function AddEmployeeSheet({ open, onOpenChange, onSave }: AddEmployeeShee
       position: position.trim(),
       location: location.trim(),
       start_date: startDate ? format(startDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+      birth_date: birthDate ? format(birthDate, "yyyy-MM-dd") : null,
       status,
       photo_url: photoPreview,
     });
@@ -164,6 +168,22 @@ export function AddEmployeeSheet({ open, onOpenChange, onSave }: AddEmployeeShee
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Birth date */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Fecha de nacimiento</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !birthDate && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {birthDate ? format(birthDate, "dd/MM/yyyy") : "Seleccionar fecha"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={birthDate} onSelect={setBirthDate} initialFocus captionLayout="dropdown-buttons" fromYear={1940} toYear={new Date().getFullYear()} className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
           </div>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BirthdaysThisMonth } from "@/components/crew/BirthdaysThisMonth";
 import type { EmployeeStatus } from "@/types/crew";
 
 const statusConfig: Record<EmployeeStatus, { label: string; className: string }> = {
@@ -99,6 +100,9 @@ export default function Crew() {
           </Button>
         </div>
       </div>
+
+      {/* Birthdays this month */}
+      <BirthdaysThisMonth employees={employees} />
 
       {/* Search + Filters */}
       <div className="flex flex-wrap items-center gap-3">
