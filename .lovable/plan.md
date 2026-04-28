@@ -1,43 +1,45 @@
 ## Objetivo
 
-En el módulo **Crew**, restringir el acceso del rol **manager** (y cualquier rol distinto de admin) a información sensible: salarios e historial salarial deben mostrarse como `—`, y la pestaña de notas privadas debe ocultarse por completo.
+Agregar en la parte superior de la página **Crew** un widget compacto que muestre los cumpleaños del mes en curso, indicando para cada empleado el día de su cumpleaños y cuántos días faltan (o "¡Hoy!" / "Pasado").
 
 ## Cambios
 
-### 1. `src/pages/CrewProfile.tsx`
-- Importar `useAuth` y leer `role`.
-- Calcular `isAdmin = role === "admin"`.
-- En el `TabsList`:
-  - Ocultar el `<TabsTrigger value="notes">` cuando no es admin.
-  - Cambiar la etiqueta de la pestaña de salario a "Sueldo" y ocultar el `<TabsTrigger value="salary">` por completo si no es admin (no la dejamos vacía; el sueldo aún sale en "Datos generales" como `—`).
-- Eliminar/condicionar `<TabsContent value="salary">` y `<TabsContent value="notes">` cuando no es admin.
-- Si la URL anterior hace que `activeTab` quede en "salary" o "notes" sin permiso, forzar reset a `"general"` con un `useEffect`.
+### 1. Base de datos
+La tabla `employees` no tiene campo de fecha de nacimiento. Crear migración para añadir:
 
-### 2. `src/components/crew/CrewGeneralData.tsx`
-- Aceptar nuevo prop `canViewSalary: boolean` (o leer rol con `useAuth` directamente, más simple).
-- En el campo "Sueldo actual":
-  - Si `!isAdmin`: mostrar siempre `<Placeholder />` (`—`), sin importar el valor real.
-  - En `editMode`, no mostrar el input de sueldo a no-admin (mantener `—`).
+- Columna `birth_date date` (nullable) en `public.employees`.
 
-### 3. Ocultar también el botón "Cambiar sueldo" / acceso al historial
-- Como ya quitamos la pestaña "Historial salarial", `CrewSalaryHistory` no se renderiza para manager → no se hacen queries a `salary_history`. No se requieren cambios en ese componente.
+Se expone también en `get_crew_employees()` (rpc) para que admin y manager puedan leerla — no es información sensible que requiera enmascarar.
 
-### 4. RLS (defensa en profundidad)
-Las políticas actuales ya son seguras:
-- `salary_history`: solo admin puede gestionar (no hay policy de SELECT para manager → no puede leer). ✅
-- `private_notes`: solo admin. ✅
-- `employees.current_salary`: la tabla `employees` solo es accesible por admin a nivel RLS. Manager no la lee directamente — pero el módulo Crew usa el cliente con sesión de manager, por lo que `useCrewData` probablemente ya falla para manager.
+### 2. Tipos
+- `src/types/crew.ts`: agregar `birth_date: string | null` a `Employee`.
+- `src/hooks/useCrewData.ts`: mapear `birth_date` desde el RPC; permitirlo en `updateEmployee`.
 
-> **Verificación pendiente**: confirmar cómo `useCrewData` está obteniendo empleados para manager (si pasa por edge function con service role o usa el cliente directo). Si pasa por el cliente directo, manager no puede leer `employees` actualmente. Esto se revisa en la implementación; si hace falta, se añade una policy SELECT para manager sobre `employees` excluyendo `current_salary` (vía vista) — pero el enfoque más simple es **mantener RLS estricta y ocultar el campo en UI**, asumiendo que la lectura de empleados funciona vía el flujo existente.
+### 3. Captura del dato
+- `src/components/crew/AddEmployeeSheet.tsx`: añadir input "Fecha de nacimiento" (opcional) y enviarlo al insert.
+- `src/components/crew/CrewGeneralData.tsx`: añadir campo editable "Fecha de nacimiento" en la sección de datos personales para poder rellenarlo a empleados existentes.
 
-### Resultado esperado para manager
-- Pestaña "Datos generales": ve todo excepto el sueldo, que aparece como `—` y no es editable.
-- Pestaña "Historial salarial": **no aparece**.
-- Pestaña "Notas privadas": **no aparece**.
-- Las pestañas restantes (tareas recurrentes, incidencias, documentos) siguen disponibles según RLS existentes.
+### 4. Widget de cumpleaños del mes (lo principal)
+- Crear `src/components/crew/BirthdaysThisMonth.tsx`:
+  - Recibe `employees: Employee[]`.
+  - Filtra empleados activos con `birth_date` cuyo mes coincida con el mes actual.
+  - Calcula para cada uno:
+    - **Día**: día del mes (ej: "12 de mayo").
+    - **Días restantes**: diferencia desde hoy hasta el cumpleaños de este año. Etiquetas:
+      - `0` → "¡Hoy!" (badge destacado)
+      - `> 0` → "En N días"
+      - `< 0` → "Hace N días"
+  - Ordena por fecha ascendente (próximos primero, pasados al final).
+  - Si no hay cumpleaños este mes: muestra una sola línea sutil ("Sin cumpleaños este mes").
+  - Diseño compacto: una tarjeta horizontal con icono de pastel (`Cake` de lucide), título pequeño "Cumpleaños de [mes]" y una fila con chips por persona (avatar mini + nombre + día + días restantes).
 
-Admin no se ve afectado: sigue viendo todo.
+- `src/pages/Crew.tsx`: insertar `<BirthdaysThisMonth employees={employees} />` justo debajo del header y antes de los filtros.
 
-## Archivos modificados
-- `src/pages/CrewProfile.tsx`
-- `src/components/crew/CrewGeneralData.tsx`
+### 5. Cálculo de días (sin desfase de timezone)
+Reutilizar `parseLocalDate` / `formatLocalDate` de `src/lib/dateUtils.ts` para evitar errores de zona horaria al comparar fechas tipo `YYYY-MM-DD`.
+
+## Notas técnicas
+
+- El widget es solo lectura, no requiere RLS adicional.
+- `birth_date` se respeta como dato opcional; empleados sin fecha simplemente no aparecen en el widget.
+- No se cambia ninguna lógica de salarios/permisos existente.
