@@ -193,6 +193,27 @@ export function CrewGeneralData({ employee, editMode, onUpdate, canViewSalary = 
           )}
         </FieldCell>
 
+        {/* Fecha de nacimiento */}
+        <FieldCell label="Fecha de nacimiento" editing={editMode}>
+          {editMode ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !parsedBirth && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {parsedBirth ? format(parsedBirth, "dd/MM/yyyy") : "Seleccionar"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={parsedBirth} onSelect={(d) => d && set("birth_date", format(d, "yyyy-MM-dd"))} initialFocus className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <p className="text-sm font-semibold">
+              {parsedBirth ? parsedBirth.toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }) : <Placeholder />}
+            </p>
+          )}
+        </FieldCell>
+
         {/* Estado */}
         <FieldCell label="Estado" editing={editMode}>
           {editMode ? (
