@@ -83,6 +83,7 @@ export function AddEmployeeSheet({ open, onOpenChange, onSave }: AddEmployeeShee
       position: position.trim(),
       location: location.trim(),
       start_date: startDate ? format(startDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+      birth_date: birthDate ? format(birthDate, "yyyy-MM-dd") : null,
       status,
       photo_url: photoPreview,
     });
