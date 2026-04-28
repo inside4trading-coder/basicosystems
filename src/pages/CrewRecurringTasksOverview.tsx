@@ -61,6 +61,7 @@ const dayMap: Record<string, number> = {
 
 const freqLabel: Record<string, string> = {
   daily: "Diaria",
+  interdaily: "Interdiaria",
   weekly: "Semanal",
   monthly: "Mensual",
 };
@@ -81,6 +82,12 @@ const priorityLabel: Record<string, string> = {
 function taskHappensOn(task: RecurringTask, parts: CaracasParts): boolean {
   if (!task.active) return false;
   if (task.frequency === "daily") return true;
+  if (task.frequency === "interdaily") {
+    // Alternating days based on epoch-day parity (Caracas date)
+    const utcMidnight = Date.UTC(parts.year, parts.month - 1, parts.day);
+    const epochDay = Math.floor(utcMidnight / 86400000);
+    return epochDay % 2 === 0;
+  }
   if (task.frequency === "weekly") {
     if (!task.day) return true;
     const wanted = dayMap[task.day.trim().toLowerCase()];
