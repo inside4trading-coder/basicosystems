@@ -37,6 +37,7 @@ export function AddEmployeeSheet({ open, onOpenChange, onSave }: AddEmployeeShee
   const [position, setPosition] = useState("");
   const [location, setLocation] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>();
+  const [birthDate, setBirthDate] = useState<Date | undefined>();
   const [status, setStatus] = useState<EmployeeStatus>("active");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
