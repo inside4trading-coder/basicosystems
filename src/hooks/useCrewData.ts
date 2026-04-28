@@ -15,9 +15,7 @@ export function useCrewData() {
     setError(null);
     try {
       const { data: empRows, error: empErr } = await supabase
-        .from("employees")
-        .select("*")
-        .order("created_at", { ascending: true });
+        .rpc("get_crew_employees");
 
       if (empErr) throw empErr;
 
@@ -59,7 +57,7 @@ export function useCrewData() {
         position: e.position,
         location: e.location ?? "",
         start_date: e.start_date,
-        current_salary: isAdmin ? (e.current_salary ? Number(e.current_salary) : null) : null,
+        current_salary: isAdmin && e.current_salary != null ? Number(e.current_salary) : null,
         skills: e.skills ?? [],
         status: (e.status ?? "active") as EmployeeStatus,
         observations: e.observations ?? "",
@@ -115,6 +113,7 @@ export function useCrewData() {
     delete cleanUpdates.internal_id;
     delete cleanUpdates.created_at;
     delete cleanUpdates.id;
+    if (!isAdmin) delete cleanUpdates.current_salary;
 
     if (Object.keys(cleanUpdates).length > 1) { // more than just updated_at
       const { error: updateErr } = await supabase
@@ -125,7 +124,7 @@ export function useCrewData() {
     }
 
     await fetchEmployees();
-  }, [fetchEmployees]);
+  }, [fetchEmployees, isAdmin]);
 
   const deleteEmployee = useCallback(async (id: string) => {
     const { error: delErr } = await supabase
