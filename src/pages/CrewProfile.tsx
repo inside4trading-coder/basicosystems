@@ -47,11 +47,31 @@ export default function CrewProfile() {
     setRecurringTasksOrder,
   } = useCrewData();
 
-  const { role } = useAuth();
-  const isAdmin = role === "admin";
+  const { role, user } = useAuth();
+  const [canViewSensitiveCrewData, setCanViewSensitiveCrewData] = useState(false);
+  const isAdmin = role === "admin" && canViewSensitiveCrewData;
 
   const employee = employees.find((e) => e.id === id);
   const [activeTab, setActiveTab] = useState("general");
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.id) {
+      setCanViewSensitiveCrewData(false);
+      return;
+    }
+
+    supabase
+      .rpc("has_role", { _user_id: user.id, _role: "admin" })
+      .then(({ data }) => {
+        if (!cancelled) setCanViewSensitiveCrewData(Boolean(data));
+      }, () => {
+        if (!cancelled) setCanViewSensitiveCrewData(false);
+      })
+      ;
+
+    return () => { cancelled = true; };
+  }, [user?.id, role]);
 
   // If non-admin somehow lands on a restricted tab, fall back to "general"
   useEffect(() => {

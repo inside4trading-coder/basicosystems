@@ -1531,6 +1531,27 @@ export type Database = {
       }
     }
     Functions: {
+      get_crew_employees: {
+        Args: never
+        Returns: {
+          cedula: string
+          created_at: string
+          current_salary: number
+          first_name: string
+          id: string
+          internal_id: string
+          last_name: string
+          location: string
+          observations: string
+          phone: string
+          photo_url: string
+          position: string
+          skills: string[]
+          start_date: string
+          status: string
+          updated_at: string
+        }[]
+      }
       get_urgency: { Args: { due: string }; Returns: string }
       has_role: {
         Args: {
