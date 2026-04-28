@@ -88,6 +88,7 @@ export function useCrewData() {
     position: string;
     location: string;
     start_date: string;
+    birth_date: string | null;
     status: EmployeeStatus;
     photo_url: string | null;
   }) => {
@@ -99,10 +100,11 @@ export function useCrewData() {
       position: data.position,
       location: data.location,
       start_date: data.start_date,
+      birth_date: data.birth_date,
       status: data.status,
       photo_url: data.photo_url,
       internal_id: "", // trigger will auto-generate
-    });
+    } as any);
     if (insertErr) throw insertErr;
     await fetchEmployees();
   }, [fetchEmployees]);
