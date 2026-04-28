@@ -23,6 +23,7 @@ interface AddEmployeeSheetProps {
     position: string;
     location: string;
     start_date: string;
+    birth_date: string | null;
     status: EmployeeStatus;
     photo_url: string | null;
   }) => void;
