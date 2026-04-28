@@ -25,6 +25,7 @@ export interface Employee {
   position: string;
   location: string;
   start_date: string;
+  birth_date: string | null;
   current_salary: number | null;
   skills: string[];
   status: EmployeeStatus;
