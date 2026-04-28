@@ -50,6 +50,7 @@ export function AddEmployeeSheet({ open, onOpenChange, onSave }: AddEmployeeShee
     setPosition("");
     setLocation("");
     setStartDate(undefined);
+    setBirthDate(undefined);
     setStatus("active");
     setPhotoPreview(null);
     setErrors({});
