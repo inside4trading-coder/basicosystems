@@ -1,0 +1,2 @@
+CREATE POLICY "Manager can read employees" ON public.employees FOR SELECT TO authenticated USING (has_role(auth.uid(), 'manager'::app_role));
+CREATE POLICY "Manager can read recurring_tasks" ON public.recurring_tasks FOR SELECT TO authenticated USING (has_role(auth.uid(), 'manager'::app_role));
