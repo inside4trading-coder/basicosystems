@@ -101,6 +101,9 @@ export default function Crew() {
         </div>
       </div>
 
+      {/* Birthdays this month */}
+      <BirthdaysThisMonth employees={employees} />
+
       {/* Search + Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
