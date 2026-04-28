@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import type { Employee, EmployeeStatus, RecurringTask } from "@/types/crew";
 
 export function useCrewData() {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +59,7 @@ export function useCrewData() {
         position: e.position,
         location: e.location ?? "",
         start_date: e.start_date,
-        current_salary: e.current_salary ? Number(e.current_salary) : null,
+        current_salary: isAdmin ? (e.current_salary ? Number(e.current_salary) : null) : null,
         skills: e.skills ?? [],
         status: (e.status ?? "active") as EmployeeStatus,
         observations: e.observations ?? "",
@@ -72,7 +75,7 @@ export function useCrewData() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     fetchEmployees();
