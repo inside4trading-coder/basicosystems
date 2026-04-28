@@ -86,6 +86,8 @@ export function CrewGeneralData({ employee, editMode, onUpdate, canViewSalary = 
 
   const startDate = val("start_date");
   const parsedDate = startDate ? new Date(startDate) : undefined;
+  const birthDate = val("birth_date") as string | null | undefined;
+  const parsedBirth = birthDate ? new Date(birthDate) : undefined;
 
   return (
     <div className="kpi-card space-y-6">
