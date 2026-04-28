@@ -59,7 +59,7 @@ export function useCrewData() {
         position: e.position,
         location: e.location ?? "",
         start_date: e.start_date,
-        current_salary: e.current_salary ? Number(e.current_salary) : null,
+        current_salary: isAdmin ? (e.current_salary ? Number(e.current_salary) : null) : null,
         skills: e.skills ?? [],
         status: (e.status ?? "active") as EmployeeStatus,
         observations: e.observations ?? "",
