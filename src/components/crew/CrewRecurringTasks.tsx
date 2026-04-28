@@ -46,6 +46,7 @@ const priorityDot: Record<string, string> = {
 
 const freqLabel: Record<string, string> = {
   daily: "Diaria",
+  interdaily: "Interdiaria",
   weekly: "Semanal",
   monthly: "Mensual",
 };
@@ -234,7 +235,7 @@ function TaskSheet({
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [frequency, setFrequency] = useState<"daily" | "interdaily" | "weekly" | "monthly">("daily");
   const [day, setDay] = useState("");
   const [time, setTime] = useState("09:00");
   const [hasTime, setHasTime] = useState(true);
@@ -324,6 +325,7 @@ function TaskSheet({
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="daily">Diaria</SelectItem>
+                  <SelectItem value="interdaily">Interdiaria (día por medio)</SelectItem>
                   <SelectItem value="weekly">Semanal</SelectItem>
                   <SelectItem value="monthly">Mensual</SelectItem>
                 </SelectContent>
