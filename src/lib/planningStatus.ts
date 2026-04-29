@@ -1,4 +1,5 @@
 import type { NotionTask } from "@/hooks/usePlanningData";
+import { parseLocalDate } from "@/lib/dateUtils";
 
 export type DerivedStatus =
   | "done"
@@ -67,8 +68,8 @@ export function deriveStatus(task: NotionTask, now: Date = new Date()): DerivedS
   if (fam === "done") return "done";
   if (fam === "in_progress") return "in_progress";
 
-  const start = task.date?.start ? new Date(task.date.start) : null;
-  const end = task.date?.end ? new Date(task.date.end) : start;
+  const start = task.date?.start ? parseLocalDate(task.date.start) : null;
+  const end = task.date?.end ? parseLocalDate(task.date.end) : start;
   const today = startOfDay(now);
 
   // Delegated: si pasó la fecha sin completar -> overdue, si no -> delegated
