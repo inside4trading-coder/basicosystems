@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { NotionTask } from "@/hooks/usePlanningData";
 import { deriveStatus, statusVisual, type DerivedStatus } from "@/lib/planningStatus";
+import { parseLocalDate } from "@/lib/dateUtils";
 
 interface PlanningAgendaProps {
   tasks: NotionTask[];
@@ -31,7 +32,7 @@ function daysBetween(a: Date, b: Date) {
 }
 
 function fmtShort(d: string) {
-  return new Date(d).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "short" });
+  return parseLocalDate(d).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "short" });
 }
 
 function StatusChip({ status }: { status: DerivedStatus }) {
@@ -153,7 +154,7 @@ export default function PlanningAgenda({ tasks, loading, error }: PlanningAgenda
         noDate.push(t);
         continue;
       }
-      const due = startOfDay(new Date(t.date.start));
+      const due = startOfDay(parseLocalDate(t.date.start));
       const diff = daysBetween(due, today);
 
       if (status === "overdue") {

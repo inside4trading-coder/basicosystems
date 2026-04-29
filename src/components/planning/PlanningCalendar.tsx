@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { NotionTask } from "@/hooks/usePlanningData";
 import { deriveStatus, statusVisual, type DerivedStatus } from "@/lib/planningStatus";
+import { formatLocalDate } from "@/lib/dateUtils";
 
 interface PlanningCalendarProps {
   tasks: NotionTask[];
@@ -50,7 +51,9 @@ const NOTION_BADGE_CLASS: Record<string, string> = {
 const DAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
 
 function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+  // Tratar "YYYY-MM-DD" como fecha local para evitar desfases de timezone
+  const [y, m, day] = d.slice(0, 10).split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, day ?? 1).toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
 }
 
 function sameDay(a: Date, b: Date) {
@@ -273,7 +276,7 @@ export default function PlanningCalendar({ tasks, loading, error, selectedDataba
             {week.map((day, di) => {
               const isCurrentMonth = day.getMonth() === month;
               const isToday = sameDay(day, today);
-              const key = day.toISOString().slice(0, 10);
+              const key = formatLocalDate(day);
               const dayTasks = tasksByDate[key] || [];
               const isWeekend = di >= 5;
 
