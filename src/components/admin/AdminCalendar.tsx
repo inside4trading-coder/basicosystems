@@ -118,10 +118,14 @@ export function AdminCalendar({ monthDate, instances, onPrevMonth, onNextMonth, 
                       "text-left text-[10px] leading-tight border rounded px-1.5 py-1 truncate transition-transform hover:scale-[1.02]",
                       STATUS_COLORS[inst.status],
                     )}
-                    title={`${inst.obligation_name ?? ""} · ${fmtAmount(inst.amount, inst.currency)}`}
+                    title={`${inst.obligation_name ?? ""} · ${inst.amount > 0 ? fmtAmount(inst.amount, inst.currency) : "Variable"}`}
                   >
                     <div className="font-bold truncate">{inst.obligation_name ?? "—"}</div>
-                    {inst.amount > 0 && <div className="opacity-80">{fmtAmount(inst.amount, inst.currency)}</div>}
+                    {inst.amount > 0 ? (
+                      <div className="opacity-80">{fmtAmount(inst.amount, inst.currency)}</div>
+                    ) : (
+                      <div className="opacity-70 italic">Variable</div>
+                    )}
                   </button>
                 ))}
                 {extra > 0 && (
