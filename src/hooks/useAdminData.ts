@@ -496,6 +496,7 @@ export function useAdminData() {
     updateObligation,
     createInstance,
     updateInstance,
+    updateInstanceAndFuture,
     markAsPaid,
     fetchConfig,
     fetchKPIs,
