@@ -49,6 +49,7 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
     setPaidBy(instance.paid_by ?? "");
     setPaymentRef(instance.payment_reference ?? "");
     setNotes(instance.notes ?? "");
+    setApplyToFuture(false);
   }, [instance]);
 
   if (!instance) return null;
@@ -64,7 +65,7 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
     }
     setSaving(true);
     try {
-      await updateInstance(instance.id, {
+      const patch = {
         period_label: periodLabel.trim(),
         due_date: dueDate,
         amount: Number(amount) || 0,
@@ -74,8 +75,24 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
         paid_by: paidBy.trim(),
         payment_reference: paymentRef.trim(),
         notes: notes.trim(),
-      } as Partial<ObligationInstance>);
-      toast.success("Obligación actualizada");
+      } as Partial<ObligationInstance>;
+
+      if (applyToFuture && instance.obligation_id) {
+        const { bulkCount } = await updateInstanceAndFuture(
+          instance.id,
+          patch,
+          instance.obligation_id,
+          instance.due_date.slice(0, 10),
+        );
+        toast.success(
+          bulkCount > 0
+            ? `Actualizado este mes y ${bulkCount} mes${bulkCount === 1 ? "" : "es"} futuro${bulkCount === 1 ? "" : "s"}`
+            : "Obligación actualizada (no había meses futuros editables)",
+        );
+      } else {
+        await updateInstance(instance.id, patch);
+        toast.success("Obligación actualizada");
+      }
       onSaved();
       onOpenChange(false);
     } catch (e: any) {
