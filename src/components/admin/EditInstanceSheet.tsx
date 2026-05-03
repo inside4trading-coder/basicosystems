@@ -255,7 +255,9 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
               <AlertDialogHeader>
                 <AlertDialogTitle>¿Eliminar esta obligación?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta acción es permanente y no se puede deshacer.
+                  {applyToFuture
+                    ? "Se eliminará este mes y todos los meses futuros pendientes de esta obligación. Esta acción es permanente."
+                    : "Esta acción es permanente y no se puede deshacer."}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
