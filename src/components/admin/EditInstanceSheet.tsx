@@ -238,7 +238,7 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
                 Aplicar también a los meses futuros
               </Label>
               <p className="text-xs text-muted-foreground leading-snug">
-                Replica monto, moneda, notas y estado en todas las instancias pendientes de esta obligación con vencimiento posterior. No afecta meses ya pagados, vencidos o anulados.
+                Al guardar: replica monto, moneda, notas y estado en las instancias futuras pendientes. Al eliminar: borra también esos meses futuros. No afecta meses ya pagados, vencidos o anulados.
               </p>
             </div>
           </div>
