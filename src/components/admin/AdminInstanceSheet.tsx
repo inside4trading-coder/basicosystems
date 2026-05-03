@@ -54,7 +54,7 @@ export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit }: Pro
             </div>
             <div>
               <div className="text-xs uppercase font-bold text-muted-foreground">Monto</div>
-              <div className="font-black">{fmtMoney(instance.amount, instance.currency)}</div>
+              <div className="font-black">{!instance.amount || instance.amount <= 0 ? "Variable" : fmtMoney(instance.amount, instance.currency)}</div>
             </div>
             <div>
               <div className="text-xs uppercase font-bold text-muted-foreground">Estado</div>

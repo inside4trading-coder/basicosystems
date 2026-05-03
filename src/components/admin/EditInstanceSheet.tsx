@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -139,10 +140,29 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
             </div>
           </div>
 
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="variable_amount_edit"
+              checked={Number(amount) === 0}
+              onCheckedChange={(v) => setAmount(v ? "0" : "0.01")}
+            />
+            <Label htmlFor="variable_amount_edit" className="cursor-pointer text-sm font-normal">
+              Sin monto fijo (variable, ej. impuestos)
+            </Label>
+          </div>
+
           <div className="grid grid-cols-[1fr_100px] gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="amount">Monto</Label>
-              <Input id="amount" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                value={Number(amount) === 0 ? "" : amount}
+                disabled={Number(amount) === 0}
+                placeholder={Number(amount) === 0 ? "Variable" : ""}
+                onChange={(e) => setAmount(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="currency">Moneda</Label>

@@ -53,6 +53,14 @@ export function fmtMoney(n: number, c = "USD") {
   return new Intl.NumberFormat("es-VE", { style: "currency", currency: c, maximumFractionDigits: 2 }).format(n || 0);
 }
 
+export function isVariableAmount(n: number | null | undefined): boolean {
+  return !n || n <= 0;
+}
+
+export function fmtMoneyOrVariable(n: number, c = "USD") {
+  return isVariableAmount(n) ? "Variable" : fmtMoney(n, c);
+}
+
 export const ALL_STATUSES: InstanceStatus[] = [
   "pendiente",
   "proximo_vencer",

@@ -19,6 +19,7 @@ import {
   URGENCY_BADGE,
   URGENCY_LABEL,
   fmtMoney,
+  fmtMoneyOrVariable,
   relativeDate,
 } from "./adminConstants";
 import { MarkPaidDialog } from "./MarkPaidDialog";
@@ -111,7 +112,7 @@ export function AdminListView({ instances, onRowClick, onEdit, onPaid, onClearFi
                       <span className={URGENCY_BADGE[urgency]}>{URGENCY_LABEL[urgency]}</span>
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums font-semibold">
-                      {fmtMoney(i.amount, i.currency)}
+                      {fmtMoneyOrVariable(i.amount, i.currency)}
                     </td>
                     <td className="px-3 py-3">
                       <span className={STATUS_BADGE[i.status]}>{STATUS_LABEL[i.status]}</span>

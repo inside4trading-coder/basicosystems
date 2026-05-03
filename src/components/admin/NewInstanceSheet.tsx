@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAdminData } from "@/hooks/useAdminData";
 import type { InstanceStatus, Obligation } from "@/types/admin";
 
@@ -126,10 +127,28 @@ export function NewInstanceSheet({ obligation, open, onOpenChange, onCreated }: 
             <Label htmlFor="dueDate">Fecha de vencimiento *</Label>
             <Input id="dueDate" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="variable_amount_new"
+              checked={Number(amount) === 0}
+              onCheckedChange={(v) => setAmount(v ? "0" : "0.01")}
+            />
+            <Label htmlFor="variable_amount_new" className="cursor-pointer text-sm font-normal">
+              Sin monto fijo (variable, ej. impuestos)
+            </Label>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="amount">Monto</Label>
-              <Input id="amount" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                value={Number(amount) === 0 ? "" : amount}
+                disabled={Number(amount) === 0}
+                placeholder={Number(amount) === 0 ? "Variable" : ""}
+                onChange={(e) => setAmount(e.target.value)}
+              />
             </div>
             <div>
               <Label htmlFor="currency">Moneda</Label>
