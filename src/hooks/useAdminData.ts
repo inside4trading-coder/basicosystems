@@ -344,6 +344,57 @@ export function useAdminData() {
     return row;
   }, []);
 
+  const updateInstanceAndFuture = useCallback(
+    async (
+      id: string,
+      patch: Partial<ObligationInstance>,
+      obligationId: string,
+      dueDate: string,
+    ) => {
+      // 1. Update current instance
+      const { data: row, error } = await (supabase.from(INSTANCES) as any)
+        .update(patch)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+
+      // 2. Build "structural" patch (no per-month fields)
+      const futurePatch: Record<string, unknown> = {};
+      if ("amount" in patch) futurePatch.amount = patch.amount;
+      if ("currency" in patch) futurePatch.currency = patch.currency;
+      if ("notes" in patch) futurePatch.notes = patch.notes;
+      if (
+        "status" in patch &&
+        patch.status &&
+        ["pendiente", "proximo_vencer", "pausado"].includes(patch.status as string)
+      ) {
+        futurePatch.status = patch.status;
+      }
+
+      let bulkCount = 0;
+      if (Object.keys(futurePatch).length > 0) {
+        const { data: bulk, error: bulkErr } = await (supabase.from(INSTANCES) as any)
+          .update(futurePatch)
+          .eq("obligation_id", obligationId)
+          .gt("due_date", dueDate)
+          .in("status", ["pendiente", "proximo_vencer", "pausado"])
+          .select("id");
+        if (bulkErr) throw bulkErr;
+        bulkCount = bulk?.length ?? 0;
+      }
+
+      await logAudit({
+        action: "update_instance_bulk",
+        instance_id: id,
+        obligation_id: obligationId,
+        new_value: `current + ${bulkCount} futuras · ${JSON.stringify(futurePatch).slice(0, 400)}`,
+      });
+      return { row, bulkCount };
+    },
+    [],
+  );
+
   const markAsPaid = useCallback(
     async (id: string, paidBy: string, ref: string, proofUrl?: string) => {
       const today = new Date().toISOString().slice(0, 10);
@@ -445,6 +496,7 @@ export function useAdminData() {
     updateObligation,
     createInstance,
     updateInstance,
+    updateInstanceAndFuture,
     markAsPaid,
     fetchConfig,
     fetchKPIs,

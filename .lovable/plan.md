@@ -1,47 +1,40 @@
 ## Objetivo
 
-Permitir marcar una obligación / instancia de pago como **"Sin monto fijo"** (variable), útil para casos como impuestos donde el monto no se conoce de antemano.
+Cuando se edita una instancia (mes específico) de una obligación recurrente, permitir decidir si los cambios se aplican **solo a ese mes** o **también a los meses futuros** de la misma obligación.
 
-## Cambios
+## Cambio en la UI — `EditInstanceSheet.tsx`
 
-### 1. UI — Checkbox "Sin monto fijo (variable)"
+Agregar un checkbox al final del formulario, justo antes de los botones:
 
-Agregar un checkbox arriba del campo "Monto" en los tres sheets donde se ingresa monto:
+> ☐ **Aplicar también a los meses futuros**
+> Los cambios se replicarán en todas las instancias pendientes de esta obligación con vencimiento posterior a esta.
 
-- **`CreateObligationSheet.tsx`** (paso 2 — primera instancia)
-- **`NewInstanceSheet.tsx`** (nueva instancia de obligación existente)
-- **`EditInstanceSheet.tsx`** (editar instancia)
+Por defecto **desactivado** (comportamiento actual: solo edita el mes seleccionado).
 
-Cuando el checkbox está marcado:
-- El input de monto se deshabilita y el valor se fuerza a `0`.
-- Al guardar, el monto se persiste como `0` (no requerimos columna nueva — `amount = 0` ya representa "sin monto").
+## Lógica de propagación
 
-### 2. Visualización — mostrar "Variable" en vez de `$0`
+Cuando el checkbox está marcado, al guardar:
 
-En las vistas, cuando `amount === 0` mostrar la etiqueta **"Variable"** en lugar de `$0`:
-
-- **`AdminCalendar.tsx`** — chip del calendario (ya oculta el monto si es 0; añadiremos un pequeño texto "Variable").
-- **`AdminListView.tsx`** — celda de monto en la tabla.
-- **`AdminInstanceSheet.tsx`** — encabezado del detalle.
-- **`AdminKPIs.tsx`** — el "Próximo importante" mostrará "Variable" si amount=0; las sumas seguirán contando 0 (no afectan los totales).
-
-### 3. Al marcar como pagado
-
-En **`MarkPaidDialog.tsx`** (si pide monto), el usuario podrá ingresar el monto real cobrado en ese momento, sobrescribiendo el `0` original. Reviso ese archivo y, si ya pide monto, no requiere cambios; si no lo pide y el monto era 0, agrego un campo para capturar el monto real al pagar.
+1. Se actualiza la instancia actual (igual que hoy).
+2. Se actualizan **todas las instancias futuras** de la misma `obligation_id` que cumplan:
+   - `due_date > due_date de la instancia actual`
+   - `status IN ('pendiente', 'proximo_vencer', 'pausado')` — nunca tocamos pagadas, vencidas ni anuladas.
+3. Campos que se propagan (los "estructurales", no los de pago):
+   - `amount`
+   - `currency`
+   - `notes`
+   - `status` (solo si el nuevo estado es `pendiente`, `proximo_vencer` o `pausado`)
+4. Campos que **NO** se propagan (son específicos de cada mes):
+   - `period_label`, `due_date`, `paid_at`, `paid_by`, `payment_reference`.
+5. Si la obligación es de **monto variable** (amount = 0), el cambio de monto sí se propaga (vuelve a marcarlas como variables) — coherente con el comportamiento actual.
 
 ## Detalles técnicos
 
-- **No requiere migración de base de datos.** Convención: `amount = 0` en `admin_instances` / `admin_obligations` significa "sin monto fijo".
-- Validación Zod: cambiar `min(0)` se mantiene; el checkbox simplemente fuerza el valor a 0.
-- Helper compartido en componentes: `const isVariable = (n: number) => !n || n <= 0;`
+- Nuevo método en `useAdminData.ts`: `updateInstanceAndFuture(id, patch, obligationId, dueDate)` que hace dos updates: el de la instancia actual y un bulk update con `gt('due_date', dueDate)` + `in('status', [...])` + `eq('obligation_id', obligationId)`.
+- Registra una entrada en `admin_audit_log` con `action = "update_instance_bulk"` indicando cuántas filas se actualizaron.
+- En `EditInstanceSheet.tsx`: nuevo estado `applyToFuture`, y en `handleSave` se llama al método nuevo cuando esté marcado.
 
 ## Archivos a editar
 
-- `src/components/admin/CreateObligationSheet.tsx`
-- `src/components/admin/NewInstanceSheet.tsx`
-- `src/components/admin/EditInstanceSheet.tsx`
-- `src/components/admin/AdminCalendar.tsx`
-- `src/components/admin/AdminListView.tsx`
-- `src/components/admin/AdminInstanceSheet.tsx`
-- `src/components/admin/AdminKPIs.tsx`
-- `src/components/admin/MarkPaidDialog.tsx` (revisar; editar solo si hace falta capturar monto al pagar)
+- `src/hooks/useAdminData.ts` — añadir `updateInstanceAndFuture`.
+- `src/components/admin/EditInstanceSheet.tsx` — checkbox + lógica de guardado.

@@ -23,9 +23,10 @@ interface Props {
 const STATUSES: InstanceStatus[] = ["pendiente", "proximo_vencer", "pagado", "vencido", "pausado", "anulado"];
 
 export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Props) {
-  const { updateInstance } = useAdminData();
+  const { updateInstance, updateInstanceAndFuture } = useAdminData();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [applyToFuture, setApplyToFuture] = useState(false);
 
   const [periodLabel, setPeriodLabel] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -48,6 +49,7 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
     setPaidBy(instance.paid_by ?? "");
     setPaymentRef(instance.payment_reference ?? "");
     setNotes(instance.notes ?? "");
+    setApplyToFuture(false);
   }, [instance]);
 
   if (!instance) return null;
@@ -63,7 +65,7 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
     }
     setSaving(true);
     try {
-      await updateInstance(instance.id, {
+      const patch = {
         period_label: periodLabel.trim(),
         due_date: dueDate,
         amount: Number(amount) || 0,
@@ -73,8 +75,24 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
         paid_by: paidBy.trim(),
         payment_reference: paymentRef.trim(),
         notes: notes.trim(),
-      } as Partial<ObligationInstance>);
-      toast.success("Obligación actualizada");
+      } as Partial<ObligationInstance>;
+
+      if (applyToFuture && instance.obligation_id) {
+        const { bulkCount } = await updateInstanceAndFuture(
+          instance.id,
+          patch,
+          instance.obligation_id,
+          instance.due_date.slice(0, 10),
+        );
+        toast.success(
+          bulkCount > 0
+            ? `Actualizado este mes y ${bulkCount} mes${bulkCount === 1 ? "" : "es"} futuro${bulkCount === 1 ? "" : "s"}`
+            : "Obligación actualizada (no había meses futuros editables)",
+        );
+      } else {
+        await updateInstance(instance.id, patch);
+        toast.success("Obligación actualizada");
+      }
       onSaved();
       onOpenChange(false);
     } catch (e: any) {
@@ -189,6 +207,23 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
           <div className="space-y-1.5">
             <Label htmlFor="notes">Notas</Label>
             <Textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+
+          <div className="rounded-md border bg-muted/30 p-3 flex items-start gap-2.5">
+            <Checkbox
+              id="apply_future"
+              checked={applyToFuture}
+              onCheckedChange={(v) => setApplyToFuture(v === true)}
+              className="mt-0.5"
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="apply_future" className="cursor-pointer text-sm font-bold">
+                Aplicar también a los meses futuros
+              </Label>
+              <p className="text-xs text-muted-foreground leading-snug">
+                Replica monto, moneda, notas y estado en todas las instancias pendientes de esta obligación con vencimiento posterior. No afecta meses ya pagados, vencidos o anulados.
+              </p>
+            </div>
           </div>
         </div>
 
