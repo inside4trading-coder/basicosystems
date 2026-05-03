@@ -129,6 +129,20 @@ export function MarkPaidDialog({ instance, open, onOpenChange, onSaved }: Props)
         </DialogHeader>
 
         <div className="space-y-3">
+          {isVariable && (
+            <div>
+              <Label htmlFor="actualAmount">Monto pagado * <span className="text-xs font-normal text-muted-foreground">({instance.currency})</span></Label>
+              <Input
+                id="actualAmount"
+                type="number"
+                step="0.01"
+                min={0}
+                value={actualAmount}
+                onChange={(e) => setActualAmount(e.target.value)}
+                placeholder="Ej. 150.00"
+              />
+            </div>
+          )}
           <div>
             <Label htmlFor="paidBy">Pagado por *</Label>
             <Input
