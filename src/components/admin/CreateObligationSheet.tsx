@@ -387,6 +387,17 @@ export function CreateObligationSheet({ open, onOpenChange, onCreated }: Props) 
               />
             </div>
 
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="variable_amount"
+                checked={inst.amount === 0}
+                onCheckedChange={(v) => setInst({ ...inst, amount: v ? 0 : 0.01 })}
+              />
+              <Label htmlFor="variable_amount" className="cursor-pointer text-sm font-normal">
+                Sin monto fijo (variable, ej. impuestos)
+              </Label>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="amount">Monto</Label>
@@ -395,7 +406,9 @@ export function CreateObligationSheet({ open, onOpenChange, onCreated }: Props) 
                   type="number"
                   min={0}
                   step="0.01"
-                  value={inst.amount}
+                  value={inst.amount === 0 ? "" : inst.amount}
+                  disabled={inst.amount === 0}
+                  placeholder={inst.amount === 0 ? "Variable" : ""}
                   onChange={(e) => setInst({ ...inst, amount: Number(e.target.value) })}
                 />
               </div>
