@@ -208,6 +208,23 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
             <Label htmlFor="notes">Notas</Label>
             <Textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
+
+          <div className="rounded-md border bg-muted/30 p-3 flex items-start gap-2.5">
+            <Checkbox
+              id="apply_future"
+              checked={applyToFuture}
+              onCheckedChange={(v) => setApplyToFuture(v === true)}
+              className="mt-0.5"
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="apply_future" className="cursor-pointer text-sm font-bold">
+                Aplicar también a los meses futuros
+              </Label>
+              <p className="text-xs text-muted-foreground leading-snug">
+                Replica monto, moneda, notas y estado en todas las instancias pendientes de esta obligación con vencimiento posterior. No afecta meses ya pagados, vencidos o anulados.
+              </p>
+            </div>
+          </div>
         </div>
 
         <SheetFooter className="mt-6 flex-row justify-between gap-2 sm:justify-between">
