@@ -105,11 +105,28 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
   const handleDelete = async () => {
     setDeleting(true);
     try {
+      let futureCount = 0;
+      if (applyToFuture && instance.obligation_id) {
+        const { data: futureRows, error: futureErr } = await (supabase.from("admin_instances" as any) as any)
+          .delete()
+          .eq("obligation_id", instance.obligation_id)
+          .gt("due_date", instance.due_date.slice(0, 10))
+          .in("status", ["pendiente", "proximo_vencer", "pausado"])
+          .select("id");
+        if (futureErr) throw futureErr;
+        futureCount = futureRows?.length ?? 0;
+      }
+
       const { error } = await (supabase.from("admin_instances" as any) as any)
         .delete()
         .eq("id", instance.id);
       if (error) throw error;
-      toast.success("Obligación eliminada");
+
+      toast.success(
+        applyToFuture
+          ? `Eliminado este mes y ${futureCount} mes${futureCount === 1 ? "" : "es"} futuro${futureCount === 1 ? "" : "s"}`
+          : "Obligación eliminada",
+      );
       onSaved();
       onOpenChange(false);
     } catch (e: any) {
