@@ -105,7 +105,7 @@ export function AdminKPIs({ instances, monthDate }: Props) {
             <div className="text-xs text-muted-foreground">
               {new Date(nextImportant.due_date).toLocaleDateString("es-VE", { day: "2-digit", month: "short" })}
             </div>
-            <div className="text-base font-black">{fmtMoney(nextImportant.amount, nextImportant.currency)}</div>
+            <div className="text-base font-black">{!nextImportant.amount || nextImportant.amount <= 0 ? "Variable" : fmtMoney(nextImportant.amount, nextImportant.currency)}</div>
           </div>
         ) : (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
