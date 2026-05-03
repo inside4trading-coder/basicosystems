@@ -23,9 +23,10 @@ interface Props {
 const STATUSES: InstanceStatus[] = ["pendiente", "proximo_vencer", "pagado", "vencido", "pausado", "anulado"];
 
 export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Props) {
-  const { updateInstance } = useAdminData();
+  const { updateInstance, updateInstanceAndFuture } = useAdminData();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [applyToFuture, setApplyToFuture] = useState(false);
 
   const [periodLabel, setPeriodLabel] = useState("");
   const [dueDate, setDueDate] = useState("");
