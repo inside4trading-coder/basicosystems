@@ -36,20 +36,24 @@ const MAX_FILE_MB = 10;
 const ALLOWED = ["image/png", "image/jpeg", "image/jpg", "image/webp", "application/pdf"];
 
 export function MarkPaidDialog({ instance, open, onOpenChange, onSaved }: Props) {
-  const { markAsPaid } = useAdminData();
+  const { markAsPaid, updateInstance } = useAdminData();
   const { user } = useAuth();
   const [paidBy, setPaidBy] = useState("");
   const [reference, setReference] = useState("");
   const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [actualAmount, setActualAmount] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const isVariable = !instance?.amount || instance.amount <= 0;
 
   useEffect(() => {
     if (open) {
       setPaidBy(user?.email ?? "");
       setReference("");
       setPaidAt(new Date().toISOString().slice(0, 10));
+      setActualAmount("");
       setFile(null);
     }
   }, [open, user?.email]);
@@ -87,8 +91,18 @@ export function MarkPaidDialog({ instance, open, onOpenChange, onSaved }: Props)
       toast.error(parsed.error.issues[0]?.message ?? "Datos inválidos");
       return;
     }
+    if (isVariable) {
+      const n = Number(actualAmount);
+      if (!actualAmount || !Number.isFinite(n) || n <= 0) {
+        toast.error("Ingresa el monto pagado");
+        return;
+      }
+    }
     setSaving(true);
     try {
+      if (isVariable) {
+        await updateInstance(instance.id, { amount: Number(actualAmount) } as any);
+      }
       const proofPath = await uploadProof(instance.id);
       await markAsPaid(instance.id, parsed.data.paidBy, parsed.data.reference ?? "", proofPath);
       toast.success("Obligación marcada como pagada");
@@ -110,7 +124,7 @@ export function MarkPaidDialog({ instance, open, onOpenChange, onSaved }: Props)
           </DialogTitle>
           <DialogDescription>
             {instance.obligation_name} · {instance.period_label} ·{" "}
-            <span className="font-bold">{fmtMoney(instance.amount, instance.currency)}</span>
+            <span className="font-bold">{isVariable ? "Variable" : fmtMoney(instance.amount, instance.currency)}</span>
           </DialogDescription>
         </DialogHeader>
 
