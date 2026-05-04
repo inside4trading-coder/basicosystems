@@ -1,52 +1,35 @@
-# Problema
+## Problema
 
-Los comprobantes (capturas) no aparecen en el sidebar de la obligación aunque ya estén subidos. El sidebar (`AdminInstanceSheet`) sí tiene la sección "Comprobantes" y la sección "Información de pago" implementadas, pero siempre llegan vacías.
+En el Pipeline, cuando un contacto está en "Nuevo", aparece el mensaje **"Registra el primer movimiento — Agrega una interacción o cambia el estado a Contactado cuando inicies la conversación."** Este mensaje solo menciona interacciones, ignorando que registrar una **colaboración** (envío de producto, post realizado) también es un movimiento válido y de hecho un avance mucho mayor en la relación.
 
-**Causa raíz:** Toda la app lee las instancias desde la vista de Postgres `admin_instances_view`, y esa vista **no incluye la columna `payment_proof_url`**. Por eso `instance.payment_proof_urls` siempre es `null` y la sección de comprobantes nunca se renderiza.
+Además, cuando se registra una colaboración desde la pestaña Colaboraciones, el estado del Pipeline **no se actualiza automáticamente**, por lo que un contacto puede tener producto enviado y post publicado pero seguir mostrándose como "Nuevo" en el Pipeline. Eso es lo que el usuario percibe como "las colaboraciones no salen en pipeline".
 
-```sql
--- Vista actual (faltan campos):
-SELECT i.id, i.obligation_id, ..., i.notes, i.created_at, i.updated_at, ...
-FROM admin_instances i JOIN admin_obligations o ...
--- ❌ Falta: payment_proof_url
-```
+## Solución
 
-# Solución
+### 1. Auto-avance del Pipeline al guardar una colaboración
+En `RRPPCollaborations.tsx → handleSave`, después de insertar/actualizar la colaboración, calcular el estado mínimo que debería tener el contacto y hacer un update en `rrpp_contacts.relationship_status` solo si el nuevo estado es **mayor** que el actual (no retroceder, no pisar estados terminales como `colaboracion_exitosa`, `no_colaboro`, `descartado`).
 
-## 1. Migración SQL — recrear `admin_instances_view`
+Reglas (de menor a mayor):
+- `send_date` con algún valor → mínimo `producto_enviado`
+- `received = true` → mínimo `producto_enviado`
+- `collab_done = true` → mínimo `colaboracion_en_curso`
+- (los terminales como `colaboracion_exitosa` se siguen marcando manualmente desde el Pipeline)
 
-`CREATE OR REPLACE VIEW admin_instances_view` agregando la columna que falta:
+Ranking usado para comparar: `nuevo(0) < contactado(1) < producto_enviado(2) < colaboracion_en_curso(3)`. Si el actual es terminal, no se modifica. Si el calculado ≤ actual, no se modifica. Se registra en el audit log el cambio automático con motivo "auto: colaboración registrada".
 
-```sql
-DROP VIEW IF EXISTS public.admin_instances_view;
-CREATE VIEW public.admin_instances_view AS
-SELECT
-  i.id, i.obligation_id, i.period_label, i.due_date,
-  i.amount, i.currency, i.status,
-  i.paid_at, i.paid_by, i.payment_reference,
-  i.payment_proof_url,         -- <-- nuevo
-  i.notes, i.created_at, i.updated_at,
-  o.name AS obligation_name, o.category, o.provider,
-  o.frequency, o.importance, o.responsible, o.payment_method,
-  get_urgency(i.due_date) AS urgency
-FROM admin_instances i
-JOIN admin_obligations o ON o.id = i.obligation_id;
-```
+Tras guardar, refrescar también el contacto padre para que el badge de estado en el header y en el stepper se actualicen. Como `RRPPCollaborations` no tiene callback al padre actualmente, se añade un prop opcional `onPipelineChanged?: () => void` y se llama desde `RRPPProfile.tsx` pasándole `load` (la función que recarga el contacto).
 
-Con esto, `mapInstance()` en `useAdminData.ts` (que ya lee `row.payment_proof_url`) llenará correctamente `payment_proof_urls`, y el sidebar mostrará automáticamente:
-- La sección **Información de pago** (fecha, pagado por, referencia) cuando el estado sea `pagado`.
-- La lista de **Comprobantes (N)** con botones "Ver comprobante 1, 2…" que abren la URL firmada del bucket `admin-payments`.
+### 2. Mensaje del Pipeline en estado "Nuevo"
+En `RRPPPipeline.tsx`, ampliar el bloque de "Registra el primer movimiento" para mencionar las tres vías válidas:
 
-## 2. Reforzar el acceso directo en el sidebar
+> "Agrega una interacción, registra una colaboración o cambia manualmente el estado cuando inicies el contacto."
 
-`src/components/admin/AdminInstanceSheet.tsx`:
-- Mover la sección **Información de pago** y **Comprobantes** al inicio del contenido (justo debajo del header) cuando la instancia esté pagada o tenga comprobantes, para que sea lo primero que el usuario vea.
-- Mostrar la sección **Información de pago** también cuando haya algún dato de pago aunque el estado no sea `pagado` (por ejemplo, en estados intermedios), revisando `paid_at || paid_by || payment_reference || proofs.length`.
-- Mantener los botones existentes "Marcar como pagada" y "Editar info de pago / agregar comprobante".
+Así queda claro que registrar una colaboración cuenta como primer movimiento.
 
-# Archivos afectados
+## Archivos a modificar
 
-- Nueva migración SQL en `supabase/migrations/` recreando `admin_instances_view`.
-- `src/components/admin/AdminInstanceSheet.tsx` — reordenar bloques y ampliar la condición de visibilidad de la info de pago.
+- `src/components/rrpp/RRPPCollaborations.tsx` — añadir lógica de auto-avance del estado, prop `onPipelineChanged`, lectura previa del estado actual del contacto.
+- `src/pages/RRPPProfile.tsx` — pasar `onPipelineChanged={load}` al render de `<RRPPCollaborations />`.
+- `src/components/rrpp/RRPPPipeline.tsx` — actualizar el copy del bloque "Registra el primer movimiento".
 
-No se requieren cambios en `MarkPaidDialog`, `useAdminData` ni en los tipos.
+Sin cambios de base de datos ni de tipos.

@@ -18,13 +18,21 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { fetchConfig } from "@/hooks/useRRPPData";
-import type { Collaboration } from "@/types/rrpp";
+import type { Collaboration, RelationshipStatus } from "@/types/rrpp";
 import { useRRPPPermissions } from "./useRRPPPermissions";
 
 const db = supabase as any;
 const DEFAULT_NETWORKS = ["Instagram", "TikTok", "YouTube", "X", "Facebook", "LinkedIn"];
 
-interface Props { contactId: string; }
+const STATUS_RANK: Record<string, number> = {
+  nuevo: 0,
+  contactado: 1,
+  producto_enviado: 2,
+  colaboracion_en_curso: 3,
+};
+const TERMINAL_STATUSES = new Set(["colaboracion_exitosa", "no_colaboro", "descartado"]);
+
+interface Props { contactId: string; onPipelineChanged?: () => void; }
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -42,7 +50,7 @@ const emptyForm = () => ({
   observations: "",
 });
 
-export function RRPPCollaborations({ contactId }: Props) {
+export function RRPPCollaborations({ contactId, onPipelineChanged }: Props) {
   const perms = useRRPPPermissions();
   const [items, setItems] = useState<Collaboration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,6 +145,28 @@ export function RRPPCollaborations({ contactId }: Props) {
         await logAudit("collaboration_add", `Envío ${payload.send_date ?? "—"}${form.has_coupon ? ` · cupón ${form.coupon_code}` : ""}`);
         toast.success("Colaboración registrada");
       }
+
+      // Auto-advance pipeline if applicable
+      try {
+        let target: RelationshipStatus | null = null;
+        if (payload.collab_done) target = "colaboracion_en_curso";
+        else if (payload.received || payload.send_date) target = "producto_enviado";
+
+        if (target) {
+          const { data: contactRow } = await db
+            .from("rrpp_contacts").select("relationship_status").eq("id", contactId).maybeSingle();
+          const current = contactRow?.relationship_status as string | undefined;
+          if (current && !TERMINAL_STATUSES.has(current)) {
+            const curRank = STATUS_RANK[current] ?? 0;
+            const newRank = STATUS_RANK[target] ?? 0;
+            if (newRank > curRank) {
+              await db.from("rrpp_contacts").update({ relationship_status: target }).eq("id", contactId);
+              await logAudit("auto_status_change", `${current} → ${target} (auto: colaboración registrada)`);
+              onPipelineChanged?.();
+            }
+          }
+        }
+      } catch { /* non-fatal */ }
 
       setOpenSheet(false);
       setEditingId(null);

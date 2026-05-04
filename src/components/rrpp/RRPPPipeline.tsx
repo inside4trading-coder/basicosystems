@@ -137,7 +137,7 @@ export function RRPPPipeline({ contact, onChanged }: Props) {
         <div className="kpi-card text-center py-10">
           <p className="font-semibold">Registra el primer movimiento</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Agrega una interacción o cambia el estado a "Contactado" cuando inicies la conversación.
+            Agrega una interacción, registra una colaboración o cambia manualmente el estado cuando inicies el contacto. Al guardar una colaboración el pipeline avanzará automáticamente.
           </p>
         </div>
       )}
