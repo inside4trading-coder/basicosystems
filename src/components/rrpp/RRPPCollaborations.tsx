@@ -50,7 +50,7 @@ const emptyForm = () => ({
   observations: "",
 });
 
-export function RRPPCollaborations({ contactId }: Props) {
+export function RRPPCollaborations({ contactId, onPipelineChanged }: Props) {
   const perms = useRRPPPermissions();
   const [items, setItems] = useState<Collaboration[]>([]);
   const [loading, setLoading] = useState(true);
