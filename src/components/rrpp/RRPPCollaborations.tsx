@@ -146,6 +146,28 @@ export function RRPPCollaborations({ contactId, onPipelineChanged }: Props) {
         toast.success("Colaboración registrada");
       }
 
+      // Auto-advance pipeline if applicable
+      try {
+        let target: RelationshipStatus | null = null;
+        if (payload.collab_done) target = "colaboracion_en_curso";
+        else if (payload.received || payload.send_date) target = "producto_enviado";
+
+        if (target) {
+          const { data: contactRow } = await db
+            .from("rrpp_contacts").select("relationship_status").eq("id", contactId).maybeSingle();
+          const current = contactRow?.relationship_status as string | undefined;
+          if (current && !TERMINAL_STATUSES.has(current)) {
+            const curRank = STATUS_RANK[current] ?? 0;
+            const newRank = STATUS_RANK[target] ?? 0;
+            if (newRank > curRank) {
+              await db.from("rrpp_contacts").update({ relationship_status: target }).eq("id", contactId);
+              await logAudit("auto_status_change", `${current} → ${target} (auto: colaboración registrada)`);
+              onPipelineChanged?.();
+            }
+          }
+        }
+      } catch { /* non-fatal */ }
+
       setOpenSheet(false);
       setEditingId(null);
       setForm(emptyForm());
