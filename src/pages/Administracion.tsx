@@ -374,6 +374,10 @@ export default function Administracion() {
           setSheetInstance(null);
           setEditInstance(inst);
         }}
+        onPaid={() => {
+          setSheetInstance(null);
+          refetch();
+        }}
       />
 
       <EditInstanceSheet
