@@ -1,40 +1,52 @@
-## Objetivo
+# Problema
 
-Cuando se edita una instancia (mes específico) de una obligación recurrente, permitir decidir si los cambios se aplican **solo a ese mes** o **también a los meses futuros** de la misma obligación.
+Los comprobantes (capturas) no aparecen en el sidebar de la obligación aunque ya estén subidos. El sidebar (`AdminInstanceSheet`) sí tiene la sección "Comprobantes" y la sección "Información de pago" implementadas, pero siempre llegan vacías.
 
-## Cambio en la UI — `EditInstanceSheet.tsx`
+**Causa raíz:** Toda la app lee las instancias desde la vista de Postgres `admin_instances_view`, y esa vista **no incluye la columna `payment_proof_url`**. Por eso `instance.payment_proof_urls` siempre es `null` y la sección de comprobantes nunca se renderiza.
 
-Agregar un checkbox al final del formulario, justo antes de los botones:
+```sql
+-- Vista actual (faltan campos):
+SELECT i.id, i.obligation_id, ..., i.notes, i.created_at, i.updated_at, ...
+FROM admin_instances i JOIN admin_obligations o ...
+-- ❌ Falta: payment_proof_url
+```
 
-> ☐ **Aplicar también a los meses futuros**
-> Los cambios se replicarán en todas las instancias pendientes de esta obligación con vencimiento posterior a esta.
+# Solución
 
-Por defecto **desactivado** (comportamiento actual: solo edita el mes seleccionado).
+## 1. Migración SQL — recrear `admin_instances_view`
 
-## Lógica de propagación
+`CREATE OR REPLACE VIEW admin_instances_view` agregando la columna que falta:
 
-Cuando el checkbox está marcado, al guardar:
+```sql
+DROP VIEW IF EXISTS public.admin_instances_view;
+CREATE VIEW public.admin_instances_view AS
+SELECT
+  i.id, i.obligation_id, i.period_label, i.due_date,
+  i.amount, i.currency, i.status,
+  i.paid_at, i.paid_by, i.payment_reference,
+  i.payment_proof_url,         -- <-- nuevo
+  i.notes, i.created_at, i.updated_at,
+  o.name AS obligation_name, o.category, o.provider,
+  o.frequency, o.importance, o.responsible, o.payment_method,
+  get_urgency(i.due_date) AS urgency
+FROM admin_instances i
+JOIN admin_obligations o ON o.id = i.obligation_id;
+```
 
-1. Se actualiza la instancia actual (igual que hoy).
-2. Se actualizan **todas las instancias futuras** de la misma `obligation_id` que cumplan:
-   - `due_date > due_date de la instancia actual`
-   - `status IN ('pendiente', 'proximo_vencer', 'pausado')` — nunca tocamos pagadas, vencidas ni anuladas.
-3. Campos que se propagan (los "estructurales", no los de pago):
-   - `amount`
-   - `currency`
-   - `notes`
-   - `status` (solo si el nuevo estado es `pendiente`, `proximo_vencer` o `pausado`)
-4. Campos que **NO** se propagan (son específicos de cada mes):
-   - `period_label`, `due_date`, `paid_at`, `paid_by`, `payment_reference`.
-5. Si la obligación es de **monto variable** (amount = 0), el cambio de monto sí se propaga (vuelve a marcarlas como variables) — coherente con el comportamiento actual.
+Con esto, `mapInstance()` en `useAdminData.ts` (que ya lee `row.payment_proof_url`) llenará correctamente `payment_proof_urls`, y el sidebar mostrará automáticamente:
+- La sección **Información de pago** (fecha, pagado por, referencia) cuando el estado sea `pagado`.
+- La lista de **Comprobantes (N)** con botones "Ver comprobante 1, 2…" que abren la URL firmada del bucket `admin-payments`.
 
-## Detalles técnicos
+## 2. Reforzar el acceso directo en el sidebar
 
-- Nuevo método en `useAdminData.ts`: `updateInstanceAndFuture(id, patch, obligationId, dueDate)` que hace dos updates: el de la instancia actual y un bulk update con `gt('due_date', dueDate)` + `in('status', [...])` + `eq('obligation_id', obligationId)`.
-- Registra una entrada en `admin_audit_log` con `action = "update_instance_bulk"` indicando cuántas filas se actualizaron.
-- En `EditInstanceSheet.tsx`: nuevo estado `applyToFuture`, y en `handleSave` se llama al método nuevo cuando esté marcado.
+`src/components/admin/AdminInstanceSheet.tsx`:
+- Mover la sección **Información de pago** y **Comprobantes** al inicio del contenido (justo debajo del header) cuando la instancia esté pagada o tenga comprobantes, para que sea lo primero que el usuario vea.
+- Mostrar la sección **Información de pago** también cuando haya algún dato de pago aunque el estado no sea `pagado` (por ejemplo, en estados intermedios), revisando `paid_at || paid_by || payment_reference || proofs.length`.
+- Mantener los botones existentes "Marcar como pagada" y "Editar info de pago / agregar comprobante".
 
-## Archivos a editar
+# Archivos afectados
 
-- `src/hooks/useAdminData.ts` — añadir `updateInstanceAndFuture`.
-- `src/components/admin/EditInstanceSheet.tsx` — checkbox + lógica de guardado.
+- Nueva migración SQL en `supabase/migrations/` recreando `admin_instances_view`.
+- `src/components/admin/AdminInstanceSheet.tsx` — reordenar bloques y ampliar la condición de visibilidad de la info de pago.
+
+No se requieren cambios en `MarkPaidDialog`, `useAdminData` ni en los tipos.
