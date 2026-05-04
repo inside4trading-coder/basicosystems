@@ -134,7 +134,7 @@ function mapInstance(row: any): ObligationInstance {
     paid_by: row.paid_by ?? "",
     payment_reference: row.payment_reference ?? "",
     notes: row.notes ?? "",
-    payment_proof_url: row.payment_proof_url ?? null,
+    payment_proof_urls: Array.isArray(row.payment_proof_url) ? row.payment_proof_url : (row.payment_proof_url ? [row.payment_proof_url] : null),
     created_at: row.created_at,
     updated_at: row.updated_at,
     obligation_name: row.obligation_name ?? row.name ?? undefined,
