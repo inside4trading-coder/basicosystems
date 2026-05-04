@@ -270,7 +270,7 @@ export default function RRPPProfile() {
           <RRPPInteractions contactId={contact.id} />
         </TabsContent>
         <TabsContent value="collaborations" className="mt-4">
-          <RRPPCollaborations contactId={contact.id} />
+          <RRPPCollaborations contactId={contact.id} onPipelineChanged={load} />
         </TabsContent>
         {perms.canViewPrivateNotes && (
           <TabsContent value="notes" className="mt-4">
