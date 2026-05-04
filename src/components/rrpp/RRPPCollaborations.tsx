@@ -18,13 +18,21 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { fetchConfig } from "@/hooks/useRRPPData";
-import type { Collaboration } from "@/types/rrpp";
+import type { Collaboration, RelationshipStatus } from "@/types/rrpp";
 import { useRRPPPermissions } from "./useRRPPPermissions";
 
 const db = supabase as any;
 const DEFAULT_NETWORKS = ["Instagram", "TikTok", "YouTube", "X", "Facebook", "LinkedIn"];
 
-interface Props { contactId: string; }
+const STATUS_RANK: Record<string, number> = {
+  nuevo: 0,
+  contactado: 1,
+  producto_enviado: 2,
+  colaboracion_en_curso: 3,
+};
+const TERMINAL_STATUSES = new Set(["colaboracion_exitosa", "no_colaboro", "descartado"]);
+
+interface Props { contactId: string; onPipelineChanged?: () => void; }
 
 const today = () => new Date().toISOString().slice(0, 10);
 
