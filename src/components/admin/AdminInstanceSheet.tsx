@@ -47,6 +47,12 @@ export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit, onPai
 
   const isPaid = instance.status === "pagado";
   const canMarkPaid = instance.status !== "pagado" && instance.status !== "anulado";
+  const hasPaymentInfo =
+    isPaid ||
+    !!instance.paid_at ||
+    !!instance.paid_by ||
+    !!instance.payment_reference ||
+    (proofs?.length ?? 0) > 0;
 
   return (
     <>
