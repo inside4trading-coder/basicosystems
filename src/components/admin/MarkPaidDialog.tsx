@@ -33,6 +33,7 @@ const schema = z.object({
 });
 
 const MAX_FILE_MB = 10;
+const MAX_FILES = 10;
 const ALLOWED = ["image/png", "image/jpeg", "image/jpg", "image/webp", "application/pdf"];
 
 export function MarkPaidDialog({ instance, open, onOpenChange, onSaved }: Props) {
@@ -42,11 +43,12 @@ export function MarkPaidDialog({ instance, open, onOpenChange, onSaved }: Props)
   const [reference, setReference] = useState("");
   const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [actualAmount, setActualAmount] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const isVariable = !instance?.amount || instance.amount <= 0;
+  const existingProofs = instance?.payment_proof_urls ?? [];
 
   useEffect(() => {
     if (open) {
@@ -54,35 +56,53 @@ export function MarkPaidDialog({ instance, open, onOpenChange, onSaved }: Props)
       setReference("");
       setPaidAt(new Date().toISOString().slice(0, 10));
       setActualAmount("");
-      setFile(null);
+      setFiles([]);
     }
   }, [open, user?.email]);
 
   if (!instance) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (!ALLOWED.includes(f.type)) {
-      toast.error("Formato no permitido. Usa imagen o PDF.");
-      return;
+    const incoming = Array.from(e.target.files ?? []);
+    if (!incoming.length) return;
+    const valid: File[] = [];
+    for (const f of incoming) {
+      if (!ALLOWED.includes(f.type)) {
+        toast.error(`${f.name}: formato no permitido`);
+        continue;
+      }
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        toast.error(`${f.name}: archivo muy grande (máx ${MAX_FILE_MB}MB)`);
+        continue;
+      }
+      valid.push(f);
     }
-    if (f.size > MAX_FILE_MB * 1024 * 1024) {
-      toast.error(`Archivo muy grande (máx ${MAX_FILE_MB}MB)`);
-      return;
-    }
-    setFile(f);
+    setFiles((prev) => {
+      const merged = [...prev, ...valid].slice(0, MAX_FILES);
+      if (prev.length + valid.length > MAX_FILES) {
+        toast.error(`Máximo ${MAX_FILES} archivos por pago`);
+      }
+      return merged;
+    });
+    if (fileRef.current) fileRef.current.value = "";
   };
 
-  const uploadProof = async (instanceId: string): Promise<string | undefined> => {
-    if (!file) return undefined;
-    const ext = file.name.split(".").pop() ?? "bin";
-    const path = `${instanceId}/${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage
-      .from("admin-payments")
-      .upload(path, file, { contentType: file.type, upsert: false });
-    if (upErr) throw upErr;
-    return path;
+  const removeFile = (idx: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const uploadAll = async (instanceId: string): Promise<string[]> => {
+    const paths: string[] = [];
+    for (const f of files) {
+      const ext = f.name.split(".").pop() ?? "bin";
+      const path = `${instanceId}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("admin-payments")
+        .upload(path, f, { contentType: f.type, upsert: false });
+      if (upErr) throw upErr;
+      paths.push(path);
+    }
+    return paths;
   };
 
   const handleSave = async () => {
@@ -103,10 +123,17 @@ export function MarkPaidDialog({ instance, open, onOpenChange, onSaved }: Props)
       if (isVariable) {
         await updateInstance(instance.id, { amount: Number(actualAmount) } as any);
       }
-      const proofPath = await uploadProof(instance.id);
-      await markAsPaid(instance.id, parsed.data.paidBy, parsed.data.reference ?? "", proofPath);
+      const newPaths = await uploadAll(instance.id);
+      await markAsPaid(
+        instance.id,
+        parsed.data.paidBy,
+        parsed.data.reference ?? "",
+        newPaths,
+        existingProofs ?? [],
+      );
       toast.success("Obligación marcada como pagada");
       onSaved();
+      onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message ?? "Error al marcar como pagada");
     } finally {
@@ -169,41 +196,43 @@ export function MarkPaidDialog({ instance, open, onOpenChange, onSaved }: Props)
           </div>
 
           <div>
-            <Label>Comprobante (imagen o PDF)</Label>
+            <Label>Comprobantes (imagen o PDF)</Label>
             <input
               ref={fileRef}
               type="file"
+              multiple
               accept="image/png,image/jpeg,image/webp,application/pdf"
               onChange={handleFileChange}
               className="hidden"
             />
-            {!file ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileRef.current?.click()}
-                className="w-full justify-start"
-              >
-                <Paperclip className="h-4 w-4" />
-                Adjuntar comprobante
-              </Button>
-            ) : (
-              <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
-                <span className="truncate">{file.name}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setFile(null);
-                    if (fileRef.current) fileRef.current.value = "";
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileRef.current?.click()}
+              className="w-full justify-start"
+              disabled={files.length >= MAX_FILES}
+            >
+              <Paperclip className="h-4 w-4" />
+              {files.length === 0 ? "Adjuntar comprobantes" : "Agregar otro comprobante"}
+            </Button>
+            {files.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                {files.map((f, idx) => (
+                  <div key={idx} className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                    <span className="truncate">{f.name}</span>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeFile(idx)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             )}
-            <p className="mt-1 text-xs text-muted-foreground">Máx {MAX_FILE_MB}MB. Opcional.</p>
+            {existingProofs && existingProofs.length > 0 && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Ya hay {existingProofs.length} comprobante{existingProofs.length === 1 ? "" : "s"} guardado{existingProofs.length === 1 ? "" : "s"}. Los nuevos se agregarán.
+              </p>
+            )}
+            <p className="mt-1 text-xs text-muted-foreground">Máx {MAX_FILES} archivos · {MAX_FILE_MB}MB c/u. Opcional.</p>
           </div>
         </div>
 
