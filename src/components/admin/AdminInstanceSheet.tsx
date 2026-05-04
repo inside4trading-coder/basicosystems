@@ -64,6 +64,64 @@ export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit, onPai
           </SheetHeader>
 
           <div className="mt-6 space-y-4">
+            {hasPaymentInfo && (
+              <div className="rounded-md border bg-status-success/5 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs uppercase font-bold text-status-success">Información de pago</div>
+                  <Badge variant="outline" className="capitalize">{instance.status.replace("_", " ")}</Badge>
+                </div>
+
+                {(instance.paid_at || instance.paid_by || instance.payment_reference) && (
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {instance.paid_at && (
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-muted-foreground">Pagado el</div>
+                        <div>{parseLocalDate(instance.paid_at).toLocaleDateString("es-VE")}</div>
+                      </div>
+                    )}
+                    {instance.paid_by && (
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-muted-foreground">Pagado por</div>
+                        <div className="truncate">{instance.paid_by}</div>
+                      </div>
+                    )}
+                    {instance.payment_reference && (
+                      <div className="col-span-2">
+                        <div className="text-[10px] uppercase font-bold text-muted-foreground">Referencia</div>
+                        <div className="truncate">{instance.payment_reference}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {proofs && proofs.length > 0 && (
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1.5">
+                      Comprobante{proofs.length === 1 ? "" : "s"} ({proofs.length})
+                    </div>
+                    <div className="space-y-1.5">
+                      {proofUrls.length === 0 ? (
+                        <div className="text-xs text-muted-foreground">Cargando…</div>
+                      ) : (
+                        proofUrls.map((p, idx) => (
+                          <Button key={p.path} asChild variant="outline" size="sm" className="w-full justify-start">
+                            <a href={p.url} target="_blank" rel="noopener noreferrer">
+                              <FileText className="h-4 w-4" />
+                              Ver comprobante {idx + 1}
+                            </a>
+                          </Button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={() => setPaying(true)}>
+                  <Pencil className="h-4 w-4" /> Editar info de pago / agregar comprobante
+                </Button>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <div className="text-xs uppercase font-bold text-muted-foreground">Vencimiento</div>
@@ -73,10 +131,12 @@ export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit, onPai
                 <div className="text-xs uppercase font-bold text-muted-foreground">Monto</div>
                 <div className="font-black">{!instance.amount || instance.amount <= 0 ? "Variable" : fmtMoney(instance.amount, instance.currency)}</div>
               </div>
-              <div>
-                <div className="text-xs uppercase font-bold text-muted-foreground">Estado</div>
-                <Badge variant="outline" className="capitalize">{instance.status.replace("_", " ")}</Badge>
-              </div>
+              {!hasPaymentInfo && (
+                <div>
+                  <div className="text-xs uppercase font-bold text-muted-foreground">Estado</div>
+                  <Badge variant="outline" className="capitalize">{instance.status.replace("_", " ")}</Badge>
+                </div>
+              )}
               <div>
                 <div className="text-xs uppercase font-bold text-muted-foreground">Importancia</div>
                 <Badge variant="outline" className="capitalize">{instance.importance ?? "—"}</Badge>
@@ -102,63 +162,9 @@ export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit, onPai
               </div>
             )}
 
-            {isPaid && (
-              <div className="rounded-md border bg-status-success/5 p-3 space-y-2">
-                <div className="text-xs uppercase font-bold text-status-success">Información de pago</div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {instance.paid_at && (
-                    <div>
-                      <div className="text-[10px] uppercase font-bold text-muted-foreground">Pagado el</div>
-                      <div>{parseLocalDate(instance.paid_at).toLocaleDateString("es-VE")}</div>
-                    </div>
-                  )}
-                  {instance.paid_by && (
-                    <div>
-                      <div className="text-[10px] uppercase font-bold text-muted-foreground">Pagado por</div>
-                      <div className="truncate">{instance.paid_by}</div>
-                    </div>
-                  )}
-                  {instance.payment_reference && (
-                    <div className="col-span-2">
-                      <div className="text-[10px] uppercase font-bold text-muted-foreground">Referencia</div>
-                      <div className="truncate">{instance.payment_reference}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {proofs && proofs.length > 0 && (
-              <div>
-                <div className="text-xs uppercase font-bold text-muted-foreground mb-1">
-                  Comprobante{proofs.length === 1 ? "" : "s"} ({proofs.length})
-                </div>
-                <div className="space-y-1.5">
-                  {proofUrls.length === 0 ? (
-                    <div className="text-xs text-muted-foreground">Cargando…</div>
-                  ) : (
-                    proofUrls.map((p, idx) => (
-                      <Button key={p.path} asChild variant="outline" className="w-full justify-start">
-                        <a href={p.url} target="_blank" rel="noopener noreferrer">
-                          <FileText className="h-4 w-4" />
-                          Ver comprobante {idx + 1}
-                        </a>
-                      </Button>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
             {canMarkPaid && (
               <Button variant="brand" className="w-full gap-1.5" onClick={() => setPaying(true)}>
                 <CheckCircle className="h-4 w-4" /> Marcar como pagada
-              </Button>
-            )}
-
-            {isPaid && (
-              <Button variant="outline" className="w-full gap-1.5" onClick={() => setPaying(true)}>
-                <Pencil className="h-4 w-4" /> Editar info de pago / agregar comprobante
               </Button>
             )}
 
