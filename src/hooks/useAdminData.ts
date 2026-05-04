@@ -134,7 +134,7 @@ function mapInstance(row: any): ObligationInstance {
     paid_by: row.paid_by ?? "",
     payment_reference: row.payment_reference ?? "",
     notes: row.notes ?? "",
-    payment_proof_url: row.payment_proof_url ?? null,
+    payment_proof_urls: Array.isArray(row.payment_proof_url) ? row.payment_proof_url : (row.payment_proof_url ? [row.payment_proof_url] : null),
     created_at: row.created_at,
     updated_at: row.updated_at,
     obligation_name: row.obligation_name ?? row.name ?? undefined,
@@ -396,15 +396,16 @@ export function useAdminData() {
   );
 
   const markAsPaid = useCallback(
-    async (id: string, paidBy: string, ref: string, proofUrl?: string) => {
+    async (id: string, paidBy: string, ref: string, proofPaths: string[] = [], existingPaths: string[] = []) => {
       const today = new Date().toISOString().slice(0, 10);
+      const merged = [...existingPaths, ...proofPaths];
       const patch: Record<string, unknown> = {
         status: "pagado",
         paid_at: today,
         paid_by: paidBy,
         payment_reference: ref,
       };
-      if (proofUrl) patch.payment_proof_url = proofUrl;
+      if (merged.length > 0) patch.payment_proof_url = merged;
       const { data: row, error } = await (supabase.from(INSTANCES) as any)
         .update(patch)
         .eq("id", id)
@@ -415,8 +416,26 @@ export function useAdminData() {
         action: "mark_paid",
         instance_id: id,
         field_changed: "status",
-        new_value: proofUrl ? "pagado (con comprobante)" : "pagado",
+        new_value: merged.length > 0 ? `pagado (${merged.length} comprobante${merged.length === 1 ? "" : "s"})` : "pagado",
         performed_by: paidBy,
+      });
+      return row;
+    },
+    [],
+  );
+
+  const updatePaymentInfo = useCallback(
+    async (id: string, patch: { paid_at?: string; paid_by?: string; payment_reference?: string; payment_proof_url?: string[] | null }) => {
+      const { data: row, error } = await (supabase.from(INSTANCES) as any)
+        .update(patch)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      await logAudit({
+        action: "update_payment_info",
+        instance_id: id,
+        new_value: JSON.stringify(patch).slice(0, 400),
       });
       return row;
     },
@@ -498,6 +517,7 @@ export function useAdminData() {
     updateInstance,
     updateInstanceAndFuture,
     markAsPaid,
+    updatePaymentInfo,
     fetchConfig,
     fetchKPIs,
     refetch,

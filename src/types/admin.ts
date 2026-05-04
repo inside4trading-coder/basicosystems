@@ -50,7 +50,7 @@ export interface ObligationInstance {
   paid_by: string;
   payment_reference: string;
   notes: string;
-  payment_proof_url?: string | null;
+  payment_proof_urls?: string[] | null;
   created_at: string;
   updated_at: string;
   // joined from view
