@@ -110,7 +110,7 @@ export type Database = {
           obligation_id: string | null
           paid_at: string | null
           paid_by: string | null
-          payment_proof_url: string | null
+          payment_proof_url: string[] | null
           payment_reference: string | null
           period_label: string
           status: string
@@ -126,7 +126,7 @@ export type Database = {
           obligation_id?: string | null
           paid_at?: string | null
           paid_by?: string | null
-          payment_proof_url?: string | null
+          payment_proof_url?: string[] | null
           payment_reference?: string | null
           period_label: string
           status?: string
@@ -142,7 +142,7 @@ export type Database = {
           obligation_id?: string | null
           paid_at?: string | null
           paid_by?: string | null
-          payment_proof_url?: string | null
+          payment_proof_url?: string[] | null
           payment_reference?: string | null
           period_label?: string
           status?: string
