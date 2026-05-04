@@ -517,6 +517,7 @@ export function useAdminData() {
     updateInstance,
     updateInstanceAndFuture,
     markAsPaid,
+    updatePaymentInfo,
     fetchConfig,
     fetchKPIs,
     refetch,
