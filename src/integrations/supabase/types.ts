@@ -1514,6 +1514,7 @@ export type Database = {
           paid_at: string | null
           paid_by: string | null
           payment_method: string | null
+          payment_proof_url: string[] | null
           payment_reference: string | null
           period_label: string | null
           provider: string | null
