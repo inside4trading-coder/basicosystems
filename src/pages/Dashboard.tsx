@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDashboardData, type Period } from "@/hooks/useDashboardData";
 import { isQuickAccess } from "@/config/orderStatuses";
+import { useBlurSales } from "@/hooks/useBlurSales";
 import { toast } from "sonner";
 
 const periods: { key: Period; label: string }[] = [
@@ -43,6 +44,7 @@ export default function Dashboard() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const { data, loading, error, refetch } = useDashboardData(period, customRange);
+  const blurSales = useBlurSales();
   const [syncing, setSyncing] = useState(false);
 
   const handleSync = async (totalDays = 7) => {
@@ -206,19 +208,23 @@ export default function Dashboard() {
         <>
           {/* KPIs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {kpiCards.map((kpi, i) => (
+            {kpiCards.map((kpi, i) => {
+              const isSales = kpi.label === "Total Sales";
+              const blurred = blurSales && isSales;
+              return (
               <div key={kpi.label} className="kpi-card animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{kpi.label}</span>
                   <kpi.icon className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <div className="text-2xl font-black tracking-tight">{kpi.value}</div>
-                <div className={`flex items-center gap-1 mt-1 text-xs font-semibold ${kpi.change >= 0 ? "text-status-success" : "text-status-error"}`}>
+                <div className={`text-2xl font-black tracking-tight transition-all ${blurred ? "blur-md select-none" : ""}`}>{kpi.value}</div>
+                <div className={`flex items-center gap-1 mt-1 text-xs font-semibold ${kpi.change >= 0 ? "text-status-success" : "text-status-error"} ${blurred ? "blur-md select-none" : ""}`}>
                   {kpi.change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                   {fmtPct(kpi.change)} vs período anterior
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Status badges */}
@@ -239,6 +245,8 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.35s" }}>
               <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Ventas netas</h3>
+              <div className={blurSales ? "blur-md select-none pointer-events-none" : ""}>
+
               {data.dailyRevenue.length > 0 ? (
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={data.dailyRevenue}>
@@ -254,6 +262,7 @@ export default function Dashboard() {
               ) : (
                 <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
               )}
+              </div>
             </div>
 
             <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.4s" }}>
