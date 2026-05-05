@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const { data, loading, error, refetch } = useDashboardData(period, customRange);
+  const blurSales = useBlurSales();
   const [syncing, setSyncing] = useState(false);
 
   const handleSync = async (totalDays = 7) => {
