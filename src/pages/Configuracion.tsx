@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, UserPlus, Upload, Loader2, FileSpreadsheet, Lock, Users2, ShieldCheck } from "lucide-react";
+import { CheckCircle, XCircle, UserPlus, Upload, Loader2, FileSpreadsheet, Lock, Users2, ShieldCheck, EyeOff } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -11,6 +12,7 @@ import { RRPPConfigSection } from "@/components/rrpp/RRPPConfigSection";
 import { AdminConfigSection } from "@/components/admin/AdminConfigSection";
 import { UserRolesPanel } from "@/components/configuracion/UserRolesPanel";
 import { RolePermissionsPanel } from "@/components/configuracion/RolePermissionsPanel";
+import { useBlurSales, setBlurSales } from "@/hooks/useBlurSales";
 
 
 const integrations = [
