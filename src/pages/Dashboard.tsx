@@ -208,19 +208,23 @@ export default function Dashboard() {
         <>
           {/* KPIs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {kpiCards.map((kpi, i) => (
+            {kpiCards.map((kpi, i) => {
+              const isSales = kpi.label === "Total Sales";
+              const blurred = blurSales && isSales;
+              return (
               <div key={kpi.label} className="kpi-card animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{kpi.label}</span>
                   <kpi.icon className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <div className="text-2xl font-black tracking-tight">{kpi.value}</div>
-                <div className={`flex items-center gap-1 mt-1 text-xs font-semibold ${kpi.change >= 0 ? "text-status-success" : "text-status-error"}`}>
+                <div className={`text-2xl font-black tracking-tight transition-all ${blurred ? "blur-md select-none" : ""}`}>{kpi.value}</div>
+                <div className={`flex items-center gap-1 mt-1 text-xs font-semibold ${kpi.change >= 0 ? "text-status-success" : "text-status-error"} ${blurred ? "blur-md select-none" : ""}`}>
                   {kpi.change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                   {fmtPct(kpi.change)} vs período anterior
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Status badges */}
