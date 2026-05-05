@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDashboardData, type Period } from "@/hooks/useDashboardData";
 import { isQuickAccess } from "@/config/orderStatuses";
+import { useBlurSales } from "@/hooks/useBlurSales";
 import { toast } from "sonner";
 
 const periods: { key: Period; label: string }[] = [
