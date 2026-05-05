@@ -228,6 +228,26 @@ export default function Configuracion() {
   );
 }
 
+function PrivacyBlurToggle() {
+  const blurred = useBlurSales();
+  return (
+    <section className="animate-fade-in">
+      <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+        <EyeOff className="h-4 w-4" /> Privacidad
+      </h3>
+      <div className="bg-card rounded-lg border border-border p-5 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="font-bold text-sm">Ocultar ventas en el resumen</p>
+          <p className="text-xs text-muted-foreground">
+            Aplica un desenfoque sobre Total Sales y Ventas netas en el Resumen de ventas.
+          </p>
+        </div>
+        <Switch checked={blurred} onCheckedChange={setBlurSales} />
+      </div>
+    </section>
+  );
+}
+
 function CrewPasscodeConfig() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newCode, setNewCode] = useState("");
