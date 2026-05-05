@@ -245,6 +245,8 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.35s" }}>
               <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Ventas netas</h3>
+              <div className={blurSales ? "blur-md select-none pointer-events-none" : ""}>
+
               {data.dailyRevenue.length > 0 ? (
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={data.dailyRevenue}>
