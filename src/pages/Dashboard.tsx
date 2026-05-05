@@ -262,6 +262,7 @@ export default function Dashboard() {
               ) : (
                 <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
               )}
+              </div>
             </div>
 
             <div className="kpi-card animate-fade-in" style={{ animationDelay: "0.4s" }}>
