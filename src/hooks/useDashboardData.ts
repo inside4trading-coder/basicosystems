@@ -137,19 +137,24 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         return true;
       });
       const prevPaid = (prevOrders || []).filter(o => isValidOrder(o.order_status || ""));
+      const yoyPaid = (yoyOrders || []).filter(o => isValidOrder(o.order_status || ""));
 
       // Group 2: revenue exclusion — only affects monetary sums, not order counts.
       const revenueOrders = paid.filter(o => !isExcludedFromRevenue(o.order_status || ""));
       const prevRevenueOrders = prevPaid.filter(o => !isExcludedFromRevenue(o.order_status || ""));
+      const yoyRevenueOrders = yoyPaid.filter(o => !isExcludedFromRevenue(o.order_status || ""));
       const revenueOrderIds = new Set(revenueOrders.map(o => o.order_id));
 
       const getUsd = (o: any) => o.total_amount_usd ?? o.total_amount ?? 0;
       const revenue = revenueOrders.reduce((s, o) => s + getUsd(o), 0);
       const prevRevenue = prevRevenueOrders.reduce((s, o) => s + getUsd(o), 0);
+      const yoyRevenue = yoyRevenueOrders.reduce((s, o) => s + getUsd(o), 0);
       const totalOrders = paid.length;
       const prevTotalOrders = prevPaid.length;
+      const yoyTotalOrders = yoyPaid.length;
       const avgTicket = totalOrders > 0 ? revenue / totalOrders : 0;
       const prevAvgTicket = prevTotalOrders > 0 ? prevRevenue / prevTotalOrders : 0;
+      const yoyAvgTicket = yoyTotalOrders > 0 ? yoyRevenue / yoyTotalOrders : 0;
 
       // Products sold
       const paidIds = new Set(paid.map(o => o.order_id));
