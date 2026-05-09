@@ -127,22 +127,40 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       }
 
       const all = currentOrders || [];
-      // Group 1: valid/computable orders (used for counts, lists, products sold).
+      // Statuses excluded from "valid orders" to align with WooCommerce Analytics defaults.
+      // WC Analytics excludes pending-payment orders from order counts.
+      const PENDING_PAYMENT_STATUSES = new Set(["pending", "pedido-pending-pa"]);
+      const isPendingPayment = (s: string) => PENDING_PAYMENT_STATUSES.has(s);
+
+      // Group 1: valid orders (status valid, NOT pending payment).
+      // Includes orders with total=0 and orders with broken FX so item counts match WC.
       const paid = all.filter(o => {
-        if (!isValidOrder(o.order_status || "")) return false;
-        const usd = o.total_amount_usd ?? o.total_amount ?? 0;
-        if (usd <= 0) return false;
-        // Skip VES orders with broken exchange rate (rate=1 or 0 means no valid conversion)
-        if (o.order_currency === "VES" && (o.exchange_rate === 1 || o.exchange_rate === 0 || !o.exchange_rate) && (o.total_amount ?? 0) > 100) return false;
+        const s = o.order_status || "";
+        if (!isValidOrder(s)) return false;
+        if (isPendingPayment(s)) return false;
         return true;
       });
-      const prevPaid = (prevOrders || []).filter(o => isValidOrder(o.order_status || ""));
-      const yoyPaid = (yoyOrders || []).filter(o => isValidOrder(o.order_status || ""));
+      const prevPaid = (prevOrders || []).filter(o => {
+        const s = o.order_status || "";
+        return isValidOrder(s) && !isPendingPayment(s);
+      });
+      const yoyPaid = (yoyOrders || []).filter(o => {
+        const s = o.order_status || "";
+        return isValidOrder(s) && !isPendingPayment(s);
+      });
 
-      // Group 2: revenue exclusion — only affects monetary sums, not order counts.
-      const revenueOrders = paid.filter(o => !isExcludedFromRevenue(o.order_status || ""));
-      const prevRevenueOrders = prevPaid.filter(o => !isExcludedFromRevenue(o.order_status || ""));
-      const yoyRevenueOrders = yoyPaid.filter(o => !isExcludedFromRevenue(o.order_status || ""));
+      // Group 2: revenue-eligible orders (also excludes refunded/cancelled/failed,
+      // orders with usd<=0, and VES orders without a valid exchange rate).
+      const isRevenueEligible = (o: any) => {
+        if (isExcludedFromRevenue(o.order_status || "")) return false;
+        const usd = o.total_amount_usd ?? o.total_amount ?? 0;
+        if (usd <= 0) return false;
+        if (o.order_currency === "VES" && (o.exchange_rate === 1 || o.exchange_rate === 0 || !o.exchange_rate) && (o.total_amount ?? 0) > 100) return false;
+        return true;
+      };
+      const revenueOrders = paid.filter(isRevenueEligible);
+      const prevRevenueOrders = prevPaid.filter(isRevenueEligible);
+      const yoyRevenueOrders = yoyPaid.filter(isRevenueEligible);
       const revenueOrderIds = new Set(revenueOrders.map(o => o.order_id));
 
       const getUsd = (o: any) => o.total_amount_usd ?? o.total_amount ?? 0;
