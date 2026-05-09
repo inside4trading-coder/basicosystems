@@ -7,6 +7,7 @@ export type Period = "today" | "week" | "month" | "year" | "custom";
 interface KPI {
   value: number;
   change: number;
+  changeYoY: number;
 }
 
 export interface DashboardData {
