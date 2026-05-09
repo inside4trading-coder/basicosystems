@@ -167,8 +167,10 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
 
       const curEmails = new Set(paid.map(o => o.customer_email?.toLowerCase()).filter(Boolean));
       const prevEmails = new Set(prevPaid.map(o => o.customer_email?.toLowerCase()).filter(Boolean));
+      const yoyEmails = new Set(yoyPaid.map(o => o.customer_email?.toLowerCase()).filter(Boolean));
       const newCustomers = [...curEmails].filter(e => !prevEmails.has(e)).length;
       const prevNewCustomers = prevEmails.size;
+      const yoyNewCustomers = yoyEmails.size;
 
       // Statuses
       const statuses: Record<string, number> = {};
