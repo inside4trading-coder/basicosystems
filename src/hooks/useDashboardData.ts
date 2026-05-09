@@ -333,11 +333,11 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
 
       setData({
         kpis: {
-          revenue: { value: revenue, change: pct(revenue, prevRevenue) },
-          orders: { value: totalOrders, change: pct(totalOrders, prevTotalOrders) },
-          avgTicket: { value: avgTicket, change: pct(avgTicket, prevAvgTicket) },
-          newCustomers: { value: newCustomers, change: pct(newCustomers, prevNewCustomers) },
-          productsSold: { value: productsSold, change: pct(productsSold, prevProductsSold) },
+          revenue: { value: revenue, change: pct(revenue, prevRevenue), changeYoY: pct(revenue, yoyRevenue) },
+          orders: { value: totalOrders, change: pct(totalOrders, prevTotalOrders), changeYoY: pct(totalOrders, yoyTotalOrders) },
+          avgTicket: { value: avgTicket, change: pct(avgTicket, prevAvgTicket), changeYoY: pct(avgTicket, yoyAvgTicket) },
+          newCustomers: { value: newCustomers, change: pct(newCustomers, prevNewCustomers), changeYoY: pct(newCustomers, yoyNewCustomers) },
+          productsSold: { value: productsSold, change: pct(productsSold, prevProductsSold), changeYoY: 0 },
         },
         statuses,
         topProducts,
