@@ -7,6 +7,7 @@ export type Period = "today" | "week" | "month" | "year" | "custom";
 interface KPI {
   value: number;
   change: number;
+  changeYoY: number;
 }
 
 export interface DashboardData {
@@ -63,6 +64,13 @@ function getPrevDateRange(period: Period, customRange?: { start: Date; end: Date
   return { start: new Date(start.getTime() - diff), end: start };
 }
 
+function getYoYDateRange(period: Period, customRange?: { start: Date; end: Date }): { start: Date; end: Date } {
+  const { start, end } = getDateRange(period, customRange);
+  const s = new Date(start); s.setFullYear(s.getFullYear() - 1);
+  const e = new Date(end); e.setFullYear(e.getFullYear() - 1);
+  return { start: s, end: e };
+}
+
 // Status classification lives in src/config/orderStatuses.ts (single source of truth).
 
 export function useDashboardData(period: Period, customRange?: { start: Date; end: Date }) {
@@ -76,6 +84,7 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
     try {
       const { start, end } = getDateRange(period, customRange);
       const prev = getPrevDateRange(period, customRange);
+      const yoy = getYoYDateRange(period, customRange);
 
       // Fetch current orders
       const { data: currentOrders, error: cErr } = await supabase
@@ -92,6 +101,15 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         .gte("order_date", prev.start.toISOString().split("T")[0])
         .lt("order_date", prev.end.toISOString().split("T")[0]);
       if (pErr) throw new Error(pErr.message);
+
+      // Fetch year-over-year orders (same range, last year)
+      const { data: yoyOrders, error: yErr } = await supabase
+        .from("orders")
+        .select("order_id, total_amount, total_amount_usd, order_status, customer_email")
+        .gte("order_date", yoy.start.toISOString().split("T")[0])
+        .lte("order_date", yoy.end.toISOString().split("T")[0]);
+      if (yErr) throw new Error(yErr.message);
+
 
       // Fetch order items for current period
       const orderIds = (currentOrders || []).map(o => o.order_id);
@@ -119,19 +137,24 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         return true;
       });
       const prevPaid = (prevOrders || []).filter(o => isValidOrder(o.order_status || ""));
+      const yoyPaid = (yoyOrders || []).filter(o => isValidOrder(o.order_status || ""));
 
       // Group 2: revenue exclusion — only affects monetary sums, not order counts.
       const revenueOrders = paid.filter(o => !isExcludedFromRevenue(o.order_status || ""));
       const prevRevenueOrders = prevPaid.filter(o => !isExcludedFromRevenue(o.order_status || ""));
+      const yoyRevenueOrders = yoyPaid.filter(o => !isExcludedFromRevenue(o.order_status || ""));
       const revenueOrderIds = new Set(revenueOrders.map(o => o.order_id));
 
       const getUsd = (o: any) => o.total_amount_usd ?? o.total_amount ?? 0;
       const revenue = revenueOrders.reduce((s, o) => s + getUsd(o), 0);
       const prevRevenue = prevRevenueOrders.reduce((s, o) => s + getUsd(o), 0);
+      const yoyRevenue = yoyRevenueOrders.reduce((s, o) => s + getUsd(o), 0);
       const totalOrders = paid.length;
       const prevTotalOrders = prevPaid.length;
+      const yoyTotalOrders = yoyPaid.length;
       const avgTicket = totalOrders > 0 ? revenue / totalOrders : 0;
       const prevAvgTicket = prevTotalOrders > 0 ? prevRevenue / prevTotalOrders : 0;
+      const yoyAvgTicket = yoyTotalOrders > 0 ? yoyRevenue / yoyTotalOrders : 0;
 
       // Products sold
       const paidIds = new Set(paid.map(o => o.order_id));
@@ -144,8 +167,10 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
 
       const curEmails = new Set(paid.map(o => o.customer_email?.toLowerCase()).filter(Boolean));
       const prevEmails = new Set(prevPaid.map(o => o.customer_email?.toLowerCase()).filter(Boolean));
+      const yoyEmails = new Set(yoyPaid.map(o => o.customer_email?.toLowerCase()).filter(Boolean));
       const newCustomers = [...curEmails].filter(e => !prevEmails.has(e)).length;
       const prevNewCustomers = prevEmails.size;
+      const yoyNewCustomers = yoyEmails.size;
 
       // Statuses
       const statuses: Record<string, number> = {};
@@ -308,11 +333,11 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
 
       setData({
         kpis: {
-          revenue: { value: revenue, change: pct(revenue, prevRevenue) },
-          orders: { value: totalOrders, change: pct(totalOrders, prevTotalOrders) },
-          avgTicket: { value: avgTicket, change: pct(avgTicket, prevAvgTicket) },
-          newCustomers: { value: newCustomers, change: pct(newCustomers, prevNewCustomers) },
-          productsSold: { value: productsSold, change: pct(productsSold, prevProductsSold) },
+          revenue: { value: revenue, change: pct(revenue, prevRevenue), changeYoY: pct(revenue, yoyRevenue) },
+          orders: { value: totalOrders, change: pct(totalOrders, prevTotalOrders), changeYoY: pct(totalOrders, yoyTotalOrders) },
+          avgTicket: { value: avgTicket, change: pct(avgTicket, prevAvgTicket), changeYoY: pct(avgTicket, yoyAvgTicket) },
+          newCustomers: { value: newCustomers, change: pct(newCustomers, prevNewCustomers), changeYoY: pct(newCustomers, yoyNewCustomers) },
+          productsSold: { value: productsSold, change: pct(productsSold, prevProductsSold), changeYoY: 0 },
         },
         statuses,
         topProducts,

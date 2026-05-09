@@ -107,11 +107,11 @@ export default function Dashboard() {
 
   const kpiCards = data
     ? [
-        { label: "Total Sales", value: fmt(data.kpis.revenue.value), change: data.kpis.revenue.change, icon: DollarSign },
-        { label: "Pedidos", value: String(data.kpis.orders.value), change: data.kpis.orders.change, icon: ShoppingBag },
-        { label: "Products Sold", value: String(data.kpis.productsSold.value), change: data.kpis.productsSold.change, icon: ShoppingCart },
-        { label: "Ticket Medio", value: fmt(data.kpis.avgTicket.value), change: data.kpis.avgTicket.change, icon: Package },
-        { label: "Clientes Nuevos", value: String(data.kpis.newCustomers.value), change: data.kpis.newCustomers.change, icon: Users },
+        { label: "Total Sales", value: fmt(data.kpis.revenue.value), change: data.kpis.revenue.change, changeYoY: data.kpis.revenue.changeYoY, icon: DollarSign },
+        { label: "Pedidos", value: String(data.kpis.orders.value), change: data.kpis.orders.change, changeYoY: data.kpis.orders.changeYoY, icon: ShoppingBag },
+        { label: "Products Sold", value: String(data.kpis.productsSold.value), change: data.kpis.productsSold.change, changeYoY: data.kpis.productsSold.changeYoY, icon: ShoppingCart },
+        { label: "Ticket Medio", value: fmt(data.kpis.avgTicket.value), change: data.kpis.avgTicket.change, changeYoY: data.kpis.avgTicket.changeYoY, icon: Package },
+        { label: "Clientes Nuevos", value: String(data.kpis.newCustomers.value), change: data.kpis.newCustomers.change, changeYoY: data.kpis.newCustomers.changeYoY, icon: Users },
       ]
     : [];
 
@@ -218,9 +218,15 @@ export default function Dashboard() {
                   <kpi.icon className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div className={`text-2xl font-black tracking-tight transition-all ${blurred ? "blur-md select-none" : ""}`}>{kpi.value}</div>
-                <div className={`flex items-center gap-1 mt-1 text-xs font-semibold ${kpi.change >= 0 ? "text-status-success" : "text-status-error"} ${blurred ? "blur-md select-none" : ""}`}>
-                  {kpi.change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {fmtPct(kpi.change)} vs período anterior
+                <div className={`mt-1 space-y-0.5 ${blurred ? "blur-md select-none" : ""}`}>
+                  <div className={`flex items-center gap-1 text-xs font-semibold ${kpi.change >= 0 ? "text-status-success" : "text-status-error"}`} title="Período inmediatamente anterior de la misma duración">
+                    {kpi.change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {fmtPct(kpi.change)} <span className="font-normal text-muted-foreground">vs período anterior</span>
+                  </div>
+                  <div className={`flex items-center gap-1 text-xs font-semibold opacity-70 ${kpi.changeYoY >= 0 ? "text-status-success" : "text-status-error"}`} title="Mismo rango el año pasado (interanual)">
+                    {kpi.changeYoY >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {fmtPct(kpi.changeYoY)} <span className="font-normal text-muted-foreground">vs año anterior</span>
+                  </div>
                 </div>
               </div>
               );
