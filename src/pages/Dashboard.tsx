@@ -218,9 +218,15 @@ export default function Dashboard() {
                   <kpi.icon className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div className={`text-2xl font-black tracking-tight transition-all ${blurred ? "blur-md select-none" : ""}`}>{kpi.value}</div>
-                <div className={`flex items-center gap-1 mt-1 text-xs font-semibold ${kpi.change >= 0 ? "text-status-success" : "text-status-error"} ${blurred ? "blur-md select-none" : ""}`}>
-                  {kpi.change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {fmtPct(kpi.change)} vs período anterior
+                <div className={`mt-1 space-y-0.5 ${blurred ? "blur-md select-none" : ""}`}>
+                  <div className={`flex items-center gap-1 text-xs font-semibold ${kpi.change >= 0 ? "text-status-success" : "text-status-error"}`} title="Período inmediatamente anterior de la misma duración">
+                    {kpi.change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {fmtPct(kpi.change)} <span className="font-normal text-muted-foreground">vs período anterior</span>
+                  </div>
+                  <div className={`flex items-center gap-1 text-xs font-semibold opacity-70 ${kpi.changeYoY >= 0 ? "text-status-success" : "text-status-error"}`} title="Mismo rango el año pasado (interanual)">
+                    {kpi.changeYoY >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {fmtPct(kpi.changeYoY)} <span className="font-normal text-muted-foreground">vs año anterior</span>
+                  </div>
                 </div>
               </div>
               );
