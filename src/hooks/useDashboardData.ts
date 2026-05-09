@@ -63,6 +63,13 @@ function getPrevDateRange(period: Period, customRange?: { start: Date; end: Date
   return { start: new Date(start.getTime() - diff), end: start };
 }
 
+function getYoYDateRange(period: Period, customRange?: { start: Date; end: Date }): { start: Date; end: Date } {
+  const { start, end } = getDateRange(period, customRange);
+  const s = new Date(start); s.setFullYear(s.getFullYear() - 1);
+  const e = new Date(end); e.setFullYear(e.getFullYear() - 1);
+  return { start: s, end: e };
+}
+
 // Status classification lives in src/config/orderStatuses.ts (single source of truth).
 
 export function useDashboardData(period: Period, customRange?: { start: Date; end: Date }) {
