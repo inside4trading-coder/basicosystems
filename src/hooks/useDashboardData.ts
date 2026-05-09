@@ -84,6 +84,7 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
     try {
       const { start, end } = getDateRange(period, customRange);
       const prev = getPrevDateRange(period, customRange);
+      const yoy = getYoYDateRange(period, customRange);
 
       // Fetch current orders
       const { data: currentOrders, error: cErr } = await supabase
@@ -100,6 +101,15 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
         .gte("order_date", prev.start.toISOString().split("T")[0])
         .lt("order_date", prev.end.toISOString().split("T")[0]);
       if (pErr) throw new Error(pErr.message);
+
+      // Fetch year-over-year orders (same range, last year)
+      const { data: yoyOrders, error: yErr } = await supabase
+        .from("orders")
+        .select("order_id, total_amount, total_amount_usd, order_status, customer_email")
+        .gte("order_date", yoy.start.toISOString().split("T")[0])
+        .lte("order_date", yoy.end.toISOString().split("T")[0]);
+      if (yErr) throw new Error(yErr.message);
+
 
       // Fetch order items for current period
       const orderIds = (currentOrders || []).map(o => o.order_id);
