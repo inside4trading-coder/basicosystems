@@ -355,12 +355,6 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       let kpiAvg = { value: avgTicket, change: pct(avgTicket, prevAvgTicket), changeYoY: pct(avgTicket, yoyAvgTicket) };
       let kpiProducts = { value: productsSold, change: pct(productsSold, prevProductsSold), changeYoY: 0 };
       try {
-        const { data: wcAnalytics } = await supabase.functions.invoke("woo-analytics-kpis", {
-          method: "GET" as any,
-          // pass via query string
-          // @ts-ignore - supabase-js supports search params via fetch-like options
-        } as any);
-        // Fallback: call via direct fetch with query params (functions.invoke doesn't expose query easily)
         const projectId = (import.meta as any).env.VITE_SUPABASE_PROJECT_ID;
         const anonKey = (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY;
         const s = start.toISOString().split("T")[0];
