@@ -349,13 +349,50 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
           return b.quantity - a.quantity;
         });
 
+      // Try to override KPI values & change %s using WooCommerce Analytics (source of truth)
+      let kpiRevenue = { value: revenue, change: pct(revenue, prevRevenue), changeYoY: pct(revenue, yoyRevenue) };
+      let kpiOrders = { value: totalOrders, change: pct(totalOrders, prevTotalOrders), changeYoY: pct(totalOrders, yoyTotalOrders) };
+      let kpiAvg = { value: avgTicket, change: pct(avgTicket, prevAvgTicket), changeYoY: pct(avgTicket, yoyAvgTicket) };
+      let kpiProducts = { value: productsSold, change: pct(productsSold, prevProductsSold), changeYoY: 0 };
+      try {
+        const { data: wcAnalytics } = await supabase.functions.invoke("woo-analytics-kpis", {
+          method: "GET" as any,
+          // pass via query string
+          // @ts-ignore - supabase-js supports search params via fetch-like options
+        } as any);
+        // Fallback: call via direct fetch with query params (functions.invoke doesn't expose query easily)
+        const projectId = (import.meta as any).env.VITE_SUPABASE_PROJECT_ID;
+        const anonKey = (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const s = start.toISOString().split("T")[0];
+        const e = end.toISOString().split("T")[0];
+        const res = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/woo-analytics-kpis?start=${s}&end=${e}`,
+          { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
+        );
+        if (res.ok) {
+          const j = await res.json();
+          const cur = j.current || {};
+          const pv = j.prev || {};
+          const yy = j.yoy || {};
+          const curAvg = cur.orders_count > 0 ? cur.total_sales / cur.orders_count : 0;
+          const pvAvg = pv.orders_count > 0 ? pv.total_sales / pv.orders_count : 0;
+          const yyAvg = yy.orders_count > 0 ? yy.total_sales / yy.orders_count : 0;
+          kpiRevenue = { value: cur.total_sales, change: pct(cur.total_sales, pv.total_sales), changeYoY: pct(cur.total_sales, yy.total_sales) };
+          kpiOrders = { value: cur.orders_count, change: pct(cur.orders_count, pv.orders_count), changeYoY: pct(cur.orders_count, yy.orders_count) };
+          kpiAvg = { value: curAvg, change: pct(curAvg, pvAvg), changeYoY: pct(curAvg, yyAvg) };
+          kpiProducts = { value: cur.num_items_sold, change: pct(cur.num_items_sold, pv.num_items_sold), changeYoY: pct(cur.num_items_sold, yy.num_items_sold) };
+        }
+      } catch (e) {
+        console.warn("woo-analytics-kpis fallback to local calc:", e);
+      }
+
       setData({
         kpis: {
-          revenue: { value: revenue, change: pct(revenue, prevRevenue), changeYoY: pct(revenue, yoyRevenue) },
-          orders: { value: totalOrders, change: pct(totalOrders, prevTotalOrders), changeYoY: pct(totalOrders, yoyTotalOrders) },
-          avgTicket: { value: avgTicket, change: pct(avgTicket, prevAvgTicket), changeYoY: pct(avgTicket, yoyAvgTicket) },
+          revenue: kpiRevenue,
+          orders: kpiOrders,
+          avgTicket: kpiAvg,
           newCustomers: { value: newCustomers, change: pct(newCustomers, prevNewCustomers), changeYoY: pct(newCustomers, yoyNewCustomers) },
-          productsSold: { value: productsSold, change: pct(productsSold, prevProductsSold), changeYoY: 0 },
+          productsSold: kpiProducts,
         },
         statuses,
         topProducts,
