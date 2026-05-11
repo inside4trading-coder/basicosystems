@@ -49,10 +49,10 @@ serve(async (req) => {
 
     const start = new Date(`${startStr}T00:00:00`);
     const end = new Date(`${endStr}T23:59:59`);
-    const diff = end.getTime() - start.getTime();
 
-    const prevStart = new Date(start.getTime() - diff - 1000);
-    const prevEnd = new Date(start.getTime() - 1000);
+    // "Período anterior" = mismo rango desplazado 1 mes atrás (intermensual, igual que WooCommerce)
+    const prevStart = new Date(start); prevStart.setMonth(prevStart.getMonth() - 1);
+    const prevEnd = new Date(end); prevEnd.setMonth(prevEnd.getMonth() - 1);
 
     const yoyStart = new Date(start); yoyStart.setFullYear(yoyStart.getFullYear() - 1);
     const yoyEnd = new Date(end); yoyEnd.setFullYear(yoyEnd.getFullYear() - 1);
