@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AdminMetricCard } from "@/components/sublime/AdminMetricCard";
 import SublimeStoresAdmin from "@/components/sublime/SublimeStoresAdmin";
+import SublimePendingReviews from "@/components/sublime/SublimePendingReviews";
 import {
   ExternalLink,
   Store,
@@ -113,12 +114,8 @@ export default function SublimeAdminFichaje() {
 
         {/* Incidencias */}
         <TabsContent value="incidencias">
-          <Card className="rounded-2xl border-border/60">
-            <EmptyState
-              icon={AlertCircle}
-              title="Sin incidencias pendientes"
-              description="Aquí aparecerán retrasos, ausencias y solicitudes que requieran tu revisión."
-            />
+          <Card className="rounded-2xl border-border/60 p-4">
+            <SublimePendingReviews />
           </Card>
         </TabsContent>
 

@@ -1,93 +1,69 @@
-## Sistema de PIN para Fichaje Sublime
+## Problema detectado
 
-Implementar el flujo completo de PIN temporal → PIN personal con bloqueo por intentos fallidos, sin exponer nunca el PIN personal al admin.
+La pantalla `/sublime/fichaje` muestra los botones Entrada/Salida pero **no registra nada**: solo dispara un `toast`. Nunca pide ubicación, nunca compara contra la tienda, nunca inserta en `sublime_clock_events`. Por eso:
 
-### 1. Cambios de base de datos
+- El fichaje de Ediana no aparece en ningún registro (nunca se guardó).
+- Se pudo "fichar" fuera del radio porque no existe validación todavía.
 
-Migración sobre `sublime_clock_settings` (añadir columnas, no borrar nada):
+Configuración actual de la única tienda activa:
 
-- `pin_status` text — `not_configured` | `temp_generated` | `active` | `locked` | `requires_reset` (default `not_configured`)
-- `temp_pin_hash` text nullable — hash del PIN temporal (4 dígitos)
-- `temp_pin_expires_at` timestamptz nullable — expiración (24h tras generación)
-- `failed_attempts` int default 0
-- `locked_until` timestamptz nullable — bloqueo temporal por 5 fallos
-- `last_pin_attempt_at` timestamptz nullable
+- **Sublime - C.C. Barquicenter** · centro `10.067667, -69.313389` · radio **75 m**
+- La precisión GPS no se está usando — el navegador ni siquiera la solicita en el momento del fichaje.
 
-`pin_hash` existente pasa a representar el PIN personal de 6 dígitos (hash SHA-256 con salt). Nunca se devuelve al cliente.
+## Qué construir
 
-Nueva tabla `sublime_pin_audit` para trazabilidad (admin-only):
-- `employee_id`, `action` (`temp_generated`, `personal_set`, `reset`, `blocked`, `unblocked`, `failed_attempt`, `locked_out`), `performed_by`, `created_at`, `metadata` jsonb
+### 1. Edge function `sublime-clock-event` (nueva, pública con sesión)
 
-RLS: admin manage all; manager read.
+Recibe del cliente: `session_token`, `event_type` (entrada / salida / inicio_descanso / fin_descanso), `latitude`, `longitude`, `accuracy`, `device_user_agent`.
 
-### 2. Edge functions (verify_jwt = false para las públicas)
+Lógica server-side:
 
-**`sublime-pin-admin`** (verify_jwt = true) — operaciones del admin:
-- `action: "generate_temp"` → genera PIN 4 dígitos, hashea, guarda con expiración 24h, marca `pin_status=temp_generated`, limpia `pin_hash`/intentos. Devuelve el PIN en claro **una sola vez** (solo a admin autenticado).
-- `action: "reset"` → limpia `pin_hash`, `temp_pin_hash`, intentos, marca `requires_reset`. No genera PIN nuevo automáticamente.
-- `action: "block"` / `"unblock"` → setea `blocked` y `pin_status=locked` / restaura.
-- Verifica rol admin vía `has_role`.
+1. Validar `session_token` (mismo HMAC ya usado por `sublime-pin-public`).
+2. Cargar `sublime_clock_settings` del empleado y la `sublime_stores` asignada.
+3. Calcular distancia Haversine al centro de la tienda.
+4. Determinar `location_state`:
+   - `dentro_rango` si `distance ≤ radius`
+   - `fuera_rango` si `distance > radius`
+   - `ubicacion_no_disponible` si no llegan coordenadas
+   - `precision_baja` si `accuracy > 100 m` (se acepta pero se marca)
+5. Determinar `clock_state`:
+   - `valido` si dentro de rango (o sin coords pero permitido manualmente — por ahora no)
+   - `pendiente_revision` si fuera de rango → **bloquea el fichaje automático** y deja la solicitud lista para que admin apruebe/rechace
+6. Calcular `punctuality_state` para entradas (a tiempo / tarde según `entry_time` + tolerancia).
+7. Insertar en `sublime_clock_events` con todos los campos de trazabilidad (lat, lng, distance_meters, allowed_radius_meters, device_user_agent, source = "pin").
+8. Devolver al cliente: `ok`, `clock_state`, `distance`, `radius`, `location_state` y mensaje claro.
 
-**`sublime-pin-public`** (verify_jwt = false) — usado en `/sublime/fichaje`:
-- `action: "verify"` con `{ pin }` → busca empleado por hash (PIN personal o temporal). Si match temporal → devuelve `{ requires_personal_setup: true, session_token }` (token efímero firmado, 5 min). Si match personal → devuelve `{ employee_summary, session_token }` para fichar. Si no match → incrementa `failed_attempts`; al llegar a 5, setea `locked_until = now() + 30 min` y `pin_status=locked`. Mensajes claros: intentos restantes / bloqueado hasta hora X.
-- `action: "set_personal_pin"` con `{ session_token, new_pin, confirm_pin }` → valida token temporal, valida 6 dígitos numéricos, ambos iguales, no trivial (no 000000/123456), hashea, guarda en `pin_hash`, limpia `temp_pin_hash`/expiración, `pin_status=active`, resetea intentos. Audit log.
-- Cliente Supabase con service role; nunca devuelve hashes.
+### 2. Cliente `/sublime/fichaje`
 
-### 3. UI — Crew profile (`CrewSublimeClock.tsx`)
+Reemplazar el `handleAction` placeholder por un flujo real:
 
-Reemplazar la sección actual de PIN por panel admin con:
-- Badge de estado del PIN (5 estados con colores).
-- Última actividad: `pin_set_at`, intentos fallidos, `locked_until` si aplica.
-- Botones (admin only):
-  - **Generar PIN temporal** → llama edge function, muestra PIN en `Dialog` con copy-to-clipboard, aviso "se mostrará solo una vez".
-  - **Resetear PIN** (confirmación).
-  - **Bloquear / Desbloquear fichaje**.
-- Manager: solo lectura del estado.
-- Eliminar el generador local actual (`generatePin`/`hashPin` en cliente) — todo va por edge function.
-- **Nunca** mostrar hashes ni PIN personal.
+1. Al pulsar Entrada/Salida, mostrar estado "Obteniendo ubicación…".
+2. Llamar `getCurrentPosition` con `enableHighAccuracy: true`, `timeout: 15s`, `maximumAge: 0`.
+3. Si el usuario niega el permiso → mostrar mensaje y bloquear (no permitir fichar sin GPS).
+4. Enviar lat/lng/accuracy + user-agent a la edge function.
+5. Mostrar el resultado:
+   - Éxito dentro del rango → confirmación verde con distancia ("a X m de la tienda").
+   - Fuera del rango → tarjeta de aviso roja con la distancia real, el radio permitido (75 m) y botón "Solicitar revisión manual" que crea el evento como `pendiente_revision` con una observación opcional.
+   - Sin GPS / permiso denegado → mensaje claro, sin registro.
+6. Refrescar el estado del empleado tras un fichaje exitoso.
 
-### 4. UI — Vista pública (`/sublime/fichaje`)
+### 3. UI de descansos
 
-Refactor de `SublimeFichajePublico.tsx` + `FichajeIdentify.tsx`:
-- Input PIN con `InputOTP` 6 slots (acepta también 4 para temporal — detectar por longitud o intentar ambos en backend).
-- Pantalla de error con mensajes: "PIN incorrecto. Te quedan N intentos", "Fichaje bloqueado hasta HH:MM. Contacta a tu supervisor".
-- Si backend devuelve `requires_personal_setup`: pantalla nueva `FichajePersonalPinSetup` con dos `InputOTP` de 6 dígitos (nuevo + confirmación), validación en vivo, botón "Crear mi PIN".
-- Tras éxito: pantalla de bienvenida y luego flujo normal de fichaje (entrada/salida) con el `session_token`.
+Añadir botones `Inicio descanso` y `Fin descanso` cuando el estado actual lo permita (ya están los `event_type` soportados en la BD).
 
-### 5. Detalles técnicos
+### 4. Panel admin — solicitudes pendientes
 
-```text
-PIN flow
-─────────
-admin → generate_temp → temp_pin (4 dígitos, mostrado 1 vez)
-                                 ↓
-empleado introduce temp_pin → verify → requires_personal_setup
-                                 ↓
-empleado crea PIN personal (6) → set_personal_pin → pin_status=active
-                                 ↓
-fichajes posteriores con PIN personal
-```
+En `/sublime/admin/fichaje` añadir una pestaña "Pendientes de revisión" que liste eventos con `clock_state = 'pendiente_revision'` y permita Aprobar / Rechazar (rellena `approved_by`, `approved_at` y cambia `clock_state`).
 
-- Hashing: SHA-256 con salt por proyecto en edge function (`SUBLIME_PIN_SALT` secret, se solicitará si falta).
-- Lookup eficiente: al verificar, se itera sólo sobre empleados con `enabled=true` y hash no nulo. Para volumen actual (<100 empleados) es aceptable; índice en `pin_hash` y `temp_pin_hash`.
-- Validación Zod en edge functions.
-- Audit log en cada acción sensible.
-- `pin_hash` y `temp_pin_hash` nunca se incluyen en `select` desde el cliente — RLS permite leerlos pero la UI evita exponerlos; el admin solo ve `pin_status`, `pin_set_at`, `failed_attempts`, `locked_until`.
+## Aclaraciones técnicas sobre GPS
 
-### 6. Archivos afectados
+- El navegador devuelve `coords.accuracy` en metros (radio de confianza al 68%). En móvil con GPS suele ser 5-30 m, en wifi/IP puede ser 100-2000 m.
+- La validación se hace contra la **distancia al centro de la tienda**, no contra accuracy. Pero si `accuracy > 100 m` el evento se marca `precision_baja` para que admin lo revise aunque caiga dentro del radio.
+- `maximumAge: 0` fuerza una lectura nueva cada fichaje (no caché).
+- `timeout: 15s` evita que el usuario quede colgado si el GPS tarda.
 
-Nuevos:
-- `supabase/functions/sublime-pin-admin/index.ts`
-- `supabase/functions/sublime-pin-public/index.ts`
-- `src/components/sublime/FichajePersonalPinSetup.tsx`
-- migración SQL
+## Archivos a tocar
 
-Editados:
-- `src/components/crew/CrewSublimeClock.tsx` (panel PIN admin)
-- `src/components/sublime/FichajeIdentify.tsx` (OTP 6 dígitos + manejo errores)
-- `src/pages/SublimeFichajePublico.tsx` (estados: identify → setup → clock)
-- `src/hooks/useSublimeClock.ts` (helpers para llamar edge functions, exponer estado PIN)
-- `src/types/sublime.ts` (tipo `PinStatus`, campos nuevos)
-- `src/lib/sublimeClock.ts` (eliminar `generatePin`/`hashPin` cliente)
-
-Sin cambios destructivos en módulos existentes.
+- **Crear**: `supabase/functions/sublime-clock-event/index.ts`
+- **Editar**: `src/pages/SublimeFichajePublico.tsx`, `src/components/sublime/FichajeClock.tsx`, `src/pages/SublimeAdminFichaje.tsx` (pestaña pendientes)
+- **Migración**: ninguna nueva, las columnas ya existen en `sublime_clock_events`.
