@@ -80,7 +80,7 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
   const handleCreateStore = async () => {
     if (!newStoreName.trim()) return;
     try {
-      const store = await createStore(newStoreName.trim(), newStoreAddress.trim() || undefined);
+      const store = await createStore({ name: newStoreName.trim(), address: newStoreAddress.trim() || undefined });
       await handleField({ store_id: store.id });
       setNewStoreOpen(false);
       setNewStoreName("");
