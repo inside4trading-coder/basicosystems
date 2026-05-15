@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSublimeClockSettings, useSublimeStores } from "@/hooks/useSublimeClock";
-import { computeCurrentStatus, generatePin, hashPin, canEmployeeClockIn } from "@/lib/sublimeClock";
-import { EMPTY_SCHEDULE, EVENT_LABEL, STATUS_LABEL, type ClockStatus, type WeeklySchedule } from "@/types/sublime";
+import { computeCurrentStatus, canEmployeeClockIn } from "@/lib/sublimeClock";
+import { EMPTY_SCHEDULE, EVENT_LABEL, PIN_STATUS_LABEL, STATUS_LABEL, type ClockStatus, type PinStatus, type WeeklySchedule } from "@/types/sublime";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { AlertCircle, KeyRound, Lock, Plus, Shield, ShieldOff, Store as StoreIcon } from "lucide-react";
+import { AlertCircle, Copy, KeyRound, Lock, Plus, RefreshCw, Shield, ShieldOff, Store as StoreIcon } from "lucide-react";
 import type { Employee } from "@/types/crew";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   employee: Employee;
