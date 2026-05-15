@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useSublimeStores } from "@/hooks/useSublimeClock";
-import { useUserRole } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { MapPin, Plus, Loader2, Save, Power } from "lucide-react";
 import { toast } from "sonner";
 import type { SublimeStore } from "@/types/sublime";
@@ -196,7 +196,7 @@ function StoreEditor({
 
 export default function SublimeStoresAdmin() {
   const { stores, loading, createStore, updateStore } = useSublimeStores();
-  const { role } = useUserRole();
+  const { role } = useAuth();
   const canEdit = role === "admin";
 
   const [createOpen, setCreateOpen] = useState(false);
