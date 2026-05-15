@@ -26,6 +26,7 @@ import RRPPProfile from "./pages/RRPPProfile";
 import Administracion from "./pages/Administracion";
 import AdminObligationDetail from "./pages/AdminObligationDetail";
 import SublimeFichajePublico from "./pages/SublimeFichajePublico";
+import Sublime from "./pages/Sublime";
 import SublimeAdminFichaje from "./pages/SublimeAdminFichaje";
 import NotFound from "./pages/NotFound";
 
@@ -64,6 +65,7 @@ const App = () => (
               <Route path="/administracion" element={<Administracion />} />
               <Route path="/administracion/:id" element={<AdminObligationDetail />} />
               <Route path="/configuracion" element={<Configuracion />} />
+              <Route path="/sublime" element={<Sublime />} />
               <Route path="/sublime/admin/fichaje" element={<SublimeAdminFichaje />} />
             </Route>
             <Route path="/crew/incidencias" element={<CrewIncidencias />} />
