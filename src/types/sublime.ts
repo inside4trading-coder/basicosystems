@@ -58,6 +58,7 @@ export interface ClockSettings {
   late_tolerance_minutes: number;
   pin_hash: string | null;
   pin_set_at: string | null;
+  temp_pin_hash: string | null;
   blocked: boolean;
   pin_status: PinStatus;
   temp_pin_expires_at: string | null;
