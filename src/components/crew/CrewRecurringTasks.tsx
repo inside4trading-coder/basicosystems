@@ -52,7 +52,7 @@ const freqLabel: Record<string, string> = {
   monthly: "Mensual",
 };
 
-export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete, onReorderAll }: CrewRecurringTasksProps) {
+export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete, onReorderAll, highlightTaskId }: CrewRecurringTasksProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringTask | null>(null);
 
@@ -65,6 +65,18 @@ export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete,
     setEditing(null);
     setSheetOpen(true);
   };
+
+  // Auto-scroll/highlight a deep-linked task
+  useEffect(() => {
+    if (!highlightTaskId) return;
+    const t = tasks.find((x) => x.id === highlightTaskId);
+    if (!t) return;
+    const el = document.querySelector<HTMLElement>(`[data-task-id="${highlightTaskId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightTaskId, tasks]);
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
