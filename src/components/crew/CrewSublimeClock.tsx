@@ -322,24 +322,52 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
           </div>
         </div>
 
-        {/* PIN + bloqueo */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/50">
+        {/* PIN status + acciones */}
+        <div className="pt-2 border-t border-border/50 space-y-3">
           <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/40">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <KeyRound className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm font-semibold text-foreground">PIN de fichaje</p>
-                <p className="text-xs text-muted-foreground">
-                  {settings?.pin_hash ? "Configurado" : "Sin PIN"}
-                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${PIN_STATUS_VARIANT[(settings?.pin_status ?? "not_configured") as PinStatus]}`}>
+                    {PIN_STATUS_LABEL[(settings?.pin_status ?? "not_configured") as PinStatus]}
+                  </span>
+                  {settings?.pin_set_at && settings.pin_status === "active" && (
+                    <span className="text-[11px] text-muted-foreground">
+                      activo desde {new Date(settings.pin_set_at).toLocaleDateString("es-ES")}
+                    </span>
+                  )}
+                  {settings?.temp_pin_expires_at && settings.pin_status === "temp_generated" && (
+                    <span className="text-[11px] text-muted-foreground">
+                      expira {new Date(settings.temp_pin_expires_at).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
+                  {(settings?.failed_attempts ?? 0) > 0 && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {settings?.failed_attempts} intentos fallidos
+                    </span>
+                  )}
+                  {settings?.locked_until && new Date(settings.locked_until) > new Date() && (
+                    <span className="text-[11px] text-primary font-semibold">
+                      bloqueado hasta {new Date(settings.locked_until).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             {canEdit && (
-              <Button size="sm" variant="outline" onClick={handleGeneratePin} className="rounded-lg">
-                Generar
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={handleGeneratePin} className="rounded-lg">
+                  <KeyRound className="h-3.5 w-3.5 mr-1" /> PIN temporal
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setResetOpen(true)} className="rounded-lg" disabled={!settings?.pin_hash && !settings?.temp_pin_hash}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Resetear
+                </Button>
+              </div>
             )}
           </div>
+
           <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/40">
             <div className="flex items-center gap-2">
               {settings?.blocked ? (
@@ -360,7 +388,7 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
               <Button
                 size="sm"
                 variant={settings?.blocked ? "default" : "outline"}
-                onClick={() => handleField({ blocked: !(settings?.blocked ?? false) })}
+                onClick={handleToggleBlock}
                 className="rounded-lg"
               >
                 {settings?.blocked ? <ShieldOff className="h-3.5 w-3.5 mr-1" /> : <Lock className="h-3.5 w-3.5 mr-1" />}
