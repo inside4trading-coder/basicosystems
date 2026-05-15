@@ -35,6 +35,14 @@ const STATUS_VARIANT: Record<ClockStatus, string> = {
   fichaje_bloqueado: "bg-primary text-primary-foreground",
 };
 
+const PIN_STATUS_VARIANT: Record<PinStatus, string> = {
+  not_configured: "bg-muted text-muted-foreground",
+  temp_generated: "bg-[hsl(38_92%_50%)] text-white",
+  active: "bg-[hsl(142_72%_29%)] text-white",
+  locked: "bg-primary text-primary-foreground",
+  requires_reset: "bg-[hsl(45_93%_47%)] text-white",
+};
+
 function timeOnly(value: string | null) {
   return value ? value.slice(0, 5) : "";
 }
