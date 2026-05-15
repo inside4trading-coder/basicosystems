@@ -193,15 +193,22 @@ function taskHappensOn(task: RecurringTask, parts: CaracasParts): boolean {
   }
   if (task.frequency === "weekly") {
     if (!task.day) return true;
-    const wanted = dayMap[task.day.trim().toLowerCase()];
-    if (wanted === undefined) return true;
+    const wanted = parseWeeklyDay(task.day);
+    if (wanted === null) return true; // fallback: dato no parseable, no romper
     return parts.weekday === wanted;
   }
   if (task.frequency === "monthly") {
     if (!task.day) return true;
-    const n = parseInt(task.day, 10);
-    if (Number.isNaN(n)) return true;
-    return parts.day === n;
+    const rule = parseMonthlyRule(task.day);
+    if (!rule) return true; // fallback: dato no parseable
+    if (rule.kind === "day-of-month") return parts.day === rule.day;
+    if (rule.kind === "last-calendar") return parts.day === lastDayOfMonth(parts.year, parts.month);
+    if (rule.kind === "last-business") return parts.day === lastBusinessDayOfMonth(parts.year, parts.month);
+    if (rule.kind === "nth-weekday") {
+      const target = nthWeekdayOfMonth(parts.year, parts.month, rule.weekday, rule.nth);
+      return target !== null && parts.day === target;
+    }
+    return false;
   }
   return false;
 }
