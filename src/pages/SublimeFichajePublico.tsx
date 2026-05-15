@@ -91,14 +91,6 @@ export default function SublimeFichajePublico() {
     }
   };
 
-  const handleAction = (kind: "entrada" | "salida") => {
-    toast({
-      title: kind === "entrada" ? "Entrada registrada" : "Salida registrada",
-      description: `Fichaje a las ${horaLarga}`,
-    });
-    reset();
-  };
-
   return (
     <div className="min-h-dvh bg-gradient-to-br from-background via-background to-card flex flex-col">
       <header className="px-6 pt-8 pb-4 flex flex-col items-center text-center">
@@ -125,8 +117,8 @@ export default function SublimeFichajePublico() {
           {stage === "clock" && session && (
             <FichajeClock
               employeeName={session.employee.name}
-              onEntrada={() => handleAction("entrada")}
-              onSalida={() => handleAction("salida")}
+              sessionToken={session.token}
+              onDone={reset}
               onCancel={reset}
             />
           )}
