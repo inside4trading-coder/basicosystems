@@ -361,13 +361,13 @@ function SummaryCard({
 }
 
 function Section({
-  title, subtitle, icon, items, onOpenEmployee, emptyHint, accent, dimmed,
+  title, subtitle, icon, items, onOpenTask, emptyHint, accent, dimmed,
 }: {
   title: string;
   subtitle: string;
   icon: React.ReactNode;
   items: TaskWithOwner[];
-  onOpenEmployee: (id: string) => void;
+  onOpenTask: (employeeId: string, taskId: string) => void;
   emptyHint: string;
   accent: "error" | "warning" | "info" | "muted";
   dimmed?: boolean;
