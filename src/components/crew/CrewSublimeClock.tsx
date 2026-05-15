@@ -404,21 +404,57 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
       <Dialog open={!!pinDialog} onOpenChange={(o) => !o && setPinDialog(null)}>
         <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Nuevo PIN generado</DialogTitle>
+            <DialogTitle>PIN temporal generado</DialogTitle>
+            <DialogDescription>
+              Compártelo con el empleado. Solo es válido para el primer acceso y deberá crear su PIN personal de 6 dígitos. No se volverá a mostrar.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-6 text-center">
-            <p className="text-sm text-muted-foreground mb-4">
-              Comparte este PIN con el empleado. No se volverá a mostrar.
-            </p>
             <div className="text-6xl font-black tracking-[0.4em] tabular-nums text-foreground">
               {pinDialog}
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (pinDialog) {
+                  navigator.clipboard.writeText(pinDialog);
+                  toast.success("PIN copiado");
+                }
+              }}
+              className="rounded-xl"
+            >
+              <Copy className="h-3.5 w-3.5 mr-1" /> Copiar
+            </Button>
             <Button onClick={() => setPinDialog(null)} className="rounded-xl">Entendido</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reset PIN confirmation */}
+      <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resetear PIN del empleado</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción invalidará el PIN actual. El empleado no podrá fichar hasta que generes un nuevo PIN temporal y lo configure de nuevo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl"
+              onClick={async () => {
+                setResetOpen(false);
+                await handleResetPin();
+              }}
+            >
+              Resetear
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Nueva tienda dialog */}
       <Dialog open={newStoreOpen} onOpenChange={setNewStoreOpen}>
