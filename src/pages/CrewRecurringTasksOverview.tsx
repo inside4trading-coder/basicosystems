@@ -432,7 +432,7 @@ function Section({
                     accentBorder,
                     dimmed && "opacity-60",
                   )}
-                  onClick={() => onOpenEmployee(employee.id)}
+                  onClick={() => onOpenTask(employee.id, task.id)}
                 >
                   <div className="flex items-start gap-3">
                     <EmployeeAvatar
