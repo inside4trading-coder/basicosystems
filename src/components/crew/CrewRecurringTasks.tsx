@@ -36,6 +36,7 @@ interface CrewRecurringTasksProps {
   onToggle: (taskId: string) => void;
   onDelete: (taskId: string) => void;
   onReorderAll: (orderedIds: string[]) => void;
+  highlightTaskId?: string | null;
 }
 
 const priorityDot: Record<string, string> = {
