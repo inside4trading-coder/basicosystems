@@ -1,12 +1,25 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { FichajeIdentify } from "@/components/sublime/FichajeIdentify";
+import { FichajePersonalPinSetup } from "@/components/sublime/FichajePersonalPinSetup";
 import { FichajeClock } from "@/components/sublime/FichajeClock";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+type Stage = "identify" | "setup" | "clock";
+
+interface ActiveSession {
+  token: string;
+  employee: { id: string; name: string; internal_id: string };
+}
 
 export default function SublimeFichajePublico() {
   const [now, setNow] = useState(new Date());
-  const [identified, setIdentified] = useState<string | null>(null);
+  const [stage, setStage] = useState<Stage>("identify");
+  const [setupToken, setSetupToken] = useState<string | null>(null);
+  const [session, setSession] = useState<ActiveSession | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -14,28 +27,80 @@ export default function SublimeFichajePublico() {
   }, []);
 
   const fechaLarga = now.toLocaleDateString("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
   const horaLarga = now.toLocaleTimeString("es-ES", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
   });
+
+  const reset = () => {
+    setStage("identify");
+    setSetupToken(null);
+    setSession(null);
+    setError(null);
+  };
+
+  const handlePinSubmit = async (pin: string) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke("sublime-pin-public", {
+        body: { action: "verify", pin },
+      });
+      if (invokeErr) throw invokeErr;
+      const res = data as any;
+      if (!res?.ok) {
+        setError(res?.error ?? "PIN incorrecto");
+        return;
+      }
+      if (res.requires_personal_setup) {
+        setSetupToken(res.session_token);
+        setStage("setup");
+      } else {
+        setSession({ token: res.session_token, employee: res.employee });
+        setStage("clock");
+      }
+    } catch (e: any) {
+      setError(e.message ?? "Error al verificar PIN");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePersonalSetup = async (newPin: string, confirmPin: string) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke("sublime-pin-public", {
+        body: { action: "set_personal_pin", session_token: setupToken, new_pin: newPin, confirm_pin: confirmPin },
+      });
+      if (invokeErr) throw invokeErr;
+      const res = data as any;
+      if (!res?.ok) {
+        setError(res?.error ?? "No se pudo crear el PIN");
+        return;
+      }
+      toast({ title: "PIN personal creado", description: "Ya puedes fichar con tu nuevo PIN." });
+      setSetupToken(null);
+      setSession({ token: res.session_token, employee: res.employee });
+      setStage("clock");
+    } catch (e: any) {
+      setError(e.message ?? "Error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAction = (kind: "entrada" | "salida") => {
     toast({
       title: kind === "entrada" ? "Entrada registrada" : "Salida registrada",
       description: `Fichaje a las ${horaLarga}`,
     });
-    setIdentified(null);
+    reset();
   };
 
   return (
     <div className="min-h-dvh bg-gradient-to-br from-background via-background to-card flex flex-col">
-      {/* Header */}
       <header className="px-6 pt-8 pb-4 flex flex-col items-center text-center">
         <div className="flex items-center gap-2 mb-1">
           <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
@@ -49,18 +114,21 @@ export default function SublimeFichajePublico() {
         <p className="text-sm text-muted-foreground capitalize mt-1">{fechaLarga}</p>
       </header>
 
-      {/* Card central */}
       <main className="flex-1 flex items-center justify-center px-4 pb-8">
         <Card className="w-full max-w-md p-6 sm:p-8 rounded-3xl border-border/60 shadow-2xl bg-card/80 backdrop-blur">
-          {identified ? (
+          {stage === "identify" && (
+            <FichajeIdentify onSubmit={handlePinSubmit} loading={loading} error={error} />
+          )}
+          {stage === "setup" && (
+            <FichajePersonalPinSetup onSubmit={handlePersonalSetup} loading={loading} error={error} />
+          )}
+          {stage === "clock" && session && (
             <FichajeClock
-              employeeName={`Empleado ${identified}`}
+              employeeName={session.employee.name}
               onEntrada={() => handleAction("entrada")}
               onSalida={() => handleAction("salida")}
-              onCancel={() => setIdentified(null)}
+              onCancel={reset}
             />
-          ) : (
-            <FichajeIdentify onIdentify={setIdentified} />
           )}
         </Card>
       </main>
