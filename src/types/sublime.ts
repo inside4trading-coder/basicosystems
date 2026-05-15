@@ -38,6 +38,13 @@ export const EMPTY_SCHEDULE: WeeklySchedule = {
   mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false,
 };
 
+export type PinStatus =
+  | "not_configured"
+  | "temp_generated"
+  | "active"
+  | "locked"
+  | "requires_reset";
+
 export interface ClockSettings {
   employee_id: string;
   enabled: boolean;
@@ -52,9 +59,22 @@ export interface ClockSettings {
   pin_hash: string | null;
   pin_set_at: string | null;
   blocked: boolean;
+  pin_status: PinStatus;
+  temp_pin_expires_at: string | null;
+  failed_attempts: number;
+  locked_until: string | null;
+  last_pin_attempt_at: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export const PIN_STATUS_LABEL: Record<PinStatus, string> = {
+  not_configured: "Sin configurar",
+  temp_generated: "PIN temporal",
+  active: "PIN activo",
+  locked: "Bloqueado",
+  requires_reset: "Requiere reset",
+};
 
 export interface ClockEvent {
   id: string;
