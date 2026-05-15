@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSublimeClockSettings, useSublimeStores } from "@/hooks/useSublimeClock";
-import { computeCurrentStatus, generatePin, hashPin, canEmployeeClockIn } from "@/lib/sublimeClock";
-import { EMPTY_SCHEDULE, EVENT_LABEL, STATUS_LABEL, type ClockStatus, type WeeklySchedule } from "@/types/sublime";
+import { computeCurrentStatus, canEmployeeClockIn } from "@/lib/sublimeClock";
+import { EMPTY_SCHEDULE, EVENT_LABEL, PIN_STATUS_LABEL, STATUS_LABEL, type ClockStatus, type PinStatus, type WeeklySchedule } from "@/types/sublime";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { AlertCircle, KeyRound, Lock, Plus, Shield, ShieldOff, Store as StoreIcon } from "lucide-react";
+import { AlertCircle, Copy, KeyRound, Lock, Plus, RefreshCw, Shield, ShieldOff, Store as StoreIcon } from "lucide-react";
 import type { Employee } from "@/types/crew";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   employee: Employee;
@@ -33,14 +35,23 @@ const STATUS_VARIANT: Record<ClockStatus, string> = {
   fichaje_bloqueado: "bg-primary text-primary-foreground",
 };
 
+const PIN_STATUS_VARIANT: Record<PinStatus, string> = {
+  not_configured: "bg-muted text-muted-foreground",
+  temp_generated: "bg-[hsl(38_92%_50%)] text-white",
+  active: "bg-[hsl(142_72%_29%)] text-white",
+  locked: "bg-primary text-primary-foreground",
+  requires_reset: "bg-[hsl(45_93%_47%)] text-white",
+};
+
 function timeOnly(value: string | null) {
   return value ? value.slice(0, 5) : "";
 }
 
 export function CrewSublimeClock({ employee, canEdit }: Props) {
-  const { settings, recentEvents, loading, upsert } = useSublimeClockSettings(employee.id);
+  const { settings, recentEvents, loading, upsert, refresh } = useSublimeClockSettings(employee.id);
   const { stores, createStore } = useSublimeStores();
   const [pinDialog, setPinDialog] = useState<string | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
   const [newStoreOpen, setNewStoreOpen] = useState(false);
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
@@ -68,13 +79,45 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
     handleField({ weekly_schedule: { ...ws, [key]: !ws[key] } });
   };
 
+  const callPinAdmin = async (action: "generate_temp" | "reset" | "block" | "unblock") => {
+    const { data, error } = await supabase.functions.invoke("sublime-pin-admin", {
+      body: { action, employee_id: employee.id },
+    });
+    if (error) throw error;
+    if ((data as any)?.error) throw new Error((data as any).error);
+    return data as any;
+  };
+
   const handleGeneratePin = async () => {
     if (!canEdit) return;
-    const pin = generatePin();
-    const hash = await hashPin(pin);
-    await handleField({ pin_hash: hash, pin_set_at: new Date().toISOString() });
-    setPinDialog(pin);
-    toast.success("PIN generado");
+    try {
+      const data = await callPinAdmin("generate_temp");
+      setPinDialog(data.pin);
+      await refresh();
+      toast.success("PIN temporal generado");
+    } catch (e: any) {
+      toast.error(e.message ?? "Error generando PIN");
+    }
+  };
+
+  const handleResetPin = async () => {
+    try {
+      await callPinAdmin("reset");
+      await refresh();
+      toast.success("PIN reseteado");
+    } catch (e: any) {
+      toast.error(e.message ?? "Error reseteando PIN");
+    }
+  };
+
+  const handleToggleBlock = async () => {
+    try {
+      await callPinAdmin(settings?.blocked ? "unblock" : "block");
+      await refresh();
+      toast.success(settings?.blocked ? "Fichaje desbloqueado" : "Fichaje bloqueado");
+    } catch (e: any) {
+      toast.error(e.message ?? "Error");
+    }
   };
 
   const handleCreateStore = async () => {
@@ -280,24 +323,52 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
           </div>
         </div>
 
-        {/* PIN + bloqueo */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/50">
+        {/* PIN status + acciones */}
+        <div className="pt-2 border-t border-border/50 space-y-3">
           <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/40">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <KeyRound className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm font-semibold text-foreground">PIN de fichaje</p>
-                <p className="text-xs text-muted-foreground">
-                  {settings?.pin_hash ? "Configurado" : "Sin PIN"}
-                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${PIN_STATUS_VARIANT[(settings?.pin_status ?? "not_configured") as PinStatus]}`}>
+                    {PIN_STATUS_LABEL[(settings?.pin_status ?? "not_configured") as PinStatus]}
+                  </span>
+                  {settings?.pin_set_at && settings.pin_status === "active" && (
+                    <span className="text-[11px] text-muted-foreground">
+                      activo desde {new Date(settings.pin_set_at).toLocaleDateString("es-ES")}
+                    </span>
+                  )}
+                  {settings?.temp_pin_expires_at && settings.pin_status === "temp_generated" && (
+                    <span className="text-[11px] text-muted-foreground">
+                      expira {new Date(settings.temp_pin_expires_at).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
+                  {(settings?.failed_attempts ?? 0) > 0 && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {settings?.failed_attempts} intentos fallidos
+                    </span>
+                  )}
+                  {settings?.locked_until && new Date(settings.locked_until) > new Date() && (
+                    <span className="text-[11px] text-primary font-semibold">
+                      bloqueado hasta {new Date(settings.locked_until).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             {canEdit && (
-              <Button size="sm" variant="outline" onClick={handleGeneratePin} className="rounded-lg">
-                Generar
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={handleGeneratePin} className="rounded-lg">
+                  <KeyRound className="h-3.5 w-3.5 mr-1" /> PIN temporal
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setResetOpen(true)} className="rounded-lg" disabled={!settings?.pin_hash && !settings?.temp_pin_hash}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Resetear
+                </Button>
+              </div>
             )}
           </div>
+
           <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/40">
             <div className="flex items-center gap-2">
               {settings?.blocked ? (
@@ -318,7 +389,7 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
               <Button
                 size="sm"
                 variant={settings?.blocked ? "default" : "outline"}
-                onClick={() => handleField({ blocked: !(settings?.blocked ?? false) })}
+                onClick={handleToggleBlock}
                 className="rounded-lg"
               >
                 {settings?.blocked ? <ShieldOff className="h-3.5 w-3.5 mr-1" /> : <Lock className="h-3.5 w-3.5 mr-1" />}
@@ -333,21 +404,57 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
       <Dialog open={!!pinDialog} onOpenChange={(o) => !o && setPinDialog(null)}>
         <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Nuevo PIN generado</DialogTitle>
+            <DialogTitle>PIN temporal generado</DialogTitle>
+            <DialogDescription>
+              Compártelo con el empleado. Solo es válido para el primer acceso y deberá crear su PIN personal de 6 dígitos. No se volverá a mostrar.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-6 text-center">
-            <p className="text-sm text-muted-foreground mb-4">
-              Comparte este PIN con el empleado. No se volverá a mostrar.
-            </p>
             <div className="text-6xl font-black tracking-[0.4em] tabular-nums text-foreground">
               {pinDialog}
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (pinDialog) {
+                  navigator.clipboard.writeText(pinDialog);
+                  toast.success("PIN copiado");
+                }
+              }}
+              className="rounded-xl"
+            >
+              <Copy className="h-3.5 w-3.5 mr-1" /> Copiar
+            </Button>
             <Button onClick={() => setPinDialog(null)} className="rounded-xl">Entendido</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reset PIN confirmation */}
+      <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resetear PIN del empleado</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción invalidará el PIN actual. El empleado no podrá fichar hasta que generes un nuevo PIN temporal y lo configure de nuevo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl"
+              onClick={async () => {
+                setResetOpen(false);
+                await handleResetPin();
+              }}
+            >
+              Resetear
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Nueva tienda dialog */}
       <Dialog open={newStoreOpen} onOpenChange={setNewStoreOpen}>

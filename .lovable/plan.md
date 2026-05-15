@@ -1,124 +1,93 @@
-## Conectar Sublime · Fichaje con Crew
+## Sistema de PIN para Fichaje Sublime
 
-### Esquema de DB (migración nueva)
+Implementar el flujo completo de PIN temporal → PIN personal con bloqueo por intentos fallidos, sin exponer nunca el PIN personal al admin.
 
-**Tabla `sublime_stores`** — tiendas físicas (catálogo).
-- `name` text not null
-- `address` text
-- `active` boolean default true
+### 1. Cambios de base de datos
 
-**Tabla `sublime_clock_settings`** — config de fichaje por empleado (1:1 con `employees.id`).
-- `employee_id` uuid PK references employees
-- `enabled` boolean default false
-- `store_id` uuid references sublime_stores
-- `weekly_schedule` jsonb default `{}` — `{ mon:true, tue:true, ... }`
-- `entry_time` time
-- `exit_time` time
-- `break_start` time
-- `break_end` time
-- `break_minutes` int default 60
-- `late_tolerance_minutes` int default 10
-- `pin_hash` text — hash del PIN (nullable; null = sin PIN aún)
-- `pin_set_at` timestamptz
-- `blocked` boolean default false
-- `created_at` / `updated_at` timestamptz
+Migración sobre `sublime_clock_settings` (añadir columnas, no borrar nada):
 
-**Tabla `sublime_clock_events`** — fichajes individuales (registro append-only).
-- `id` uuid PK
-- `employee_id` uuid references employees
-- `store_id` uuid
-- `event_type` text — `entrada` | `salida` | `inicio_descanso` | `fin_descanso`
-- `event_at` timestamptz default now()
-- `source` text default `pin` — `pin` | `manual` | `admin`
-- `notes` text
+- `pin_status` text — `not_configured` | `temp_generated` | `active` | `locked` | `requires_reset` (default `not_configured`)
+- `temp_pin_hash` text nullable — hash del PIN temporal (4 dígitos)
+- `temp_pin_expires_at` timestamptz nullable — expiración (24h tras generación)
+- `failed_attempts` int default 0
+- `locked_until` timestamptz nullable — bloqueo temporal por 5 fallos
+- `last_pin_attempt_at` timestamptz nullable
 
-RLS:
-- `sublime_stores`: admin/manager all; authenticated read.
-- `sublime_clock_settings`: admin all; manager read.
-- `sublime_clock_events`: admin all; manager read; insert también vía edge function (service role) para la vista pública.
+`pin_hash` existente pasa a representar el PIN personal de 6 dígitos (hash SHA-256 con salt). Nunca se devuelve al cliente.
 
-Índices: `(employee_id, event_at desc)` en eventos.
+Nueva tabla `sublime_pin_audit` para trazabilidad (admin-only):
+- `employee_id`, `action` (`temp_generated`, `personal_set`, `reset`, `blocked`, `unblocked`, `failed_attempt`, `locked_out`), `performed_by`, `created_at`, `metadata` jsonb
 
-### Estado actual del empleado (derivado en frontend)
+RLS: admin manage all; manager read.
 
-Función pura `computeCurrentStatus(settings, events, now)` que devuelve uno de:
-`fuera_de_jornada` | `trabajando` | `en_descanso` | `jornada_completada` | `pendiente_revision` | `fichaje_bloqueado`
+### 2. Edge functions (verify_jwt = false para las públicas)
 
-Reglas:
-- Si `blocked` → `fichaje_bloqueado`.
-- Sin entrada hoy y dentro de horario → `fuera_de_jornada`.
-- Última event = `entrada` o `fin_descanso` → `trabajando`.
-- Última = `inicio_descanso` → `en_descanso`.
-- Última = `salida` → `jornada_completada`.
-- Inconsistencia (p.ej. dos entradas seguidas, o salida sin entrada) → `pendiente_revision`.
+**`sublime-pin-admin`** (verify_jwt = true) — operaciones del admin:
+- `action: "generate_temp"` → genera PIN 4 dígitos, hashea, guarda con expiración 24h, marca `pin_status=temp_generated`, limpia `pin_hash`/intentos. Devuelve el PIN en claro **una sola vez** (solo a admin autenticado).
+- `action: "reset"` → limpia `pin_hash`, `temp_pin_hash`, intentos, marca `requires_reset`. No genera PIN nuevo automáticamente.
+- `action: "block"` / `"unblock"` → setea `blocked` y `pin_status=locked` / restaura.
+- Verifica rol admin vía `has_role`.
 
-### Nueva sección "Fichaje" en CrewProfile
+**`sublime-pin-public`** (verify_jwt = false) — usado en `/sublime/fichaje`:
+- `action: "verify"` con `{ pin }` → busca empleado por hash (PIN personal o temporal). Si match temporal → devuelve `{ requires_personal_setup: true, session_token }` (token efímero firmado, 5 min). Si match personal → devuelve `{ employee_summary, session_token }` para fichar. Si no match → incrementa `failed_attempts`; al llegar a 5, setea `locked_until = now() + 30 min` y `pin_status=locked`. Mensajes claros: intentos restantes / bloqueado hasta hora X.
+- `action: "set_personal_pin"` con `{ session_token, new_pin, confirm_pin }` → valida token temporal, valida 6 dígitos numéricos, ambos iguales, no trivial (no 000000/123456), hashea, guarda en `pin_hash`, limpia `temp_pin_hash`/expiración, `pin_status=active`, resetea intentos. Audit log.
+- Cliente Supabase con service role; nunca devuelve hashes.
 
-Archivo nuevo: `src/components/crew/CrewSublimeClock.tsx`. Tab nuevo `clock` en `CrewProfile.tsx` (después de "Documentos"). No se toca ningún tab existente.
+### 3. UI — Crew profile (`CrewSublimeClock.tsx`)
 
-Contenido del tab:
-1. **Estado actual** — badge grande con el estado derivado + último fichaje (`event_type` + hora) + botón "Ver historial" (placeholder por ahora).
-2. **Configuración** (form, edit en sitio, guarda en `sublime_clock_settings` con upsert):
-   - Switch "Fichaje habilitado" (`enabled`)
-   - Select "Tienda asignada" (de `sublime_stores`)
-   - Grid 7 checkboxes "Horario semanal" (L-D)
-   - Inputs hora: entrada, salida, inicio descanso, fin descanso
-   - Number: duración descanso (min), tolerancia (min)
-   - Estado del PIN: badge "Sin PIN" / "Configurado" + botón "Generar PIN" (genera 4 dígitos, guarda hash, muestra una vez)
-   - Botón "Bloquear/Desbloquear fichaje"
-3. Validación zod del form. Solo admin puede editar; manager solo lee.
+Reemplazar la sección actual de PIN por panel admin con:
+- Badge de estado del PIN (5 estados con colores).
+- Última actividad: `pin_set_at`, intentos fallidos, `locked_until` si aplica.
+- Botones (admin only):
+  - **Generar PIN temporal** → llama edge function, muestra PIN en `Dialog` con copy-to-clipboard, aviso "se mostrará solo una vez".
+  - **Resetear PIN** (confirmación).
+  - **Bloquear / Desbloquear fichaje**.
+- Manager: solo lectura del estado.
+- Eliminar el generador local actual (`generatePin`/`hashPin` en cliente) — todo va por edge function.
+- **Nunca** mostrar hashes ni PIN personal.
 
-### Filtro de elegibilidad para fichar
+### 4. UI — Vista pública (`/sublime/fichaje`)
 
-Nueva utilidad `canEmployeeClockIn(employee, settings)` aplicada en la vista pública `/sublime/fichaje` y en la admin. Requisitos (todos):
-- `employee.status === "active"`
-- `settings.enabled === true`
-- `settings.store_id != null`
-- `settings.weekly_schedule` con al menos 1 día activo
-- `settings.entry_time && settings.exit_time`
-- `!settings.blocked`
+Refactor de `SublimeFichajePublico.tsx` + `FichajeIdentify.tsx`:
+- Input PIN con `InputOTP` 6 slots (acepta también 4 para temporal — detectar por longitud o intentar ambos en backend).
+- Pantalla de error con mensajes: "PIN incorrecto. Te quedan N intentos", "Fichaje bloqueado hasta HH:MM. Contacta a tu supervisor".
+- Si backend devuelve `requires_personal_setup`: pantalla nueva `FichajePersonalPinSetup` con dos `InputOTP` de 6 dígitos (nuevo + confirmación), validación en vivo, botón "Crear mi PIN".
+- Tras éxito: pantalla de bienvenida y luego flujo normal de fichaje (entrada/salida) con el `session_token`.
 
-### Vista pública `/sublime/fichaje`
+### 5. Detalles técnicos
 
-Reescribir lógica (UI ya existe). Flujo:
-1. Pantalla pide PIN (4 dígitos).
-2. Edge function `sublime-clock-resolve-pin` busca empleado por hash de PIN, valida elegibilidad, devuelve `{ employee, settings, lastEvent, currentStatus }`.
-3. Pantalla muestra nombre + estado + botones contextuales:
-   - `fuera_de_jornada` → Entrada
-   - `trabajando` → Salida + Iniciar descanso
-   - `en_descanso` → Fin de descanso
-   - `jornada_completada` → mensaje cerrado
-   - `pendiente_revision` / `fichaje_bloqueado` → solo aviso
-4. Al pulsar acción, edge function `sublime-clock-record` inserta evento.
+```text
+PIN flow
+─────────
+admin → generate_temp → temp_pin (4 dígitos, mostrado 1 vez)
+                                 ↓
+empleado introduce temp_pin → verify → requires_personal_setup
+                                 ↓
+empleado crea PIN personal (6) → set_personal_pin → pin_status=active
+                                 ↓
+fichajes posteriores con PIN personal
+```
 
-Edge functions con `verify_jwt = false` (kiosk público), CORS abierto, validación zod del PIN/acción, rate-limit simple por IP.
+- Hashing: SHA-256 con salt por proyecto en edge function (`SUBLIME_PIN_SALT` secret, se solicitará si falta).
+- Lookup eficiente: al verificar, se itera sólo sobre empleados con `enabled=true` y hash no nulo. Para volumen actual (<100 empleados) es aceptable; índice en `pin_hash` y `temp_pin_hash`.
+- Validación Zod en edge functions.
+- Audit log en cada acción sensible.
+- `pin_hash` y `temp_pin_hash` nunca se incluyen en `select` desde el cliente — RLS permite leerlos pero la UI evita exponerlos; el admin solo ve `pin_status`, `pin_set_at`, `failed_attempts`, `locked_until`.
 
-### Vista admin `/sublime/admin/fichaje`
+### 6. Archivos afectados
 
-Reemplazar empty states por datos reales:
-- **Asistencia hoy**: lista empleados elegibles con su estado actual + últimos eventos del día (consulta `sublime_clock_events` por fecha actual).
-- **Horarios**: lista compacta empleados elegibles con su `weekly_schedule` y horas.
-- **Incidencias**: lista de empleados en `pendiente_revision` o llegadas tarde (entrada > entry_time + tolerance).
-- **Métricas**: KPIs reales (horas semana, puntualidad, ausencias, horas extra) con cálculos sobre `sublime_clock_events`.
+Nuevos:
+- `supabase/functions/sublime-pin-admin/index.ts`
+- `supabase/functions/sublime-pin-public/index.ts`
+- `src/components/sublime/FichajePersonalPinSetup.tsx`
+- migración SQL
 
-### Sidebar / rutas
+Editados:
+- `src/components/crew/CrewSublimeClock.tsx` (panel PIN admin)
+- `src/components/sublime/FichajeIdentify.tsx` (OTP 6 dígitos + manejo errores)
+- `src/pages/SublimeFichajePublico.tsx` (estados: identify → setup → clock)
+- `src/hooks/useSublimeClock.ts` (helpers para llamar edge functions, exponer estado PIN)
+- `src/types/sublime.ts` (tipo `PinStatus`, campos nuevos)
+- `src/lib/sublimeClock.ts` (eliminar `generatePin`/`hashPin` cliente)
 
-Sin cambios (ya están).
-
-### No se toca
-
-- Ningún campo ni componente existente de Crew.
-- Tabla `employees` no se altera (toda la config de fichaje vive en `sublime_clock_settings`).
-- Otros módulos.
-
-### Entregables (orden)
-
-1. Migración (tablas + RLS + índices).
-2. Tipos + hook `useSublimeClockSettings(employeeId)`.
-3. `CrewSublimeClock.tsx` + tab "Fichaje" en `CrewProfile.tsx`.
-4. Catálogo mínimo de tiendas (UI: alta inline desde el select "Tienda asignada", solo admin).
-5. Helper `computeCurrentStatus` + `canEmployeeClockIn`.
-6. Reemplazo de empty states en `SublimeAdminFichaje` por listas reales.
-7. Edge functions + rewrite de `SublimeFichajePublico` para usar PIN real.
-
-Plan se entrega para aprobación. La implementación se hará por fases en mensajes posteriores si la lista es muy larga; este turno cubrirá hasta el paso 5 (DB + perfil de empleado + helpers), dejando admin/público para el siguiente turno.
+Sin cambios destructivos en módulos existentes.
