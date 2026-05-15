@@ -129,12 +129,12 @@ Deno.serve(async (req) => {
       ));
       const radius = Number(store.radius_meters ?? 75);
       if (distance <= radius) {
-        location_state = "dentro_rango";
+        location_state = "dentro_del_radio";
         if (typeof accuracy === "number" && accuracy > 100) {
-          location_state = "precision_baja";
+          location_state = "ubicacion_imprecisa";
         }
       } else {
-        location_state = "fuera_rango";
+        location_state = "fuera_del_radio";
         clock_state = "pendiente_revision";
       }
     } else {
