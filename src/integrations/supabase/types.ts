@@ -1477,32 +1477,77 @@ export type Database = {
       }
       sublime_clock_events: {
         Row: {
+          allowed_radius_meters: number | null
+          approved_at: string | null
+          approved_by: string | null
+          clock_state: string
           created_at: string
+          device_user_agent: string | null
+          distance_meters: number | null
+          edited_at: string | null
+          edited_by: string | null
           employee_id: string
           event_at: string
+          event_date: string
           event_type: string
           id: string
+          is_automatic: boolean
+          latitude: number | null
+          location_state: string
+          longitude: number | null
           notes: string | null
+          observations: string | null
+          punctuality_state: string | null
           source: string
           store_id: string | null
         }
         Insert: {
+          allowed_radius_meters?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
+          clock_state?: string
           created_at?: string
+          device_user_agent?: string | null
+          distance_meters?: number | null
+          edited_at?: string | null
+          edited_by?: string | null
           employee_id: string
           event_at?: string
+          event_date?: string
           event_type: string
           id?: string
+          is_automatic?: boolean
+          latitude?: number | null
+          location_state?: string
+          longitude?: number | null
           notes?: string | null
+          observations?: string | null
+          punctuality_state?: string | null
           source?: string
           store_id?: string | null
         }
         Update: {
+          allowed_radius_meters?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
+          clock_state?: string
           created_at?: string
+          device_user_agent?: string | null
+          distance_meters?: number | null
+          edited_at?: string | null
+          edited_by?: string | null
           employee_id?: string
           event_at?: string
+          event_date?: string
           event_type?: string
           id?: string
+          is_automatic?: boolean
+          latitude?: number | null
+          location_state?: string
+          longitude?: number | null
           notes?: string | null
+          observations?: string | null
+          punctuality_state?: string | null
           source?: string
           store_id?: string | null
         }
@@ -1609,6 +1654,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sublime_daily_shifts: {
+        Row: {
+          break_minutes: number
+          computed_at: string
+          created_at: string
+          early_exit_minutes: number
+          employee_id: string
+          final_state: string
+          gross_hours: number
+          id: string
+          late_minutes: number
+          net_hours: number
+          observations: string | null
+          overtime_minutes: number
+          real_entry_at: string | null
+          real_exit_at: string | null
+          shift_date: string
+          store_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          break_minutes?: number
+          computed_at?: string
+          created_at?: string
+          early_exit_minutes?: number
+          employee_id: string
+          final_state?: string
+          gross_hours?: number
+          id?: string
+          late_minutes?: number
+          net_hours?: number
+          observations?: string | null
+          overtime_minutes?: number
+          real_entry_at?: string | null
+          real_exit_at?: string | null
+          shift_date: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          break_minutes?: number
+          computed_at?: string
+          created_at?: string
+          early_exit_minutes?: number
+          employee_id?: string
+          final_state?: string
+          gross_hours?: number
+          id?: string
+          late_minutes?: number
+          net_hours?: number
+          observations?: string | null
+          overtime_minutes?: number
+          real_entry_at?: string | null
+          real_exit_at?: string | null
+          shift_date?: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       sublime_pin_audit: {
         Row: {
@@ -1733,6 +1838,10 @@ export type Database = {
       }
     }
     Functions: {
+      compute_sublime_daily_shift: {
+        Args: { p_date: string; p_employee_id: string }
+        Returns: undefined
+      }
       get_crew_employees: {
         Args: never
         Returns: {
