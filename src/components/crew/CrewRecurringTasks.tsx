@@ -127,6 +127,7 @@ export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete,
                 onToggle={onToggle}
                 onDelete={onDelete}
                 onEdit={openEdit}
+                highlight={highlightTaskId === t.id}
               />
             ))}
           </div>
