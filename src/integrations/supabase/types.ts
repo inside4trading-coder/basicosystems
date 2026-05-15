@@ -1475,6 +1475,150 @@ export type Database = {
         }
         Relationships: []
       }
+      sublime_clock_events: {
+        Row: {
+          created_at: string
+          employee_id: string
+          event_at: string
+          event_type: string
+          id: string
+          notes: string | null
+          source: string
+          store_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          event_at?: string
+          event_type: string
+          id?: string
+          notes?: string | null
+          source?: string
+          store_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          event_at?: string
+          event_type?: string
+          id?: string
+          notes?: string | null
+          source?: string
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_clock_events_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_clock_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sublime_clock_settings: {
+        Row: {
+          blocked: boolean
+          break_end: string | null
+          break_minutes: number
+          break_start: string | null
+          created_at: string
+          employee_id: string
+          enabled: boolean
+          entry_time: string | null
+          exit_time: string | null
+          late_tolerance_minutes: number
+          pin_hash: string | null
+          pin_set_at: string | null
+          store_id: string | null
+          updated_at: string
+          weekly_schedule: Json
+        }
+        Insert: {
+          blocked?: boolean
+          break_end?: string | null
+          break_minutes?: number
+          break_start?: string | null
+          created_at?: string
+          employee_id: string
+          enabled?: boolean
+          entry_time?: string | null
+          exit_time?: string | null
+          late_tolerance_minutes?: number
+          pin_hash?: string | null
+          pin_set_at?: string | null
+          store_id?: string | null
+          updated_at?: string
+          weekly_schedule?: Json
+        }
+        Update: {
+          blocked?: boolean
+          break_end?: string | null
+          break_minutes?: number
+          break_start?: string | null
+          created_at?: string
+          employee_id?: string
+          enabled?: boolean
+          entry_time?: string | null
+          exit_time?: string | null
+          late_tolerance_minutes?: number
+          pin_hash?: string | null
+          pin_set_at?: string | null
+          store_id?: string | null
+          updated_at?: string
+          weekly_schedule?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_clock_settings_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_clock_settings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sublime_stores: {
+        Row: {
+          active: boolean
+          address: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
