@@ -138,6 +138,14 @@ Deno.serve(async (req) => {
     let location_state = "ubicacion_no_disponible";
     let clock_state: "valido" | "pendiente_revision" = "valido";
 
+    // Modo test global: permite fichar fuera de rango sin marcar para revisión
+    const { data: cfg } = await admin
+      .from("sublime_clock_config")
+      .select("test_mode")
+      .eq("id", true)
+      .maybeSingle();
+    const testMode = cfg?.test_mode === true;
+
     if (hasCoords) {
       distance = Math.round(distanceMeters(
         Number(store.latitude), Number(store.longitude),
@@ -148,20 +156,22 @@ Deno.serve(async (req) => {
         location_state = "dentro_del_radio";
         if (typeof accuracy === "number" && accuracy > 100) {
           location_state = "ubicacion_imprecisa";
-          clock_state = "pendiente_revision";
+          if (!testMode) clock_state = "pendiente_revision";
         }
       } else {
         location_state = "fuera_del_radio";
-        clock_state = "pendiente_revision";
+        if (!testMode) clock_state = "pendiente_revision";
       }
     } else {
-      // No coords → require review
+      // No coords → require review (salvo modo test)
+      if (!testMode) clock_state = "pendiente_revision";
+    }
+
+    if (force_review && !testMode) {
       clock_state = "pendiente_revision";
     }
 
-    if (force_review) {
-      clock_state = "pendiente_revision";
-    }
+    const testModeNote = testMode ? "[MODO TEST] " : "";
 
     // Punctuality
     let punctuality_state: string | null = null;
@@ -198,7 +208,7 @@ Deno.serve(async (req) => {
         punctuality_state,
         device_user_agent: device_user_agent ?? null,
         is_automatic: true,
-        observations: observations ?? null,
+        observations: testModeNote + (observations ?? "") || null,
       })
       .select()
       .single();
