@@ -124,6 +124,12 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: false, error: "No se pudo cargar la tienda asignada", code: "STORE_QUERY_FAILED" }, 500);
     }
     if (!store) return jsonResponse({ ok: false, error: "Tienda no encontrada", code: "STORE_NOT_FOUND" }, 404);
+    if (store.active === false) {
+      return jsonResponse({ ok: false, error: "La tienda asignada está inactiva. Revisa la configuración del empleado.", code: "STORE_INACTIVE" }, 400);
+    }
+    if (store.latitude == null || store.longitude == null) {
+      return jsonResponse({ ok: false, error: "La tienda asignada no tiene coordenadas GPS. No se puede validar el rango.", code: "STORE_COORDS_MISSING" }, 400);
+    }
 
     const hasCoords = typeof latitude === "number" && typeof longitude === "number"
       && Number.isFinite(latitude) && Number.isFinite(longitude);
@@ -132,7 +138,7 @@ Deno.serve(async (req) => {
     let location_state = "ubicacion_no_disponible";
     let clock_state: "valido" | "pendiente_revision" = "valido";
 
-    if (hasCoords && store.latitude != null && store.longitude != null) {
+    if (hasCoords) {
       distance = Math.round(distanceMeters(
         Number(store.latitude), Number(store.longitude),
         latitude!, longitude!,
@@ -142,6 +148,7 @@ Deno.serve(async (req) => {
         location_state = "dentro_del_radio";
         if (typeof accuracy === "number" && accuracy > 100) {
           location_state = "ubicacion_imprecisa";
+          clock_state = "pendiente_revision";
         }
       } else {
         location_state = "fuera_del_radio";
