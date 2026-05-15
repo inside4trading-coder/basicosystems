@@ -48,7 +48,7 @@ function timeOnly(value: string | null) {
 }
 
 export function CrewSublimeClock({ employee, canEdit }: Props) {
-  const { settings, recentEvents, loading, upsert } = useSublimeClockSettings(employee.id);
+  const { settings, recentEvents, loading, upsert, refresh } = useSublimeClockSettings(employee.id);
   const { stores, createStore } = useSublimeStores();
   const [pinDialog, setPinDialog] = useState<string | null>(null);
   const [newStoreOpen, setNewStoreOpen] = useState(false);
