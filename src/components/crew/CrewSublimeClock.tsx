@@ -78,13 +78,45 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
     handleField({ weekly_schedule: { ...ws, [key]: !ws[key] } });
   };
 
+  const callPinAdmin = async (action: "generate_temp" | "reset" | "block" | "unblock") => {
+    const { data, error } = await supabase.functions.invoke("sublime-pin-admin", {
+      body: { action, employee_id: employee.id },
+    });
+    if (error) throw error;
+    if ((data as any)?.error) throw new Error((data as any).error);
+    return data as any;
+  };
+
   const handleGeneratePin = async () => {
     if (!canEdit) return;
-    const pin = generatePin();
-    const hash = await hashPin(pin);
-    await handleField({ pin_hash: hash, pin_set_at: new Date().toISOString() });
-    setPinDialog(pin);
-    toast.success("PIN generado");
+    try {
+      const data = await callPinAdmin("generate_temp");
+      setPinDialog(data.pin);
+      await refresh();
+      toast.success("PIN temporal generado");
+    } catch (e: any) {
+      toast.error(e.message ?? "Error generando PIN");
+    }
+  };
+
+  const handleResetPin = async () => {
+    try {
+      await callPinAdmin("reset");
+      await refresh();
+      toast.success("PIN reseteado");
+    } catch (e: any) {
+      toast.error(e.message ?? "Error reseteando PIN");
+    }
+  };
+
+  const handleToggleBlock = async () => {
+    try {
+      await callPinAdmin(settings?.blocked ? "unblock" : "block");
+      await refresh();
+      toast.success(settings?.blocked ? "Fichaje desbloqueado" : "Fichaje bloqueado");
+    } catch (e: any) {
+      toast.error(e.message ?? "Error");
+    }
   };
 
   const handleCreateStore = async () => {
