@@ -1534,10 +1534,16 @@ export type Database = {
           enabled: boolean
           entry_time: string | null
           exit_time: string | null
+          failed_attempts: number
+          last_pin_attempt_at: string | null
           late_tolerance_minutes: number
+          locked_until: string | null
           pin_hash: string | null
           pin_set_at: string | null
+          pin_status: string
           store_id: string | null
+          temp_pin_expires_at: string | null
+          temp_pin_hash: string | null
           updated_at: string
           weekly_schedule: Json
         }
@@ -1551,10 +1557,16 @@ export type Database = {
           enabled?: boolean
           entry_time?: string | null
           exit_time?: string | null
+          failed_attempts?: number
+          last_pin_attempt_at?: string | null
           late_tolerance_minutes?: number
+          locked_until?: string | null
           pin_hash?: string | null
           pin_set_at?: string | null
+          pin_status?: string
           store_id?: string | null
+          temp_pin_expires_at?: string | null
+          temp_pin_hash?: string | null
           updated_at?: string
           weekly_schedule?: Json
         }
@@ -1568,10 +1580,16 @@ export type Database = {
           enabled?: boolean
           entry_time?: string | null
           exit_time?: string | null
+          failed_attempts?: number
+          last_pin_attempt_at?: string | null
           late_tolerance_minutes?: number
+          locked_until?: string | null
           pin_hash?: string | null
           pin_set_at?: string | null
+          pin_status?: string
           store_id?: string | null
+          temp_pin_expires_at?: string | null
+          temp_pin_hash?: string | null
           updated_at?: string
           weekly_schedule?: Json
         }
@@ -1591,6 +1609,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sublime_pin_audit: {
+        Row: {
+          action: string
+          created_at: string
+          employee_id: string
+          id: string
+          metadata: Json
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          metadata?: Json
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          metadata?: Json
+          performed_by?: string | null
+        }
+        Relationships: []
       }
       sublime_stores: {
         Row: {
