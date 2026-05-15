@@ -1,22 +1,66 @@
-## Diagnóstico
+## Problema
 
-La falla que se ve en el video (campos de "Nueva obligación" con texto raro como "Medios de comunicación" en Importancia y selects que no guardan el valor seleccionado) no es de permisos del rol manager. Es causada por la **traducción automática del navegador**:
+En `CrewRecurringTasksOverview.tsx`, la función `taskHappensOn` decide si una tarea recurrente aparece "hoy". Hoy parsea el campo `day` de forma muy estricta:
 
-- `index.html` declara `<html lang="en">`, pero todo el contenido está en español.
-- Chrome/Edge detecta inconsistencia y traduce la página EN→ES en cuentas donde el auto‑translate está activo (lo que explica que "le pase al manager" y no al admin: depende del navegador del usuario, no del rol).
-- "Media" (etiqueta de importancia) se traduce literalmente a **"Medios de comunicación"**.
-- El traductor muta los nodos de texto del DOM, lo que rompe la sincronización de Radix Select → al hacer clic en un item, React no recibe bien el evento y el valor no se asigna; el campo queda en "Seleccionar".
+- **Semanal**: solo acepta el nombre exacto del día (ej. `"jueves"`). Si el usuario escribe `"jueves de cada semana"`, `dayMap[...]` devuelve `undefined` y la lógica actual termina mostrando la tarea **todos los días**.
+- **Mensual**: solo acepta un número (ej. `"15"`). Frases como `"último de cada mes"`, `"último día hábil"`, `"primer lunes"` caen en `NaN` y también se muestran **todos los días**.
 
-## Cambios propuestos
+## Solución
 
-1. **`index.html`**: cambiar `<html lang="en">` por `<html lang="es">` para que el navegador no proponga traducir.
-2. Añadir `<meta name="google" content="notranslate" />` en `<head>` como salvaguarda adicional.
-3. (Opcional, defensivo) Añadir el atributo `translate="no"` al `<body>` o al contenedor raíz `#root`, de modo que aunque el usuario fuerce traducción manualmente, los controles interactivos (Selects, Sheets) no se rompan.
+Reescribir el parser del campo `day` para reconocer frases en español/inglés y devolver una regla estructurada. La lógica de "¿ocurre hoy?" se evalúa contra esa regla usando la fecha actual en zona Caracas (que ya se calcula con `caracasParts`).
 
-Sin cambios de lógica de negocio, RLS, ni de roles. Solo metadatos del HTML.
+### Reglas soportadas (campo libre `day`)
 
-## Validación
+**Semanal** (`frequency: "weekly"`)
+- "jueves", "jueves de cada semana", "todos los jueves", "every thursday" → solo los jueves
+- Vacío → todos los días de la semana (comportamiento actual)
+- Lunes…domingo + variantes con/sin acento, en EN
 
-- Abrir la app en Edge/Chrome con un perfil que tenga "traducir páginas en inglés a español" activo.
-- Antes del fix: aparece la barra de traducción y "Importancia" muestra "Medios de comunicación"; los selects no guardan el valor.
-- Después del fix: el navegador ya no traduce, "Importancia" muestra "Media" y los selects funcionan normalmente.
+**Mensual** (`frequency: "monthly"`)
+- "15", "el 15", "día 15 de cada mes" → día numérico del mes
+- "último de cada mes", "último día", "ultimo dia hábil", "last business day" → **último día hábil** del mes (lunes–viernes; si el último cae en sábado/domingo, retrocede al viernes)
+- "último día del mes", "fin de mes" (sin "hábil") → último día calendario del mes
+- "primer día hábil", "primer lunes", "segundo viernes", "tercer miércoles", "último jueves" → N-ésimo día de la semana del mes (incluye "último <día>" usando la última ocurrencia del mes)
+- Vacío → todos los días del mes (comportamiento actual)
+
+**Diaria / Interdiaria**: sin cambios.
+
+### Implementación
+
+Archivo único: `src/pages/CrewRecurringTasksOverview.tsx`
+
+1. Añadir helpers puros (junto a `dayMap`):
+   - `lastDayOfMonth(year, month)` → número del último día calendario.
+   - `lastBusinessDayOfMonth(year, month)` → ajusta a viernes si cae sábado/domingo.
+   - `nthWeekdayOfMonth(year, month, weekday, n)` → n=1..4 o n="last". Devuelve día del mes o null.
+   - `parseWeeklyDay(raw)` → busca tokens lunes/martes/.../domingo (con acentos y EN) en el string; devuelve weekday 0..6 o null si no encuentra (en cuyo caso = todos los días).
+   - `parseMonthlyRule(raw)` → devuelve un discriminated union:
+     - `{ kind: "day-of-month", day: number }`
+     - `{ kind: "last-calendar" }`
+     - `{ kind: "last-business" }`
+     - `{ kind: "nth-weekday", weekday: 0..6, nth: 1|2|3|4|"last" }`
+     - `null` (= todos los días, fallback).
+   - El parser detecta:
+     - "habil"/"hábil"/"business" → variante hábil
+     - "ultimo"/"último"/"last"/"fin de mes" → último
+     - "primer/primero/1er", "segundo/2do", "tercer/3er", "cuarto/4to" → nth
+     - Combinado con un nombre de día → `nth-weekday`
+     - Solo número → `day-of-month`
+
+2. Reemplazar el bloque actual de `taskHappensOn` para `weekly` y `monthly`:
+   - **Weekly**: usar `parseWeeklyDay(task.day)`. Si null y string no vacío → no asumir; aplicar fallback actual (todos los días) para no romper datos viejos.
+   - **Monthly**: evaluar la regla contra `parts.year/month/day` y `parts.weekday`. Si la regla es null y el string no es vacío, fallback a comportamiento actual.
+
+3. Mantener el orden, los buckets y el resto del archivo intactos. Sin cambios en DB ni en `CrewRecurringTasks.tsx` (el sheet ya guarda texto libre en `day`).
+
+### Casos cubiertos por el ejemplo del usuario
+
+- `"jueves de cada semana"` + weekly → aparece **solo los jueves**.
+- `"último de cada mes"` + monthly → aparece **solo el último día hábil del mes** (interpretación pedida: "DIA HABIL ULTIMO").
+- `"último día hábil"` + monthly → idem.
+- `"15 de cada mes"` + monthly → aparece **solo el día 15**.
+
+### Riesgos
+
+- Datos existentes con `day` ambiguo (ej. "lunes y miércoles"): el parser tomará el primer día detectado. Si se requiere multi-día, sería un cambio de modelo (fuera de alcance de este pedido).
+- Zona horaria: ya se usa Caracas en todo el archivo, se mantiene.

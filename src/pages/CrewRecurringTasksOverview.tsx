@@ -59,6 +59,109 @@ const dayMap: Record<string, number> = {
   sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
 };
 
+/** Normalize: lowercase + strip accents. */
+function norm(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Find a weekday name token in a free-form string. Returns 0..6 or null. */
+function parseWeeklyDay(raw: string): number | null {
+  const n = norm(raw);
+  const tokens: Array<[RegExp, number]> = [
+    [/\bdomingo\b|\bsunday\b/, 0],
+    [/\blunes\b|\bmonday\b/, 1],
+    [/\bmartes\b|\btuesday\b/, 2],
+    [/\bmiercoles\b|\bwednesday\b/, 3],
+    [/\bjueves\b|\bthursday\b/, 4],
+    [/\bviernes\b|\bfriday\b/, 5],
+    [/\bsabado\b|\bsaturday\b/, 6],
+  ];
+  for (const [re, wd] of tokens) if (re.test(n)) return wd;
+  return null;
+}
+
+function lastDayOfMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate(); // month is 1-based
+}
+
+function lastBusinessDayOfMonth(year: number, month: number): number {
+  let d = lastDayOfMonth(year, month);
+  // weekday of that date
+  let wd = new Date(year, month - 1, d).getDay();
+  while (wd === 0 || wd === 6) {
+    d -= 1;
+    wd = new Date(year, month - 1, d).getDay();
+  }
+  return d;
+}
+
+/** Returns the day-of-month for the n-th weekday of month, or null. n: 1..4 or "last". */
+function nthWeekdayOfMonth(year: number, month: number, weekday: number, n: 1 | 2 | 3 | 4 | "last"): number | null {
+  if (n === "last") {
+    const last = lastDayOfMonth(year, month);
+    for (let d = last; d >= 1; d--) {
+      if (new Date(year, month - 1, d).getDay() === weekday) return d;
+    }
+    return null;
+  }
+  let count = 0;
+  const last = lastDayOfMonth(year, month);
+  for (let d = 1; d <= last; d++) {
+    if (new Date(year, month - 1, d).getDay() === weekday) {
+      count += 1;
+      if (count === n) return d;
+    }
+  }
+  return null;
+}
+
+type MonthlyRule =
+  | { kind: "day-of-month"; day: number }
+  | { kind: "last-calendar" }
+  | { kind: "last-business" }
+  | { kind: "nth-weekday"; weekday: number; nth: 1 | 2 | 3 | 4 | "last" };
+
+function parseMonthlyRule(raw: string): MonthlyRule | null {
+  const s = norm(raw).trim();
+  if (!s) return null;
+
+  const hasLast = /\b(ultimo|ultima|last|fin de mes|fin del mes)\b/.test(s);
+  const hasBusiness = /\b(habil|habiles|business|laboral|laborable)\b/.test(s);
+  const weekday = parseWeeklyDay(raw);
+
+  // n-th ordinal
+  let nth: 1 | 2 | 3 | 4 | "last" | null = null;
+  if (/\b(primer|primero|primera|1er|1ro|1ra|first)\b/.test(s)) nth = 1;
+  else if (/\b(segundo|segunda|2do|2da|second)\b/.test(s)) nth = 2;
+  else if (/\b(tercer|tercero|tercera|3er|3ro|3ra|third)\b/.test(s)) nth = 3;
+  else if (/\b(cuarto|cuarta|4to|4ta|fourth)\b/.test(s)) nth = 4;
+  else if (hasLast) nth = "last";
+
+  if (nth !== null && weekday !== null) {
+    return { kind: "nth-weekday", weekday, nth };
+  }
+
+  if (hasLast) {
+    // "ultimo dia habil", "ultimo de cada mes" (interpretado como hábil), "ultimo dia"
+    if (hasBusiness) return { kind: "last-business" };
+    // "ultimo dia del mes" / "fin de mes" -> calendario
+    if (/\b(dia del mes|del mes|fin de mes|fin del mes)\b/.test(s) && !/\bcada mes\b/.test(s)) {
+      return { kind: "last-calendar" };
+    }
+    // Por defecto, "último de cada mes" => último día hábil (pedido del usuario)
+    return { kind: "last-business" };
+  }
+
+  // Numeric day of month
+  const m = s.match(/\b(\d{1,2})\b/);
+  if (m) {
+    const d = parseInt(m[1], 10);
+    if (d >= 1 && d <= 31) return { kind: "day-of-month", day: d };
+  }
+
+  return null;
+}
+
 const freqLabel: Record<string, string> = {
   daily: "Diaria",
   interdaily: "Interdiaria",
@@ -90,15 +193,22 @@ function taskHappensOn(task: RecurringTask, parts: CaracasParts): boolean {
   }
   if (task.frequency === "weekly") {
     if (!task.day) return true;
-    const wanted = dayMap[task.day.trim().toLowerCase()];
-    if (wanted === undefined) return true;
+    const wanted = parseWeeklyDay(task.day);
+    if (wanted === null) return true; // fallback: dato no parseable, no romper
     return parts.weekday === wanted;
   }
   if (task.frequency === "monthly") {
     if (!task.day) return true;
-    const n = parseInt(task.day, 10);
-    if (Number.isNaN(n)) return true;
-    return parts.day === n;
+    const rule = parseMonthlyRule(task.day);
+    if (!rule) return true; // fallback: dato no parseable
+    if (rule.kind === "day-of-month") return parts.day === rule.day;
+    if (rule.kind === "last-calendar") return parts.day === lastDayOfMonth(parts.year, parts.month);
+    if (rule.kind === "last-business") return parts.day === lastBusinessDayOfMonth(parts.year, parts.month);
+    if (rule.kind === "nth-weekday") {
+      const target = nthWeekdayOfMonth(parts.year, parts.month, rule.weekday, rule.nth);
+      return target !== null && parts.day === target;
+    }
+    return false;
   }
   return false;
 }
