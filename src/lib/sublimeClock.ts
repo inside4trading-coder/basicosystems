@@ -81,16 +81,5 @@ export function weekdayKey(date: Date): keyof WeeklySchedule {
   return map[date.getDay()];
 }
 
-/** Generate a 4-digit numeric PIN as a string. */
-export function generatePin(): string {
-  return Math.floor(1000 + Math.random() * 9000).toString();
-}
-
-/** Hash a PIN with SHA-256 (hex). Suitable for non-secret short codes; we never log raw PINs. */
-export async function hashPin(pin: string): Promise<string> {
-  const data = new TextEncoder().encode(pin);
-  const buf = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+// PIN generation/hashing moved to edge functions (sublime-pin-admin / sublime-pin-public)
+// to keep secrets and salting server-side.
