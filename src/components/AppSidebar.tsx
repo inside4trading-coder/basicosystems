@@ -27,7 +27,7 @@ const mainItems = [
   { title: "Llamadas", url: "/llamadas", icon: Phone },
   { title: "Campañas", url: "/campaigns", icon: Mail },
   { title: "CRM", url: "/crm", icon: Users },
-  { title: "Sublime", url: "/sublime/admin/fichaje", icon: Store },
+  { title: "Sublime", url: "/sublime", icon: Store },
 ];
 
 const adminItems = [
