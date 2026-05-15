@@ -1,41 +1,68 @@
-## Ampliar parser de tareas recurrentes
+## Nuevo módulo: Sublime / Fichaje
 
-Archivo único: `src/pages/CrewRecurringTasksOverview.tsx`
+Solo estructura visual. Sin cambios en DB ni en módulos existentes. Sin lógica de fichaje real (todo placeholder/empty state).
 
-### Nuevas frases soportadas
+### Rutas nuevas
 
-**Semanales (múltiples días + cada N semanas):**
-- "martes y jueves", "lunes, miércoles y viernes", "lun/mié/vie"
-- "días hábiles" / "entre semana" / "lun a vie" → L-V
-- "fin de semana" / "sábado y domingo"
-- "cada 2 semanas" / "quincenal" → toma como ancla la fecha de creación de la tarea (`created_at`) y muestra solo si la diferencia en semanas ISO es múltiplo de N (con día de la semana también respetado si está)
+- `/sublime/fichaje` — vista pública, fuera de `AppLayout` y de `ProtectedRoute` (link independiente, accesible sin sesión, mobile-first).
+- `/sublime/admin/fichaje` — vista administrativa, dentro de `AppLayout` + `ProtectedRoute`, agrupada bajo "Sublime" en el sidebar.
 
-**Mensuales (múltiples días + primer hábil + rangos):**
-- "día 15 y 30 de cada mes", "1 y 15", "los días 5, 15 y 25"
-- "primer día hábil del mes" / "primer hábil"
-- "del 1 al 5 de cada mes" → cualquier día en el rango (ajustable a hábiles si se indica "hábiles")
-- "quincena" / "quincenal" en contexto mensual → días 1 y 15
+### Archivos a crear
 
-**Trimestrales / cada N meses:**
-- "cada 3 meses", "trimestral", "cada 2 meses", "bimestral", "semestral"
-- Se evalúa contra `created_at`: `(monthsSinceCreated % N === 0)` y mismo día (o regla de día) que la creación.
+```
+src/pages/SublimeFichajePublico.tsx     # vista pública
+src/pages/SublimeAdminFichaje.tsx       # vista admin
+src/components/sublime/FichajeClock.tsx # reloj grande + botones Entrada/Salida (UI)
+src/components/sublime/FichajeIdentify.tsx # input código/PIN empleado (UI)
+src/components/sublime/AdminMetricCard.tsx # KPI card reutilizable
+```
 
-### Cambios técnicos
+### Vista pública `/sublime/fichaje`
 
-1. **`parseWeeklyDays(raw): number[] | null`** — devuelve lista de weekdays (0-6). Reconoce conectores (`y`, `,`, `/`, `&`, `o`), aliases (`lun`, `mar`, `mie`, `jue`, `vie`, `sab`, `dom`), y atajos (`dias habiles`, `entre semana`, `fin de semana`).
-2. **`parseEveryN(raw, unit)`** — extrae N de "cada N semanas" / "cada N meses" / "cada N dias", con sinónimos (`quincenal`=2 sem, `bimestral`=2 mes, `trimestral`=3 mes, `semestral`=6 mes).
-3. **`MonthlyRule`** se extiende con:
-   - `{ kind: "days-of-month"; days: number[] }`
-   - `{ kind: "first-business" }`
-   - `{ kind: "range-of-month"; from: number; to: number; businessOnly: boolean }`
-4. **`taskHappensOn`**:
-   - `weekly`: usa `parseWeeklyDays` (lista) + `parseEveryN(raw, "week")` con ancla `task.created_at`.
-   - `monthly`: maneja nuevos `kind` y soporta `parseEveryN(raw, "month")` (cada N meses) con ancla `task.created_at`.
-   - `interdaily` se mantiene (cada 2 días por paridad), pero se añade `daily` con "cada N días" si N>1.
-5. Mantiene fallback actual (mostrar todos los días) si no hay parseo posible, para no romper datos legacy.
+- Layout vertical centrado, fondo oscuro premium (gradiente sutil + acentos rojos `#E3001B`), pensado para tablet/móvil de tienda.
+- Header mínimo: logo "Sublime" + reloj en vivo (HH:MM:SS, fecha larga en español).
+- Card central:
+  - Estado inicial: input grande para código de empleado / PIN (placeholder, sin lógica).
+  - Tras "identificarse" (mock con state local): muestra nombre, foto placeholder, y dos botones grandes: **Entrada** (verde) y **Salida** (rojo).
+  - Empty state cuando nadie está identificado: "Introduce tu código para fichar".
+- Footer: "Sublime · Control de presencia".
+- Sin sidebar, sin nav. Pensado para pantalla dedicada.
 
-### Notas
+### Vista admin `/sublime/admin/fichaje`
 
-- Sin cambios en UI ni en otros archivos.
-- Las anclas (`created_at`) se leen del objeto `RecurringTask` ya cargado; si falta, se cae al comportamiento simple sin "cada N".
-- No se tocan tareas `daily` salvo para soportar opcionalmente "cada N días" cuando esté escrito en el campo `day`.
+Estructura tipo hub (igual patrón que `Crew`):
+- Header con título "Sublime · Fichaje", subtítulo y botón "Vista pública" (link a `/sublime/fichaje`, abre en pestaña nueva).
+- Tabs: **Asistencia hoy**, **Horarios**, **Incidencias**, **Métricas**.
+- Cada tab muestra empty state limpio con icono Lucide + texto explicativo + CTA deshabilitado:
+  - Asistencia hoy: tabla vacía con columnas (Empleado, Entrada, Salida, Horas, Estado). Empty: "Aún no hay fichajes registrados hoy".
+  - Horarios: grid semanal vacía. Empty: "Configura los horarios del equipo".
+  - Incidencias: lista vacía. Empty: "Sin incidencias pendientes".
+  - Métricas: 4 `AdminMetricCard` con valores en `—` (Horas totales semana, Puntualidad, Ausencias, Horas extra).
+
+### Sidebar
+
+Añadir un único item nuevo en `mainItems` de `AppSidebar.tsx`:
+```
+{ title: "Sublime", url: "/sublime/admin/fichaje", icon: Store }
+```
+Icono `Store` de lucide. No se crean grupos colapsables nuevos (mantiene el patrón actual). El módulo se mostrará bajo "CRM" al final.
+
+### Permisos
+
+- Añadir `/sublime` al array de rutas del rol `admin` en `DEFAULT_ROLE_ROUTES` (`useAuth.tsx`). Otros roles no lo verán hasta que el usuario lo configure en Configuración.
+- La ruta pública `/sublime/fichaje` se monta fuera de `ProtectedRoute` (igual patrón que `/crew/incidencias`).
+
+### Diseño
+
+- Tokens HSL existentes (`--primary` rojo, `--background`, `--card`, `--muted`).
+- Cards con `rounded-2xl`, `shadow-lg`, espaciado generoso.
+- Tipografía Inter (ya activa). Display grande para reloj (`text-7xl font-black tabular-nums`).
+- Mobile-first: público usa `min-h-dvh`, paddings amplios, botones `h-16` táctiles.
+- Sin animaciones complejas, transiciones sutiles (`transition-colors`).
+
+### Lo que NO se toca
+
+- DB, edge functions, tipos generados.
+- Otros módulos (Crew, Pedidos, etc.).
+- `useAuth` salvo añadir `/sublime` al rol admin (1 línea).
+- Configuración de roles en runtime (admin podrá habilitar `/sublime` para otros roles desde la UI existente de Configuración, sin cambios).

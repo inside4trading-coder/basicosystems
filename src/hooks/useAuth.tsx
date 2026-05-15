@@ -34,7 +34,7 @@ export const ALL_ROUTES: { path: string; label: string }[] = [
 ];
 
 const DEFAULT_ROLE_ROUTES: Record<ProfileRole, string[]> = {
-  admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/crew", "/rrpp", "/campaigns", "/llamadas", "/configuracion", "/administracion"],
+  admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/crew", "/rrpp", "/campaigns", "/llamadas", "/configuracion", "/administracion", "/sublime"],
   manager: ["/pedidos", "/crm", "/planning", "/campaigns", "/llamadas"],
   partner: ["/planning"],
   rrpp: ["/rrpp"],
