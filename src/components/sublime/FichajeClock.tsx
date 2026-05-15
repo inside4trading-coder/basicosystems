@@ -140,7 +140,7 @@ export function FichajeClock({ employeeName, sessionToken, onDone, onCancel }: F
             <p className="text-sm text-muted-foreground mt-1">
               <MapPin className="inline h-3 w-3 mr-1" />
               A {phase.distance} m de la tienda (radio {phase.radius} m)
-              {phase.locationState === "precision_baja" && " · precisión baja"}
+              {phase.locationState === "ubicacion_imprecisa" && " · precisión baja"}
             </p>
           )}
         </div>
