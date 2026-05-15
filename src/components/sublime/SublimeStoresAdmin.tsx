@@ -204,6 +204,35 @@ export default function SublimeStoresAdmin() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<StoreFormState>(emptyForm);
 
+  const [testMode, setTestMode] = useState(false);
+  const [testModeLoading, setTestModeLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("sublime_clock_config")
+        .select("test_mode")
+        .eq("id", true)
+        .maybeSingle();
+      setTestMode(data?.test_mode === true);
+      setTestModeLoading(false);
+    })();
+  }, []);
+
+  const toggleTestMode = async (next: boolean) => {
+    setTestMode(next);
+    const { error } = await supabase
+      .from("sublime_clock_config")
+      .update({ test_mode: next, updated_at: new Date().toISOString() })
+      .eq("id", true);
+    if (error) {
+      setTestMode(!next);
+      toast.error("No se pudo actualizar el modo test");
+    } else {
+      toast.success(next ? "Modo test activado" : "Modo test desactivado");
+    }
+  };
+
   const handleCreate = async () => {
     try {
       setCreating(true);
@@ -236,6 +265,43 @@ export default function SublimeStoresAdmin() {
           </Button>
         )}
       </div>
+
+      {canEdit && (
+        <Card
+          className={`rounded-2xl p-4 flex items-center justify-between gap-4 border ${
+            testMode ? "border-amber-400/60 bg-amber-50 dark:bg-amber-950/20" : "border-border/60"
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className={`h-10 w-10 shrink-0 rounded-xl flex items-center justify-center ${
+                testMode ? "bg-amber-500/20 text-amber-600" : "bg-muted text-muted-foreground"
+              }`}
+            >
+              <FlaskConical className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-foreground">Modo test de fichaje</h3>
+                {testMode && (
+                  <Badge className="rounded-lg bg-amber-500 text-white hover:bg-amber-500">
+                    Activo
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Permite fichar fuera del radio de la tienda y los marca como válidos. Los registros quedan etiquetados como [MODO TEST].
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={testMode}
+            onCheckedChange={toggleTestMode}
+            disabled={testModeLoading}
+            aria-label="Modo test"
+          />
+        </Card>
+      )}
 
       {loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">Cargando…</div>
