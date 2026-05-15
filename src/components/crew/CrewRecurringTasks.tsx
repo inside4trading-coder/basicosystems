@@ -36,6 +36,7 @@ interface CrewRecurringTasksProps {
   onToggle: (taskId: string) => void;
   onDelete: (taskId: string) => void;
   onReorderAll: (orderedIds: string[]) => void;
+  highlightTaskId?: string | null;
 }
 
 const priorityDot: Record<string, string> = {
@@ -51,7 +52,7 @@ const freqLabel: Record<string, string> = {
   monthly: "Mensual",
 };
 
-export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete, onReorderAll }: CrewRecurringTasksProps) {
+export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete, onReorderAll, highlightTaskId }: CrewRecurringTasksProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringTask | null>(null);
 
@@ -64,6 +65,18 @@ export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete,
     setEditing(null);
     setSheetOpen(true);
   };
+
+  // Auto-scroll/highlight a deep-linked task
+  useEffect(() => {
+    if (!highlightTaskId) return;
+    const t = tasks.find((x) => x.id === highlightTaskId);
+    if (!t) return;
+    const el = document.querySelector<HTMLElement>(`[data-task-id="${highlightTaskId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightTaskId, tasks]);
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -114,6 +127,7 @@ export function CrewRecurringTasks({ tasks, onAdd, onUpdate, onToggle, onDelete,
                 onToggle={onToggle}
                 onDelete={onDelete}
                 onEdit={openEdit}
+                highlight={highlightTaskId === t.id}
               />
             ))}
           </div>
@@ -140,11 +154,13 @@ function SortableTaskItem({
   onToggle,
   onDelete,
   onEdit,
+  highlight,
 }: {
   task: RecurringTask;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (t: RecurringTask) => void;
+  highlight?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: t.id });
 
@@ -158,9 +174,11 @@ function SortableTaskItem({
     <div
       ref={setNodeRef}
       style={style}
+      data-task-id={t.id}
       className={cn(
         "kpi-card flex items-center gap-3 transition-shadow",
         isDragging && "shadow-lg ring-2 ring-primary/40 opacity-90",
+        highlight && "ring-2 ring-primary shadow-lg",
       )}
     >
       {/* Drag handle */}

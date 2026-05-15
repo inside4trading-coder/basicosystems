@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   ArrowLeft, MapPin, Calendar, Pencil, MoreVertical,
@@ -52,7 +52,15 @@ export default function CrewProfile() {
   const isAdmin = role === "admin" && canViewSensitiveCrewData;
 
   const employee = employees.find((e) => e.id === id);
-  const [activeTab, setActiveTab] = useState("general");
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || "general";
+  const highlightTaskId = searchParams.get("task");
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t) setActiveTab(t);
+  }, [searchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -326,6 +334,7 @@ export default function CrewProfile() {
             onToggle={handleToggleTask}
             onDelete={handleDeleteTask}
             onReorderAll={handleReorderTasks}
+            highlightTaskId={highlightTaskId}
           />
         </TabsContent>
 
