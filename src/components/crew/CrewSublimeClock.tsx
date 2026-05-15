@@ -51,6 +51,7 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
   const { settings, recentEvents, loading, upsert, refresh } = useSublimeClockSettings(employee.id);
   const { stores, createStore } = useSublimeStores();
   const [pinDialog, setPinDialog] = useState<string | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
   const [newStoreOpen, setNewStoreOpen] = useState(false);
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
