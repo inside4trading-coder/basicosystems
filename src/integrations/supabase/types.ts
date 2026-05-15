@@ -1475,6 +1475,27 @@ export type Database = {
         }
         Relationships: []
       }
+      sublime_clock_config: {
+        Row: {
+          id: boolean
+          test_mode: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          test_mode?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          test_mode?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       sublime_clock_events: {
         Row: {
           allowed_radius_meters: number | null
