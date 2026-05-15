@@ -12,10 +12,22 @@ export interface SublimeStore {
   id: string;
   name: string;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  radius_meters: number;
   active: boolean;
   created_at: string;
   updated_at: string;
 }
+
+export interface GeoPoint {
+  latitude: number;
+  longitude: number;
+}
+
+export type GeoValidation =
+  | { ok: true; distance: number; store: SublimeStore }
+  | { ok: false; reason: "out_of_range" | "no_store" | "no_coords" | "no_position"; distance?: number; store?: SublimeStore };
 
 export type WeeklySchedule = {
   mon: boolean; tue: boolean; wed: boolean; thu: boolean;
