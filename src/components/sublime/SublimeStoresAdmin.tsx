@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useSublimeStores } from "@/hooks/useSublimeClock";
 import { useAuth } from "@/hooks/useAuth";
-import { MapPin, Plus, Loader2, Save, Power } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { MapPin, Plus, Loader2, Save, Power, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import type { SublimeStore } from "@/types/sublime";
 
