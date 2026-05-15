@@ -25,6 +25,8 @@ import RRPP from "./pages/RRPP";
 import RRPPProfile from "./pages/RRPPProfile";
 import Administracion from "./pages/Administracion";
 import AdminObligationDetail from "./pages/AdminObligationDetail";
+import SublimeFichajePublico from "./pages/SublimeFichajePublico";
+import SublimeAdminFichaje from "./pages/SublimeAdminFichaje";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,8 +64,10 @@ const App = () => (
               <Route path="/administracion" element={<Administracion />} />
               <Route path="/administracion/:id" element={<AdminObligationDetail />} />
               <Route path="/configuracion" element={<Configuracion />} />
+              <Route path="/sublime/admin/fichaje" element={<SublimeAdminFichaje />} />
             </Route>
             <Route path="/crew/incidencias" element={<CrewIncidencias />} />
+            <Route path="/sublime/fichaje" element={<SublimeFichajePublico />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
