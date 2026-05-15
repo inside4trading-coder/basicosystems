@@ -64,29 +64,80 @@ function norm(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-/** Find a weekday name token in a free-form string. Returns 0..6 or null. */
+/** Single weekday from free-form string (first match). */
 function parseWeeklyDay(raw: string): number | null {
   const n = norm(raw);
   const tokens: Array<[RegExp, number]> = [
-    [/\bdomingo\b|\bsunday\b/, 0],
-    [/\blunes\b|\bmonday\b/, 1],
-    [/\bmartes\b|\btuesday\b/, 2],
-    [/\bmiercoles\b|\bwednesday\b/, 3],
-    [/\bjueves\b|\bthursday\b/, 4],
-    [/\bviernes\b|\bfriday\b/, 5],
-    [/\bsabado\b|\bsaturday\b/, 6],
+    [/\bdomingo\b|\bdom\b|\bsunday\b|\bsun\b/, 0],
+    [/\blunes\b|\blun\b|\bmonday\b|\bmon\b/, 1],
+    [/\bmartes\b|\bmar\b|\btuesday\b|\btue\b/, 2],
+    [/\bmiercoles\b|\bmie\b|\bmié\b|\bwednesday\b|\bwed\b/, 3],
+    [/\bjueves\b|\bjue\b|\bthursday\b|\bthu\b/, 4],
+    [/\bviernes\b|\bvie\b|\bfriday\b|\bfri\b/, 5],
+    [/\bsabado\b|\bsab\b|\bsaturday\b|\bsat\b/, 6],
   ];
   for (const [re, wd] of tokens) if (re.test(n)) return wd;
   return null;
 }
 
+/** All weekdays mentioned (or shortcut groups). Returns unique sorted list, or null. */
+function parseWeeklyDays(raw: string): number[] | null {
+  const n = norm(raw);
+  // Shortcuts
+  if (/\b(dias? habiles|entre semana|lun(es)? a vie(rnes)?|l-?v|de lunes a viernes|weekdays?)\b/.test(n)) {
+    return [1, 2, 3, 4, 5];
+  }
+  if (/\b(fin(es)? de semana|finde|weekends?)\b/.test(n)) {
+    return [0, 6];
+  }
+  if (/\btodos los dias\b|\bcada dia\b|\bdiario\b|\bdaily\b/.test(n)) {
+    return [0, 1, 2, 3, 4, 5, 6];
+  }
+  const found = new Set<number>();
+  const tokens: Array<[RegExp, number]> = [
+    [/\bdomingos?\b|\bdom\b|\bsundays?\b/g, 0],
+    [/\blunes\b|\blun\b|\bmondays?\b/g, 1],
+    [/\bmartes\b|\bmar\b|\btuesdays?\b/g, 2],
+    [/\bmiercoles\b|\bmie\b|\bwednesdays?\b/g, 3],
+    [/\bjueves\b|\bjue\b|\bthursdays?\b/g, 4],
+    [/\bviernes\b|\bvie\b|\bfridays?\b/g, 5],
+    [/\bsabados?\b|\bsab\b|\bsaturdays?\b/g, 6],
+  ];
+  for (const [re, wd] of tokens) if (re.test(n)) found.add(wd);
+  if (found.size === 0) return null;
+  return Array.from(found).sort();
+}
+
+/** Extract N from "cada N <unit>" or aliases. unit: "day"|"week"|"month". */
+function parseEveryN(raw: string, unit: "day" | "week" | "month"): number | null {
+  const n = norm(raw);
+  if (unit === "week") {
+    if (/\bquincenal(es)?\b|\bcada (15|quince) dias\b|\bbisemanal\b/.test(n)) return 2;
+    const m = n.match(/\bcada\s+(\d+)\s+semanas?\b/);
+    if (m) return parseInt(m[1], 10);
+  }
+  if (unit === "month") {
+    if (/\bbimestral(es)?\b/.test(n)) return 2;
+    if (/\btrimestral(es)?\b|\bcada\s+trimestre\b/.test(n)) return 3;
+    if (/\bcuatrimestral(es)?\b/.test(n)) return 4;
+    if (/\bsemestral(es)?\b|\bcada\s+semestre\b/.test(n)) return 6;
+    if (/\banual(es)?\b|\bcada\s+a(n|ñ)o\b/.test(n)) return 12;
+    const m = n.match(/\bcada\s+(\d+)\s+meses?\b/);
+    if (m) return parseInt(m[1], 10);
+  }
+  if (unit === "day") {
+    const m = n.match(/\bcada\s+(\d+)\s+dias?\b/);
+    if (m) return parseInt(m[1], 10);
+  }
+  return null;
+}
+
 function lastDayOfMonth(year: number, month: number): number {
-  return new Date(year, month, 0).getDate(); // month is 1-based
+  return new Date(year, month, 0).getDate();
 }
 
 function lastBusinessDayOfMonth(year: number, month: number): number {
   let d = lastDayOfMonth(year, month);
-  // weekday of that date
   let wd = new Date(year, month - 1, d).getDay();
   while (wd === 0 || wd === 6) {
     d -= 1;
@@ -95,7 +146,16 @@ function lastBusinessDayOfMonth(year: number, month: number): number {
   return d;
 }
 
-/** Returns the day-of-month for the n-th weekday of month, or null. n: 1..4 or "last". */
+function firstBusinessDayOfMonth(year: number, month: number): number {
+  let d = 1;
+  let wd = new Date(year, month - 1, d).getDay();
+  while (wd === 0 || wd === 6) {
+    d += 1;
+    wd = new Date(year, month - 1, d).getDay();
+  }
+  return d;
+}
+
 function nthWeekdayOfMonth(year: number, month: number, weekday: number, n: 1 | 2 | 3 | 4 | "last"): number | null {
   if (n === "last") {
     const last = lastDayOfMonth(year, month);
@@ -117,8 +177,11 @@ function nthWeekdayOfMonth(year: number, month: number, weekday: number, n: 1 | 
 
 type MonthlyRule =
   | { kind: "day-of-month"; day: number }
+  | { kind: "days-of-month"; days: number[] }
   | { kind: "last-calendar" }
   | { kind: "last-business" }
+  | { kind: "first-business" }
+  | { kind: "range-of-month"; from: number; to: number; businessOnly: boolean }
   | { kind: "nth-weekday"; weekday: number; nth: 1 | 2 | 3 | 4 | "last" };
 
 function parseMonthlyRule(raw: string): MonthlyRule | null {
@@ -126,12 +189,28 @@ function parseMonthlyRule(raw: string): MonthlyRule | null {
   if (!s) return null;
 
   const hasLast = /\b(ultimo|ultima|last|fin de mes|fin del mes)\b/.test(s);
-  const hasBusiness = /\b(habil|habiles|business|laboral|laborable)\b/.test(s);
+  const hasFirst = /\b(primer|primero|primera|1er|1ro|1ra|first)\b/.test(s);
+  const hasBusiness = /\b(habil|habiles|business|laboral|laborable|laborables)\b/.test(s);
   const weekday = parseWeeklyDay(raw);
+
+  // Quincenal in monthly context = días 1 y 15
+  if (/\bquincenal(es)?\b|\bquincena\b/.test(s) && weekday === null) {
+    return { kind: "days-of-month", days: [1, 15] };
+  }
+
+  // Range "del X al Y"
+  const range = s.match(/\bdel?\s+(\d{1,2})\s+al\s+(\d{1,2})\b/);
+  if (range) {
+    const from = parseInt(range[1], 10);
+    const to = parseInt(range[2], 10);
+    if (from >= 1 && to <= 31 && from <= to) {
+      return { kind: "range-of-month", from, to, businessOnly: hasBusiness };
+    }
+  }
 
   // n-th ordinal
   let nth: 1 | 2 | 3 | 4 | "last" | null = null;
-  if (/\b(primer|primero|primera|1er|1ro|1ra|first)\b/.test(s)) nth = 1;
+  if (hasFirst) nth = 1;
   else if (/\b(segundo|segunda|2do|2da|second)\b/.test(s)) nth = 2;
   else if (/\b(tercer|tercero|tercera|3er|3ro|3ra|third)\b/.test(s)) nth = 3;
   else if (/\b(cuarto|cuarta|4to|4ta|fourth)\b/.test(s)) nth = 4;
@@ -141,23 +220,23 @@ function parseMonthlyRule(raw: string): MonthlyRule | null {
     return { kind: "nth-weekday", weekday, nth };
   }
 
+  if (hasFirst && hasBusiness) return { kind: "first-business" };
+
   if (hasLast) {
-    // "ultimo dia habil", "ultimo de cada mes" (interpretado como hábil), "ultimo dia"
     if (hasBusiness) return { kind: "last-business" };
-    // "ultimo dia del mes" / "fin de mes" -> calendario
     if (/\b(dia del mes|del mes|fin de mes|fin del mes)\b/.test(s) && !/\bcada mes\b/.test(s)) {
       return { kind: "last-calendar" };
     }
-    // Por defecto, "último de cada mes" => último día hábil (pedido del usuario)
     return { kind: "last-business" };
   }
 
-  // Numeric day of month
-  const m = s.match(/\b(\d{1,2})\b/);
-  if (m) {
-    const d = parseInt(m[1], 10);
-    if (d >= 1 && d <= 31) return { kind: "day-of-month", day: d };
-  }
+  // Multiple numeric days: "15 y 30", "1, 15 y 30", "5, 15, 25"
+  const nums = Array.from(s.matchAll(/\b(\d{1,2})\b/g))
+    .map((m) => parseInt(m[1], 10))
+    .filter((d) => d >= 1 && d <= 31);
+  const uniq = Array.from(new Set(nums));
+  if (uniq.length > 1) return { kind: "days-of-month", days: uniq.sort((a, b) => a - b) };
+  if (uniq.length === 1) return { kind: "day-of-month", day: uniq[0] };
 
   return null;
 }
@@ -181,29 +260,57 @@ const priorityLabel: Record<string, string> = {
   high: "Alta",
 };
 
+/** Epoch-day for a Caracas date (UTC midnight). */
+function epochDayOf(parts: CaracasParts): number {
+  return Math.floor(Date.UTC(parts.year, parts.month - 1, parts.day) / 86400000);
+}
+
 /** Returns true if this recurring task is scheduled for the given Caracas date parts. */
 function taskHappensOn(task: RecurringTask, parts: CaracasParts): boolean {
   if (!task.active) return false;
-  if (task.frequency === "daily") return true;
+  const raw = task.day || "";
+
+  if (task.frequency === "daily") {
+    const everyN = parseEveryN(raw, "day");
+    if (everyN && everyN > 1) {
+      return epochDayOf(parts) % everyN === 0;
+    }
+    return true;
+  }
   if (task.frequency === "interdaily") {
-    // Alternating days based on epoch-day parity (Caracas date)
-    const utcMidnight = Date.UTC(parts.year, parts.month - 1, parts.day);
-    const epochDay = Math.floor(utcMidnight / 86400000);
+    const epochDay = epochDayOf(parts);
     return epochDay % 2 === 0;
   }
   if (task.frequency === "weekly") {
-    if (!task.day) return true;
-    const wanted = parseWeeklyDay(task.day);
-    if (wanted === null) return true; // fallback: dato no parseable, no romper
-    return parts.weekday === wanted;
+    if (!raw) return true;
+    const days = parseWeeklyDays(raw);
+    const everyN = parseEveryN(raw, "week");
+    if (everyN && everyN > 1) {
+      const weekIndex = Math.floor(epochDayOf(parts) / 7);
+      if (weekIndex % everyN !== 0) return false;
+    }
+    if (days === null) return true; // fallback legacy
+    return days.includes(parts.weekday);
   }
   if (task.frequency === "monthly") {
-    if (!task.day) return true;
-    const rule = parseMonthlyRule(task.day);
-    if (!rule) return true; // fallback: dato no parseable
+    if (!raw) return true;
+    const everyN = parseEveryN(raw, "month");
+    if (everyN && everyN > 1) {
+      const monthIndex = parts.year * 12 + (parts.month - 1);
+      if (monthIndex % everyN !== 0) return false;
+    }
+    const rule = parseMonthlyRule(raw);
+    if (!rule) return true;
     if (rule.kind === "day-of-month") return parts.day === rule.day;
+    if (rule.kind === "days-of-month") return rule.days.includes(parts.day);
     if (rule.kind === "last-calendar") return parts.day === lastDayOfMonth(parts.year, parts.month);
     if (rule.kind === "last-business") return parts.day === lastBusinessDayOfMonth(parts.year, parts.month);
+    if (rule.kind === "first-business") return parts.day === firstBusinessDayOfMonth(parts.year, parts.month);
+    if (rule.kind === "range-of-month") {
+      if (parts.day < rule.from || parts.day > rule.to) return false;
+      if (rule.businessOnly && (parts.weekday === 0 || parts.weekday === 6)) return false;
+      return true;
+    }
     if (rule.kind === "nth-weekday") {
       const target = nthWeekdayOfMonth(parts.year, parts.month, rule.weekday, rule.nth);
       return target !== null && parts.day === target;
