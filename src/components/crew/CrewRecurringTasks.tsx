@@ -154,11 +154,13 @@ function SortableTaskItem({
   onToggle,
   onDelete,
   onEdit,
+  highlight,
 }: {
   task: RecurringTask;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (t: RecurringTask) => void;
+  highlight?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: t.id });
 
@@ -172,9 +174,11 @@ function SortableTaskItem({
     <div
       ref={setNodeRef}
       style={style}
+      data-task-id={t.id}
       className={cn(
         "kpi-card flex items-center gap-3 transition-shadow",
         isDragging && "shadow-lg ring-2 ring-primary/40 opacity-90",
+        highlight && "ring-2 ring-primary shadow-lg",
       )}
     >
       {/* Drag handle */}
