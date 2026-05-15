@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AdminMetricCard } from "@/components/sublime/AdminMetricCard";
 import SublimeStoresAdmin from "@/components/sublime/SublimeStoresAdmin";
+import SublimePendingReviews from "@/components/sublime/SublimePendingReviews";
 import {
   ExternalLink,
   Store,
