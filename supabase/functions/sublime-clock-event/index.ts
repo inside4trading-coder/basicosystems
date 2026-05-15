@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
         punctuality_state,
         device_user_agent: device_user_agent ?? null,
         is_automatic: true,
-        observations: observations ?? null,
+        observations: testModeNote + (observations ?? "") || null,
       })
       .select()
       .single();
