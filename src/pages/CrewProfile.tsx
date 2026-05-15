@@ -15,6 +15,7 @@ import { CrewIncidents } from "@/components/crew/CrewIncidents";
 import { CrewDocuments } from "@/components/crew/CrewDocuments";
 import { CrewSalaryHistory } from "@/components/crew/CrewSalaryHistory";
 import { CrewPrivateNotes } from "@/components/crew/CrewPrivateNotes";
+import { CrewSublimeClock } from "@/components/crew/CrewSublimeClock";
 import { CrewAuditLog } from "@/components/crew/CrewAuditLog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -313,6 +314,7 @@ export default function CrewProfile() {
           <TabsTrigger value="tasks" className="whitespace-nowrap">Tareas recurrentes</TabsTrigger>
           <TabsTrigger value="incidents" className="whitespace-nowrap">Incidencias</TabsTrigger>
           <TabsTrigger value="docs" className="whitespace-nowrap">Documentos</TabsTrigger>
+          <TabsTrigger value="clock" className="whitespace-nowrap">Fichaje</TabsTrigger>
           {isAdmin && (
             <>
               <TabsTrigger value="salary" className="whitespace-nowrap">Historial salarial</TabsTrigger>
@@ -344,6 +346,10 @@ export default function CrewProfile() {
 
         <TabsContent value="docs">
           <CrewDocuments employeeId={employee.id} />
+        </TabsContent>
+
+        <TabsContent value="clock">
+          <CrewSublimeClock employee={employee} canEdit={isAdmin} />
         </TabsContent>
 
         {isAdmin && (
