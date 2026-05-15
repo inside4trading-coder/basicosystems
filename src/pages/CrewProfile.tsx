@@ -334,6 +334,7 @@ export default function CrewProfile() {
             onToggle={handleToggleTask}
             onDelete={handleDeleteTask}
             onReorderAll={handleReorderTasks}
+            highlightTaskId={highlightTaskId}
           />
         </TabsContent>
 
