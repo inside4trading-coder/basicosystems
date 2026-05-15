@@ -1598,7 +1598,10 @@ export type Database = {
           address: string | null
           created_at: string
           id: string
+          latitude: number | null
+          longitude: number | null
           name: string
+          radius_meters: number
           updated_at: string
         }
         Insert: {
@@ -1606,7 +1609,10 @@ export type Database = {
           address?: string | null
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name: string
+          radius_meters?: number
           updated_at?: string
         }
         Update: {
@@ -1614,7 +1620,10 @@ export type Database = {
           address?: string | null
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name?: string
+          radius_meters?: number
           updated_at?: string
         }
         Relationships: []

@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AdminMetricCard } from "@/components/sublime/AdminMetricCard";
+import SublimeStoresAdmin from "@/components/sublime/SublimeStoresAdmin";
 import {
   ExternalLink,
   Store,
@@ -76,6 +77,9 @@ export default function SublimeAdminFichaje() {
           <TabsTrigger value="metricas" className="rounded-lg data-[state=active]:bg-background">
             Métricas
           </TabsTrigger>
+          <TabsTrigger value="tiendas" className="rounded-lg data-[state=active]:bg-background">
+            Tiendas
+          </TabsTrigger>
         </TabsList>
 
         {/* Asistencia hoy */}
@@ -133,6 +137,11 @@ export default function SublimeAdminFichaje() {
               description="En cuanto el equipo empiece a fichar, verás aquí KPIs de puntualidad, asistencia y horas trabajadas."
             />
           </Card>
+        </TabsContent>
+
+        {/* Tiendas */}
+        <TabsContent value="tiendas">
+          <SublimeStoresAdmin />
         </TabsContent>
       </Tabs>
     </div>

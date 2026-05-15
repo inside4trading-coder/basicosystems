@@ -26,10 +26,17 @@ export function useSublimeStores() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const createStore = async (name: string, address?: string) => {
+  const createStore = async (input: Partial<SublimeStore> & { name: string }) => {
     const { data, error } = await supabase
       .from("sublime_stores")
-      .insert({ name, address: address ?? null })
+      .insert({
+        name: input.name,
+        address: input.address ?? null,
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
+        radius_meters: input.radius_meters ?? 75,
+        active: input.active ?? true,
+      })
       .select()
       .single();
     if (error) throw error;
@@ -37,7 +44,23 @@ export function useSublimeStores() {
     return data as SublimeStore;
   };
 
-  return { stores, loading, refresh, createStore };
+  const updateStore = async (id: string, patch: Partial<SublimeStore>) => {
+    const { error } = await supabase
+      .from("sublime_stores")
+      .update({
+        ...(patch.name !== undefined && { name: patch.name }),
+        ...(patch.address !== undefined && { address: patch.address }),
+        ...(patch.latitude !== undefined && { latitude: patch.latitude }),
+        ...(patch.longitude !== undefined && { longitude: patch.longitude }),
+        ...(patch.radius_meters !== undefined && { radius_meters: patch.radius_meters }),
+        ...(patch.active !== undefined && { active: patch.active }),
+      })
+      .eq("id", id);
+    if (error) throw error;
+    await refresh();
+  };
+
+  return { stores, loading, refresh, createStore, updateStore };
 }
 
 export function useSublimeClockSettings(employeeId: string | undefined) {
