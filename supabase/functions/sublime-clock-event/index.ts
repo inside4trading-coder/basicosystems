@@ -54,7 +54,9 @@ async function verifyToken(token: string): Promise<{ employeeId: string } | null
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
-    status,
+    // Mantener 200 evita que supabase.functions.invoke oculte el cuerpo del error
+    // con el mensaje genérico "Edge Function returned a non-2xx status code".
+    status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
@@ -88,32 +90,46 @@ Deno.serve(async (req) => {
       force_review?: boolean;
     };
 
-    if (!session_token) return jsonResponse({ ok: false, error: "Sesión inválida" }, 401);
+    if (!session_token) return jsonResponse({ ok: false, error: "Sesión inválida", code: "INVALID_SESSION" }, 401);
     const sess = await verifyToken(session_token);
-    if (!sess) return jsonResponse({ ok: false, error: "Sesión expirada. Vuelve a introducir tu PIN." }, 401);
+    if (!sess) return jsonResponse({ ok: false, error: "Sesión expirada. Vuelve a introducir tu PIN.", code: "EXPIRED_SESSION" }, 401);
 
     if (!event_type || !VALID_TYPES.has(event_type)) {
-      return jsonResponse({ ok: false, error: "Acción no válida" }, 400);
+      return jsonResponse({ ok: false, error: "Acción no válida", code: "INVALID_ACTION" }, 400);
     }
 
-    const { data: settings } = await admin
+    const { data: settings, error: settingsError } = await admin
       .from("sublime_clock_settings")
       .select("*")
       .eq("employee_id", sess.employeeId)
       .maybeSingle();
 
-    if (!settings) return jsonResponse({ ok: false, error: "Configuración no encontrada" }, 404);
-    if (settings.blocked) return jsonResponse({ ok: false, error: "Fichaje bloqueado" }, 403);
-    if (!settings.enabled) return jsonResponse({ ok: false, error: "Fichaje no habilitado" }, 403);
-    if (!settings.store_id) return jsonResponse({ ok: false, error: "Sin tienda asignada" }, 400);
+    if (settingsError) {
+      console.error("clock settings query failed", settingsError);
+      return jsonResponse({ ok: false, error: "No se pudo cargar la configuración de fichaje", code: "SETTINGS_QUERY_FAILED" }, 500);
+    }
+    if (!settings) return jsonResponse({ ok: false, error: "Configuración no encontrada", code: "SETTINGS_NOT_FOUND" }, 404);
+    if (settings.blocked) return jsonResponse({ ok: false, error: "Fichaje bloqueado", code: "CLOCK_BLOCKED" }, 403);
+    if (!settings.enabled) return jsonResponse({ ok: false, error: "Fichaje no habilitado", code: "CLOCK_DISABLED" }, 403);
+    if (!settings.store_id) return jsonResponse({ ok: false, error: "Sin tienda asignada", code: "STORE_NOT_ASSIGNED" }, 400);
 
-    const { data: store } = await admin
+    const { data: store, error: storeError } = await admin
       .from("sublime_stores")
       .select("*")
       .eq("id", settings.store_id)
       .maybeSingle();
 
-    if (!store) return jsonResponse({ ok: false, error: "Tienda no encontrada" }, 404);
+    if (storeError) {
+      console.error("store query failed", storeError);
+      return jsonResponse({ ok: false, error: "No se pudo cargar la tienda asignada", code: "STORE_QUERY_FAILED" }, 500);
+    }
+    if (!store) return jsonResponse({ ok: false, error: "Tienda no encontrada", code: "STORE_NOT_FOUND" }, 404);
+    if (store.active === false) {
+      return jsonResponse({ ok: false, error: "La tienda asignada está inactiva. Revisa la configuración del empleado.", code: "STORE_INACTIVE" }, 400);
+    }
+    if (store.latitude == null || store.longitude == null) {
+      return jsonResponse({ ok: false, error: "La tienda asignada no tiene coordenadas GPS. No se puede validar el rango.", code: "STORE_COORDS_MISSING" }, 400);
+    }
 
     const hasCoords = typeof latitude === "number" && typeof longitude === "number"
       && Number.isFinite(latitude) && Number.isFinite(longitude);
@@ -122,7 +138,7 @@ Deno.serve(async (req) => {
     let location_state = "ubicacion_no_disponible";
     let clock_state: "valido" | "pendiente_revision" = "valido";
 
-    if (hasCoords && store.latitude != null && store.longitude != null) {
+    if (hasCoords) {
       distance = Math.round(distanceMeters(
         Number(store.latitude), Number(store.longitude),
         latitude!, longitude!,
@@ -132,6 +148,7 @@ Deno.serve(async (req) => {
         location_state = "dentro_del_radio";
         if (typeof accuracy === "number" && accuracy > 100) {
           location_state = "ubicacion_imprecisa";
+          clock_state = "pendiente_revision";
         }
       } else {
         location_state = "fuera_del_radio";
@@ -186,7 +203,26 @@ Deno.serve(async (req) => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("clock event insert failed", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        payload: {
+          employee_id: sess.employeeId,
+          store_id: settings.store_id,
+          event_type,
+          latitude: hasCoords ? latitude : null,
+          longitude: hasCoords ? longitude : null,
+          distance_meters: distance,
+          allowed_radius_meters: store.radius_meters,
+          location_state,
+          clock_state,
+        },
+      });
+      return jsonResponse({ ok: false, error: "No se pudo guardar el fichaje", code: "CLOCK_EVENT_INSERT_FAILED", detail: error.message }, 500);
+    }
 
     return jsonResponse({
       ok: true,
@@ -198,6 +234,7 @@ Deno.serve(async (req) => {
       punctuality_state,
     });
   } catch (err) {
-    return jsonResponse({ ok: false, error: err instanceof Error ? err.message : String(err) }, 500);
+    console.error("unexpected clock event failure", err);
+    return jsonResponse({ ok: false, error: err instanceof Error ? err.message : String(err), code: "UNEXPECTED_ERROR" }, 500);
   }
 });
