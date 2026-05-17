@@ -335,6 +335,224 @@ export default function SublimeAdminFichaje() {
 
   const currentRangeLabel = RANGE_OPTIONS.find((opt) => opt.value === range)?.label ?? "";
 
+  // ===== Métricas (rango independiente) =====
+  const [metricsRange, setMetricsRange] = useState<RangeKey>("week");
+  const [metricsEvents, setMetricsEvents] = useState<ClockEvent[]>([]);
+  const [metricsNames, setMetricsNames] = useState<Record<string, string>>({});
+  const [metricsSettings, setMetricsSettings] = useState<Record<string, EmployeeSettings & { late_tolerance_minutes?: number }>>({});
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
+
+  const loadMetrics = useCallback(async () => {
+    setMetricsLoading(true);
+    setMetricsError(null);
+    const { start, end } = computeRange(metricsRange);
+    const { data, error } = await supabase
+      .from("sublime_clock_events")
+      .select("id, employee_id, event_type, event_at, clock_state, location_state, distance_meters, allowed_radius_meters")
+      .gte("event_at", start.toISOString())
+      .lt("event_at", end.toISOString())
+      .order("event_at", { ascending: true });
+    if (error) {
+      setMetricsError(error.message);
+      setMetricsEvents([]);
+      setMetricsLoading(false);
+      return;
+    }
+    const list = (data ?? []) as ClockEvent[];
+    setMetricsEvents(list);
+    const ids = Array.from(new Set(list.map((e) => e.employee_id)));
+    if (ids.length) {
+      const [{ data: employees }, { data: settings }] = await Promise.all([
+        supabase.from("employees").select("id, first_name, last_name").in("id", ids),
+        supabase.from("sublime_clock_settings").select("employee_id, entry_time, exit_time, break_minutes, late_tolerance_minutes").in("employee_id", ids),
+      ]);
+      const names: Record<string, string> = {};
+      (employees ?? []).forEach((e: any) => { names[e.id] = `${e.first_name ?? ""} ${e.last_name ?? ""}`.trim(); });
+      setMetricsNames(names);
+      const cfg: Record<string, EmployeeSettings & { late_tolerance_minutes?: number }> = {};
+      (settings ?? []).forEach((s: any) => {
+        cfg[s.employee_id] = {
+          entry_time: s.entry_time,
+          exit_time: s.exit_time,
+          break_minutes: s.break_minutes ?? 0,
+          late_tolerance_minutes: s.late_tolerance_minutes ?? 10,
+        };
+      });
+      setMetricsSettings(cfg);
+    } else {
+      setMetricsNames({});
+      setMetricsSettings({});
+    }
+    setMetricsLoading(false);
+  }, [metricsRange]);
+
+  useEffect(() => { loadMetrics(); }, [loadMetrics]);
+
+  const metricsData = useMemo(() => {
+    // Construir turnos por empleado+día
+    const byEmpDay = new Map<string, ClockEvent[]>();
+    metricsEvents.forEach((event) => {
+      const day = dayKeyOf(event.event_at);
+      const k = `${event.employee_id}|${day}`;
+      const arr = byEmpDay.get(k) ?? [];
+      arr.push(event);
+      byEmpDay.set(k, arr);
+    });
+
+    type Shift = { employeeId: string; day: string; entryAt: string | null; exitAt: string | null; pending: boolean; outOfRange: boolean };
+    const shifts: Shift[] = [];
+    byEmpDay.forEach((evs, k) => {
+      const [employeeId, day] = k.split("|");
+      const sorted = [...evs].sort((a, b) => new Date(a.event_at).getTime() - new Date(b.event_at).getTime());
+      let cur: Shift | null = null;
+      const push = () => { if (cur) shifts.push(cur); cur = null; };
+      sorted.forEach((e) => {
+        if (e.event_type === "entrada") {
+          push();
+          cur = { employeeId, day, entryAt: e.event_at, exitAt: null, pending: e.clock_state === "pendiente_revision", outOfRange: e.location_state === "fuera_del_radio" };
+          return;
+        }
+        if (!cur) cur = { employeeId, day, entryAt: null, exitAt: null, pending: true, outOfRange: false };
+        if (e.event_type === "salida") cur.exitAt = e.event_at;
+        cur.pending = cur.pending || e.clock_state === "pendiente_revision";
+        cur.outOfRange = cur.outOfRange || e.location_state === "fuera_del_radio";
+        if (e.event_type === "salida") push();
+      });
+      push();
+    });
+
+    // Per employee aggregation
+    type EmpAgg = {
+      employeeId: string;
+      employeeName: string;
+      shifts: number;
+      closedShifts: number;
+      totalWorkedMin: number;
+      totalExpectedMin: number;
+      lateCount: number;
+      totalLateMin: number;
+      earlyExitCount: number;
+      totalEarlyExitMin: number;
+      overtimeMin: number;
+      missingExitCount: number;
+      pendingCount: number;
+      outOfRangeCount: number;
+      onTimeCount: number;
+    };
+    const per = new Map<string, EmpAgg>();
+
+    let totalShifts = 0;
+    let totalClosed = 0;
+    let totalWorked = 0;
+    let totalExpected = 0;
+    let totalLateMin = 0;
+    let totalLateCount = 0;
+    let totalEarlyMin = 0;
+    let totalEarlyCount = 0;
+    let totalOvertime = 0;
+    let totalMissingExit = 0;
+    let totalPending = 0;
+    let totalOutOfRange = 0;
+    let totalOnTime = 0;
+
+    shifts.forEach((s) => {
+      const cfg = metricsSettings[s.employeeId];
+      const tolerance = cfg?.late_tolerance_minutes ?? 10;
+      const name = metricsNames[s.employeeId] ?? "Empleado";
+      const agg = per.get(s.employeeId) ?? {
+        employeeId: s.employeeId, employeeName: name,
+        shifts: 0, closedShifts: 0, totalWorkedMin: 0, totalExpectedMin: 0,
+        lateCount: 0, totalLateMin: 0, earlyExitCount: 0, totalEarlyExitMin: 0,
+        overtimeMin: 0, missingExitCount: 0, pendingCount: 0, outOfRangeCount: 0, onTimeCount: 0,
+      };
+      agg.shifts += 1;
+      totalShifts += 1;
+      if (s.pending) { agg.pendingCount += 1; totalPending += 1; }
+      if (s.outOfRange) { agg.outOfRangeCount += 1; totalOutOfRange += 1; }
+
+      // Lateness vs scheduled entry
+      if (s.entryAt && cfg?.entry_time) {
+        const d = new Date(s.entryAt);
+        const [eh, em] = cfg.entry_time.split(":").map(Number);
+        const scheduled = new Date(d); scheduled.setHours(eh ?? 0, em ?? 0, 0, 0);
+        const lateMin = Math.round((d.getTime() - scheduled.getTime()) / 60_000);
+        if (lateMin > tolerance) {
+          agg.lateCount += 1; totalLateCount += 1;
+          agg.totalLateMin += lateMin; totalLateMin += lateMin;
+        } else {
+          agg.onTimeCount += 1; totalOnTime += 1;
+        }
+      }
+
+      if (s.entryAt && !s.exitAt) {
+        // No salida marcada (turno abierto o auto-cierre)
+        agg.missingExitCount += 1; totalMissingExit += 1;
+      }
+
+      if (s.entryAt && s.exitAt) {
+        agg.closedShifts += 1; totalClosed += 1;
+        const worked = Math.max(0, Math.round((new Date(s.exitAt).getTime() - new Date(s.entryAt).getTime()) / 60_000));
+        agg.totalWorkedMin += worked; totalWorked += worked;
+        let expected = 0;
+        if (cfg?.entry_time && cfg?.exit_time) {
+          const [eh2, em2] = cfg.entry_time.split(":").map(Number);
+          const [xh2, xm2] = cfg.exit_time.split(":").map(Number);
+          const eMin = (eh2 ?? 0) * 60 + (em2 ?? 0);
+          const xMin = (xh2 ?? 0) * 60 + (xm2 ?? 0);
+          expected = xMin >= eMin ? xMin - eMin : xMin + 24 * 60 - eMin;
+        }
+        agg.totalExpectedMin += expected; totalExpected += expected;
+        // Early exit / overtime vs scheduled exit
+        if (cfg?.exit_time) {
+          const x = new Date(s.exitAt);
+          const [xh, xm] = cfg.exit_time.split(":").map(Number);
+          const scheduled = new Date(x); scheduled.setHours(xh ?? 0, xm ?? 0, 0, 0);
+          // Si la salida programada es antes que entrada (turno nocturno), sumar 24h
+          if (s.entryAt) {
+            const entryD = new Date(s.entryAt);
+            const [eh, em] = (cfg.entry_time ?? "00:00").split(":").map(Number);
+            const schedEntry = new Date(entryD); schedEntry.setHours(eh ?? 0, em ?? 0, 0, 0);
+            if (scheduled.getTime() < schedEntry.getTime()) scheduled.setDate(scheduled.getDate() + 1);
+          }
+          const diffMin = Math.round((x.getTime() - scheduled.getTime()) / 60_000);
+          if (diffMin < -2) { agg.earlyExitCount += 1; totalEarlyCount += 1; agg.totalEarlyExitMin += -diffMin; totalEarlyMin += -diffMin; }
+          if (diffMin > 2) { agg.overtimeMin += diffMin; totalOvertime += diffMin; }
+        }
+      }
+
+      per.set(s.employeeId, agg);
+    });
+
+    const employees = Array.from(per.values()).sort((a, b) => a.employeeName.localeCompare(b.employeeName));
+
+    const punctualityPct = (totalLateCount + totalOnTime) > 0
+      ? Math.round((totalOnTime / (totalLateCount + totalOnTime)) * 100)
+      : null;
+
+    return {
+      employees,
+      totals: {
+        shifts: totalShifts,
+        closed: totalClosed,
+        worked: totalWorked,
+        expected: totalExpected,
+        lateCount: totalLateCount,
+        lateMin: totalLateMin,
+        earlyCount: totalEarlyCount,
+        earlyMin: totalEarlyMin,
+        overtime: totalOvertime,
+        missingExit: totalMissingExit,
+        pending: totalPending,
+        outOfRange: totalOutOfRange,
+        onTime: totalOnTime,
+        punctualityPct,
+      },
+    };
+  }, [metricsEvents, metricsNames, metricsSettings]);
+
+  const currentMetricsRangeLabel = RANGE_OPTIONS.find((opt) => opt.value === metricsRange)?.label ?? "";
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
       {/* Header */}
@@ -542,19 +760,183 @@ export default function SublimeAdminFichaje() {
 
         {/* Métricas */}
         <TabsContent value="metricas" className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <AdminMetricCard label="Horas semana" value="—" hint="Total del equipo" icon={Timer} />
-            <AdminMetricCard label="Puntualidad" value="—" hint="Últimos 7 días" icon={CheckCircle2} />
-            <AdminMetricCard label="Ausencias" value="—" hint="Mes en curso" icon={UserX} />
-            <AdminMetricCard label="Horas extra" value="—" hint="Mes en curso" icon={Hourglass} />
-          </div>
-          <Card className="rounded-2xl border-border/60">
-            <EmptyState
-              icon={BarChart3}
-              title="Las métricas aparecerán cuando haya datos"
-              description="En cuanto el equipo empiece a fichar, verás aquí KPIs de puntualidad, asistencia y horas trabajadas."
-            />
+          <Card className="rounded-2xl border-border/60 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Métricas · {currentMetricsRangeLabel}</p>
+                <p className="text-xs text-muted-foreground">
+                  {metricsData.totals.shifts} turno(s) · {metricsData.totals.closed} cerrado(s)
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={metricsRange} onValueChange={(v) => setMetricsRange(v as RangeKey)}>
+                  <SelectTrigger className="w-[180px] rounded-xl h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {RANGE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={loadMetrics} className="rounded-xl" disabled={metricsLoading}>
+                  {metricsLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                  Refrescar
+                </Button>
+              </div>
+            </div>
           </Card>
+
+          {metricsLoading ? (
+            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Cargando métricas…
+            </div>
+          ) : metricsError ? (
+            <Card className="rounded-2xl border-border/60">
+              <EmptyState icon={AlertCircle} title="No se pudieron cargar las métricas" description={metricsError} />
+            </Card>
+          ) : metricsData.totals.shifts === 0 ? (
+            <Card className="rounded-2xl border-border/60">
+              <EmptyState
+                icon={BarChart3}
+                title="Sin fichajes en este periodo"
+                description="Cambia el filtro de periodo o espera a que el equipo registre nuevos fichajes."
+              />
+            </Card>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <AdminMetricCard
+                  label="Horas trabajadas"
+                  value={formatDuration(metricsData.totals.worked)}
+                  hint={metricsData.totals.expected > 0 ? `Debían ${formatDuration(metricsData.totals.expected)}` : "Total del equipo"}
+                  icon={Timer}
+                />
+                <AdminMetricCard
+                  label="Puntualidad"
+                  value={metricsData.totals.punctualityPct != null ? `${metricsData.totals.punctualityPct}%` : "—"}
+                  hint={`${metricsData.totals.onTime} a tiempo · ${metricsData.totals.lateCount} con retraso`}
+                  icon={CheckCircle2}
+                />
+                <AdminMetricCard
+                  label="Minutos de retraso"
+                  value={formatDuration(metricsData.totals.lateMin)}
+                  hint={`${metricsData.totals.lateCount} turno(s) tarde`}
+                  icon={AlertCircle}
+                />
+                <AdminMetricCard
+                  label="Horas extra"
+                  value={formatDuration(metricsData.totals.overtime)}
+                  hint={`${metricsData.totals.earlyCount} salida(s) anticipada(s) · ${formatDuration(metricsData.totals.earlyMin)}`}
+                  icon={Hourglass}
+                />
+                <AdminMetricCard
+                  label="Sin salida marcada"
+                  value={String(metricsData.totals.missingExit)}
+                  hint="Olvidos o turnos abiertos"
+                  icon={UserX}
+                />
+                <AdminMetricCard
+                  label="Pendientes de revisión"
+                  value={String(metricsData.totals.pending)}
+                  hint="Fichajes a aprobar"
+                  icon={AlertCircle}
+                />
+                <AdminMetricCard
+                  label="Fuera de radio"
+                  value={String(metricsData.totals.outOfRange)}
+                  hint="Fichajes con ubicación atípica"
+                  icon={Store}
+                />
+                <AdminMetricCard
+                  label="Turnos cerrados"
+                  value={`${metricsData.totals.closed} / ${metricsData.totals.shifts}`}
+                  hint="Completos vs. registrados"
+                  icon={CalendarDays}
+                />
+              </div>
+
+              <Card className="rounded-2xl border-border/60 overflow-hidden">
+                <div className="px-6 py-4 border-b border-border/60">
+                  <p className="text-sm font-semibold text-foreground">Detalle por empleado</p>
+                  <p className="text-xs text-muted-foreground">Resumen del periodo seleccionado</p>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Empleado</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Turnos</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Trabajadas / Debía</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Puntualidad</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Retrasos</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Salidas anticipadas</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Horas extra</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Incidencias</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {metricsData.employees.map((e) => {
+                      const compared = e.lateCount + e.onTimeCount;
+                      const pct = compared > 0 ? Math.round((e.onTimeCount / compared) * 100) : null;
+                      const diff = e.totalWorkedMin - e.totalExpectedMin;
+                      return (
+                        <TableRow key={e.employeeId}>
+                          <TableCell className="font-semibold text-foreground">{e.employeeName}</TableCell>
+                          <TableCell className="tabular-nums">{e.closedShifts} / {e.shifts}</TableCell>
+                          <TableCell className="tabular-nums">
+                            <div className="flex flex-col">
+                              <span>{formatDuration(e.totalWorkedMin)} / {formatDuration(e.totalExpectedMin)}</span>
+                              {e.totalExpectedMin > 0 && (
+                                <span className={`text-[10px] ${diff >= 0 ? "text-[hsl(var(--status-success))]" : "text-destructive"}`}>
+                                  {diff >= 0 ? "+" : "−"}{formatDuration(Math.abs(diff))}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {pct != null ? (
+                              <Badge variant="outline" className={pct >= 90 ? "bg-[hsl(var(--status-success)/0.12)] text-[hsl(var(--status-success))] border-[hsl(var(--status-success)/0.30)]" : pct >= 70 ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30" : "bg-destructive/10 text-destructive border-destructive/20"}>
+                                {pct}%
+                              </Badge>
+                            ) : <span className="text-xs text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell className="tabular-nums">
+                            {e.lateCount > 0 ? (
+                              <div className="flex flex-col">
+                                <span className="text-destructive font-medium">{e.lateCount} turno(s)</span>
+                                <span className="text-[10px] text-muted-foreground">+{formatDuration(e.totalLateMin)} acumulados</span>
+                              </div>
+                            ) : <span className="text-xs text-muted-foreground">Ninguno</span>}
+                          </TableCell>
+                          <TableCell className="tabular-nums">
+                            {e.earlyExitCount > 0 ? (
+                              <div className="flex flex-col">
+                                <span className="text-destructive font-medium">{e.earlyExitCount} turno(s)</span>
+                                <span className="text-[10px] text-muted-foreground">−{formatDuration(e.totalEarlyExitMin)} acumulados</span>
+                              </div>
+                            ) : <span className="text-xs text-muted-foreground">Ninguna</span>}
+                          </TableCell>
+                          <TableCell className="tabular-nums">
+                            {e.overtimeMin > 0 ? (
+                              <span className="text-[hsl(var(--status-success))] font-medium">+{formatDuration(e.overtimeMin)}</span>
+                            ) : <span className="text-xs text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {e.missingExitCount > 0 && <Badge variant="outline" className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30">Sin salida: {e.missingExitCount}</Badge>}
+                              {e.pendingCount > 0 && <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">Pendientes: {e.pendingCount}</Badge>}
+                              {e.outOfRangeCount > 0 && <Badge variant="outline" className="bg-muted text-foreground border-border">Fuera radio: {e.outOfRangeCount}</Badge>}
+                              {e.missingExitCount === 0 && e.pendingCount === 0 && e.outOfRangeCount === 0 && (
+                                <span className="text-xs text-muted-foreground">Sin incidencias</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Card>
+            </>
+          )}
         </TabsContent>
 
         {/* Tiendas */}
