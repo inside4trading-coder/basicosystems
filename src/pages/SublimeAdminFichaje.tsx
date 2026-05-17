@@ -322,6 +322,7 @@ export default function SublimeAdminFichaje() {
   }, [attendanceRows]);
 
   // Horas esperadas según horario configurado del empleado.
+  // El descanso cuenta como parte del turno, no se descuenta.
   const expectedHoursFor = (employeeId: string): number | null => {
     const s = employeeSettings[employeeId];
     if (!s?.entry_time || !s?.exit_time) return null;
@@ -329,7 +330,7 @@ export default function SublimeAdminFichaje() {
     const [xh, xm] = s.exit_time.split(":").map(Number);
     const entryMin = (eh ?? 0) * 60 + (em ?? 0);
     const exitMin = (xh ?? 0) * 60 + (xm ?? 0);
-    const diff = exitMin - entryMin - (s.break_minutes ?? 0);
+    const diff = exitMin - entryMin;
     return diff > 0 ? diff / 60 : null;
   };
 
