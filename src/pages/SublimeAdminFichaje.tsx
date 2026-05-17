@@ -494,7 +494,14 @@ export default function SublimeAdminFichaje() {
         agg.closedShifts += 1; totalClosed += 1;
         const worked = Math.max(0, Math.round((new Date(s.exitAt).getTime() - new Date(s.entryAt).getTime()) / 60_000));
         agg.totalWorkedMin += worked; totalWorked += worked;
-        const expected = expectedMinutesFor(s.employeeId) ?? 0;
+        let expected = 0;
+        if (cfg?.entry_time && cfg?.exit_time) {
+          const [eh2, em2] = cfg.entry_time.split(":").map(Number);
+          const [xh2, xm2] = cfg.exit_time.split(":").map(Number);
+          const eMin = (eh2 ?? 0) * 60 + (em2 ?? 0);
+          const xMin = (xh2 ?? 0) * 60 + (xm2 ?? 0);
+          expected = xMin >= eMin ? xMin - eMin : xMin + 24 * 60 - eMin;
+        }
         agg.totalExpectedMin += expected; totalExpected += expected;
         // Early exit / overtime vs scheduled exit
         if (cfg?.exit_time) {
