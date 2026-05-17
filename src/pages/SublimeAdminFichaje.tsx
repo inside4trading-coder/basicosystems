@@ -451,6 +451,46 @@ export default function SublimeAdminFichaje() {
                           {autoClosed ? <span className="text-muted-foreground">—</span> : formatHours(row.entryAt, row.exitAt)}
                         </TableCell>
                         <TableCell>
+                          {(() => {
+                            const expected = expectedHoursFor(row.employeeId);
+                            const actual = dayHoursByKey.get(`${row.employeeId}|${row.dayKey}`) ?? 0;
+                            if (expected == null) {
+                              return <span className="text-xs text-muted-foreground">Sin horario</span>;
+                            }
+                            if (!row.exitAt && !autoClosed) {
+                              return <span className="text-xs text-muted-foreground">En curso</span>;
+                            }
+                            const diff = actual - expected;
+                            const abs = Math.abs(diff);
+                            const absLabel = `${abs.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h`;
+                            if (Math.abs(diff) < 0.02) {
+                              return (
+                                <Badge variant="outline" className="bg-[hsl(142_72%_29%)]/10 text-[hsl(142_72%_29%)] border-[hsl(142_72%_29%)]/30">
+                                  Completo
+                                </Badge>
+                              );
+                            }
+                            if (diff > 0) {
+                              return (
+                                <div className="flex flex-col gap-0.5">
+                                  <Badge variant="outline" className="bg-[hsl(142_72%_29%)]/10 text-[hsl(142_72%_29%)] border-[hsl(142_72%_29%)]/30 w-fit">
+                                    +{absLabel}
+                                  </Badge>
+                                  <span className="text-[10px] text-muted-foreground">de más</span>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="flex flex-col gap-0.5">
+                                <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 w-fit">
+                                  −{absLabel}
+                                </Badge>
+                                <span className="text-[10px] text-muted-foreground">faltaron</span>
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell>
                           <div className="flex flex-col items-start gap-1">
                             <Badge variant="outline" className={status.className}>{status.label}</Badge>
                             {autoClosed && (
