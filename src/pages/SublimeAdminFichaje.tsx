@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AdminMetricCard } from "@/components/sublime/AdminMetricCard";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import SublimeStoresAdmin from "@/components/sublime/SublimeStoresAdmin";
 import SublimePendingReviews from "@/components/sublime/SublimePendingReviews";
 import SublimeSchedulesAdmin from "@/components/sublime/SublimeSchedulesAdmin";
