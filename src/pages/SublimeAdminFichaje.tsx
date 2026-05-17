@@ -467,6 +467,9 @@ export default function SublimeAdminFichaje() {
                         </TableCell>
                         <TableCell>
                           {(() => {
+                            if (!lastRowKeyByDay.has(row.key)) {
+                              return <span className="text-xs text-muted-foreground">—</span>;
+                            }
                             const expected = expectedHoursFor(row.employeeId);
                             const actual = dayHoursByKey.get(`${row.employeeId}|${row.dayKey}`) ?? 0;
                             if (expected == null) {
