@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AdminMetricCard } from "@/components/sublime/AdminMetricCard";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import SublimeStoresAdmin from "@/components/sublime/SublimeStoresAdmin";
 import SublimePendingReviews from "@/components/sublime/SublimePendingReviews";
 import SublimeSchedulesAdmin from "@/components/sublime/SublimeSchedulesAdmin";
@@ -809,48 +810,56 @@ export default function SublimeAdminFichaje() {
                   value={formatDuration(metricsData.totals.worked)}
                   hint={metricsData.totals.expected > 0 ? `Debían ${formatDuration(metricsData.totals.expected)}` : "Total del equipo"}
                   icon={Timer}
+                  tooltip="Suma del tiempo entre entrada y salida de todos los turnos cerrados en el periodo. El descanso cuenta como parte del turno (no se descuenta)."
                 />
                 <AdminMetricCard
                   label="Puntualidad"
                   value={metricsData.totals.punctualityPct != null ? `${metricsData.totals.punctualityPct}%` : "—"}
                   hint={`${metricsData.totals.onTime} a tiempo · ${metricsData.totals.lateCount} con retraso`}
                   icon={CheckCircle2}
+                  tooltip="Porcentaje de turnos cuya entrada estuvo dentro de la tolerancia configurada por empleado (por defecto 10 min sobre la hora de entrada del horario)."
                 />
                 <AdminMetricCard
                   label="Minutos de retraso"
                   value={formatDuration(metricsData.totals.lateMin)}
                   hint={`${metricsData.totals.lateCount} turno(s) tarde`}
                   icon={AlertCircle}
+                  tooltip="Suma de los minutos de retraso de los turnos que superaron la tolerancia. Se mide entrada real vs. hora de entrada programada del empleado."
                 />
                 <AdminMetricCard
                   label="Horas extra"
                   value={formatDuration(metricsData.totals.overtime)}
                   hint={`${metricsData.totals.earlyCount} salida(s) anticipada(s) · ${formatDuration(metricsData.totals.earlyMin)}`}
                   icon={Hourglass}
+                  tooltip="Suma de minutos trabajados después de la hora de salida programada de cada turno. El subtítulo indica también las salidas anticipadas acumuladas."
                 />
                 <AdminMetricCard
                   label="Sin salida marcada"
                   value={String(metricsData.totals.missingExit)}
                   hint="Olvidos o turnos abiertos"
                   icon={UserX}
+                  tooltip="Turnos con entrada registrada pero sin salida: el empleado olvidó fichar la salida o el turno aún está en curso."
                 />
                 <AdminMetricCard
                   label="Pendientes de revisión"
                   value={String(metricsData.totals.pending)}
                   hint="Fichajes a aprobar"
                   icon={AlertCircle}
+                  tooltip="Fichajes marcados por el sistema como dudosos (PIN temporal, ubicación atípica, etc.) que requieren aprobación manual de un admin."
                 />
                 <AdminMetricCard
                   label="Fuera de radio"
                   value={String(metricsData.totals.outOfRange)}
                   hint="Fichajes con ubicación atípica"
                   icon={Store}
+                  tooltip="Fichajes realizados a más distancia que el radio permitido de la tienda configurada para ese empleado."
                 />
                 <AdminMetricCard
                   label="Turnos cerrados"
                   value={`${metricsData.totals.closed} / ${metricsData.totals.shifts}`}
                   hint="Completos vs. registrados"
                   icon={CalendarDays}
+                  tooltip="Turnos con entrada y salida registradas, comparados con el total de turnos del periodo. Lo ideal es que coincidan."
                 />
               </div>
 
@@ -859,19 +868,33 @@ export default function SublimeAdminFichaje() {
                   <p className="text-sm font-semibold text-foreground">Detalle por empleado</p>
                   <p className="text-xs text-muted-foreground">Resumen del periodo seleccionado</p>
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Empleado</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Turnos</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Trabajadas / Debía</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Puntualidad</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Retrasos</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Salidas anticipadas</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Horas extra</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Incidencias</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                <TooltipProvider delayDuration={150}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead className="uppercase tracking-wider text-xs font-semibold">Empleado</TableHead>
+                        {[
+                          { label: "Turnos", tip: "Turnos cerrados / total de turnos del periodo. Un turno se cuenta como cerrado cuando tiene entrada y salida." },
+                          { label: "Trabajadas / Debía", tip: "Tiempo realmente trabajado vs. tiempo que debía trabajar según su horario. La diferencia se muestra en verde si trabajó de más, en rojo si faltó." },
+                          { label: "Puntualidad", tip: "% de entradas dentro de la tolerancia configurada para el empleado." },
+                          { label: "Retrasos", tip: "Cantidad de turnos donde llegó tarde (más allá de la tolerancia) y total de minutos acumulados de retraso." },
+                          { label: "Salidas anticipadas", tip: "Turnos donde la salida fue antes de la hora programada y total de minutos acumulados de salida anticipada." },
+                          { label: "Horas extra", tip: "Minutos trabajados después de la hora de salida programada del empleado." },
+                          { label: "Incidencias", tip: "Resumen de incidencias del periodo: sin salida marcada, pendientes de revisión y fichajes fuera de radio." },
+                        ].map((h) => (
+                          <TableHead key={h.label} className="uppercase tracking-wider text-xs font-semibold">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help underline decoration-dotted underline-offset-4 decoration-muted-foreground/40">{h.label}</span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed normal-case tracking-normal font-normal">
+                                {h.tip}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
                   <TableBody>
                     {metricsData.employees.map((e) => {
                       const compared = e.lateCount + e.onTimeCount;
@@ -934,6 +957,7 @@ export default function SublimeAdminFichaje() {
                     })}
                   </TableBody>
                 </Table>
+                </TooltipProvider>
               </Card>
             </>
           )}
