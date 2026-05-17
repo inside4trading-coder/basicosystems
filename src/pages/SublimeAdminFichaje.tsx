@@ -12,6 +12,19 @@ import SublimeStoresAdmin from "@/components/sublime/SublimeStoresAdmin";
 import SublimePendingReviews from "@/components/sublime/SublimePendingReviews";
 import SublimeSchedulesAdmin from "@/components/sublime/SublimeSchedulesAdmin";
 import { supabase } from "@/integrations/supabase/client";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import {
   ExternalLink,
   Store,
@@ -25,6 +38,7 @@ import {
   Hourglass,
   RefreshCw,
   Loader2,
+  Trash2,
 } from "lucide-react";
 
 type ClockEvent = {
