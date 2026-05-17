@@ -956,6 +956,7 @@ export default function SublimeAdminFichaje() {
                     })}
                   </TableBody>
                 </Table>
+                </TooltipProvider>
               </Card>
             </>
           )}
