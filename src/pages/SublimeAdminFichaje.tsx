@@ -338,7 +338,9 @@ export default function SublimeAdminFichaje() {
 
   // ===== Métricas (rango independiente) =====
   const [metricsRange, setMetricsRange] = useState<RangeKey>("week");
+  const [metricsEmployee, setMetricsEmployee] = useState<string>("all");
   const [metricsEvents, setMetricsEvents] = useState<ClockEvent[]>([]);
+  const [allEmployees, setAllEmployees] = useState<{ id: string; name: string }[]>([]);
   const [metricsNames, setMetricsNames] = useState<Record<string, string>>({});
   const [metricsSettings, setMetricsSettings] = useState<Record<string, EmployeeSettings & { late_tolerance_minutes?: number }>>({});
   const [metricsLoading, setMetricsLoading] = useState(true);
@@ -348,6 +350,31 @@ export default function SublimeAdminFichaje() {
     setMetricsLoading(true);
     setMetricsError(null);
     const { start, end } = computeRange(metricsRange);
+
+    const [{ data: allEmps }, { data: allSettings }] = await Promise.all([
+      supabase.from("employees").select("id, first_name, last_name").eq("status", "active"),
+      supabase.from("sublime_clock_settings").select("employee_id, entry_time, exit_time, break_minutes, late_tolerance_minutes"),
+    ]);
+
+    const empList = (allEmps ?? []).map((e: any) => ({ id: e.id, name: `${e.first_name ?? ""} ${e.last_name ?? ""}`.trim() }));
+    empList.sort((a, b) => a.name.localeCompare(b.name));
+    setAllEmployees(empList);
+
+    const names: Record<string, string> = {};
+    empList.forEach((e) => { names[e.id] = e.name; });
+    setMetricsNames(names);
+
+    const cfg: Record<string, EmployeeSettings & { late_tolerance_minutes?: number }> = {};
+    (allSettings ?? []).forEach((s: any) => {
+      cfg[s.employee_id] = {
+        entry_time: s.entry_time,
+        exit_time: s.exit_time,
+        break_minutes: s.break_minutes ?? 0,
+        late_tolerance_minutes: s.late_tolerance_minutes ?? 10,
+      };
+    });
+    setMetricsSettings(cfg);
+
     const { data, error } = await supabase
       .from("sublime_clock_events")
       .select("id, employee_id, event_type, event_at, clock_state, location_state, distance_meters, allowed_radius_meters")
@@ -360,31 +387,7 @@ export default function SublimeAdminFichaje() {
       setMetricsLoading(false);
       return;
     }
-    const list = (data ?? []) as ClockEvent[];
-    setMetricsEvents(list);
-    const ids = Array.from(new Set(list.map((e) => e.employee_id)));
-    if (ids.length) {
-      const [{ data: employees }, { data: settings }] = await Promise.all([
-        supabase.from("employees").select("id, first_name, last_name").in("id", ids),
-        supabase.from("sublime_clock_settings").select("employee_id, entry_time, exit_time, break_minutes, late_tolerance_minutes").in("employee_id", ids),
-      ]);
-      const names: Record<string, string> = {};
-      (employees ?? []).forEach((e: any) => { names[e.id] = `${e.first_name ?? ""} ${e.last_name ?? ""}`.trim(); });
-      setMetricsNames(names);
-      const cfg: Record<string, EmployeeSettings & { late_tolerance_minutes?: number }> = {};
-      (settings ?? []).forEach((s: any) => {
-        cfg[s.employee_id] = {
-          entry_time: s.entry_time,
-          exit_time: s.exit_time,
-          break_minutes: s.break_minutes ?? 0,
-          late_tolerance_minutes: s.late_tolerance_minutes ?? 10,
-        };
-      });
-      setMetricsSettings(cfg);
-    } else {
-      setMetricsNames({});
-      setMetricsSettings({});
-    }
+    setMetricsEvents((data ?? []) as ClockEvent[]);
     setMetricsLoading(false);
   }, [metricsRange]);
 
@@ -394,6 +397,7 @@ export default function SublimeAdminFichaje() {
     // Construir turnos por empleado+día
     const byEmpDay = new Map<string, ClockEvent[]>();
     metricsEvents.forEach((event) => {
+      if (metricsEmployee !== "all" && event.employee_id !== metricsEmployee) return;
       const day = dayKeyOf(event.event_at);
       const k = `${event.employee_id}|${day}`;
       const arr = byEmpDay.get(k) ?? [];
@@ -550,7 +554,7 @@ export default function SublimeAdminFichaje() {
         punctualityPct,
       },
     };
-  }, [metricsEvents, metricsNames, metricsSettings]);
+  }, [metricsEvents, metricsNames, metricsSettings, metricsEmployee]);
 
   const currentMetricsRangeLabel = RANGE_OPTIONS.find((opt) => opt.value === metricsRange)?.label ?? "";
 
@@ -767,9 +771,21 @@ export default function SublimeAdminFichaje() {
                 <p className="text-sm font-semibold text-foreground">Métricas · {currentMetricsRangeLabel}</p>
                 <p className="text-xs text-muted-foreground">
                   {metricsData.totals.shifts} turno(s) · {metricsData.totals.closed} cerrado(s)
+                  {metricsEmployee !== "all" && metricsNames[metricsEmployee] ? ` · ${metricsNames[metricsEmployee]}` : ""}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Select value={metricsEmployee} onValueChange={(v) => setMetricsEmployee(v)}>
+                  <SelectTrigger className="w-[200px] rounded-xl h-9">
+                    <SelectValue placeholder="Todos los empleados" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los empleados</SelectItem>
+                    {allEmployees.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Select value={metricsRange} onValueChange={(v) => setMetricsRange(v as RangeKey)}>
                   <SelectTrigger className="w-[180px] rounded-xl h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
