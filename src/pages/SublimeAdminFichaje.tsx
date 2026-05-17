@@ -352,18 +352,13 @@ export default function SublimeAdminFichaje() {
     setMetricsError(null);
     const { start, end } = computeRange(metricsRange);
 
-    const [{ data: allEmps }, { data: allSettings }] = await Promise.all([
-      supabase.from("employees").select("id, first_name, last_name").eq("status", "active"),
-      supabase.from("sublime_clock_settings").select("employee_id, entry_time, exit_time, break_minutes, late_tolerance_minutes"),
+    const [{ data: allEmps }, { data: allSettings }, { data: stores }] = await Promise.all([
+      supabase.from("employees").select("id, first_name, last_name, location").eq("status", "active"),
+      supabase.from("sublime_clock_settings").select("employee_id, entry_time, exit_time, break_minutes, late_tolerance_minutes, store_id"),
+      supabase.from("sublime_stores").select("id, name"),
     ]);
 
-    const empList = (allEmps ?? []).map((e: any) => ({ id: e.id, name: `${e.first_name ?? ""} ${e.last_name ?? ""}`.trim() }));
-    empList.sort((a, b) => a.name.localeCompare(b.name));
-    setAllEmployees(empList);
-
-    const names: Record<string, string> = {};
-    empList.forEach((e) => { names[e.id] = e.name; });
-    setMetricsNames(names);
+    const sublimeStoreIds = new Set((stores ?? []).map((s: any) => s.id));
 
     const cfg: Record<string, EmployeeSettings & { late_tolerance_minutes?: number }> = {};
     (allSettings ?? []).forEach((s: any) => {
@@ -372,9 +367,25 @@ export default function SublimeAdminFichaje() {
         exit_time: s.exit_time,
         break_minutes: s.break_minutes ?? 0,
         late_tolerance_minutes: s.late_tolerance_minutes ?? 10,
+        store_id: s.store_id,
       };
     });
     setMetricsSettings(cfg);
+
+    // Solo empleados con horario definido y de tienda Sublime
+    const empList = (allEmps ?? [])
+      .filter((e: any) => {
+        const setting = cfg[e.id];
+        if (!setting?.entry_time || !setting?.exit_time) return false;
+        return sublimeStoreIds.has(setting.store_id);
+      })
+      .map((e: any) => ({ id: e.id, name: `${e.first_name ?? ""} ${e.last_name ?? ""}`.trim() }));
+    empList.sort((a, b) => a.name.localeCompare(b.name));
+    setAllEmployees(empList);
+
+    const names: Record<string, string> = {};
+    empList.forEach((e) => { names[e.id] = e.name; });
+    setMetricsNames(names);
 
     const { data, error } = await supabase
       .from("sublime_clock_events")
