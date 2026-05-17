@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AdminMetricCard } from "@/components/sublime/AdminMetricCard";
 import SublimeStoresAdmin from "@/components/sublime/SublimeStoresAdmin";
 import SublimePendingReviews from "@/components/sublime/SublimePendingReviews";
+import SublimeSchedulesAdmin from "@/components/sublime/SublimeSchedulesAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ExternalLink,
@@ -438,13 +439,7 @@ export default function SublimeAdminFichaje() {
 
         {/* Horarios */}
         <TabsContent value="horarios">
-          <Card className="rounded-2xl border-border/60">
-            <EmptyState
-              icon={CalendarDays}
-              title="Configura los horarios del equipo"
-              description="Define los turnos semanales de cada empleado para empezar a comparar fichajes con horarios planificados."
-            />
-          </Card>
+          <SublimeSchedulesAdmin />
         </TabsContent>
 
         {/* Incidencias */}
