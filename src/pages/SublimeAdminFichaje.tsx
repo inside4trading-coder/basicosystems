@@ -321,17 +321,23 @@ export default function SublimeAdminFichaje() {
     return map;
   }, [attendanceRows]);
 
-  // Última fila (por orden de entrada) por empleado+día — para mostrar el cumplimiento solo una vez.
+  // Fila donde mostrar el cumplimiento del día: la última cerrada por empleado+día;
+  // si no hay cerradas, la última fila del día.
   const lastRowKeyByDay = useMemo(() => {
-    const map = new Map<string, { key: string; ts: number }>();
+    const closed = new Map<string, { key: string; ts: number }>();
+    const any = new Map<string, { key: string; ts: number }>();
     attendanceRows.forEach((r) => {
       const ts = r.entryAt ? new Date(r.entryAt).getTime() : 0;
       const k = `${r.employeeId}|${r.dayKey}`;
-      const cur = map.get(k);
-      if (!cur || ts >= cur.ts) map.set(k, { key: r.key, ts });
+      const a = any.get(k);
+      if (!a || ts >= a.ts) any.set(k, { key: r.key, ts });
+      if (r.exitAt) {
+        const c = closed.get(k);
+        if (!c || ts >= c.ts) closed.set(k, { key: r.key, ts });
+      }
     });
     const set = new Set<string>();
-    map.forEach((v) => set.add(v.key));
+    any.forEach((v, k) => set.add((closed.get(k) ?? v).key));
     return set;
   }, [attendanceRows]);
 
