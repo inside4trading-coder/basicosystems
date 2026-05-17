@@ -335,6 +335,217 @@ export default function SublimeAdminFichaje() {
 
   const currentRangeLabel = RANGE_OPTIONS.find((opt) => opt.value === range)?.label ?? "";
 
+  // ===== Métricas (rango independiente) =====
+  const [metricsRange, setMetricsRange] = useState<RangeKey>("week");
+  const [metricsEvents, setMetricsEvents] = useState<ClockEvent[]>([]);
+  const [metricsNames, setMetricsNames] = useState<Record<string, string>>({});
+  const [metricsSettings, setMetricsSettings] = useState<Record<string, EmployeeSettings & { late_tolerance_minutes?: number }>>({});
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
+
+  const loadMetrics = useCallback(async () => {
+    setMetricsLoading(true);
+    setMetricsError(null);
+    const { start, end } = computeRange(metricsRange);
+    const { data, error } = await supabase
+      .from("sublime_clock_events")
+      .select("id, employee_id, event_type, event_at, clock_state, location_state, distance_meters, allowed_radius_meters")
+      .gte("event_at", start.toISOString())
+      .lt("event_at", end.toISOString())
+      .order("event_at", { ascending: true });
+    if (error) {
+      setMetricsError(error.message);
+      setMetricsEvents([]);
+      setMetricsLoading(false);
+      return;
+    }
+    const list = (data ?? []) as ClockEvent[];
+    setMetricsEvents(list);
+    const ids = Array.from(new Set(list.map((e) => e.employee_id)));
+    if (ids.length) {
+      const [{ data: employees }, { data: settings }] = await Promise.all([
+        supabase.from("employees").select("id, first_name, last_name").in("id", ids),
+        supabase.from("sublime_clock_settings").select("employee_id, entry_time, exit_time, break_minutes, late_tolerance_minutes").in("employee_id", ids),
+      ]);
+      const names: Record<string, string> = {};
+      (employees ?? []).forEach((e: any) => { names[e.id] = `${e.first_name ?? ""} ${e.last_name ?? ""}`.trim(); });
+      setMetricsNames(names);
+      const cfg: Record<string, EmployeeSettings & { late_tolerance_minutes?: number }> = {};
+      (settings ?? []).forEach((s: any) => {
+        cfg[s.employee_id] = {
+          entry_time: s.entry_time,
+          exit_time: s.exit_time,
+          break_minutes: s.break_minutes ?? 0,
+          late_tolerance_minutes: s.late_tolerance_minutes ?? 10,
+        };
+      });
+      setMetricsSettings(cfg);
+    } else {
+      setMetricsNames({});
+      setMetricsSettings({});
+    }
+    setMetricsLoading(false);
+  }, [metricsRange]);
+
+  useEffect(() => { loadMetrics(); }, [loadMetrics]);
+
+  const metricsData = useMemo(() => {
+    // Construir turnos por empleado+día
+    const byEmpDay = new Map<string, ClockEvent[]>();
+    metricsEvents.forEach((event) => {
+      const day = dayKeyOf(event.event_at);
+      const k = `${event.employee_id}|${day}`;
+      const arr = byEmpDay.get(k) ?? [];
+      arr.push(event);
+      byEmpDay.set(k, arr);
+    });
+
+    type Shift = { employeeId: string; day: string; entryAt: string | null; exitAt: string | null; pending: boolean; outOfRange: boolean };
+    const shifts: Shift[] = [];
+    byEmpDay.forEach((evs, k) => {
+      const [employeeId, day] = k.split("|");
+      const sorted = [...evs].sort((a, b) => new Date(a.event_at).getTime() - new Date(b.event_at).getTime());
+      let cur: Shift | null = null;
+      const push = () => { if (cur) shifts.push(cur); cur = null; };
+      sorted.forEach((e) => {
+        if (e.event_type === "entrada") {
+          push();
+          cur = { employeeId, day, entryAt: e.event_at, exitAt: null, pending: e.clock_state === "pendiente_revision", outOfRange: e.location_state === "fuera_del_radio" };
+          return;
+        }
+        if (!cur) cur = { employeeId, day, entryAt: null, exitAt: null, pending: true, outOfRange: false };
+        if (e.event_type === "salida") cur.exitAt = e.event_at;
+        cur.pending = cur.pending || e.clock_state === "pendiente_revision";
+        cur.outOfRange = cur.outOfRange || e.location_state === "fuera_del_radio";
+        if (e.event_type === "salida") push();
+      });
+      push();
+    });
+
+    // Per employee aggregation
+    type EmpAgg = {
+      employeeId: string;
+      employeeName: string;
+      shifts: number;
+      closedShifts: number;
+      totalWorkedMin: number;
+      totalExpectedMin: number;
+      lateCount: number;
+      totalLateMin: number;
+      earlyExitCount: number;
+      totalEarlyExitMin: number;
+      overtimeMin: number;
+      missingExitCount: number;
+      pendingCount: number;
+      outOfRangeCount: number;
+      onTimeCount: number;
+    };
+    const per = new Map<string, EmpAgg>();
+
+    let totalShifts = 0;
+    let totalClosed = 0;
+    let totalWorked = 0;
+    let totalExpected = 0;
+    let totalLateMin = 0;
+    let totalLateCount = 0;
+    let totalEarlyMin = 0;
+    let totalEarlyCount = 0;
+    let totalOvertime = 0;
+    let totalMissingExit = 0;
+    let totalPending = 0;
+    let totalOutOfRange = 0;
+    let totalOnTime = 0;
+
+    shifts.forEach((s) => {
+      const cfg = metricsSettings[s.employeeId];
+      const tolerance = cfg?.late_tolerance_minutes ?? 10;
+      const name = metricsNames[s.employeeId] ?? "Empleado";
+      const agg = per.get(s.employeeId) ?? {
+        employeeId: s.employeeId, employeeName: name,
+        shifts: 0, closedShifts: 0, totalWorkedMin: 0, totalExpectedMin: 0,
+        lateCount: 0, totalLateMin: 0, earlyExitCount: 0, totalEarlyExitMin: 0,
+        overtimeMin: 0, missingExitCount: 0, pendingCount: 0, outOfRangeCount: 0, onTimeCount: 0,
+      };
+      agg.shifts += 1;
+      totalShifts += 1;
+      if (s.pending) { agg.pendingCount += 1; totalPending += 1; }
+      if (s.outOfRange) { agg.outOfRangeCount += 1; totalOutOfRange += 1; }
+
+      // Lateness vs scheduled entry
+      if (s.entryAt && cfg?.entry_time) {
+        const d = new Date(s.entryAt);
+        const [eh, em] = cfg.entry_time.split(":").map(Number);
+        const scheduled = new Date(d); scheduled.setHours(eh ?? 0, em ?? 0, 0, 0);
+        const lateMin = Math.round((d.getTime() - scheduled.getTime()) / 60_000);
+        if (lateMin > tolerance) {
+          agg.lateCount += 1; totalLateCount += 1;
+          agg.totalLateMin += lateMin; totalLateMin += lateMin;
+        } else {
+          agg.onTimeCount += 1; totalOnTime += 1;
+        }
+      }
+
+      if (s.entryAt && !s.exitAt) {
+        // No salida marcada (turno abierto o auto-cierre)
+        agg.missingExitCount += 1; totalMissingExit += 1;
+      }
+
+      if (s.entryAt && s.exitAt) {
+        agg.closedShifts += 1; totalClosed += 1;
+        const worked = Math.max(0, Math.round((new Date(s.exitAt).getTime() - new Date(s.entryAt).getTime()) / 60_000));
+        agg.totalWorkedMin += worked; totalWorked += worked;
+        const expected = expectedMinutesFor(s.employeeId) ?? 0;
+        agg.totalExpectedMin += expected; totalExpected += expected;
+        // Early exit / overtime vs scheduled exit
+        if (cfg?.exit_time) {
+          const x = new Date(s.exitAt);
+          const [xh, xm] = cfg.exit_time.split(":").map(Number);
+          const scheduled = new Date(x); scheduled.setHours(xh ?? 0, xm ?? 0, 0, 0);
+          // Si la salida programada es antes que entrada (turno nocturno), sumar 24h
+          if (s.entryAt) {
+            const entryD = new Date(s.entryAt);
+            const [eh, em] = (cfg.entry_time ?? "00:00").split(":").map(Number);
+            const schedEntry = new Date(entryD); schedEntry.setHours(eh ?? 0, em ?? 0, 0, 0);
+            if (scheduled.getTime() < schedEntry.getTime()) scheduled.setDate(scheduled.getDate() + 1);
+          }
+          const diffMin = Math.round((x.getTime() - scheduled.getTime()) / 60_000);
+          if (diffMin < -2) { agg.earlyExitCount += 1; totalEarlyCount += 1; agg.totalEarlyExitMin += -diffMin; totalEarlyMin += -diffMin; }
+          if (diffMin > 2) { agg.overtimeMin += diffMin; totalOvertime += diffMin; }
+        }
+      }
+
+      per.set(s.employeeId, agg);
+    });
+
+    const employees = Array.from(per.values()).sort((a, b) => a.employeeName.localeCompare(b.employeeName));
+
+    const punctualityPct = (totalLateCount + totalOnTime) > 0
+      ? Math.round((totalOnTime / (totalLateCount + totalOnTime)) * 100)
+      : null;
+
+    return {
+      employees,
+      totals: {
+        shifts: totalShifts,
+        closed: totalClosed,
+        worked: totalWorked,
+        expected: totalExpected,
+        lateCount: totalLateCount,
+        lateMin: totalLateMin,
+        earlyCount: totalEarlyCount,
+        earlyMin: totalEarlyMin,
+        overtime: totalOvertime,
+        missingExit: totalMissingExit,
+        pending: totalPending,
+        outOfRange: totalOutOfRange,
+        onTime: totalOnTime,
+        punctualityPct,
+      },
+    };
+  }, [metricsEvents, metricsNames, metricsSettings]);
+
+  const currentMetricsRangeLabel = RANGE_OPTIONS.find((opt) => opt.value === metricsRange)?.label ?? "";
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
       {/* Header */}
