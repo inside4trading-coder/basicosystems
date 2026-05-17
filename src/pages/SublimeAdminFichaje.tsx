@@ -867,19 +867,33 @@ export default function SublimeAdminFichaje() {
                   <p className="text-sm font-semibold text-foreground">Detalle por empleado</p>
                   <p className="text-xs text-muted-foreground">Resumen del periodo seleccionado</p>
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Empleado</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Turnos</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Trabajadas / Debía</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Puntualidad</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Retrasos</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Salidas anticipadas</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Horas extra</TableHead>
-                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Incidencias</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                <TooltipProvider delayDuration={150}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead className="uppercase tracking-wider text-xs font-semibold">Empleado</TableHead>
+                        {[
+                          { label: "Turnos", tip: "Turnos cerrados / total de turnos del periodo. Un turno se cuenta como cerrado cuando tiene entrada y salida." },
+                          { label: "Trabajadas / Debía", tip: "Tiempo realmente trabajado vs. tiempo que debía trabajar según su horario. La diferencia se muestra en verde si trabajó de más, en rojo si faltó." },
+                          { label: "Puntualidad", tip: "% de entradas dentro de la tolerancia configurada para el empleado." },
+                          { label: "Retrasos", tip: "Cantidad de turnos donde llegó tarde (más allá de la tolerancia) y total de minutos acumulados de retraso." },
+                          { label: "Salidas anticipadas", tip: "Turnos donde la salida fue antes de la hora programada y total de minutos acumulados de salida anticipada." },
+                          { label: "Horas extra", tip: "Minutos trabajados después de la hora de salida programada del empleado." },
+                          { label: "Incidencias", tip: "Resumen de incidencias del periodo: sin salida marcada, pendientes de revisión y fichajes fuera de radio." },
+                        ].map((h) => (
+                          <TableHead key={h.label} className="uppercase tracking-wider text-xs font-semibold">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help underline decoration-dotted underline-offset-4 decoration-muted-foreground/40">{h.label}</span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed normal-case tracking-normal font-normal">
+                                {h.tip}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
                   <TableBody>
                     {metricsData.employees.map((e) => {
                       const compared = e.lateCount + e.onTimeCount;
