@@ -242,6 +242,12 @@ export default function SublimeAdminFichaje() {
     return `${hours.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h`;
   };
 
+  const AUTO_CLOSE_HOURS = 16;
+  const isAutoClosed = (entryAt: string | null, exitAt: string | null) => {
+    if (!entryAt || exitAt) return false;
+    return (Date.now() - new Date(entryAt).getTime()) / 3_600_000 >= AUTO_CLOSE_HOURS;
+  };
+
   const currentRangeLabel = RANGE_OPTIONS.find((opt) => opt.value === range)?.label ?? "";
 
   return (
