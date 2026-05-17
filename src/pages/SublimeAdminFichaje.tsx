@@ -423,6 +423,7 @@ export default function SublimeAdminFichaje() {
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Entrada</TableHead>
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Salida</TableHead>
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Horas</TableHead>
+                    <TableHead className="uppercase tracking-wider text-xs font-semibold">Cumplimiento</TableHead>
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Estado</TableHead>
                   </TableRow>
                 </TableHeader>
