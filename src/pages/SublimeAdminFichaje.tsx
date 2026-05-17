@@ -452,33 +452,39 @@ export default function SublimeAdminFichaje() {
                         </TableCell>
                         <TableCell>
                           {(() => {
-                            const expected = expectedHoursFor(row.employeeId);
-                            const actual = dayHoursByKey.get(`${row.employeeId}|${row.dayKey}`) ?? 0;
+                            const expected = expectedMinutesFor(row.employeeId);
+                            const actual = workedMinutes(row.entryAt, row.exitAt);
                             if (expected == null) {
                               return <span className="text-xs text-muted-foreground">Sin horario</span>;
                             }
-                            if (!row.exitAt && !autoClosed && actual === 0) {
-                              return <span className="text-xs text-muted-foreground">En curso</span>;
+                            if (actual == null) {
+                              return (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-xs text-muted-foreground">{autoClosed ? "Sin salida" : "En curso"}</span>
+                                  <span className="text-[10px] text-muted-foreground">debía {formatDuration(expected)}</span>
+                                </div>
+                              );
                             }
                             const diff = actual - expected;
-                            const totalMin = Math.round(Math.abs(diff) * 60);
-                            const h = Math.floor(totalMin / 60);
-                            const m = totalMin % 60;
-                            const absLabel = h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
+                            const totalMin = Math.abs(diff);
+                            const absLabel = formatDuration(totalMin);
                             if (totalMin < 2) {
                               return (
-                                <Badge variant="outline" className="bg-[hsl(142_72%_29%)]/10 text-[hsl(142_72%_29%)] border-[hsl(142_72%_29%)]/30">
-                                  Completo
-                                </Badge>
+                                <div className="flex flex-col gap-0.5">
+                                  <Badge variant="outline" className="bg-[hsl(var(--status-success)/0.12)] text-[hsl(var(--status-success))] border-[hsl(var(--status-success)/0.30)] w-fit">
+                                    Completo
+                                  </Badge>
+                                  <span className="text-[10px] text-muted-foreground">{formatDuration(actual)} / {formatDuration(expected)}</span>
+                                </div>
                               );
                             }
                             if (diff > 0) {
                               return (
                                 <div className="flex flex-col gap-0.5">
-                                  <Badge variant="outline" className="bg-[hsl(142_72%_29%)]/10 text-[hsl(142_72%_29%)] border-[hsl(142_72%_29%)]/30 w-fit">
+                                  <Badge variant="outline" className="bg-[hsl(var(--status-success)/0.12)] text-[hsl(var(--status-success))] border-[hsl(var(--status-success)/0.30)] w-fit">
                                     +{absLabel}
                                   </Badge>
-                                  <span className="text-[10px] text-muted-foreground">de más</span>
+                                  <span className="text-[10px] text-muted-foreground">trabajó {formatDuration(actual)} / debía {formatDuration(expected)}</span>
                                 </div>
                               );
                             }
@@ -487,7 +493,7 @@ export default function SublimeAdminFichaje() {
                                 <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 w-fit">
                                   −{absLabel}
                                 </Badge>
-                                <span className="text-[10px] text-muted-foreground">faltaron</span>
+                                <span className="text-[10px] text-muted-foreground">trabajó {formatDuration(actual)} / debía {formatDuration(expected)}</span>
                               </div>
                             );
                           })()}
