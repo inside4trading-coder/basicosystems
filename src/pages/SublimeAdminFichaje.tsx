@@ -127,9 +127,16 @@ function EmptyState({
   );
 }
 
+type EmployeeSettings = {
+  entry_time: string | null;
+  exit_time: string | null;
+  break_minutes: number;
+};
+
 export default function SublimeAdminFichaje() {
   const [events, setEvents] = useState<ClockEvent[]>([]);
   const [employeeNames, setEmployeeNames] = useState<Record<string, string>>({});
+  const [employeeSettings, setEmployeeSettings] = useState<Record<string, EmployeeSettings>>({});
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [range, setRange] = useState<RangeKey>("today");
@@ -159,18 +166,29 @@ export default function SublimeAdminFichaje() {
 
     const ids = Array.from(new Set(list.map((event) => event.employee_id)));
     if (ids.length) {
-      const { data: employees } = await supabase
-        .from("employees")
-        .select("id, first_name, last_name")
-        .in("id", ids);
+      const [{ data: employees }, { data: settings }] = await Promise.all([
+        supabase.from("employees").select("id, first_name, last_name").in("id", ids),
+        supabase.from("sublime_clock_settings").select("employee_id, entry_time, exit_time, break_minutes").in("employee_id", ids),
+      ]);
 
       const names: Record<string, string> = {};
       (employees ?? []).forEach((employee: any) => {
         names[employee.id] = `${employee.first_name ?? ""} ${employee.last_name ?? ""}`.trim();
       });
       setEmployeeNames(names);
+
+      const cfg: Record<string, EmployeeSettings> = {};
+      (settings ?? []).forEach((s: any) => {
+        cfg[s.employee_id] = {
+          entry_time: s.entry_time,
+          exit_time: s.exit_time,
+          break_minutes: s.break_minutes ?? 0,
+        };
+      });
+      setEmployeeSettings(cfg);
     } else {
       setEmployeeNames({});
+      setEmployeeSettings({});
     }
 
     setLoadingAttendance(false);
@@ -291,6 +309,30 @@ export default function SublimeAdminFichaje() {
     return (Date.now() - new Date(entryAt).getTime()) / 3_600_000 >= AUTO_CLOSE_HOURS;
   };
 
+  // Horas reales trabajadas agregadas por empleado+día (suma de todos los turnos cerrados).
+  const dayHoursByKey = useMemo(() => {
+    const map = new Map<string, number>();
+    attendanceRows.forEach((r) => {
+      if (!r.entryAt || !r.exitAt) return;
+      const h = Math.max(0, new Date(r.exitAt).getTime() - new Date(r.entryAt).getTime()) / 3_600_000;
+      const k = `${r.employeeId}|${r.dayKey}`;
+      map.set(k, (map.get(k) ?? 0) + h);
+    });
+    return map;
+  }, [attendanceRows]);
+
+  // Horas esperadas según horario configurado del empleado.
+  const expectedHoursFor = (employeeId: string): number | null => {
+    const s = employeeSettings[employeeId];
+    if (!s?.entry_time || !s?.exit_time) return null;
+    const [eh, em] = s.entry_time.split(":").map(Number);
+    const [xh, xm] = s.exit_time.split(":").map(Number);
+    const entryMin = (eh ?? 0) * 60 + (em ?? 0);
+    const exitMin = (xh ?? 0) * 60 + (xm ?? 0);
+    const diff = exitMin - entryMin - (s.break_minutes ?? 0);
+    return diff > 0 ? diff / 60 : null;
+  };
+
   const currentRangeLabel = RANGE_OPTIONS.find((opt) => opt.value === range)?.label ?? "";
 
   return (
@@ -381,6 +423,7 @@ export default function SublimeAdminFichaje() {
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Entrada</TableHead>
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Salida</TableHead>
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Horas</TableHead>
+                    <TableHead className="uppercase tracking-wider text-xs font-semibold">Cumplimiento</TableHead>
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Estado</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -406,6 +449,46 @@ export default function SublimeAdminFichaje() {
                         </TableCell>
                         <TableCell className="tabular-nums">
                           {autoClosed ? <span className="text-muted-foreground">—</span> : formatHours(row.entryAt, row.exitAt)}
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            const expected = expectedHoursFor(row.employeeId);
+                            const actual = dayHoursByKey.get(`${row.employeeId}|${row.dayKey}`) ?? 0;
+                            if (expected == null) {
+                              return <span className="text-xs text-muted-foreground">Sin horario</span>;
+                            }
+                            if (!row.exitAt && !autoClosed) {
+                              return <span className="text-xs text-muted-foreground">En curso</span>;
+                            }
+                            const diff = actual - expected;
+                            const abs = Math.abs(diff);
+                            const absLabel = `${abs.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h`;
+                            if (Math.abs(diff) < 0.02) {
+                              return (
+                                <Badge variant="outline" className="bg-[hsl(142_72%_29%)]/10 text-[hsl(142_72%_29%)] border-[hsl(142_72%_29%)]/30">
+                                  Completo
+                                </Badge>
+                              );
+                            }
+                            if (diff > 0) {
+                              return (
+                                <div className="flex flex-col gap-0.5">
+                                  <Badge variant="outline" className="bg-[hsl(142_72%_29%)]/10 text-[hsl(142_72%_29%)] border-[hsl(142_72%_29%)]/30 w-fit">
+                                    +{absLabel}
+                                  </Badge>
+                                  <span className="text-[10px] text-muted-foreground">de más</span>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="flex flex-col gap-0.5">
+                                <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 w-fit">
+                                  −{absLabel}
+                                </Badge>
+                                <span className="text-[10px] text-muted-foreground">faltaron</span>
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col items-start gap-1">
