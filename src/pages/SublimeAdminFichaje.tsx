@@ -397,6 +397,7 @@ export default function SublimeAdminFichaje() {
     // Construir turnos por empleado+día
     const byEmpDay = new Map<string, ClockEvent[]>();
     metricsEvents.forEach((event) => {
+      if (metricsEmployee !== "all" && event.employee_id !== metricsEmployee) return;
       const day = dayKeyOf(event.event_at);
       const k = `${event.employee_id}|${day}`;
       const arr = byEmpDay.get(k) ?? [];
@@ -553,7 +554,7 @@ export default function SublimeAdminFichaje() {
         punctualityPct,
       },
     };
-  }, [metricsEvents, metricsNames, metricsSettings]);
+  }, [metricsEvents, metricsNames, metricsSettings, metricsEmployee]);
 
   const currentMetricsRangeLabel = RANGE_OPTIONS.find((opt) => opt.value === metricsRange)?.label ?? "";
 
