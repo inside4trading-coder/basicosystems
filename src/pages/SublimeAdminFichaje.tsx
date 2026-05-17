@@ -320,6 +320,44 @@ export default function SublimeAdminFichaje() {
 
   const showDateColumn = range !== "today" && range !== "yesterday";
 
+  const toggleRow = (key: string) => {
+    setSelectedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleAll = (rows: AttendanceRow[], checked: boolean) => {
+    if (!checked) {
+      setSelectedRows(new Set());
+      return;
+    }
+    setSelectedRows(new Set(rows.map((r) => r.key)));
+  };
+
+  const handleDeleteSelected = async (rows: AttendanceRow[]) => {
+    const idsToDelete = rows
+      .filter((r) => selectedRows.has(r.key))
+      .flatMap((r) => r.eventIds);
+    if (!idsToDelete.length) return;
+    setDeleting(true);
+    const { error } = await supabase
+      .from("sublime_clock_events")
+      .delete()
+      .in("id", idsToDelete);
+    setDeleting(false);
+    setConfirmOpen(false);
+    if (error) {
+      toast.error("No se pudieron borrar los fichajes", { description: error.message });
+      return;
+    }
+    toast.success(`Se borraron ${idsToDelete.length} evento(s) de fichaje`);
+    setSelectedRows(new Set());
+    loadAttendance();
+  };
+
+
   const formatHours = (entryAt: string | null, exitAt: string | null) => {
     const minutes = workedMinutes(entryAt, exitAt);
     return minutes == null ? "—" : formatDuration(minutes);
