@@ -771,9 +771,21 @@ export default function SublimeAdminFichaje() {
                 <p className="text-sm font-semibold text-foreground">Métricas · {currentMetricsRangeLabel}</p>
                 <p className="text-xs text-muted-foreground">
                   {metricsData.totals.shifts} turno(s) · {metricsData.totals.closed} cerrado(s)
+                  {metricsEmployee !== "all" && metricsNames[metricsEmployee] ? ` · ${metricsNames[metricsEmployee]}` : ""}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Select value={metricsEmployee} onValueChange={(v) => setMetricsEmployee(v)}>
+                  <SelectTrigger className="w-[200px] rounded-xl h-9">
+                    <SelectValue placeholder="Todos los empleados" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los empleados</SelectItem>
+                    {allEmployees.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Select value={metricsRange} onValueChange={(v) => setMetricsRange(v as RangeKey)}>
                   <SelectTrigger className="w-[180px] rounded-xl h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
