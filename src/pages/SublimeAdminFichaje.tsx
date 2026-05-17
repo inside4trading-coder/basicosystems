@@ -50,6 +50,7 @@ type AttendanceRow = {
   lastEventAt: string;
   lastDistance: number | null;
   radius: number | null;
+  eventIds: string[];
 };
 
 type RangeKey = "today" | "yesterday" | "week" | "month" | "lastMonth" | "3m" | "6m" | "year";
