@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AdminMetricCard } from "@/components/sublime/AdminMetricCard";
 import SublimeStoresAdmin from "@/components/sublime/SublimeStoresAdmin";
 import SublimePendingReviews from "@/components/sublime/SublimePendingReviews";
+import SublimeSchedulesAdmin from "@/components/sublime/SublimeSchedulesAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ExternalLink,
