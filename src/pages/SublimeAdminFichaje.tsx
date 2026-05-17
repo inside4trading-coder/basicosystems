@@ -131,15 +131,13 @@ export default function SublimeAdminFichaje() {
   const [employeeNames, setEmployeeNames] = useState<Record<string, string>>({});
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
+  const [range, setRange] = useState<RangeKey>("today");
 
   const loadAttendance = useCallback(async () => {
     setLoadingAttendance(true);
     setAttendanceError(null);
 
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
+    const { start, end } = computeRange(range);
 
     const { data, error } = await supabase
       .from("sublime_clock_events")
@@ -155,10 +153,10 @@ export default function SublimeAdminFichaje() {
       return;
     }
 
-    const todayEvents = (data ?? []) as ClockEvent[];
-    setEvents(todayEvents);
+    const list = (data ?? []) as ClockEvent[];
+    setEvents(list);
 
-    const ids = Array.from(new Set(todayEvents.map((event) => event.employee_id)));
+    const ids = Array.from(new Set(list.map((event) => event.employee_id)));
     if (ids.length) {
       const { data: employees } = await supabase
         .from("employees")
@@ -175,7 +173,7 @@ export default function SublimeAdminFichaje() {
     }
 
     setLoadingAttendance(false);
-  }, []);
+  }, [range]);
 
   useEffect(() => {
     loadAttendance();
@@ -195,9 +193,13 @@ export default function SublimeAdminFichaje() {
     const rows = new Map<string, AttendanceRow>();
 
     events.forEach((event) => {
-      const current = rows.get(event.employee_id) ?? {
+      const day = dayKeyOf(event.event_at);
+      const key = `${event.employee_id}_${day}`;
+      const current = rows.get(key) ?? {
+        key,
         employeeId: event.employee_id,
         employeeName: employeeNames[event.employee_id] ?? "Empleado",
+        dayKey: day,
         entryAt: null,
         exitAt: null,
         pending: false,
@@ -215,7 +217,7 @@ export default function SublimeAdminFichaje() {
       current.lastDistance = event.distance_meters;
       current.radius = event.allowed_radius_meters;
       current.employeeName = employeeNames[event.employee_id] ?? current.employeeName;
-      rows.set(event.employee_id, current);
+      rows.set(key, current);
     });
 
     return Array.from(rows.values()).sort(
@@ -227,11 +229,20 @@ export default function SublimeAdminFichaje() {
     ? new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
     : "—";
 
+  const formatDay = (key: string) => {
+    const [y, m, d] = key.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+  };
+
+  const showDateColumn = range !== "today" && range !== "yesterday";
+
   const formatHours = (entryAt: string | null, exitAt: string | null) => {
     if (!entryAt || !exitAt) return "—";
     const hours = Math.max(0, new Date(exitAt).getTime() - new Date(entryAt).getTime()) / 3_600_000;
     return `${hours.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h`;
   };
+
+  const currentRangeLabel = RANGE_OPTIONS.find((opt) => opt.value === range)?.label ?? "";
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
