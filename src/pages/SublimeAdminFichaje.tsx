@@ -760,19 +760,183 @@ export default function SublimeAdminFichaje() {
 
         {/* Métricas */}
         <TabsContent value="metricas" className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <AdminMetricCard label="Horas semana" value="—" hint="Total del equipo" icon={Timer} />
-            <AdminMetricCard label="Puntualidad" value="—" hint="Últimos 7 días" icon={CheckCircle2} />
-            <AdminMetricCard label="Ausencias" value="—" hint="Mes en curso" icon={UserX} />
-            <AdminMetricCard label="Horas extra" value="—" hint="Mes en curso" icon={Hourglass} />
-          </div>
-          <Card className="rounded-2xl border-border/60">
-            <EmptyState
-              icon={BarChart3}
-              title="Las métricas aparecerán cuando haya datos"
-              description="En cuanto el equipo empiece a fichar, verás aquí KPIs de puntualidad, asistencia y horas trabajadas."
-            />
+          <Card className="rounded-2xl border-border/60 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Métricas · {currentMetricsRangeLabel}</p>
+                <p className="text-xs text-muted-foreground">
+                  {metricsData.totals.shifts} turno(s) · {metricsData.totals.closed} cerrado(s)
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={metricsRange} onValueChange={(v) => setMetricsRange(v as RangeKey)}>
+                  <SelectTrigger className="w-[180px] rounded-xl h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {RANGE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={loadMetrics} className="rounded-xl" disabled={metricsLoading}>
+                  {metricsLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                  Refrescar
+                </Button>
+              </div>
+            </div>
           </Card>
+
+          {metricsLoading ? (
+            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Cargando métricas…
+            </div>
+          ) : metricsError ? (
+            <Card className="rounded-2xl border-border/60">
+              <EmptyState icon={AlertCircle} title="No se pudieron cargar las métricas" description={metricsError} />
+            </Card>
+          ) : metricsData.totals.shifts === 0 ? (
+            <Card className="rounded-2xl border-border/60">
+              <EmptyState
+                icon={BarChart3}
+                title="Sin fichajes en este periodo"
+                description="Cambia el filtro de periodo o espera a que el equipo registre nuevos fichajes."
+              />
+            </Card>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <AdminMetricCard
+                  label="Horas trabajadas"
+                  value={formatDuration(metricsData.totals.worked)}
+                  hint={metricsData.totals.expected > 0 ? `Debían ${formatDuration(metricsData.totals.expected)}` : "Total del equipo"}
+                  icon={Timer}
+                />
+                <AdminMetricCard
+                  label="Puntualidad"
+                  value={metricsData.totals.punctualityPct != null ? `${metricsData.totals.punctualityPct}%` : "—"}
+                  hint={`${metricsData.totals.onTime} a tiempo · ${metricsData.totals.lateCount} con retraso`}
+                  icon={CheckCircle2}
+                />
+                <AdminMetricCard
+                  label="Minutos de retraso"
+                  value={formatDuration(metricsData.totals.lateMin)}
+                  hint={`${metricsData.totals.lateCount} turno(s) tarde`}
+                  icon={AlertCircle}
+                />
+                <AdminMetricCard
+                  label="Horas extra"
+                  value={formatDuration(metricsData.totals.overtime)}
+                  hint={`${metricsData.totals.earlyCount} salida(s) anticipada(s) · ${formatDuration(metricsData.totals.earlyMin)}`}
+                  icon={Hourglass}
+                />
+                <AdminMetricCard
+                  label="Sin salida marcada"
+                  value={String(metricsData.totals.missingExit)}
+                  hint="Olvidos o turnos abiertos"
+                  icon={UserX}
+                />
+                <AdminMetricCard
+                  label="Pendientes de revisión"
+                  value={String(metricsData.totals.pending)}
+                  hint="Fichajes a aprobar"
+                  icon={AlertCircle}
+                />
+                <AdminMetricCard
+                  label="Fuera de radio"
+                  value={String(metricsData.totals.outOfRange)}
+                  hint="Fichajes con ubicación atípica"
+                  icon={Store}
+                />
+                <AdminMetricCard
+                  label="Turnos cerrados"
+                  value={`${metricsData.totals.closed} / ${metricsData.totals.shifts}`}
+                  hint="Completos vs. registrados"
+                  icon={CalendarDays}
+                />
+              </div>
+
+              <Card className="rounded-2xl border-border/60 overflow-hidden">
+                <div className="px-6 py-4 border-b border-border/60">
+                  <p className="text-sm font-semibold text-foreground">Detalle por empleado</p>
+                  <p className="text-xs text-muted-foreground">Resumen del periodo seleccionado</p>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Empleado</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Turnos</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Trabajadas / Debía</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Puntualidad</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Retrasos</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Salidas anticipadas</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Horas extra</TableHead>
+                      <TableHead className="uppercase tracking-wider text-xs font-semibold">Incidencias</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {metricsData.employees.map((e) => {
+                      const compared = e.lateCount + e.onTimeCount;
+                      const pct = compared > 0 ? Math.round((e.onTimeCount / compared) * 100) : null;
+                      const diff = e.totalWorkedMin - e.totalExpectedMin;
+                      return (
+                        <TableRow key={e.employeeId}>
+                          <TableCell className="font-semibold text-foreground">{e.employeeName}</TableCell>
+                          <TableCell className="tabular-nums">{e.closedShifts} / {e.shifts}</TableCell>
+                          <TableCell className="tabular-nums">
+                            <div className="flex flex-col">
+                              <span>{formatDuration(e.totalWorkedMin)} / {formatDuration(e.totalExpectedMin)}</span>
+                              {e.totalExpectedMin > 0 && (
+                                <span className={`text-[10px] ${diff >= 0 ? "text-[hsl(var(--status-success))]" : "text-destructive"}`}>
+                                  {diff >= 0 ? "+" : "−"}{formatDuration(Math.abs(diff))}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {pct != null ? (
+                              <Badge variant="outline" className={pct >= 90 ? "bg-[hsl(var(--status-success)/0.12)] text-[hsl(var(--status-success))] border-[hsl(var(--status-success)/0.30)]" : pct >= 70 ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30" : "bg-destructive/10 text-destructive border-destructive/20"}>
+                                {pct}%
+                              </Badge>
+                            ) : <span className="text-xs text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell className="tabular-nums">
+                            {e.lateCount > 0 ? (
+                              <div className="flex flex-col">
+                                <span className="text-destructive font-medium">{e.lateCount} turno(s)</span>
+                                <span className="text-[10px] text-muted-foreground">+{formatDuration(e.totalLateMin)} acumulados</span>
+                              </div>
+                            ) : <span className="text-xs text-muted-foreground">Ninguno</span>}
+                          </TableCell>
+                          <TableCell className="tabular-nums">
+                            {e.earlyExitCount > 0 ? (
+                              <div className="flex flex-col">
+                                <span className="text-destructive font-medium">{e.earlyExitCount} turno(s)</span>
+                                <span className="text-[10px] text-muted-foreground">−{formatDuration(e.totalEarlyExitMin)} acumulados</span>
+                              </div>
+                            ) : <span className="text-xs text-muted-foreground">Ninguna</span>}
+                          </TableCell>
+                          <TableCell className="tabular-nums">
+                            {e.overtimeMin > 0 ? (
+                              <span className="text-[hsl(var(--status-success))] font-medium">+{formatDuration(e.overtimeMin)}</span>
+                            ) : <span className="text-xs text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {e.missingExitCount > 0 && <Badge variant="outline" className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30">Sin salida: {e.missingExitCount}</Badge>}
+                              {e.pendingCount > 0 && <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">Pendientes: {e.pendingCount}</Badge>}
+                              {e.outOfRangeCount > 0 && <Badge variant="outline" className="bg-muted text-foreground border-border">Fuera radio: {e.outOfRangeCount}</Badge>}
+                              {e.missingExitCount === 0 && e.pendingCount === 0 && e.outOfRangeCount === 0 && (
+                                <span className="text-xs text-muted-foreground">Sin incidencias</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Card>
+            </>
+          )}
         </TabsContent>
 
         {/* Tiendas */}
