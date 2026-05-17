@@ -439,13 +439,7 @@ export default function SublimeAdminFichaje() {
 
         {/* Horarios */}
         <TabsContent value="horarios">
-          <Card className="rounded-2xl border-border/60">
-            <EmptyState
-              icon={CalendarDays}
-              title="Configura los horarios del equipo"
-              description="Define los turnos semanales de cada empleado para empezar a comparar fichajes con horarios planificados."
-            />
-          </Card>
+          <SublimeSchedulesAdmin />
         </TabsContent>
 
         {/* Incidencias */}
