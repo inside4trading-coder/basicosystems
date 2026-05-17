@@ -37,8 +37,10 @@ type ClockEvent = {
 };
 
 type AttendanceRow = {
+  key: string;
   employeeId: string;
   employeeName: string;
+  dayKey: string;
   entryAt: string | null;
   exitAt: string | null;
   pending: boolean;
@@ -47,6 +49,62 @@ type AttendanceRow = {
   lastDistance: number | null;
   radius: number | null;
 };
+
+type RangeKey = "today" | "yesterday" | "week" | "month" | "lastMonth" | "3m" | "6m" | "year";
+
+const RANGE_OPTIONS: { value: RangeKey; label: string }[] = [
+  { value: "today", label: "Hoy" },
+  { value: "yesterday", label: "Ayer" },
+  { value: "week", label: "Esta semana" },
+  { value: "month", label: "Mes actual" },
+  { value: "lastMonth", label: "Mes pasado" },
+  { value: "3m", label: "Últimos 3 meses" },
+  { value: "6m", label: "Últimos 6 meses" },
+  { value: "year", label: "Último año" },
+];
+
+function computeRange(range: RangeKey): { start: Date; end: Date } {
+  const now = new Date();
+  const start = new Date(now); start.setHours(0, 0, 0, 0);
+  const end = new Date(start); end.setDate(end.getDate() + 1);
+  switch (range) {
+    case "today": return { start, end };
+    case "yesterday": {
+      const s = new Date(start); s.setDate(s.getDate() - 1);
+      return { start: s, end: start };
+    }
+    case "week": {
+      const s = new Date(start);
+      const dow = (s.getDay() + 6) % 7;
+      s.setDate(s.getDate() - dow);
+      return { start: s, end };
+    }
+    case "month":
+      return { start: new Date(start.getFullYear(), start.getMonth(), 1), end };
+    case "lastMonth":
+      return {
+        start: new Date(start.getFullYear(), start.getMonth() - 1, 1),
+        end: new Date(start.getFullYear(), start.getMonth(), 1),
+      };
+    case "3m": {
+      const s = new Date(start); s.setMonth(s.getMonth() - 3);
+      return { start: s, end };
+    }
+    case "6m": {
+      const s = new Date(start); s.setMonth(s.getMonth() - 6);
+      return { start: s, end };
+    }
+    case "year": {
+      const s = new Date(start); s.setFullYear(s.getFullYear() - 1);
+      return { start: s, end };
+    }
+  }
+}
+
+function dayKeyOf(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 function EmptyState({
   icon: Icon,
