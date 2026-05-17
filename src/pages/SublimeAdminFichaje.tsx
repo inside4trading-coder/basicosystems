@@ -298,9 +298,8 @@ export default function SublimeAdminFichaje() {
   const showDateColumn = range !== "today" && range !== "yesterday";
 
   const formatHours = (entryAt: string | null, exitAt: string | null) => {
-    if (!entryAt || !exitAt) return "—";
-    const hours = Math.max(0, new Date(exitAt).getTime() - new Date(entryAt).getTime()) / 3_600_000;
-    return `${hours.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h`;
+    const minutes = workedMinutes(entryAt, exitAt);
+    return minutes == null ? "—" : formatDuration(minutes);
   };
 
   const AUTO_CLOSE_HOURS = 16;
@@ -309,49 +308,29 @@ export default function SublimeAdminFichaje() {
     return (Date.now() - new Date(entryAt).getTime()) / 3_600_000 >= AUTO_CLOSE_HOURS;
   };
 
-  // Horas reales trabajadas agregadas por empleado+día (suma de todos los turnos cerrados).
-  const dayHoursByKey = useMemo(() => {
-    const map = new Map<string, number>();
-    attendanceRows.forEach((r) => {
-      if (!r.entryAt || !r.exitAt) return;
-      const h = Math.max(0, new Date(r.exitAt).getTime() - new Date(r.entryAt).getTime()) / 3_600_000;
-      const k = `${r.employeeId}|${r.dayKey}`;
-      map.set(k, (map.get(k) ?? 0) + h);
-    });
-    return map;
-  }, [attendanceRows]);
+  const workedMinutes = (entryAt: string | null, exitAt: string | null): number | null => {
+    if (!entryAt || !exitAt) return null;
+    return Math.max(0, Math.round((new Date(exitAt).getTime() - new Date(entryAt).getTime()) / 60_000));
+  };
 
-  // Fila donde mostrar el cumplimiento del día: la última cerrada por empleado+día;
-  // si no hay cerradas, la última fila del día.
-  const lastRowKeyByDay = useMemo(() => {
-    const closed = new Map<string, { key: string; ts: number }>();
-    const any = new Map<string, { key: string; ts: number }>();
-    attendanceRows.forEach((r) => {
-      const ts = r.entryAt ? new Date(r.entryAt).getTime() : 0;
-      const k = `${r.employeeId}|${r.dayKey}`;
-      const a = any.get(k);
-      if (!a || ts >= a.ts) any.set(k, { key: r.key, ts });
-      if (r.exitAt) {
-        const c = closed.get(k);
-        if (!c || ts >= c.ts) closed.set(k, { key: r.key, ts });
-      }
-    });
-    const set = new Set<string>();
-    any.forEach((v, k) => set.add((closed.get(k) ?? v).key));
-    return set;
-  }, [attendanceRows]);
+  const formatDuration = (totalMinutes: number) => {
+    const minutes = Math.max(0, Math.round(totalMinutes));
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
+  };
 
-  // Horas esperadas según horario configurado del empleado.
+  // Minutos esperados según horario configurado del empleado.
   // El descanso cuenta como parte del turno, no se descuenta.
-  const expectedHoursFor = (employeeId: string): number | null => {
+  const expectedMinutesFor = (employeeId: string): number | null => {
     const s = employeeSettings[employeeId];
     if (!s?.entry_time || !s?.exit_time) return null;
     const [eh, em] = s.entry_time.split(":").map(Number);
     const [xh, xm] = s.exit_time.split(":").map(Number);
     const entryMin = (eh ?? 0) * 60 + (em ?? 0);
     const exitMin = (xh ?? 0) * 60 + (xm ?? 0);
-    const diff = exitMin - entryMin;
-    return diff > 0 ? diff / 60 : null;
+    const diff = exitMin >= entryMin ? exitMin - entryMin : exitMin + 24 * 60 - entryMin;
+    return diff > 0 ? diff : null;
   };
 
   const currentRangeLabel = RANGE_OPTIONS.find((opt) => opt.value === range)?.label ?? "";
@@ -473,33 +452,39 @@ export default function SublimeAdminFichaje() {
                         </TableCell>
                         <TableCell>
                           {(() => {
-                            const expected = expectedHoursFor(row.employeeId);
-                            const actual = dayHoursByKey.get(`${row.employeeId}|${row.dayKey}`) ?? 0;
+                            const expected = expectedMinutesFor(row.employeeId);
+                            const actual = workedMinutes(row.entryAt, row.exitAt);
                             if (expected == null) {
                               return <span className="text-xs text-muted-foreground">Sin horario</span>;
                             }
-                            if (!row.exitAt && !autoClosed && actual === 0) {
-                              return <span className="text-xs text-muted-foreground">En curso</span>;
+                            if (actual == null) {
+                              return (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-xs text-muted-foreground">{autoClosed ? "Sin salida" : "En curso"}</span>
+                                  <span className="text-[10px] text-muted-foreground">debía {formatDuration(expected)}</span>
+                                </div>
+                              );
                             }
                             const diff = actual - expected;
-                            const totalMin = Math.round(Math.abs(diff) * 60);
-                            const h = Math.floor(totalMin / 60);
-                            const m = totalMin % 60;
-                            const absLabel = h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
+                            const totalMin = Math.abs(diff);
+                            const absLabel = formatDuration(totalMin);
                             if (totalMin < 2) {
                               return (
-                                <Badge variant="outline" className="bg-[hsl(142_72%_29%)]/10 text-[hsl(142_72%_29%)] border-[hsl(142_72%_29%)]/30">
-                                  Completo
-                                </Badge>
+                                <div className="flex flex-col gap-0.5">
+                                  <Badge variant="outline" className="bg-[hsl(var(--status-success)/0.12)] text-[hsl(var(--status-success))] border-[hsl(var(--status-success)/0.30)] w-fit">
+                                    Completo
+                                  </Badge>
+                                  <span className="text-[10px] text-muted-foreground">{formatDuration(actual)} / {formatDuration(expected)}</span>
+                                </div>
                               );
                             }
                             if (diff > 0) {
                               return (
                                 <div className="flex flex-col gap-0.5">
-                                  <Badge variant="outline" className="bg-[hsl(142_72%_29%)]/10 text-[hsl(142_72%_29%)] border-[hsl(142_72%_29%)]/30 w-fit">
+                                  <Badge variant="outline" className="bg-[hsl(var(--status-success)/0.12)] text-[hsl(var(--status-success))] border-[hsl(var(--status-success)/0.30)] w-fit">
                                     +{absLabel}
                                   </Badge>
-                                  <span className="text-[10px] text-muted-foreground">de más</span>
+                                  <span className="text-[10px] text-muted-foreground">trabajó {formatDuration(actual)} / debía {formatDuration(expected)}</span>
                                 </div>
                               );
                             }
@@ -508,7 +493,7 @@ export default function SublimeAdminFichaje() {
                                 <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 w-fit">
                                   −{absLabel}
                                 </Badge>
-                                <span className="text-[10px] text-muted-foreground">faltaron</span>
+                                <span className="text-[10px] text-muted-foreground">trabajó {formatDuration(actual)} / debía {formatDuration(expected)}</span>
                               </div>
                             );
                           })()}
