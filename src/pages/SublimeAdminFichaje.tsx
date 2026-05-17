@@ -190,37 +190,79 @@ export default function SublimeAdminFichaje() {
   }, [loadAttendance]);
 
   const attendanceRows = useMemo<AttendanceRow[]>(() => {
-    const rows = new Map<string, AttendanceRow>();
-
+    // Group events per employee+day, then split into separate shifts so that
+    // multiple entradas en el mismo día aparezcan como filas independientes.
+    const byEmpDay = new Map<string, ClockEvent[]>();
     events.forEach((event) => {
       const day = dayKeyOf(event.event_at);
-      const key = `${event.employee_id}_${day}`;
-      const current = rows.get(key) ?? {
-        key,
-        employeeId: event.employee_id,
-        employeeName: employeeNames[event.employee_id] ?? "Empleado",
-        dayKey: day,
-        entryAt: null,
-        exitAt: null,
-        pending: false,
-        outOfRange: false,
-        lastEventAt: event.event_at,
-        lastDistance: null,
-        radius: null,
-      };
-
-      if (event.event_type === "entrada" && !current.entryAt) current.entryAt = event.event_at;
-      if (event.event_type === "salida") current.exitAt = event.event_at;
-      current.pending = current.pending || event.clock_state === "pendiente_revision";
-      current.outOfRange = current.outOfRange || event.location_state === "fuera_del_radio";
-      current.lastEventAt = event.event_at;
-      current.lastDistance = event.distance_meters;
-      current.radius = event.allowed_radius_meters;
-      current.employeeName = employeeNames[event.employee_id] ?? current.employeeName;
-      rows.set(key, current);
+      const k = `${event.employee_id}|${day}`;
+      const arr = byEmpDay.get(k) ?? [];
+      arr.push(event);
+      byEmpDay.set(k, arr);
     });
 
-    return Array.from(rows.values()).sort(
+    const rows: AttendanceRow[] = [];
+    byEmpDay.forEach((evs, k) => {
+      const [employeeId, day] = k.split("|");
+      const name = employeeNames[employeeId] ?? "Empleado";
+      const sorted = [...evs].sort(
+        (a, b) => new Date(a.event_at).getTime() - new Date(b.event_at).getTime(),
+      );
+
+      let shiftIdx = 0;
+      let current: AttendanceRow | null = null;
+      const pushCurrent = () => {
+        if (current) rows.push(current);
+        current = null;
+      };
+
+      sorted.forEach((event) => {
+        if (event.event_type === "entrada") {
+          pushCurrent();
+          shiftIdx += 1;
+          current = {
+            key: `${employeeId}_${day}_${shiftIdx}`,
+            employeeId,
+            employeeName: name,
+            dayKey: day,
+            entryAt: event.event_at,
+            exitAt: null,
+            pending: event.clock_state === "pendiente_revision",
+            outOfRange: event.location_state === "fuera_del_radio",
+            lastEventAt: event.event_at,
+            lastDistance: event.distance_meters,
+            radius: event.allowed_radius_meters,
+          };
+          return;
+        }
+        if (!current) {
+          shiftIdx += 1;
+          current = {
+            key: `${employeeId}_${day}_${shiftIdx}`,
+            employeeId,
+            employeeName: name,
+            dayKey: day,
+            entryAt: null,
+            exitAt: null,
+            pending: true,
+            outOfRange: false,
+            lastEventAt: event.event_at,
+            lastDistance: event.distance_meters,
+            radius: event.allowed_radius_meters,
+          };
+        }
+        if (event.event_type === "salida") current.exitAt = event.event_at;
+        current.pending = current.pending || event.clock_state === "pendiente_revision";
+        current.outOfRange = current.outOfRange || event.location_state === "fuera_del_radio";
+        current.lastEventAt = event.event_at;
+        current.lastDistance = event.distance_meters;
+        current.radius = event.allowed_radius_meters;
+        if (event.event_type === "salida") pushCurrent();
+      });
+      pushCurrent();
+    });
+
+    return rows.sort(
       (a, b) => new Date(b.lastEventAt).getTime() - new Date(a.lastEventAt).getTime(),
     );
   }, [employeeNames, events]);
