@@ -343,23 +343,35 @@ export default function SublimeAdminFichaje() {
                 </TableHeader>
                 <TableBody>
                   {attendanceRows.map((row) => {
+                    const autoClosed = isAutoClosed(row.entryAt, row.exitAt);
                     const status = row.pending
                       ? { label: "Pendiente revisión", className: "bg-destructive/10 text-destructive border-destructive/20" }
-                      : row.exitAt
-                        ? { label: "Completa", className: "bg-primary/10 text-primary border-primary/20" }
-                        : row.entryAt
-                          ? { label: "En turno", className: "bg-muted text-foreground border-border" }
-                          : { label: "Registrado", className: "bg-muted text-muted-foreground border-border" };
+                      : autoClosed
+                        ? { label: "No cerró turno", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30" }
+                        : row.exitAt
+                          ? { label: "Completa", className: "bg-primary/10 text-primary border-primary/20" }
+                          : row.entryAt
+                            ? { label: "En turno", className: "bg-muted text-foreground border-border" }
+                            : { label: "Registrado", className: "bg-muted text-muted-foreground border-border" };
                     return (
                       <TableRow key={row.key}>
                         {showDateColumn && <TableCell className="tabular-nums text-muted-foreground">{formatDay(row.dayKey)}</TableCell>}
                         <TableCell className="font-semibold text-foreground">{row.employeeName}</TableCell>
                         <TableCell className="tabular-nums">{formatTime(row.entryAt)}</TableCell>
-                        <TableCell className="tabular-nums">{formatTime(row.exitAt)}</TableCell>
-                        <TableCell className="tabular-nums">{formatHours(row.entryAt, row.exitAt)}</TableCell>
+                        <TableCell className="tabular-nums">
+                          {autoClosed ? <span className="text-muted-foreground italic">sin marcar</span> : formatTime(row.exitAt)}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {autoClosed ? <span className="text-muted-foreground">—</span> : formatHours(row.entryAt, row.exitAt)}
+                        </TableCell>
                         <TableCell>
                           <div className="flex flex-col items-start gap-1">
                             <Badge variant="outline" className={status.className}>{status.label}</Badge>
+                            {autoClosed && (
+                              <span className="text-xs text-muted-foreground max-w-[260px]">
+                                Cierre automático: superó {AUTO_CLOSE_HOURS}h sin marcar salida. Evidentemente olvidó fichar.
+                              </span>
+                            )}
                             {row.outOfRange && row.lastDistance != null && (
                               <span className="text-xs text-muted-foreground">
                                 Fuera de radio: {row.lastDistance.toLocaleString("es-ES")} m / {row.radius ?? "—"} m
