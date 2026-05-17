@@ -309,6 +309,30 @@ export default function SublimeAdminFichaje() {
     return (Date.now() - new Date(entryAt).getTime()) / 3_600_000 >= AUTO_CLOSE_HOURS;
   };
 
+  // Horas reales trabajadas agregadas por empleado+día (suma de todos los turnos cerrados).
+  const dayHoursByKey = useMemo(() => {
+    const map = new Map<string, number>();
+    attendanceRows.forEach((r) => {
+      if (!r.entryAt || !r.exitAt) return;
+      const h = Math.max(0, new Date(r.exitAt).getTime() - new Date(r.entryAt).getTime()) / 3_600_000;
+      const k = `${r.employeeId}|${r.dayKey}`;
+      map.set(k, (map.get(k) ?? 0) + h);
+    });
+    return map;
+  }, [attendanceRows]);
+
+  // Horas esperadas según horario configurado del empleado.
+  const expectedHoursFor = (employeeId: string): number | null => {
+    const s = employeeSettings[employeeId];
+    if (!s?.entry_time || !s?.exit_time) return null;
+    const [eh, em] = s.entry_time.split(":").map(Number);
+    const [xh, xm] = s.exit_time.split(":").map(Number);
+    const entryMin = (eh ?? 0) * 60 + (em ?? 0);
+    const exitMin = (xh ?? 0) * 60 + (xm ?? 0);
+    const diff = exitMin - entryMin - (s.break_minutes ?? 0);
+    return diff > 0 ? diff / 60 : null;
+  };
+
   const currentRangeLabel = RANGE_OPTIONS.find((opt) => opt.value === range)?.label ?? "";
 
   return (
