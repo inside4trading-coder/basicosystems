@@ -321,6 +321,20 @@ export default function SublimeAdminFichaje() {
     return map;
   }, [attendanceRows]);
 
+  // Última fila (por orden de entrada) por empleado+día — para mostrar el cumplimiento solo una vez.
+  const lastRowKeyByDay = useMemo(() => {
+    const map = new Map<string, { key: string; ts: number }>();
+    attendanceRows.forEach((r) => {
+      const ts = r.entryAt ? new Date(r.entryAt).getTime() : 0;
+      const k = `${r.employeeId}|${r.dayKey}`;
+      const cur = map.get(k);
+      if (!cur || ts >= cur.ts) map.set(k, { key: r.key, ts });
+    });
+    const set = new Set<string>();
+    map.forEach((v) => set.add(v.key));
+    return set;
+  }, [attendanceRows]);
+
   // Horas esperadas según horario configurado del empleado.
   // El descanso cuenta como parte del turno, no se descuenta.
   const expectedHoursFor = (employeeId: string): number | null => {
@@ -453,6 +467,9 @@ export default function SublimeAdminFichaje() {
                         </TableCell>
                         <TableCell>
                           {(() => {
+                            if (!lastRowKeyByDay.has(row.key)) {
+                              return <span className="text-xs text-muted-foreground">—</span>;
+                            }
                             const expected = expectedHoursFor(row.employeeId);
                             const actual = dayHoursByKey.get(`${row.employeeId}|${row.dayKey}`) ?? 0;
                             if (expected == null) {
