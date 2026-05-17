@@ -809,48 +809,56 @@ export default function SublimeAdminFichaje() {
                   value={formatDuration(metricsData.totals.worked)}
                   hint={metricsData.totals.expected > 0 ? `Debían ${formatDuration(metricsData.totals.expected)}` : "Total del equipo"}
                   icon={Timer}
+                  tooltip="Suma del tiempo entre entrada y salida de todos los turnos cerrados en el periodo. El descanso cuenta como parte del turno (no se descuenta)."
                 />
                 <AdminMetricCard
                   label="Puntualidad"
                   value={metricsData.totals.punctualityPct != null ? `${metricsData.totals.punctualityPct}%` : "—"}
                   hint={`${metricsData.totals.onTime} a tiempo · ${metricsData.totals.lateCount} con retraso`}
                   icon={CheckCircle2}
+                  tooltip="Porcentaje de turnos cuya entrada estuvo dentro de la tolerancia configurada por empleado (por defecto 10 min sobre la hora de entrada del horario)."
                 />
                 <AdminMetricCard
                   label="Minutos de retraso"
                   value={formatDuration(metricsData.totals.lateMin)}
                   hint={`${metricsData.totals.lateCount} turno(s) tarde`}
                   icon={AlertCircle}
+                  tooltip="Suma de los minutos de retraso de los turnos que superaron la tolerancia. Se mide entrada real vs. hora de entrada programada del empleado."
                 />
                 <AdminMetricCard
                   label="Horas extra"
                   value={formatDuration(metricsData.totals.overtime)}
                   hint={`${metricsData.totals.earlyCount} salida(s) anticipada(s) · ${formatDuration(metricsData.totals.earlyMin)}`}
                   icon={Hourglass}
+                  tooltip="Suma de minutos trabajados después de la hora de salida programada de cada turno. El subtítulo indica también las salidas anticipadas acumuladas."
                 />
                 <AdminMetricCard
                   label="Sin salida marcada"
                   value={String(metricsData.totals.missingExit)}
                   hint="Olvidos o turnos abiertos"
                   icon={UserX}
+                  tooltip="Turnos con entrada registrada pero sin salida: el empleado olvidó fichar la salida o el turno aún está en curso."
                 />
                 <AdminMetricCard
                   label="Pendientes de revisión"
                   value={String(metricsData.totals.pending)}
                   hint="Fichajes a aprobar"
                   icon={AlertCircle}
+                  tooltip="Fichajes marcados por el sistema como dudosos (PIN temporal, ubicación atípica, etc.) que requieren aprobación manual de un admin."
                 />
                 <AdminMetricCard
                   label="Fuera de radio"
                   value={String(metricsData.totals.outOfRange)}
                   hint="Fichajes con ubicación atípica"
                   icon={Store}
+                  tooltip="Fichajes realizados a más distancia que el radio permitido de la tienda configurada para ese empleado."
                 />
                 <AdminMetricCard
                   label="Turnos cerrados"
                   value={`${metricsData.totals.closed} / ${metricsData.totals.shifts}`}
                   hint="Completos vs. registrados"
                   icon={CalendarDays}
+                  tooltip="Turnos con entrada y salida registradas, comparados con el total de turnos del periodo. Lo ideal es que coincidan."
                 />
               </div>
 
