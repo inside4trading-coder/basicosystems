@@ -272,7 +272,7 @@ export default function SublimeAdminFichaje() {
       <Tabs defaultValue="asistencia" className="space-y-6">
         <TabsList className="bg-muted rounded-xl p-1 h-auto flex-wrap">
           <TabsTrigger value="asistencia" className="rounded-lg data-[state=active]:bg-background">
-            Asistencia hoy
+            Historial fichajes
           </TabsTrigger>
           <TabsTrigger value="horarios" className="rounded-lg data-[state=active]:bg-background">
             Horarios
@@ -288,18 +288,30 @@ export default function SublimeAdminFichaje() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Asistencia hoy */}
+        {/* Historial fichajes */}
         <TabsContent value="asistencia">
           <Card className="rounded-2xl border-border/60 overflow-hidden">
-            <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-border/60">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-b border-border/60">
               <div>
-                <p className="text-sm font-semibold text-foreground">Registros de hoy</p>
-                <p className="text-xs text-muted-foreground">{attendanceRows.length} empleado(s) con fichaje registrado</p>
+                <p className="text-sm font-semibold text-foreground">Registros · {currentRangeLabel}</p>
+                <p className="text-xs text-muted-foreground">{attendanceRows.length} fichaje(s) en el periodo</p>
               </div>
-              <Button variant="outline" size="sm" onClick={loadAttendance} className="rounded-xl" disabled={loadingAttendance}>
-                {loadingAttendance ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
-                Refrescar
-              </Button>
+              <div className="flex items-center gap-2">
+                <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
+                  <SelectTrigger className="w-[180px] rounded-xl h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RANGE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={loadAttendance} className="rounded-xl" disabled={loadingAttendance}>
+                  {loadingAttendance ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                  Refrescar
+                </Button>
+              </div>
             </div>
             {loadingAttendance ? (
               <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
@@ -315,6 +327,7 @@ export default function SublimeAdminFichaje() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    {showDateColumn && <TableHead className="uppercase tracking-wider text-xs font-semibold">Fecha</TableHead>}
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Empleado</TableHead>
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Entrada</TableHead>
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Salida</TableHead>
@@ -332,7 +345,8 @@ export default function SublimeAdminFichaje() {
                           ? { label: "En turno", className: "bg-muted text-foreground border-border" }
                           : { label: "Registrado", className: "bg-muted text-muted-foreground border-border" };
                     return (
-                      <TableRow key={row.employeeId}>
+                      <TableRow key={row.key}>
+                        {showDateColumn && <TableCell className="tabular-nums text-muted-foreground">{formatDay(row.dayKey)}</TableCell>}
                         <TableCell className="font-semibold text-foreground">{row.employeeName}</TableCell>
                         <TableCell className="tabular-nums">{formatTime(row.entryAt)}</TableCell>
                         <TableCell className="tabular-nums">{formatTime(row.exitAt)}</TableCell>
@@ -355,8 +369,8 @@ export default function SublimeAdminFichaje() {
             ) : (
               <EmptyState
                 icon={Clock}
-                title="Aún no hay fichajes registrados hoy"
-                description="Los fichajes del equipo aparecerán aquí en tiempo real cuando empiecen a registrarse."
+                title="No hay fichajes en este periodo"
+                description="Cambia el filtro de periodo o espera a que el equipo registre nuevos fichajes."
               />
             )}
           </Card>
