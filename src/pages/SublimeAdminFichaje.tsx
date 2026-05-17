@@ -127,9 +127,16 @@ function EmptyState({
   );
 }
 
+type EmployeeSettings = {
+  entry_time: string | null;
+  exit_time: string | null;
+  break_minutes: number;
+};
+
 export default function SublimeAdminFichaje() {
   const [events, setEvents] = useState<ClockEvent[]>([]);
   const [employeeNames, setEmployeeNames] = useState<Record<string, string>>({});
+  const [employeeSettings, setEmployeeSettings] = useState<Record<string, EmployeeSettings>>({});
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [range, setRange] = useState<RangeKey>("today");
@@ -159,18 +166,29 @@ export default function SublimeAdminFichaje() {
 
     const ids = Array.from(new Set(list.map((event) => event.employee_id)));
     if (ids.length) {
-      const { data: employees } = await supabase
-        .from("employees")
-        .select("id, first_name, last_name")
-        .in("id", ids);
+      const [{ data: employees }, { data: settings }] = await Promise.all([
+        supabase.from("employees").select("id, first_name, last_name").in("id", ids),
+        supabase.from("sublime_clock_settings").select("employee_id, entry_time, exit_time, break_minutes").in("employee_id", ids),
+      ]);
 
       const names: Record<string, string> = {};
       (employees ?? []).forEach((employee: any) => {
         names[employee.id] = `${employee.first_name ?? ""} ${employee.last_name ?? ""}`.trim();
       });
       setEmployeeNames(names);
+
+      const cfg: Record<string, EmployeeSettings> = {};
+      (settings ?? []).forEach((s: any) => {
+        cfg[s.employee_id] = {
+          entry_time: s.entry_time,
+          exit_time: s.exit_time,
+          break_minutes: s.break_minutes ?? 0,
+        };
+      });
+      setEmployeeSettings(cfg);
     } else {
       setEmployeeNames({});
+      setEmployeeSettings({});
     }
 
     setLoadingAttendance(false);
