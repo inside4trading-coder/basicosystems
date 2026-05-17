@@ -157,6 +157,9 @@ export default function SublimeAdminFichaje() {
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [range, setRange] = useState<RangeKey>("today");
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const loadAttendance = useCallback(async () => {
     setLoadingAttendance(true);
