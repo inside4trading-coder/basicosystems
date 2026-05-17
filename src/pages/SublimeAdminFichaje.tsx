@@ -254,6 +254,7 @@ export default function SublimeAdminFichaje() {
             lastEventAt: event.event_at,
             lastDistance: event.distance_meters,
             radius: event.allowed_radius_meters,
+            eventIds: [event.id],
           };
           return;
         }
@@ -271,8 +272,10 @@ export default function SublimeAdminFichaje() {
             lastEventAt: event.event_at,
             lastDistance: event.distance_meters,
             radius: event.allowed_radius_meters,
+            eventIds: [],
           };
         }
+        current.eventIds.push(event.id);
         if (event.event_type === "salida") current.exitAt = event.event_at;
         current.pending = current.pending || event.clock_state === "pendiente_revision";
         current.outOfRange = current.outOfRange || event.location_state === "fuera_del_radio";
