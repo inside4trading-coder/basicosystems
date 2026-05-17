@@ -132,6 +132,7 @@ type EmployeeSettings = {
   entry_time: string | null;
   exit_time: string | null;
   break_minutes: number;
+  store_id?: string | null;
 };
 
 export default function SublimeAdminFichaje() {
