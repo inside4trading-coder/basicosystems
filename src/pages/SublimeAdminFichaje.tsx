@@ -473,21 +473,20 @@ export default function SublimeAdminFichaje() {
                         </TableCell>
                         <TableCell>
                           {(() => {
-                            if (!lastRowKeyByDay.has(row.key)) {
-                              return <span className="text-xs text-muted-foreground">—</span>;
-                            }
                             const expected = expectedHoursFor(row.employeeId);
                             const actual = dayHoursByKey.get(`${row.employeeId}|${row.dayKey}`) ?? 0;
                             if (expected == null) {
                               return <span className="text-xs text-muted-foreground">Sin horario</span>;
                             }
-                            if (!row.exitAt && !autoClosed) {
+                            if (!row.exitAt && !autoClosed && actual === 0) {
                               return <span className="text-xs text-muted-foreground">En curso</span>;
                             }
                             const diff = actual - expected;
-                            const abs = Math.abs(diff);
-                            const absLabel = `${abs.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h`;
-                            if (Math.abs(diff) < 0.02) {
+                            const totalMin = Math.round(Math.abs(diff) * 60);
+                            const h = Math.floor(totalMin / 60);
+                            const m = totalMin % 60;
+                            const absLabel = h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
+                            if (totalMin < 2) {
                               return (
                                 <Badge variant="outline" className="bg-[hsl(142_72%_29%)]/10 text-[hsl(142_72%_29%)] border-[hsl(142_72%_29%)]/30">
                                   Completo
