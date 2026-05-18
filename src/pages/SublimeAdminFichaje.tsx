@@ -741,6 +741,13 @@ export default function SublimeAdminFichaje() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={attendanceRows.length > 0 && selectedRows.size === attendanceRows.length}
+                        onCheckedChange={(c) => toggleAll(attendanceRows, !!c)}
+                        aria-label="Seleccionar todos"
+                      />
+                    </TableHead>
                     {showDateColumn && <TableHead className="uppercase tracking-wider text-xs font-semibold">Fecha</TableHead>}
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Empleado</TableHead>
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Entrada</TableHead>
