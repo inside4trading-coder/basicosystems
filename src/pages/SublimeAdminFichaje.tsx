@@ -682,6 +682,35 @@ export default function SublimeAdminFichaje() {
                 <p className="text-xs text-muted-foreground">{attendanceRows.length} fichaje(s) en el periodo</p>
               </div>
               <div className="flex items-center gap-2">
+                {selectedRows.size > 0 && (
+                  <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="rounded-xl" disabled={deleting}>
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Borrar {selectedRows.size}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Borrar fichajes seleccionados?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Se eliminarán definitivamente los eventos de entrada/salida de los {selectedRows.size} turno(s) seleccionado(s). Esta acción no se puede deshacer.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={(e) => { e.preventDefault(); handleDeleteSelected(attendanceRows); }}
+                          disabled={deleting}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          {deleting ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Trash2 className="h-3 w-3 mr-1" />}
+                          Borrar definitivamente
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
                 <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
                   <SelectTrigger className="w-[180px] rounded-xl h-9">
                     <SelectValue />
