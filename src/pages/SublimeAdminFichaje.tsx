@@ -12,6 +12,19 @@ import SublimeStoresAdmin from "@/components/sublime/SublimeStoresAdmin";
 import SublimePendingReviews from "@/components/sublime/SublimePendingReviews";
 import SublimeSchedulesAdmin from "@/components/sublime/SublimeSchedulesAdmin";
 import { supabase } from "@/integrations/supabase/client";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import {
   ExternalLink,
   Store,
@@ -25,6 +38,7 @@ import {
   Hourglass,
   RefreshCw,
   Loader2,
+  Trash2,
 } from "lucide-react";
 
 type ClockEvent = {
@@ -50,6 +64,7 @@ type AttendanceRow = {
   lastEventAt: string;
   lastDistance: number | null;
   radius: number | null;
+  eventIds: string[];
 };
 
 type RangeKey = "today" | "yesterday" | "week" | "month" | "lastMonth" | "3m" | "6m" | "year";
@@ -142,6 +157,9 @@ export default function SublimeAdminFichaje() {
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [range, setRange] = useState<RangeKey>("today");
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const loadAttendance = useCallback(async () => {
     setLoadingAttendance(true);
@@ -253,6 +271,7 @@ export default function SublimeAdminFichaje() {
             lastEventAt: event.event_at,
             lastDistance: event.distance_meters,
             radius: event.allowed_radius_meters,
+            eventIds: [event.id],
           };
           return;
         }
@@ -270,8 +289,10 @@ export default function SublimeAdminFichaje() {
             lastEventAt: event.event_at,
             lastDistance: event.distance_meters,
             radius: event.allowed_radius_meters,
+            eventIds: [],
           };
         }
+        current.eventIds.push(event.id);
         if (event.event_type === "salida") current.exitAt = event.event_at;
         current.pending = current.pending || event.clock_state === "pendiente_revision";
         current.outOfRange = current.outOfRange || event.location_state === "fuera_del_radio";
@@ -298,6 +319,44 @@ export default function SublimeAdminFichaje() {
   };
 
   const showDateColumn = range !== "today" && range !== "yesterday";
+
+  const toggleRow = (key: string) => {
+    setSelectedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleAll = (rows: AttendanceRow[], checked: boolean) => {
+    if (!checked) {
+      setSelectedRows(new Set());
+      return;
+    }
+    setSelectedRows(new Set(rows.map((r) => r.key)));
+  };
+
+  const handleDeleteSelected = async (rows: AttendanceRow[]) => {
+    const idsToDelete = rows
+      .filter((r) => selectedRows.has(r.key))
+      .flatMap((r) => r.eventIds);
+    if (!idsToDelete.length) return;
+    setDeleting(true);
+    const { error } = await supabase
+      .from("sublime_clock_events")
+      .delete()
+      .in("id", idsToDelete);
+    setDeleting(false);
+    setConfirmOpen(false);
+    if (error) {
+      toast.error("No se pudieron borrar los fichajes", { description: error.message });
+      return;
+    }
+    toast.success(`Se borraron ${idsToDelete.length} evento(s) de fichaje`);
+    setSelectedRows(new Set());
+    loadAttendance();
+  };
+
 
   const formatHours = (entryAt: string | null, exitAt: string | null) => {
     const minutes = workedMinutes(entryAt, exitAt);
@@ -623,6 +682,35 @@ export default function SublimeAdminFichaje() {
                 <p className="text-xs text-muted-foreground">{attendanceRows.length} fichaje(s) en el periodo</p>
               </div>
               <div className="flex items-center gap-2">
+                {selectedRows.size > 0 && (
+                  <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="rounded-xl" disabled={deleting}>
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Borrar {selectedRows.size}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Borrar fichajes seleccionados?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Se eliminarán definitivamente los eventos de entrada/salida de los {selectedRows.size} turno(s) seleccionado(s). Esta acción no se puede deshacer.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={(e) => { e.preventDefault(); handleDeleteSelected(attendanceRows); }}
+                          disabled={deleting}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          {deleting ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Trash2 className="h-3 w-3 mr-1" />}
+                          Borrar definitivamente
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
                 <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
                   <SelectTrigger className="w-[180px] rounded-xl h-9">
                     <SelectValue />
@@ -653,6 +741,13 @@ export default function SublimeAdminFichaje() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={attendanceRows.length > 0 && selectedRows.size === attendanceRows.length}
+                        onCheckedChange={(c) => toggleAll(attendanceRows, !!c)}
+                        aria-label="Seleccionar todos"
+                      />
+                    </TableHead>
                     {showDateColumn && <TableHead className="uppercase tracking-wider text-xs font-semibold">Fecha</TableHead>}
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Empleado</TableHead>
                     <TableHead className="uppercase tracking-wider text-xs font-semibold">Entrada</TableHead>
@@ -675,7 +770,14 @@ export default function SublimeAdminFichaje() {
                             ? { label: "En turno", className: "bg-muted text-foreground border-border" }
                             : { label: "Registrado", className: "bg-muted text-muted-foreground border-border" };
                     return (
-                      <TableRow key={row.key}>
+                      <TableRow key={row.key} data-state={selectedRows.has(row.key) ? "selected" : undefined}>
+                        <TableCell className="w-10">
+                          <Checkbox
+                            checked={selectedRows.has(row.key)}
+                            onCheckedChange={() => toggleRow(row.key)}
+                            aria-label="Seleccionar fichaje"
+                          />
+                        </TableCell>
                         {showDateColumn && <TableCell className="tabular-nums text-muted-foreground">{formatDay(row.dayKey)}</TableCell>}
                         <TableCell className="font-semibold text-foreground">{row.employeeName}</TableCell>
                         <TableCell className="tabular-nums">{formatTime(row.entryAt)}</TableCell>
