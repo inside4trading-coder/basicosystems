@@ -770,7 +770,14 @@ export default function SublimeAdminFichaje() {
                             ? { label: "En turno", className: "bg-muted text-foreground border-border" }
                             : { label: "Registrado", className: "bg-muted text-muted-foreground border-border" };
                     return (
-                      <TableRow key={row.key}>
+                      <TableRow key={row.key} data-state={selectedRows.has(row.key) ? "selected" : undefined}>
+                        <TableCell className="w-10">
+                          <Checkbox
+                            checked={selectedRows.has(row.key)}
+                            onCheckedChange={() => toggleRow(row.key)}
+                            aria-label="Seleccionar fichaje"
+                          />
+                        </TableCell>
                         {showDateColumn && <TableCell className="tabular-nums text-muted-foreground">{formatDay(row.dayKey)}</TableCell>}
                         <TableCell className="font-semibold text-foreground">{row.employeeName}</TableCell>
                         <TableCell className="tabular-nums">{formatTime(row.entryAt)}</TableCell>
