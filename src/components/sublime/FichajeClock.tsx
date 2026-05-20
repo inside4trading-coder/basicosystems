@@ -21,13 +21,28 @@ const ACTION_LABEL: Record<Action, string> = {
   fin_descanso: "Fin descanso",
 };
 
+type ErrCode = "denied" | "unavailable" | "timeout" | "other";
+
 type Phase =
   | { kind: "idle" }
   | { kind: "locating"; action: Action }
   | { kind: "submitting"; action: Action; accuracy: number | null }
   | { kind: "success"; action: Action; distance: number | null; radius: number; locationState: string }
   | { kind: "out_of_range"; action: Action; distance: number; radius: number; coords: { lat: number; lng: number; acc: number | null } }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string; errorCode?: ErrCode };
+
+const isIOS = () =>
+  typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+function tryGetPosition(opts: PositionOptions): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      reject(new Error("Geolocalización no disponible en este dispositivo"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, opts);
+  });
+}
 
 export function FichajeClock({ employeeName, sessionToken, onDone, onCancel }: FichajeClockProps) {
   const [now, setNow] = useState(new Date());
