@@ -85,13 +85,13 @@ function generateDueDates(obligation: Obligation, monthsAhead: number, fromDate 
   return out;
 }
 
-async function generateRecurringInstances(obligation: Obligation, monthsAhead = 12) {
+async function generateRecurringInstances(instancesTable: string, obligation: Obligation, monthsAhead = 12) {
   if (!RECURRING_FREQUENCIES.includes(obligation.frequency)) return;
   if (obligation.status !== "active") return;
   const targets = generateDueDates(obligation, monthsAhead);
   if (!targets.length) return;
 
-  const { data: existing } = await (supabase.from(INSTANCES) as any)
+  const { data: existing } = await (supabase.from(instancesTable as any) as any)
     .select("due_date,period_label")
     .eq("obligation_id", obligation.id);
 
@@ -111,7 +111,7 @@ async function generateRecurringInstances(obligation: Obligation, monthsAhead = 
     }));
 
   if (toInsert.length) {
-    await (supabase.from(INSTANCES) as any).insert(toInsert);
+    await (supabase.from(instancesTable as any) as any).insert(toInsert);
   }
 }
 
