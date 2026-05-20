@@ -17,6 +17,7 @@ import {
 } from "@/components/admin/AdminSkeletons";
 import { useAdminScope } from "@/contexts/AdminScope";
 import type { ObligationInstance } from "@/types/admin";
+import { parseLocalDate } from "@/lib/dateUtils";
 
 type View = "calendar" | "list";
 
