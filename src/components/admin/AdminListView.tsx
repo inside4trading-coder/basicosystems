@@ -53,6 +53,7 @@ export function AdminListView({ instances, onRowClick, onEdit, onPaid, onClearFi
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [alsoFuture, setAlsoFuture] = useState(false);
 
   const allSelected = useMemo(
     () => instances.length > 0 && instances.every((i) => selected.has(i.id)),
