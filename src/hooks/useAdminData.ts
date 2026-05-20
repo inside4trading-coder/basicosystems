@@ -8,12 +8,7 @@ import type {
 } from "@/types/admin";
 import { computeUrgency } from "@/types/admin";
 import { formatLocalDate } from "@/lib/dateUtils";
-
-const VIEW = "admin_instances_view" as any;
-const OBLIGATIONS = "admin_obligations" as any;
-const INSTANCES = "admin_instances" as any;
-const AUDIT = "admin_audit_log" as any;
-const CONFIG = "admin_config" as any;
+import { useAdminScope } from "@/contexts/AdminScope";
 
 async function logAudit(entry: {
   action: string;
