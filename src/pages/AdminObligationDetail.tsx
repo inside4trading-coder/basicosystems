@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAdminData } from "@/hooks/useAdminData";
+import { useAdminScope } from "@/contexts/AdminScope";
 import type { ImportanceLevel, Obligation, ObligationFrequency, ObligationInstance } from "@/types/admin";
 import {
   ALL_IMPORTANCE,
@@ -93,6 +94,7 @@ export default function AdminObligationDetail() {
     updateObligation,
     updateInstance,
   } = useAdminData();
+  const { basePath, title: scopeTitle } = useAdminScope();
 
   const [obligation, setObligation] = useState<Obligation | null>(null);
   const [instances, setInstances] = useState<ObligationInstance[]>([]);
@@ -205,8 +207,8 @@ export default function AdminObligationDetail() {
   if (error || !obligation) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/administracion")}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Administración
+        <Button variant="ghost" size="sm" onClick={() => navigate(basePath)}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> {scopeTitle}
         </Button>
         <Card>
           <CardContent className="pt-6 text-sm text-status-error">
@@ -223,10 +225,10 @@ export default function AdminObligationDetail() {
     <div className="space-y-6">
       {/* Back nav */}
       <Link
-        to="/administracion"
+        to={basePath}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> Administración
+        <ArrowLeft className="h-4 w-4" /> {scopeTitle}
       </Link>
 
       {/* Header */}

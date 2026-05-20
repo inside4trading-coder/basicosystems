@@ -8,14 +8,9 @@ import type {
 } from "@/types/admin";
 import { computeUrgency } from "@/types/admin";
 import { formatLocalDate } from "@/lib/dateUtils";
+import { useAdminScope } from "@/contexts/AdminScope";
 
-const VIEW = "admin_instances_view" as any;
-const OBLIGATIONS = "admin_obligations" as any;
-const INSTANCES = "admin_instances" as any;
-const AUDIT = "admin_audit_log" as any;
-const CONFIG = "admin_config" as any;
-
-async function logAudit(entry: {
+async function logAudit(auditTable: string, entry: {
   action: string;
   obligation_id?: string | null;
   instance_id?: string | null;
@@ -24,7 +19,7 @@ async function logAudit(entry: {
   new_value?: string | null;
   performed_by?: string | null;
 }) {
-  await (supabase.from(AUDIT) as any).insert(entry);
+  await (supabase.from(auditTable as any) as any).insert(entry);
 }
 
 const RECURRING_FREQUENCIES: Array<string> = [
@@ -90,13 +85,13 @@ function generateDueDates(obligation: Obligation, monthsAhead: number, fromDate 
   return out;
 }
 
-async function generateRecurringInstances(obligation: Obligation, monthsAhead = 12) {
+async function generateRecurringInstances(instancesTable: string, obligation: Obligation, monthsAhead = 12) {
   if (!RECURRING_FREQUENCIES.includes(obligation.frequency)) return;
   if (obligation.status !== "active") return;
   const targets = generateDueDates(obligation, monthsAhead);
   if (!targets.length) return;
 
-  const { data: existing } = await (supabase.from(INSTANCES) as any)
+  const { data: existing } = await (supabase.from(instancesTable as any) as any)
     .select("due_date,period_label")
     .eq("obligation_id", obligation.id);
 
@@ -116,7 +111,7 @@ async function generateRecurringInstances(obligation: Obligation, monthsAhead = 
     }));
 
   if (toInsert.length) {
-    await (supabase.from(INSTANCES) as any).insert(toInsert);
+    await (supabase.from(instancesTable as any) as any).insert(toInsert);
   }
 }
 
@@ -149,6 +144,14 @@ function mapInstance(row: any): ObligationInstance {
 }
 
 export function useAdminData() {
+  const scope = useAdminScope();
+  const VIEW = scope.view as any;
+  const OBLIGATIONS = scope.obligations as any;
+  const INSTANCES = scope.instances as any;
+  const AUDIT = scope.audit as any;
+  const CONFIG = scope.config as any;
+  const audit = (entry: Parameters<typeof logAudit>[1]) => logAudit(AUDIT, entry);
+
   const [instances, setInstances] = useState<ObligationInstance[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,7 +211,7 @@ export function useAdminData() {
       1,
       (y - today.getFullYear()) * 12 + (m - 1 - today.getMonth()) + 2,
     );
-    await Promise.all(list.map((o) => generateRecurringInstances(o, monthsAhead)));
+    await Promise.all(list.map((o) => generateRecurringInstances(INSTANCES, o, monthsAhead)));
   }, []);
 
   const fetchInstances = useCallback(async (filters: InstanceFilters = {}) => {
@@ -289,7 +292,7 @@ export function useAdminData() {
       .select()
       .single();
     if (error) throw error;
-    await logAudit({
+    await audit({
       action: "update_obligation",
       obligation_id: id,
       new_value: JSON.stringify(patch).slice(0, 500),
@@ -303,10 +306,10 @@ export function useAdminData() {
       .select()
       .single();
     if (error) throw error;
-    await logAudit({ action: "create_obligation", obligation_id: row.id, new_value: row.name });
+    await audit({ action: "create_obligation", obligation_id: row.id, new_value: row.name });
     // Seed 12 months of recurring instances if applicable
     try {
-      await generateRecurringInstances(row as Obligation, 12);
+      await generateRecurringInstances(INSTANCES, row as Obligation, 12);
     } catch (err) {
       console.warn("[admin] failed to seed recurring instances", err);
     }
@@ -320,7 +323,7 @@ export function useAdminData() {
       .select()
       .single();
     if (error) throw error;
-    await logAudit({
+    await audit({
       action: "create_instance",
       instance_id: row.id,
       obligation_id: row.obligation_id,
@@ -336,7 +339,7 @@ export function useAdminData() {
       .select()
       .single();
     if (error) throw error;
-    await logAudit({
+    await audit({
       action: "update_instance",
       instance_id: id,
       new_value: JSON.stringify(patch).slice(0, 500),
@@ -384,7 +387,7 @@ export function useAdminData() {
         bulkCount = bulk?.length ?? 0;
       }
 
-      await logAudit({
+      await audit({
         action: "update_instance_bulk",
         instance_id: id,
         obligation_id: obligationId,
@@ -412,7 +415,7 @@ export function useAdminData() {
         .select()
         .single();
       if (error) throw error;
-      await logAudit({
+      await audit({
         action: "mark_paid",
         instance_id: id,
         field_changed: "status",
@@ -432,7 +435,7 @@ export function useAdminData() {
         .select()
         .single();
       if (error) throw error;
-      await logAudit({
+      await audit({
         action: "update_payment_info",
         instance_id: id,
         new_value: JSON.stringify(patch).slice(0, 400),

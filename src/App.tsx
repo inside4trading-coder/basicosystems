@@ -28,6 +28,7 @@ import AdminObligationDetail from "./pages/AdminObligationDetail";
 import SublimeFichajePublico from "./pages/SublimeFichajePublico";
 import Sublime from "./pages/Sublime";
 import SublimeAdminFichaje from "./pages/SublimeAdminFichaje";
+import { AdminScopeProvider } from "@/contexts/AdminScope";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,6 +68,22 @@ const App = () => (
               <Route path="/configuracion" element={<Configuracion />} />
               <Route path="/sublime" element={<Sublime />} />
               <Route path="/sublime/admin/fichaje" element={<SublimeAdminFichaje />} />
+              <Route
+                path="/sublime/admin/obligaciones"
+                element={
+                  <AdminScopeProvider scope="sublime">
+                    <Administracion />
+                  </AdminScopeProvider>
+                }
+              />
+              <Route
+                path="/sublime/admin/obligaciones/:id"
+                element={
+                  <AdminScopeProvider scope="sublime">
+                    <AdminObligationDetail />
+                  </AdminScopeProvider>
+                }
+              />
             </Route>
             <Route path="/crew/incidencias" element={<CrewIncidencias />} />
             <Route path="/sublime/fichaje" element={<SublimeFichajePublico />} />

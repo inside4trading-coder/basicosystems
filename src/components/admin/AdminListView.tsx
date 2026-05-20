@@ -24,6 +24,7 @@ import {
 } from "./adminConstants";
 import { MarkPaidDialog } from "./MarkPaidDialog";
 import { Link } from "react-router-dom";
+import { useAdminScope } from "@/contexts/AdminScope";
 
 interface Props {
   instances: ObligationInstance[];
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export function AdminListView({ instances, onRowClick, onEdit, onPaid, onClearFilters, hasActiveFilters }: Props) {
+  const { basePath } = useAdminScope();
   const [paying, setPaying] = useState<ObligationInstance | null>(null);
 
   if (instances.length === 0) {
@@ -145,7 +147,7 @@ export function AdminListView({ instances, onRowClick, onEdit, onPaid, onClearFi
                             )}
                             {i.obligation_id && (
                               <DropdownMenuItem asChild>
-                                <Link to={`/administracion/${i.obligation_id}`}>Editar plantilla</Link>
+                                <Link to={`${basePath}/${i.obligation_id}`}>Editar plantilla</Link>
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>

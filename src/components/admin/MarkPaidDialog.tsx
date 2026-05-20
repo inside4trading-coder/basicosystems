@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAdminData } from "@/hooks/useAdminData";
+import { useAdminScope } from "@/contexts/AdminScope";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import type { ObligationInstance } from "@/types/admin";
@@ -38,6 +39,7 @@ const ALLOWED = ["image/png", "image/jpeg", "image/jpg", "image/webp", "applicat
 
 export function MarkPaidDialog({ instance, open, onOpenChange, onSaved }: Props) {
   const { markAsPaid, updateInstance } = useAdminData();
+  const { storagePrefix } = useAdminScope();
   const { user } = useAuth();
   const [paidBy, setPaidBy] = useState("");
   const [reference, setReference] = useState("");
@@ -95,7 +97,7 @@ export function MarkPaidDialog({ instance, open, onOpenChange, onSaved }: Props)
     const paths: string[] = [];
     for (const f of files) {
       const ext = f.name.split(".").pop() ?? "bin";
-      const path = `${instanceId}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+      const path = `${storagePrefix}${instanceId}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("admin-payments")
         .upload(path, f, { contentType: f.type, upsert: false });

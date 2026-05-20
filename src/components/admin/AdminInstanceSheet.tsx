@@ -6,6 +6,7 @@ import { CheckCircle, FileText, Pencil } from "lucide-react";
 import type { ObligationInstance } from "@/types/admin";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminScope } from "@/contexts/AdminScope";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { MarkPaidDialog } from "./MarkPaidDialog";
 
@@ -21,6 +22,7 @@ const fmtMoney = (n: number, c = "USD") =>
   new Intl.NumberFormat("es-VE", { style: "currency", currency: c }).format(n);
 
 export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit, onPaid }: Props) {
+  const { basePath } = useAdminScope();
   const [proofUrls, setProofUrls] = useState<{ path: string; url: string }[]>([]);
   const [paying, setPaying] = useState(false);
 
@@ -176,7 +178,7 @@ export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit, onPai
 
             {instance.obligation_id && (
               <Button asChild className="w-full" variant="outline">
-                <Link to={`/administracion/${instance.obligation_id}`}>Ver obligación completa</Link>
+                <Link to={`${basePath}/${instance.obligation_id}`}>Ver obligación completa</Link>
               </Button>
             )}
           </div>

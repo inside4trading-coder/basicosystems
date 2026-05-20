@@ -11,6 +11,7 @@ import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminData } from "@/hooks/useAdminData";
+import { useAdminScope } from "@/contexts/AdminScope";
 import type { ObligationInstance, InstanceStatus } from "@/types/admin";
 
 interface Props {
@@ -24,6 +25,7 @@ const STATUSES: InstanceStatus[] = ["pendiente", "proximo_vencer", "pagado", "ve
 
 export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Props) {
   const { updateInstance, updateInstanceAndFuture } = useAdminData();
+  const { instances: INSTANCES_TABLE } = useAdminScope();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [applyToFuture, setApplyToFuture] = useState(false);
