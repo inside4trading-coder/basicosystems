@@ -24,6 +24,7 @@ import {
 } from "./adminConstants";
 import { MarkPaidDialog } from "./MarkPaidDialog";
 import { Link } from "react-router-dom";
+import { useAdminScope } from "@/contexts/AdminScope";
 
 interface Props {
   instances: ObligationInstance[];
