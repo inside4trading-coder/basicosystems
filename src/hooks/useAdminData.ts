@@ -144,6 +144,14 @@ function mapInstance(row: any): ObligationInstance {
 }
 
 export function useAdminData() {
+  const scope = useAdminScope();
+  const VIEW = scope.view;
+  const OBLIGATIONS = scope.obligations;
+  const INSTANCES = scope.instances;
+  const AUDIT = scope.audit;
+  const CONFIG = scope.config;
+  const audit = (entry: Parameters<typeof logAudit>[1]) => logAudit(AUDIT, entry);
+
   const [instances, setInstances] = useState<ObligationInstance[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [loading, setLoading] = useState(true);
