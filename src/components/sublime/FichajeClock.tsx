@@ -104,30 +104,55 @@ export function FichajeClock({ employeeName, sessionToken, onDone, onCancel }: F
   const handleAction = async (action: Action) => {
     setPhase({ kind: "locating", action });
     setReviewNote("");
+
+    // Pre-check permission state when available (Chrome/Android; Safari iOS often unsupported)
     try {
-      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-        if (typeof navigator === "undefined" || !navigator.geolocation) {
-          reject(new Error("Geolocalización no disponible en este dispositivo"));
+      if (typeof navigator !== "undefined" && (navigator as any).permissions?.query) {
+        const status = await (navigator as any).permissions.query({ name: "geolocation" });
+        if (status.state === "denied") {
+          setPhase({
+            kind: "error",
+            errorCode: "denied",
+            message: "El navegador tiene la ubicación bloqueada para este sitio.",
+          });
           return;
         }
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 15_000,
-          maximumAge: 0,
-        });
-      });
+      }
+    } catch {
+      // ignore — Safari iOS doesn't support this for geolocation
+    }
+
+    try {
+      let pos: GeolocationPosition;
+      try {
+        pos = await tryGetPosition({ enableHighAccuracy: true, timeout: 12_000, maximumAge: 0 });
+      } catch (e: any) {
+        // Retry with low accuracy on timeout / unavailable (common on iOS indoors)
+        if (e?.code === 3 || e?.code === 2) {
+          pos = await tryGetPosition({ enableHighAccuracy: false, timeout: 20_000, maximumAge: 30_000 });
+        } else {
+          throw e;
+        }
+      }
       await submit(action, {
         latitude: pos.coords.latitude,
         longitude: pos.coords.longitude,
         accuracy: pos.coords.accuracy ?? null,
       });
     } catch (e: any) {
-      const msg = e?.code === 1
-        ? "Permiso de ubicación denegado. No es posible fichar sin GPS."
-        : e?.code === 3
-          ? "No se pudo obtener tu ubicación a tiempo. Inténtalo de nuevo."
-          : (e?.message ?? "Error al obtener ubicación");
-      setPhase({ kind: "error", message: msg });
+      let errorCode: ErrCode = "other";
+      let msg = e?.message ?? "Error al obtener ubicación";
+      if (e?.code === 1) {
+        errorCode = "denied";
+        msg = "El navegador no autorizó el acceso a tu ubicación.";
+      } else if (e?.code === 2) {
+        errorCode = "unavailable";
+        msg = "GPS no disponible ahora mismo. Sal al exterior o verifica que la localización del sistema esté activada.";
+      } else if (e?.code === 3) {
+        errorCode = "timeout";
+        msg = "No se obtuvo señal GPS a tiempo. Acércate a una ventana o sal al exterior y reintenta.";
+      }
+      setPhase({ kind: "error", message: msg, errorCode });
     }
   };
 
