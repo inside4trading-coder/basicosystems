@@ -15,12 +15,14 @@ import {
   AdminKPIsSkeleton,
   AdminListSkeleton,
 } from "@/components/admin/AdminSkeletons";
+import { useAdminScope } from "@/contexts/AdminScope";
 import type { ObligationInstance } from "@/types/admin";
 
 type View = "calendar" | "list";
 
 export default function Administracion() {
   const { instances, obligations, loading, error, refetch } = useAdminData();
+  const scope = useAdminScope();
   const [view, setView] = useState<View>("calendar");
   const [createOpen, setCreateOpen] = useState(false);
 
