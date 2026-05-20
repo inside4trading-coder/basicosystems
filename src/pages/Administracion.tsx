@@ -165,9 +165,9 @@ export default function Administracion() {
         <div className="flex items-center gap-3">
           <Building2 className="h-6 w-6 text-primary" />
           <div>
-            <h1 className="text-2xl font-black tracking-tight">Administración</h1>
+            <h1 className="text-2xl font-black tracking-tight">{scope.title}</h1>
             <p className="text-muted-foreground text-sm">
-              Control de obligaciones fijas y recurrentes de la empresa
+              {scope.subtitle}
             </p>
           </div>
         </div>
@@ -195,9 +195,9 @@ export default function Administracion() {
         <div className="flex items-center gap-3">
           <Building2 className="h-6 w-6 text-primary shrink-0" />
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight">Administración</h1>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight">{scope.title}</h1>
             <p className="text-muted-foreground text-sm">
-              Control de obligaciones fijas y recurrentes de la empresa
+              {scope.subtitle}
             </p>
           </div>
         </div>
