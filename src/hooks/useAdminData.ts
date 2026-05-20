@@ -10,7 +10,7 @@ import { computeUrgency } from "@/types/admin";
 import { formatLocalDate } from "@/lib/dateUtils";
 import { useAdminScope } from "@/contexts/AdminScope";
 
-async function logAudit(entry: {
+async function logAudit(auditTable: string, entry: {
   action: string;
   obligation_id?: string | null;
   instance_id?: string | null;
@@ -19,7 +19,7 @@ async function logAudit(entry: {
   new_value?: string | null;
   performed_by?: string | null;
 }) {
-  await (supabase.from(AUDIT) as any).insert(entry);
+  await (supabase.from(auditTable as any) as any).insert(entry);
 }
 
 const RECURRING_FREQUENCIES: Array<string> = [
