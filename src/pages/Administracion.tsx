@@ -99,7 +99,7 @@ export default function Administracion() {
 
     return instances
       .filter((i) => {
-        const d = new Date(i.due_date);
+        const d = parseLocalDate(i.due_date);
         if (!filters.next7Days && !filters.onlyOverdue) {
           if (d.getFullYear() !== y || d.getMonth() !== m) return false;
         }
@@ -108,12 +108,12 @@ export default function Administracion() {
         if (filters.status && i.status !== filters.status) return false;
         if (filters.importance && i.importance !== filters.importance) return false;
         if (filters.onlyOverdue) {
-          const dd = new Date(i.due_date);
+          const dd = parseLocalDate(i.due_date);
           dd.setHours(0, 0, 0, 0);
           if (!(i.status === "vencido" || (dd < today && i.status === "pendiente"))) return false;
         }
         if (filters.next7Days) {
-          const dd = new Date(i.due_date);
+          const dd = parseLocalDate(i.due_date);
           dd.setHours(0, 0, 0, 0);
           if (!(dd >= today && dd <= in7 && i.status !== "pagado")) return false;
         }
