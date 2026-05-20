@@ -109,7 +109,7 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
     try {
       let futureCount = 0;
       if (applyToFuture && instance.obligation_id) {
-        const { data: futureRows, error: futureErr } = await (supabase.from("admin_instances" as any) as any)
+        const { data: futureRows, error: futureErr } = await (supabase.from(INSTANCES_TABLE as any) as any)
           .delete()
           .eq("obligation_id", instance.obligation_id)
           .gt("due_date", instance.due_date.slice(0, 10))
@@ -119,7 +119,7 @@ export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Pro
         futureCount = futureRows?.length ?? 0;
       }
 
-      const { error } = await (supabase.from("admin_instances" as any) as any)
+      const { error } = await (supabase.from(INSTANCES_TABLE as any) as any)
         .delete()
         .eq("id", instance.id);
       if (error) throw error;
