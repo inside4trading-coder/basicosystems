@@ -246,9 +246,13 @@ function ConfigRow({
 }
 
 export function AdminConfigSection() {
+  const { config, obligations } = useAdminScope();
+  const CONFIG = config as any;
+  const OBLIGATIONS = obligations as any;
   const [items, setItems] = useState<ConfigItem[]>([]);
   const [usage, setUsage] = useState<Record<string, Record<string, number>>>({});
   const [loading, setLoading] = useState(true);
+
 
   const load = async () => {
     setLoading(true);
