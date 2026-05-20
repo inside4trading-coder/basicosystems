@@ -77,16 +77,47 @@ export function AdminListView({ instances, onRowClick, onEdit, onPaid, onClearFi
     setDeleting(true);
     try {
       const ids = Array.from(selected);
+      const selectedRows = instances.filter((i) => selected.has(i.id));
+
+      // 1) Borrar las instancias seleccionadas
       const { error } = await (supabase.from(INSTANCES_TABLE as any) as any)
         .delete()
         .in("id", ids);
       if (error) throw error;
+
+      // 2) Si está marcado, borrar también instancias futuras de las mismas obligaciones
+      let futureCount = 0;
+      if (alsoFuture) {
+        // Por cada obligación seleccionada, borrar instancias con due_date >
+        // la fecha más antigua seleccionada de esa misma obligación
+        const byObligation = new Map<string, string>();
+        for (const r of selectedRows) {
+          if (!r.obligation_id) continue;
+          const prev = byObligation.get(r.obligation_id);
+          if (!prev || r.due_date < prev) byObligation.set(r.obligation_id, r.due_date);
+        }
+        for (const [obligationId, minDate] of byObligation) {
+          const { data, error: fErr } = await (supabase.from(INSTANCES_TABLE as any) as any)
+            .delete()
+            .eq("obligation_id", obligationId)
+            .gt("due_date", minDate)
+            .select("id");
+          if (fErr) throw fErr;
+          futureCount += data?.length ?? 0;
+        }
+      }
+
       await (supabase.from(AUDIT_TABLE as any) as any).insert({
         action: "bulk_delete_instances",
-        new_value: `${ids.length} instancia(s) eliminada(s)`,
+        new_value: `${ids.length} actual(es)${alsoFuture ? ` + ${futureCount} futura(s)` : ""}`,
       });
-      toast.success(`${ids.length} obligación(es) eliminada(s)`);
+      toast.success(
+        alsoFuture
+          ? `${ids.length} eliminadas (+${futureCount} futuras)`
+          : `${ids.length} obligación(es) eliminada(s)`,
+      );
       setSelected(new Set());
+      setAlsoFuture(false);
       setConfirmOpen(false);
       onPaid();
     } catch (e: any) {
