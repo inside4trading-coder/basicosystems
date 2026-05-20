@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAdminData } from "@/hooks/useAdminData";
+import { useAdminScope } from "@/contexts/AdminScope";
 import type { ImportanceLevel, Obligation, ObligationFrequency, ObligationInstance } from "@/types/admin";
 import {
   ALL_IMPORTANCE,
