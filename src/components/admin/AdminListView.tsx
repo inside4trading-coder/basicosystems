@@ -309,6 +309,19 @@ export function AdminListView({ instances, onRowClick, onEdit, onPaid, onClearFi
               Las plantillas (obligaciones recurrentes) no se eliminan.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <label className="flex items-start gap-2.5 p-3 rounded-md border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+            <Checkbox
+              checked={alsoFuture}
+              onCheckedChange={(v) => setAlsoFuture(!!v)}
+              className="mt-0.5"
+            />
+            <div className="text-sm">
+              <div className="font-semibold">Eliminar también de meses futuros</div>
+              <div className="text-xs text-muted-foreground">
+                Borrará todas las instancias futuras de estas obligaciones (mismo tipo, meses posteriores).
+              </div>
+            </div>
+          </label>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
