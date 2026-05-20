@@ -69,8 +69,14 @@ export default function SublimeSchedulesAdmin() {
           schedule: s.weekly_schedule ?? { mon:false,tue:false,wed:false,thu:false,fri:false,sat:false,sun:false },
         };
       });
-      out.sort((a, b) => a.name.localeCompare(b.name, "es"));
-      setRows(out);
+      // Ocultar empleados sin ningún día activo y sin horas configuradas
+      const visible = out.filter((r) => {
+        const anyDay = Object.values(r.schedule || {}).some(Boolean);
+        const anyTime = !!(r.entry || r.exit || r.breakStart || r.breakEnd);
+        return anyDay || anyTime;
+      });
+      visible.sort((a, b) => a.name.localeCompare(b.name, "es"));
+      setRows(visible);
       setLoading(false);
     })();
   }, []);
