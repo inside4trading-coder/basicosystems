@@ -24,6 +24,7 @@ const STATUSES: InstanceStatus[] = ["pendiente", "proximo_vencer", "pagado", "ve
 
 export function EditInstanceSheet({ instance, open, onOpenChange, onSaved }: Props) {
   const { updateInstance, updateInstanceAndFuture } = useAdminData();
+  const { instances: INSTANCES_TABLE } = useAdminScope();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [applyToFuture, setApplyToFuture] = useState(false);
