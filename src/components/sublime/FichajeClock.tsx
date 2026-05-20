@@ -21,13 +21,28 @@ const ACTION_LABEL: Record<Action, string> = {
   fin_descanso: "Fin descanso",
 };
 
+type ErrCode = "denied" | "unavailable" | "timeout" | "other";
+
 type Phase =
   | { kind: "idle" }
   | { kind: "locating"; action: Action }
   | { kind: "submitting"; action: Action; accuracy: number | null }
   | { kind: "success"; action: Action; distance: number | null; radius: number; locationState: string }
   | { kind: "out_of_range"; action: Action; distance: number; radius: number; coords: { lat: number; lng: number; acc: number | null } }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string; errorCode?: ErrCode };
+
+const isIOS = () =>
+  typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+function tryGetPosition(opts: PositionOptions): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      reject(new Error("Geolocalización no disponible en este dispositivo"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, opts);
+  });
+}
 
 export function FichajeClock({ employeeName, sessionToken, onDone, onCancel }: FichajeClockProps) {
   const [now, setNow] = useState(new Date());
@@ -89,30 +104,55 @@ export function FichajeClock({ employeeName, sessionToken, onDone, onCancel }: F
   const handleAction = async (action: Action) => {
     setPhase({ kind: "locating", action });
     setReviewNote("");
+
+    // Pre-check permission state when available (Chrome/Android; Safari iOS often unsupported)
     try {
-      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-        if (typeof navigator === "undefined" || !navigator.geolocation) {
-          reject(new Error("Geolocalización no disponible en este dispositivo"));
+      if (typeof navigator !== "undefined" && (navigator as any).permissions?.query) {
+        const status = await (navigator as any).permissions.query({ name: "geolocation" });
+        if (status.state === "denied") {
+          setPhase({
+            kind: "error",
+            errorCode: "denied",
+            message: "El navegador tiene la ubicación bloqueada para este sitio.",
+          });
           return;
         }
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 15_000,
-          maximumAge: 0,
-        });
-      });
+      }
+    } catch {
+      // ignore — Safari iOS doesn't support this for geolocation
+    }
+
+    try {
+      let pos: GeolocationPosition;
+      try {
+        pos = await tryGetPosition({ enableHighAccuracy: true, timeout: 12_000, maximumAge: 0 });
+      } catch (e: any) {
+        // Retry with low accuracy on timeout / unavailable (common on iOS indoors)
+        if (e?.code === 3 || e?.code === 2) {
+          pos = await tryGetPosition({ enableHighAccuracy: false, timeout: 20_000, maximumAge: 30_000 });
+        } else {
+          throw e;
+        }
+      }
       await submit(action, {
         latitude: pos.coords.latitude,
         longitude: pos.coords.longitude,
         accuracy: pos.coords.accuracy ?? null,
       });
     } catch (e: any) {
-      const msg = e?.code === 1
-        ? "Permiso de ubicación denegado. No es posible fichar sin GPS."
-        : e?.code === 3
-          ? "No se pudo obtener tu ubicación a tiempo. Inténtalo de nuevo."
-          : (e?.message ?? "Error al obtener ubicación");
-      setPhase({ kind: "error", message: msg });
+      let errorCode: ErrCode = "other";
+      let msg = e?.message ?? "Error al obtener ubicación";
+      if (e?.code === 1) {
+        errorCode = "denied";
+        msg = "El navegador no autorizó el acceso a tu ubicación.";
+      } else if (e?.code === 2) {
+        errorCode = "unavailable";
+        msg = "GPS no disponible ahora mismo. Sal al exterior o verifica que la localización del sistema esté activada.";
+      } else if (e?.code === 3) {
+        errorCode = "timeout";
+        msg = "No se obtuvo señal GPS a tiempo. Acércate a una ventana o sal al exterior y reintenta.";
+      }
+      setPhase({ kind: "error", message: msg, errorCode });
     }
   };
 
@@ -191,12 +231,41 @@ export function FichajeClock({ employeeName, sessionToken, onDone, onCancel }: F
   }
 
   if (phase.kind === "error") {
+    const showIOSHelp = phase.errorCode === "denied" && isIOS();
+    const showGenericHelp = phase.errorCode === "denied" && !isIOS();
     return (
-      <div className="space-y-4 text-center py-6">
-        <div className="h-14 w-14 mx-auto rounded-full bg-destructive/15 flex items-center justify-center">
-          <AlertTriangle className="h-7 w-7 text-destructive" />
+      <div className="space-y-4 py-4">
+        <div className="flex flex-col items-center text-center space-y-3">
+          <div className="h-14 w-14 rounded-full bg-destructive/15 flex items-center justify-center">
+            <AlertTriangle className="h-7 w-7 text-destructive" />
+          </div>
+          <p className="text-sm font-semibold text-foreground">{phase.message}</p>
         </div>
-        <p className="text-sm text-foreground">{phase.message}</p>
+
+        {showIOSHelp && (
+          <div className="rounded-2xl bg-muted/60 border border-border p-4 text-left space-y-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Cómo activar la ubicación en iPhone
+            </p>
+            <ol className="text-xs text-foreground/90 space-y-1.5 list-decimal pl-4">
+              <li>Abre <strong>Ajustes</strong> del iPhone.</li>
+              <li><strong>Privacidad y seguridad</strong> → <strong>Localización</strong> → actívala.</li>
+              <li>Dentro de Localización, busca <strong>Safari</strong> (o tu navegador) y selecciona <strong>Al usar la app</strong>.</li>
+              <li>Vuelve a <strong>Ajustes → Apps → Safari → Ubicación</strong> y elige <strong>Preguntar</strong> o <strong>Permitir</strong>.</li>
+              <li>Cierra todas las pestañas de Safari y vuelve a abrir el enlace de fichaje.</li>
+              <li>Cuando aparezca el aviso pidiendo permiso, pulsa <strong>Permitir</strong>.</li>
+            </ol>
+          </div>
+        )}
+
+        {showGenericHelp && (
+          <div className="rounded-2xl bg-muted/60 border border-border p-4 text-left">
+            <p className="text-xs text-foreground/90">
+              Pulsa el icono de candado / información a la izquierda de la URL del navegador y autoriza la ubicación para este sitio. Luego vuelve a intentarlo.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outline" onClick={onCancel} className="rounded-xl">Salir</Button>
           <Button onClick={() => setPhase({ kind: "idle" })} className="rounded-xl">Reintentar</Button>
