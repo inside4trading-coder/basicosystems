@@ -17,8 +17,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { useAdminScope } from "@/contexts/AdminScope";
 
+const CONFIG = "admin_config" as any;
+const OBLIGATIONS = "admin_obligations" as any;
 
 interface ConfigItem {
   id: string;
@@ -51,13 +52,9 @@ function ConfigSubsection({
   emptyIcon: EmptyIcon,
   emptyText,
 }: SubsectionProps) {
-  const { config } = useAdminScope();
-  const CONFIG = config as any;
-
   const [newValue, setNewValue] = useState("");
   const [adding, setAdding] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
-
 
   const handleAdd = async () => {
     const v = newValue.trim();
@@ -246,13 +243,9 @@ function ConfigRow({
 }
 
 export function AdminConfigSection() {
-  const { config, obligations } = useAdminScope();
-  const CONFIG = config as any;
-  const OBLIGATIONS = obligations as any;
   const [items, setItems] = useState<ConfigItem[]>([]);
   const [usage, setUsage] = useState<Record<string, Record<string, number>>>({});
   const [loading, setLoading] = useState(true);
-
 
   const load = async () => {
     setLoading(true);
