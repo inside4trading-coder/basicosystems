@@ -211,7 +211,7 @@ export function useAdminData() {
       1,
       (y - today.getFullYear()) * 12 + (m - 1 - today.getMonth()) + 2,
     );
-    await Promise.all(list.map((o) => generateRecurringInstances(o, monthsAhead)));
+    await Promise.all(list.map((o) => generateRecurringInstances(INSTANCES, o, monthsAhead)));
   }, []);
 
   const fetchInstances = useCallback(async (filters: InstanceFilters = {}) => {
@@ -292,7 +292,7 @@ export function useAdminData() {
       .select()
       .single();
     if (error) throw error;
-    await logAudit({
+    await audit({
       action: "update_obligation",
       obligation_id: id,
       new_value: JSON.stringify(patch).slice(0, 500),
@@ -306,10 +306,10 @@ export function useAdminData() {
       .select()
       .single();
     if (error) throw error;
-    await logAudit({ action: "create_obligation", obligation_id: row.id, new_value: row.name });
+    await audit({ action: "create_obligation", obligation_id: row.id, new_value: row.name });
     // Seed 12 months of recurring instances if applicable
     try {
-      await generateRecurringInstances(row as Obligation, 12);
+      await generateRecurringInstances(INSTANCES, row as Obligation, 12);
     } catch (err) {
       console.warn("[admin] failed to seed recurring instances", err);
     }
@@ -323,7 +323,7 @@ export function useAdminData() {
       .select()
       .single();
     if (error) throw error;
-    await logAudit({
+    await audit({
       action: "create_instance",
       instance_id: row.id,
       obligation_id: row.obligation_id,
@@ -339,7 +339,7 @@ export function useAdminData() {
       .select()
       .single();
     if (error) throw error;
-    await logAudit({
+    await audit({
       action: "update_instance",
       instance_id: id,
       new_value: JSON.stringify(patch).slice(0, 500),
@@ -387,7 +387,7 @@ export function useAdminData() {
         bulkCount = bulk?.length ?? 0;
       }
 
-      await logAudit({
+      await audit({
         action: "update_instance_bulk",
         instance_id: id,
         obligation_id: obligationId,
@@ -415,7 +415,7 @@ export function useAdminData() {
         .select()
         .single();
       if (error) throw error;
-      await logAudit({
+      await audit({
         action: "mark_paid",
         instance_id: id,
         field_changed: "status",
@@ -435,7 +435,7 @@ export function useAdminData() {
         .select()
         .single();
       if (error) throw error;
-      await logAudit({
+      await audit({
         action: "update_payment_info",
         instance_id: id,
         new_value: JSON.stringify(patch).slice(0, 400),
