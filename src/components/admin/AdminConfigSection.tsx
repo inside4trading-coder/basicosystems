@@ -51,7 +51,9 @@ function ConfigSubsection({
   emptyIcon: EmptyIcon,
   emptyText,
 }: SubsectionProps) {
-  const { config: CONFIG } = useAdminScope();
+  const { config } = useAdminScope();
+  const CONFIG = config as any;
+
   const [newValue, setNewValue] = useState("");
   const [adding, setAdding] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
