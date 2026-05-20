@@ -231,12 +231,41 @@ export function FichajeClock({ employeeName, sessionToken, onDone, onCancel }: F
   }
 
   if (phase.kind === "error") {
+    const showIOSHelp = phase.errorCode === "denied" && isIOS();
+    const showGenericHelp = phase.errorCode === "denied" && !isIOS();
     return (
-      <div className="space-y-4 text-center py-6">
-        <div className="h-14 w-14 mx-auto rounded-full bg-destructive/15 flex items-center justify-center">
-          <AlertTriangle className="h-7 w-7 text-destructive" />
+      <div className="space-y-4 py-4">
+        <div className="flex flex-col items-center text-center space-y-3">
+          <div className="h-14 w-14 rounded-full bg-destructive/15 flex items-center justify-center">
+            <AlertTriangle className="h-7 w-7 text-destructive" />
+          </div>
+          <p className="text-sm font-semibold text-foreground">{phase.message}</p>
         </div>
-        <p className="text-sm text-foreground">{phase.message}</p>
+
+        {showIOSHelp && (
+          <div className="rounded-2xl bg-muted/60 border border-border p-4 text-left space-y-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Cómo activar la ubicación en iPhone
+            </p>
+            <ol className="text-xs text-foreground/90 space-y-1.5 list-decimal pl-4">
+              <li>Abre <strong>Ajustes</strong> del iPhone.</li>
+              <li><strong>Privacidad y seguridad</strong> → <strong>Localización</strong> → actívala.</li>
+              <li>Dentro de Localización, busca <strong>Safari</strong> (o tu navegador) y selecciona <strong>Al usar la app</strong>.</li>
+              <li>Vuelve a <strong>Ajustes → Apps → Safari → Ubicación</strong> y elige <strong>Preguntar</strong> o <strong>Permitir</strong>.</li>
+              <li>Cierra todas las pestañas de Safari y vuelve a abrir el enlace de fichaje.</li>
+              <li>Cuando aparezca el aviso pidiendo permiso, pulsa <strong>Permitir</strong>.</li>
+            </ol>
+          </div>
+        )}
+
+        {showGenericHelp && (
+          <div className="rounded-2xl bg-muted/60 border border-border p-4 text-left">
+            <p className="text-xs text-foreground/90">
+              Pulsa el icono de candado / información a la izquierda de la URL del navegador y autoriza la ubicación para este sitio. Luego vuelve a intentarlo.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outline" onClick={onCancel} className="rounded-xl">Salir</Button>
           <Button onClick={() => setPhase({ kind: "idle" })} className="rounded-xl">Reintentar</Button>
