@@ -1802,6 +1802,7 @@ export type Database = {
           entry_time: string | null
           exit_time: string | null
           failed_attempts: number
+          hybrid_mode: boolean
           last_pin_attempt_at: string | null
           late_tolerance_minutes: number
           locked_until: string | null
@@ -1812,6 +1813,7 @@ export type Database = {
           temp_pin_expires_at: string | null
           temp_pin_hash: string | null
           updated_at: string
+          weekly_hours_target: number | null
           weekly_schedule: Json
         }
         Insert: {
@@ -1825,6 +1827,7 @@ export type Database = {
           entry_time?: string | null
           exit_time?: string | null
           failed_attempts?: number
+          hybrid_mode?: boolean
           last_pin_attempt_at?: string | null
           late_tolerance_minutes?: number
           locked_until?: string | null
@@ -1835,6 +1838,7 @@ export type Database = {
           temp_pin_expires_at?: string | null
           temp_pin_hash?: string | null
           updated_at?: string
+          weekly_hours_target?: number | null
           weekly_schedule?: Json
         }
         Update: {
@@ -1848,6 +1852,7 @@ export type Database = {
           entry_time?: string | null
           exit_time?: string | null
           failed_attempts?: number
+          hybrid_mode?: boolean
           last_pin_attempt_at?: string | null
           late_tolerance_minutes?: number
           locked_until?: string | null
@@ -1858,6 +1863,7 @@ export type Database = {
           temp_pin_expires_at?: string | null
           temp_pin_hash?: string | null
           updated_at?: string
+          weekly_hours_target?: number | null
           weekly_schedule?: Json
         }
         Relationships: [
