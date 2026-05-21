@@ -20,6 +20,8 @@ type Row = {
   breakMinutes: number;
   tolerance: number;
   schedule: WeeklySchedule;
+  hybridMode: boolean;
+  weeklyHoursTarget: number | null;
 };
 
 const DAYS: Array<{ key: keyof WeeklySchedule; label: string }> = [
