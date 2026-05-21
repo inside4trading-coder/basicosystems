@@ -69,10 +69,13 @@ export default function SublimeSchedulesAdmin() {
           breakMinutes: s.break_minutes ?? 0,
           tolerance: s.late_tolerance_minutes ?? 0,
           schedule: s.weekly_schedule ?? { mon:false,tue:false,wed:false,thu:false,fri:false,sat:false,sun:false },
+          hybridMode: !!s.hybrid_mode,
+          weeklyHoursTarget: s.weekly_hours_target ?? null,
         };
       });
-      // Ocultar empleados sin ningún día activo y sin horas configuradas
+      // Ocultar empleados sin ningún día activo y sin horas configuradas (excepto híbridos con meta semanal)
       const visible = out.filter((r) => {
+        if (r.hybridMode) return (r.weeklyHoursTarget ?? 0) > 0;
         const anyDay = Object.values(r.schedule || {}).some(Boolean);
         const anyTime = !!(r.entry || r.exit || r.breakStart || r.breakEnd);
         return anyDay || anyTime;
