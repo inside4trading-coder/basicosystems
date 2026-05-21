@@ -154,29 +154,39 @@ export default function SublimeSchedulesAdmin() {
                   ) : "—"}
                 </TableCell>
                 <TableCell>
-                  <div className="flex gap-1">
-                    {DAYS.map(({ key, label }) => {
-                      const on = r.schedule[key];
-                      return (
-                        <span
-                          key={key}
-                          className={`h-6 w-6 rounded-md text-[10px] font-bold flex items-center justify-center ${
-                            on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {label}
-                        </span>
-                      );
-                    })}
-                  </div>
+                  {r.hybridMode ? (
+                    <Badge variant="outline" className="bg-[hsl(217_91%_60%)]/10 text-[hsl(217_91%_60%)] border-[hsl(217_91%_60%)]/30">Híbrido</Badge>
+                  ) : (
+                    <div className="flex gap-1">
+                      {DAYS.map(({ key, label }) => {
+                        const on = r.schedule[key];
+                        return (
+                          <span
+                            key={key}
+                            className={`h-6 w-6 rounded-md text-[10px] font-bold flex items-center justify-center ${
+                              on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </TableCell>
-                <TableCell className="tabular-nums">{fmt(r.entry)}</TableCell>
-                <TableCell className="tabular-nums">{fmt(r.exit)}</TableCell>
-                <TableCell className="tabular-nums text-sm">
-                  {r.breakStart || r.breakEnd
-                    ? `${fmt(r.breakStart)} – ${fmt(r.breakEnd)}`
-                    : `${r.breakMinutes} min`}
+                <TableCell className="tabular-nums" colSpan={r.hybridMode ? 3 : 1}>
+                  {r.hybridMode
+                    ? <span className="text-sm font-semibold">{r.weeklyHoursTarget ?? 0} h/semana presenciales</span>
+                    : fmt(r.entry)}
                 </TableCell>
+                {!r.hybridMode && <TableCell className="tabular-nums">{fmt(r.exit)}</TableCell>}
+                {!r.hybridMode && (
+                  <TableCell className="tabular-nums text-sm">
+                    {r.breakStart || r.breakEnd
+                      ? `${fmt(r.breakStart)} – ${fmt(r.breakEnd)}`
+                      : `${r.breakMinutes} min`}
+                  </TableCell>
+                )}
                 <TableCell className="tabular-nums">{r.tolerance} min</TableCell>
                 <TableCell>
                   {r.blocked ? (
