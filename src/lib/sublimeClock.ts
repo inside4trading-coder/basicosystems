@@ -9,8 +9,11 @@ export function canEmployeeClockIn(
   if (employeeStatus !== "active") return false;
   if (!s.enabled) return false;
   if (!s.store_id) return false;
-  if (!s.entry_time || !s.exit_time) return false;
   if (s.blocked) return false;
+  if (s.hybrid_mode) {
+    return !!(s.weekly_hours_target && s.weekly_hours_target > 0);
+  }
+  if (!s.entry_time || !s.exit_time) return false;
   const ws = s.weekly_schedule;
   const anyDay = ws && (ws.mon || ws.tue || ws.wed || ws.thu || ws.fri || ws.sat || ws.sun);
   if (!anyDay) return false;

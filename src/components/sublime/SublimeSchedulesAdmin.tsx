@@ -20,6 +20,8 @@ type Row = {
   breakMinutes: number;
   tolerance: number;
   schedule: WeeklySchedule;
+  hybridMode: boolean;
+  weeklyHoursTarget: number | null;
 };
 
 const DAYS: Array<{ key: keyof WeeklySchedule; label: string }> = [
@@ -67,10 +69,13 @@ export default function SublimeSchedulesAdmin() {
           breakMinutes: s.break_minutes ?? 0,
           tolerance: s.late_tolerance_minutes ?? 0,
           schedule: s.weekly_schedule ?? { mon:false,tue:false,wed:false,thu:false,fri:false,sat:false,sun:false },
+          hybridMode: !!s.hybrid_mode,
+          weeklyHoursTarget: s.weekly_hours_target ?? null,
         };
       });
-      // Ocultar empleados sin ningún día activo y sin horas configuradas
+      // Ocultar empleados sin ningún día activo y sin horas configuradas (excepto híbridos con meta semanal)
       const visible = out.filter((r) => {
+        if (r.hybridMode) return (r.weeklyHoursTarget ?? 0) > 0;
         const anyDay = Object.values(r.schedule || {}).some(Boolean);
         const anyTime = !!(r.entry || r.exit || r.breakStart || r.breakEnd);
         return anyDay || anyTime;
@@ -149,29 +154,39 @@ export default function SublimeSchedulesAdmin() {
                   ) : "—"}
                 </TableCell>
                 <TableCell>
-                  <div className="flex gap-1">
-                    {DAYS.map(({ key, label }) => {
-                      const on = r.schedule[key];
-                      return (
-                        <span
-                          key={key}
-                          className={`h-6 w-6 rounded-md text-[10px] font-bold flex items-center justify-center ${
-                            on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {label}
-                        </span>
-                      );
-                    })}
-                  </div>
+                  {r.hybridMode ? (
+                    <Badge variant="outline" className="bg-[hsl(217_91%_60%)]/10 text-[hsl(217_91%_60%)] border-[hsl(217_91%_60%)]/30">Híbrido</Badge>
+                  ) : (
+                    <div className="flex gap-1">
+                      {DAYS.map(({ key, label }) => {
+                        const on = r.schedule[key];
+                        return (
+                          <span
+                            key={key}
+                            className={`h-6 w-6 rounded-md text-[10px] font-bold flex items-center justify-center ${
+                              on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </TableCell>
-                <TableCell className="tabular-nums">{fmt(r.entry)}</TableCell>
-                <TableCell className="tabular-nums">{fmt(r.exit)}</TableCell>
-                <TableCell className="tabular-nums text-sm">
-                  {r.breakStart || r.breakEnd
-                    ? `${fmt(r.breakStart)} – ${fmt(r.breakEnd)}`
-                    : `${r.breakMinutes} min`}
+                <TableCell className="tabular-nums" colSpan={r.hybridMode ? 3 : 1}>
+                  {r.hybridMode
+                    ? <span className="text-sm font-semibold">{r.weeklyHoursTarget ?? 0} h/semana presenciales</span>
+                    : fmt(r.entry)}
                 </TableCell>
+                {!r.hybridMode && <TableCell className="tabular-nums">{fmt(r.exit)}</TableCell>}
+                {!r.hybridMode && (
+                  <TableCell className="tabular-nums text-sm">
+                    {r.breakStart || r.breakEnd
+                      ? `${fmt(r.breakStart)} – ${fmt(r.breakEnd)}`
+                      : `${r.breakMinutes} min`}
+                  </TableCell>
+                )}
                 <TableCell className="tabular-nums">{r.tolerance} min</TableCell>
                 <TableCell>
                   {r.blocked ? (

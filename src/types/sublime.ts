@@ -60,6 +60,8 @@ export interface ClockSettings {
   pin_set_at: string | null;
   temp_pin_hash: string | null;
   blocked: boolean;
+  hybrid_mode: boolean;
+  weekly_hours_target: number | null;
   pin_status: PinStatus;
   temp_pin_expires_at: string | null;
   failed_attempts: number;
