@@ -64,7 +64,7 @@ const statusLabel: Record<string, string> = {
 const PER_PAGE = 25;
 
 export default function Pedidos() {
-  const [view, setView] = useState<"dashboard" | "list">("dashboard");
+  const [view, setView] = useState<"dashboard" | "list" | "channels">("dashboard");
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
