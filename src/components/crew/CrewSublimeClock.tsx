@@ -226,102 +226,139 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
           </div>
         </div>
 
-        {/* Horario semanal */}
-        <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Horario semanal
-          </Label>
-          <div className="flex gap-2 flex-wrap">
-            {DAY_LABELS.map(({ key, label }) => {
-              const on = ws[key];
-              return (
-                <button
-                  key={key}
-                  type="button"
+        {/* Modalidad híbrida */}
+        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/40">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Modalidad híbrida</p>
+            <p className="text-xs text-muted-foreground">
+              Días rotativos flexibles. En vez de horario fijo, se exige cumplir una cantidad mínima de horas presenciales por semana.
+            </p>
+          </div>
+          <Switch
+            checked={settings?.hybrid_mode ?? false}
+            disabled={!canEdit}
+            onCheckedChange={(v) => handleField({ hybrid_mode: v })}
+          />
+        </div>
+
+        {settings?.hybrid_mode ? (
+          <div className="space-y-1.5 max-w-xs">
+            <Label className="text-xs">Horas presenciales requeridas por semana</Label>
+            <Input
+              type="number"
+              min={0}
+              max={80}
+              step={0.5}
+              disabled={!canEdit}
+              value={settings?.weekly_hours_target ?? ""}
+              onChange={(e) => handleField({ weekly_hours_target: e.target.value === "" ? null : Number(e.target.value) })}
+              className="rounded-xl"
+              placeholder="Ej: 20"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              El empleado puede fichar cualquier día/hora hasta cumplir esta meta semanal.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Horario semanal */}
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                Horario semanal
+              </Label>
+              <div className="flex gap-2 flex-wrap">
+                {DAY_LABELS.map(({ key, label }) => {
+                  const on = ws[key];
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      disabled={!canEdit}
+                      onClick={() => handleToggleDay(key)}
+                      className={`h-10 w-10 rounded-xl text-sm font-semibold transition-colors ${
+                        on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"
+                      } ${!canEdit ? "opacity-60 cursor-not-allowed" : ""}`}
+                      aria-pressed={on}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Horarios */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Hora entrada</Label>
+                <Input
+                  type="time"
                   disabled={!canEdit}
-                  onClick={() => handleToggleDay(key)}
-                  className={`h-10 w-10 rounded-xl text-sm font-semibold transition-colors ${
-                    on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"
-                  } ${!canEdit ? "opacity-60 cursor-not-allowed" : ""}`}
-                  aria-pressed={on}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                  value={timeOnly(settings?.entry_time ?? null)}
+                  onChange={(e) => handleField({ entry_time: e.target.value || null })}
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Hora salida</Label>
+                <Input
+                  type="time"
+                  disabled={!canEdit}
+                  value={timeOnly(settings?.exit_time ?? null)}
+                  onChange={(e) => handleField({ exit_time: e.target.value || null })}
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Inicio descanso</Label>
+                <Input
+                  type="time"
+                  disabled={!canEdit}
+                  value={timeOnly(settings?.break_start ?? null)}
+                  onChange={(e) => handleField({ break_start: e.target.value || null })}
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Fin descanso</Label>
+                <Input
+                  type="time"
+                  disabled={!canEdit}
+                  value={timeOnly(settings?.break_end ?? null)}
+                  onChange={(e) => handleField({ break_end: e.target.value || null })}
+                  className="rounded-xl"
+                />
+              </div>
+            </div>
 
-        {/* Horarios */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Hora entrada</Label>
-            <Input
-              type="time"
-              disabled={!canEdit}
-              value={timeOnly(settings?.entry_time ?? null)}
-              onChange={(e) => handleField({ entry_time: e.target.value || null })}
-              className="rounded-xl"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Hora salida</Label>
-            <Input
-              type="time"
-              disabled={!canEdit}
-              value={timeOnly(settings?.exit_time ?? null)}
-              onChange={(e) => handleField({ exit_time: e.target.value || null })}
-              className="rounded-xl"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Inicio descanso</Label>
-            <Input
-              type="time"
-              disabled={!canEdit}
-              value={timeOnly(settings?.break_start ?? null)}
-              onChange={(e) => handleField({ break_start: e.target.value || null })}
-              className="rounded-xl"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Fin descanso</Label>
-            <Input
-              type="time"
-              disabled={!canEdit}
-              value={timeOnly(settings?.break_end ?? null)}
-              onChange={(e) => handleField({ break_end: e.target.value || null })}
-              className="rounded-xl"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Duración descanso (min)</Label>
-            <Input
-              type="number"
-              min={0}
-              max={240}
-              disabled={!canEdit}
-              value={settings?.break_minutes ?? 60}
-              onChange={(e) => handleField({ break_minutes: Number(e.target.value) || 0 })}
-              className="rounded-xl"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Tolerancia retraso (min)</Label>
-            <Input
-              type="number"
-              min={0}
-              max={120}
-              disabled={!canEdit}
-              value={settings?.late_tolerance_minutes ?? 10}
-              onChange={(e) => handleField({ late_tolerance_minutes: Number(e.target.value) || 0 })}
-              className="rounded-xl"
-            />
-          </div>
-        </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Duración descanso (min)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={240}
+                  disabled={!canEdit}
+                  value={settings?.break_minutes ?? 60}
+                  onChange={(e) => handleField({ break_minutes: Number(e.target.value) || 0 })}
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tolerancia retraso (min)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={120}
+                  disabled={!canEdit}
+                  value={settings?.late_tolerance_minutes ?? 10}
+                  onChange={(e) => handleField({ late_tolerance_minutes: Number(e.target.value) || 0 })}
+                  className="rounded-xl"
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* PIN status + acciones */}
         <div className="pt-2 border-t border-border/50 space-y-3">
