@@ -291,71 +291,78 @@ function Placeholder() {
   return <span className="text-muted-foreground italic">—</span>;
 }
 
+const MONTHS = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
 function BirthDateInput({ value, onChange }: { value: string | null; onChange: (iso: string | null) => void }) {
   const parsed = value ? new Date(value) : undefined;
-  const [text, setText] = useState(parsed ? format(parsed, "dd/MM/yyyy") : "");
-  const [open, setOpen] = useState(false);
+  const currentYear = new Date().getFullYear();
+
+  const [day, setDay] = useState<string>(parsed ? String(parsed.getDate()) : "");
+  const [month, setMonth] = useState<string>(parsed ? String(parsed.getMonth() + 1) : "");
+  const [year, setYear] = useState<string>(parsed ? String(parsed.getFullYear()) : "");
 
   useEffect(() => {
-    setText(value ? format(new Date(value), "dd/MM/yyyy") : "");
+    if (value) {
+      const d = new Date(value);
+      setDay(String(d.getDate()));
+      setMonth(String(d.getMonth() + 1));
+      setYear(String(d.getFullYear()));
+    } else {
+      setDay("");
+      setMonth("");
+      setYear("");
+    }
   }, [value]);
 
-  const commitText = (raw: string) => {
-    const m = raw.trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})$/);
-    if (!m) return;
-    let [, dd, mm, yy] = m;
-    let year = parseInt(yy, 10);
-    if (year < 100) year += year >= 30 ? 1900 : 2000;
-    const month = parseInt(mm, 10) - 1;
-    const day = parseInt(dd, 10);
-    const d = new Date(year, month, day);
-    if (d.getFullYear() === year && d.getMonth() === month && d.getDate() === day) {
-      onChange(format(d, "yyyy-MM-dd"));
+  const commit = (d: string, m: string, y: string) => {
+    if (!d || !m || !y) return;
+    const dd = parseInt(d, 10);
+    const mm = parseInt(m, 10) - 1;
+    const yy = parseInt(y, 10);
+    const date = new Date(yy, mm, dd);
+    if (date.getFullYear() === yy && date.getMonth() === mm && date.getDate() === dd) {
+      onChange(format(date, "yyyy-MM-dd"));
     }
   };
 
-  const currentYear = new Date().getFullYear();
+  const handleDay = (v: string) => { setDay(v); commit(v, month, year); };
+  const handleMonth = (v: string) => { setMonth(v); commit(day, v, year); };
+  const handleYear = (v: string) => { setYear(v); commit(day, month, v); };
+
+  const daysInMonth = (() => {
+    if (!month || !year) return 31;
+    return new Date(parseInt(year, 10), parseInt(month, 10), 0).getDate();
+  })();
 
   return (
     <div className="flex gap-1.5">
-      <Input
-        placeholder="dd/mm/aaaa"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={(e) => commitText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            commitText((e.target as HTMLInputElement).value);
-          }
-        }}
-        className="flex-1"
-      />
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="icon" type="button">
-            <CalendarIcon className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
-          <Calendar
-            mode="single"
-            selected={parsed}
-            defaultMonth={parsed ?? new Date(currentYear - 25, 0, 1)}
-            captionLayout="dropdown-buttons"
-            fromYear={1920}
-            toYear={currentYear}
-            onSelect={(d) => {
-              if (d) {
-                onChange(format(d, "yyyy-MM-dd"));
-                setOpen(false);
-              }
-            }}
-            initialFocus
-            className="p-3 pointer-events-auto"
-          />
-        </PopoverContent>
-      </Popover>
+      <Select value={day} onValueChange={handleDay}>
+        <SelectTrigger className="flex-1"><SelectValue placeholder="Día" /></SelectTrigger>
+        <SelectContent>
+          {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
+            <SelectItem key={d} value={String(d)}>{d}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={month} onValueChange={handleMonth}>
+        <SelectTrigger className="flex-[2]"><SelectValue placeholder="Mes" /></SelectTrigger>
+        <SelectContent>
+          {MONTHS.map((name, i) => (
+            <SelectItem key={i + 1} value={String(i + 1)}>{name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={year} onValueChange={handleYear}>
+        <SelectTrigger className="flex-[1.5]"><SelectValue placeholder="Año" /></SelectTrigger>
+        <SelectContent>
+          {Array.from({ length: currentYear - 1920 + 1 }, (_, i) => currentYear - i).map((y) => (
+            <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
