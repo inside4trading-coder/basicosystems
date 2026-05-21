@@ -196,17 +196,10 @@ export function CrewGeneralData({ employee, editMode, onUpdate, canViewSalary = 
         {/* Fecha de nacimiento */}
         <FieldCell label="Fecha de nacimiento" editing={editMode}>
           {editMode ? (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !parsedBirth && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {parsedBirth ? format(parsedBirth, "dd/MM/yyyy") : "Seleccionar"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={parsedBirth} onSelect={(d) => d && set("birth_date", format(d, "yyyy-MM-dd"))} initialFocus className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
+            <BirthDateInput
+              value={birthDate ?? null}
+              onChange={(iso) => set("birth_date", iso as any)}
+            />
           ) : (
             <p className="text-sm font-semibold">
               {parsedBirth ? parsedBirth.toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }) : <Placeholder />}
@@ -296,4 +289,73 @@ function ReadField({ label, value }: { label: string; value: string }) {
 
 function Placeholder() {
   return <span className="text-muted-foreground italic">—</span>;
+}
+
+function BirthDateInput({ value, onChange }: { value: string | null; onChange: (iso: string | null) => void }) {
+  const parsed = value ? new Date(value) : undefined;
+  const [text, setText] = useState(parsed ? format(parsed, "dd/MM/yyyy") : "");
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setText(value ? format(new Date(value), "dd/MM/yyyy") : "");
+  }, [value]);
+
+  const commitText = (raw: string) => {
+    const m = raw.trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})$/);
+    if (!m) return;
+    let [, dd, mm, yy] = m;
+    let year = parseInt(yy, 10);
+    if (year < 100) year += year >= 30 ? 1900 : 2000;
+    const month = parseInt(mm, 10) - 1;
+    const day = parseInt(dd, 10);
+    const d = new Date(year, month, day);
+    if (d.getFullYear() === year && d.getMonth() === month && d.getDate() === day) {
+      onChange(format(d, "yyyy-MM-dd"));
+    }
+  };
+
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <div className="flex gap-1.5">
+      <Input
+        placeholder="dd/mm/aaaa"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={(e) => commitText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commitText((e.target as HTMLInputElement).value);
+          }
+        }}
+        className="flex-1"
+      />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="icon" type="button">
+            <CalendarIcon className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <Calendar
+            mode="single"
+            selected={parsed}
+            defaultMonth={parsed ?? new Date(currentYear - 25, 0, 1)}
+            captionLayout="dropdown-buttons"
+            fromYear={1920}
+            toYear={currentYear}
+            onSelect={(d) => {
+              if (d) {
+                onChange(format(d, "yyyy-MM-dd"));
+                setOpen(false);
+              }
+            }}
+            initialFocus
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 }
