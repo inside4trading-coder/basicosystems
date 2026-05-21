@@ -1,42 +1,62 @@
-# Por qué no se guardan los cambios desde escalonamzair@gmail.com
+# Canales de venta en Pedidos
 
-## Diagnóstico
+Agregar visibilidad del canal de venta (`_basico_sale_channel`) en el módulo de Pedidos, con su propia pestaña, filtros por período, desglose por canal con estado de cada pedido, y un gráfico de torta.
 
-Las tablas del módulo Crew (`employees`, `recurring_tasks`, `sublime_clock_settings`, `crew_audit_log`, etc.) tienen reglas de acceso (RLS) que solo permiten **escribir** a usuarios con rol **admin**. Los usuarios con rol **manager** solo pueden **leer**, y los usuarios sin rol asignado no ven nada.
+## 1. Capturar `_basico_sale_channel` desde WooCommerce
 
-La cuenta `escalonamzair@gmail.com` no aparece como admin, por eso cualquier cambio que intenta hacer en Crew se ignora silenciosamente (la UI parece guardar pero el backend rechaza la actualización).
+Hoy en `supabase/functions/woo-sync/index.ts` se detecta el canal con las claves `_sale_channel`, `sale_channel` y `_created_via`. Por eso todos los pedidos en la base aparecen como `"web"`.
 
-Además, esa cuenta tampoco existe aún en la tabla de perfiles del sistema (puede que nunca haya iniciado sesión, o que el correo registrado sea ligeramente distinto).
+- Añadir `_basico_sale_channel` como la clave **prioritaria** en `extractSaleChannel`. Si no existe, caer al resto y finalmente a `"web"`.
+- Normalizar el valor (trim, lowercase) para que agrupe consistentemente (`POS`, `pos`, `Pos` -> `pos`).
 
-## Pregunta antes de actuar
+Como `meta_data` no se guarda en la tabla `orders`, los pedidos viejos no se pueden recalcular sin volver a sincronizar. Tras el cambio, al pulsar "Sincronizar 30d" se reescribirán los canales reales para los pedidos recientes. Para reescribir el histórico completo hace falta correr `woo-sync` con un rango más amplio (`?days=...&start_page=1`), pero eso queda fuera del alcance de esta tarea — lo dejamos disponible cuando lo necesites.
 
-Necesito que me confirmes qué rol debe tener `escalonamzair@gmail.com`:
+## 2. Nueva pestaña "Canales" en Pedidos
 
-- **Opción A — Hacerla admin.** Podrá editar Crew, Administración, RRPP, Sublime, configuración, etc. (acceso total).
-- **Opción B — Mantenerla como manager pero permitir editar Crew.** Ampliamos las reglas para que los managers también puedan crear/editar empleados, tareas recurrentes y horarios Sublime. Otros módulos sensibles (sueldos, roles) siguen restringidos a admin.
-- **Opción C — Otro alcance específico** (por ejemplo: solo editar ciertas pestañas).
+En `src/pages/Pedidos.tsx` ya existen las pestañas Dashboard / Pedidos. Añadimos una tercera: **Canales**.
 
-## Pasos según la opción elegida
+```text
+[Dashboard] [Pedidos] [Canales]
+```
 
-### Si eliges A (admin)
-1. Verificar que la cuenta haya iniciado sesión al menos una vez (si no, pedirle que entre).
-2. Asignarle el rol `admin` en la tabla `user_roles`.
-3. Probar guardado en Crew.
+Componente nuevo: `src/components/pedidos/PedidosChannels.tsx`.
 
-### Si eliges B (manager con permiso de edición en Crew)
-1. Crear migración que añada políticas de escritura para managers en:
-   - `employees` (sin permitir cambiar `current_salary`)
-   - `recurring_tasks`
-   - `sublime_clock_settings`
-   - `crew_documents`, `crew_incidents`, `crew_private_notes`
-2. Mantener `current_salary` y `crew_salary_history` solo para admin.
-3. Asignar rol `manager` a la cuenta si aún no lo tiene.
-4. Probar guardado.
+### Filtros de período (reutilizados)
 
-## Detalles técnicos
+Mismos cinco botones del Dashboard:
+Este mes · Mes anterior · Últimos 3 meses · Este año · Todo (desde 2026).
 
-- Tabla de roles: `public.user_roles (user_id, role)` con enum `app_role = {admin, manager, partner}`.
-- Helper: `public.has_role(_user_id, _role)`.
-- Políticas actuales relevantes (todas con `USING has_role(auth.uid(),'admin')` para escritura):
-  - `employees`, `recurring_tasks`, `sublime_clock_settings`, `crew_audit_log`.
-- En la opción B, las nuevas políticas usarían `has_role(auth.uid(),'manager') OR has_role(auth.uid(),'admin')` para `INSERT/UPDATE/DELETE`, con un `WITH CHECK` que impida modificar `current_salary` cuando el usuario es manager.
+Se extrae `periodBounds` / `PERIOD_OPTIONS` de `PedidosDashboard.tsx` a un archivo compartido (`src/components/pedidos/periodFilters.ts`) y se usa en ambos componentes.
+
+### Resumen por canal (acordeones colapsables)
+
+Mismo patrón visual que los buckets del Dashboard (Pago por confirmar, Listos para envío, etc.), pero agrupando por **canal de venta** detectado dinámicamente desde los pedidos del período seleccionado.
+
+Para cada canal:
+- Cabecera con: nombre del canal, número de pedidos, monto total USD, **% sobre el total del período**.
+- Al desplegar: lista de pedidos del canal con número, cliente, total, fecha y **badge del estado** (mismas etiquetas/colores que ya usa la vista de Pedidos: completado, procesando, pago confirmado, enviado, etc.).
+- Click en un pedido abre el detalle expandible (mismo `OrderExpandedDetails` que ya existe), o link al pedido en WooCommerce.
+
+Los pedidos cancelados/refunded/failed se excluyen del cálculo de totales y porcentajes (igual criterio que `EXCLUDED_FROM_REVENUE` en `src/config/orderStatuses.ts`), pero pueden mostrarse si se despliega el canal.
+
+### Gráfico de torta al final
+
+Debajo de los acordeones, un `PieChart` (usando `recharts`, que ya está en el proyecto vía `@/components/ui/chart`) con:
+- Una porción por canal.
+- Tooltip con cantidad de pedidos, monto USD y porcentaje.
+- Leyenda lateral con los mismos colores que el badge de cada canal.
+
+## 3. Detalle técnico
+
+- Query: `supabase.from("orders").select("order_id, order_number, customer_email, order_status, total_amount_usd, total_amount, order_currency, exchange_rate, order_datetime, sale_channel").gte("order_date", from).lte("order_date", to)`.
+- Agrupar en cliente por `sale_channel ?? "web"` (mismo fallback que la tabla actual).
+- Conversión a USD: misma helper `toUsd` que ya usa `Pedidos.tsx`.
+- Colores de canal: paleta consistente generada a partir del nombre (hash -> índice en una paleta fija de tokens semánticos) para que el mismo canal tenga siempre el mismo color en lista y torta.
+
+### Archivos afectados
+
+- `supabase/functions/woo-sync/index.ts` — añadir `_basico_sale_channel` y normalizar.
+- `src/components/pedidos/periodFilters.ts` — nuevo, helpers compartidos.
+- `src/components/pedidos/PedidosDashboard.tsx` — usar helpers compartidos (refactor mínimo).
+- `src/components/pedidos/PedidosChannels.tsx` — nuevo.
+- `src/pages/Pedidos.tsx` — añadir tab "Canales" y montar el componente.
