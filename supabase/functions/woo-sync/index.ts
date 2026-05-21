@@ -62,10 +62,15 @@ function extractVariation(meta: any[], key: string): string | null {
 
 function extractSaleChannel(meta: any[]): string {
   if (!Array.isArray(meta)) return "web";
-  const ch = meta.find((m: any) =>
-    m.key === "_sale_channel" || m.key === "sale_channel" || m.key === "_created_via"
-  );
-  return ch?.value || "web";
+  const priority = ["_basico_sale_channel", "_sale_channel", "sale_channel", "_created_via"];
+  for (const key of priority) {
+    const found = meta.find((m: any) => m.key === key);
+    const val = found?.value;
+    if (val && typeof val === "string" && val.trim()) {
+      return val.trim().toLowerCase();
+    }
+  }
+  return "web";
 }
 
 serve(async (req) => {
