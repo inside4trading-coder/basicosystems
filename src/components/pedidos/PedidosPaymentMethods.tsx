@@ -60,21 +60,29 @@ const statusLabel: Record<string, string> = {
   "tu-pedido-ha-sido": "Enviado",
 };
 
-const ALLOWED_METHODS = new Set([
-  "Pago Movil",
-  "Pago Móvil",
-  "Punto de venta",
-  "Punto de venta (Bs)",
-  "Cashea",
-  "Efectivo USD",
-  "Zelle",
-  "Binance",
-  "PayPal",
-]);
-
+// Unify the different labels used across `pago_metodo_N` (WooCommerce slot)
+// and `payments.payment_method` (gateway codes) into a single taxonomy.
 const NORMALIZE: Record<string, string> = {
+  // Pago Móvil variants
   "Pago Móvil": "Pago Movil",
+  "Pago Movil": "Pago Movil",
+  // Punto de venta variants
   "Punto de venta (Bs)": "Punto de venta",
+  "PAGO POS": "Punto de venta",
+  // Pago en tienda (Bs) — gateway de tienda física en bolívares
+  "Pago en tienda (Bs)": "Pago en tienda",
+  "Pago en tienda": "Pago en tienda",
+  // Efectivo / POS cash
+  "yith_pos_cash_gateway": "Efectivo USD",
+  "Efectivo USD": "Efectivo USD",
+  // Zelle variants
+  "Paga con Zelle": "Zelle",
+  Zelle: "Zelle",
+  // Otros directos
+  Cashea: "Cashea",
+  Binance: "Binance",
+  PayPal: "PayPal",
+  Otro: "Otro",
 };
 
 const METHOD_COLORS: Record<string, string> = {
@@ -111,8 +119,9 @@ const MAX_REASONABLE_USD = 4000;
 
 function normalizeMethod(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  if (!ALLOWED_METHODS.has(raw)) return null;
-  return NORMALIZE[raw] || raw;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  return NORMALIZE[trimmed] || trimmed;
 }
 
 export function PedidosPaymentMethods() {
