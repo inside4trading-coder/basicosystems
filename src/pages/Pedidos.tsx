@@ -1,4 +1,4 @@
-import { Search, Loader2, ChevronLeft, ChevronRight, Filter, ChevronDown, ChevronUp, ExternalLink, LayoutDashboard, List, RefreshCw, PieChart } from "lucide-react";
+import { Search, Loader2, ChevronLeft, ChevronRight, Filter, ChevronDown, ChevronUp, ExternalLink, LayoutDashboard, List, RefreshCw, PieChart, CreditCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useCallback } from "react";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isQuickAccess } from "@/config/orderStatuses";
 import { PedidosDashboard } from "@/components/pedidos/PedidosDashboard";
 import { PedidosChannels } from "@/components/pedidos/PedidosChannels";
+import { PedidosPaymentMethods } from "@/components/pedidos/PedidosPaymentMethods";
 import { toast } from "sonner";
 
 const STATUS_OPTIONS_RAW = [
