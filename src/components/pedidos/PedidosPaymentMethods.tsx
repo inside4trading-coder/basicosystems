@@ -24,6 +24,14 @@ type OrderRow = {
   pago_metodo_4: string | null;
 };
 
+type PaymentRow = {
+  order_id: number;
+  payment_slot: number | null;
+  payment_method: string | null;
+  payment_amount: number | null;
+  payment_currency: string | null;
+};
+
 const statusClass: Record<string, string> = {
   completed: "status-badge-success",
   processing: "status-badge-inactive",
@@ -101,15 +109,22 @@ const fmtDate = (d: string | null) =>
 
 const MAX_REASONABLE_USD = 4000;
 
+function normalizeMethod(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  if (!ALLOWED_METHODS.has(raw)) return null;
+  return NORMALIZE[raw] || raw;
+}
+
 export function PedidosPaymentMethods() {
   const [period, setPeriod] = useState<PeriodKey>("this_month");
   const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [openMethods, setOpenMethods] = useState<Record<string, boolean>>({});
 
   const { from, to } = useMemo(() => periodBounds(period), [period]);
 
-  const fetchOrders = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     const effectiveFrom = from < CUTOFF ? CUTOFF : from;
     const all: OrderRow[] = [];
@@ -132,68 +147,135 @@ export function PedidosPaymentMethods() {
       offset += PAGE;
     }
     setOrders(all);
+
+    // Fetch payments for those order ids in batches
+    const ids = all.map((o) => o.order_id);
+    const allPayments: PaymentRow[] = [];
+    const CHUNK = 500;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const slice = ids.slice(i, i + CHUNK);
+      if (slice.length === 0) break;
+      const { data, error } = await supabase
+        .from("payments")
+        .select("order_id, payment_slot, payment_method, payment_amount, payment_currency")
+        .in("order_id", slice);
+      if (error) break;
+      allPayments.push(...((data || []) as PaymentRow[]));
+    }
+    setPayments(allPayments);
     setLoading(false);
   }, [from, to]);
 
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    fetchData();
+  }, [fetchData]);
 
-  const toUsd = (o: OrderRow) => {
+  const orderById = useMemo(() => {
+    const m = new Map<number, OrderRow>();
+    for (const o of orders) m.set(o.order_id, o);
+    return m;
+  }, [orders]);
+
+  const orderTotalUsd = useCallback((o: OrderRow) => {
     const usd = Number(o.total_amount_usd ?? 0);
     if (usd > 0) return usd;
     const amt = Number(o.total_amount ?? 0);
     if ((o.order_currency || "USD") === "USD") return amt;
     const rate = Number(o.exchange_rate || 0);
     return rate > 0 ? amt / rate : amt;
-  };
+  }, []);
 
-  const { grouped, totalAppearances, transactionsAnalyzed } = useMemo(() => {
+  const paymentToUsd = useCallback(
+    (p: PaymentRow): number => {
+      const amt = Number(p.payment_amount ?? 0);
+      if (amt <= 0) return 0;
+      const cur = (p.payment_currency || "USD").toUpperCase();
+      if (cur === "USD") return amt;
+      const order = orderById.get(p.order_id);
+      const rate = Number(order?.exchange_rate || 0);
+      return rate > 0 ? amt / rate : 0;
+    },
+    [orderById],
+  );
+
+  // per-(order, method) -> usd paid with that method
+  const perOrderMethodUsd = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of payments) {
+      const method = normalizeMethod(p.payment_method);
+      if (!method) continue;
+      const order = orderById.get(p.order_id);
+      if (!order) continue;
+      if (isExcludedFromRevenue(order.order_status || "")) continue;
+      const usd = paymentToUsd(p);
+      if (usd <= 0 || usd > MAX_REASONABLE_USD) continue;
+      const k = `${p.order_id}::${method}`;
+      m.set(k, (m.get(k) || 0) + usd);
+    }
+    return m;
+  }, [payments, orderById, paymentToUsd]);
+
+  const { grouped, totalCobradoUsd, transactionsAnalyzed } = useMemo(() => {
+    const paid = orders.filter((o) => !isExcludedFromRevenue(o.order_status || ""));
     const map = new Map<
       string,
-      { orders: OrderRow[]; appearances: number; totalUsd: number; seen: Set<number> }
+      { orders: OrderRow[]; totalUsd: number; seen: Set<number> }
     >();
-    let appearances = 0;
-    // exclude refunded/failed/cancelled from analysis (paid set)
-    const paid = orders.filter((o) => !isExcludedFromRevenue(o.order_status || ""));
+
+    // Seed with methods from pago_metodo_N slots (presence-based)
     for (const o of paid) {
       const slots = [o.pago_metodo_1, o.pago_metodo_2, o.pago_metodo_3, o.pago_metodo_4];
+      const seenInOrder = new Set<string>();
       for (const raw of slots) {
-        if (!raw || !ALLOWED_METHODS.has(raw)) continue;
-        const label = NORMALIZE[raw] || raw;
-        if (!map.has(label))
-          map.set(label, { orders: [], appearances: 0, totalUsd: 0, seen: new Set() });
+        const label = normalizeMethod(raw);
+        if (!label) continue;
+        if (seenInOrder.has(label)) continue;
+        seenInOrder.add(label);
+        if (!map.has(label)) map.set(label, { orders: [], totalUsd: 0, seen: new Set() });
         const entry = map.get(label)!;
-        entry.appearances += 1;
-        appearances += 1;
         if (!entry.seen.has(o.order_id)) {
           entry.seen.add(o.order_id);
           entry.orders.push(o);
-          const usd = toUsd(o);
-          if (usd > 0 && usd <= MAX_REASONABLE_USD) entry.totalUsd += usd;
         }
       }
     }
+
+    // Add USD amounts from payments table
+    let total = 0;
+    for (const [k, usd] of perOrderMethodUsd) {
+      const [, method] = k.split("::");
+      if (!map.has(method)) map.set(method, { orders: [], totalUsd: 0, seen: new Set() });
+      const entry = map.get(method)!;
+      entry.totalUsd += usd;
+      total += usd;
+      // ensure order is listed under this method even if pago_metodo_N missed it
+      const orderId = Number(k.split("::")[0]);
+      if (!entry.seen.has(orderId)) {
+        const o = orderById.get(orderId);
+        if (o) {
+          entry.seen.add(orderId);
+          entry.orders.push(o);
+        }
+      }
+    }
+
     const arr = Array.from(map.entries())
-      .map(([method, v]) => ({
-        method,
-        orders: v.orders,
-        appearances: v.appearances,
-        totalUsd: v.totalUsd,
-      }))
-      .sort((a, b) => b.appearances - a.appearances);
-    return { grouped: arr, totalAppearances: appearances, transactionsAnalyzed: paid.length };
-  }, [orders]);
+      .map(([method, v]) => ({ method, orders: v.orders, totalUsd: v.totalUsd }))
+      .sort((a, b) => b.totalUsd - a.totalUsd || b.orders.length - a.orders.length);
+
+    return { grouped: arr, totalCobradoUsd: total, transactionsAnalyzed: paid.length };
+  }, [orders, perOrderMethodUsd, orderById]);
 
   const pieData = useMemo(
     () =>
-      grouped.map((g) => ({
-        name: g.method,
-        value: g.appearances,
-        orders: g.orders.length,
-        totalUsd: g.totalUsd,
-        color: methodColor(g.method),
-      })),
+      grouped
+        .filter((g) => g.totalUsd > 0)
+        .map((g) => ({
+          name: g.method,
+          value: g.totalUsd,
+          orders: g.orders.length,
+          color: methodColor(g.method),
+        })),
     [grouped],
   );
 
@@ -233,9 +315,9 @@ export function PedidosPaymentMethods() {
             </div>
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Apariciones de pago
+                Total cobrado (USD)
               </p>
-              <p className="text-2xl font-black mt-1 tabular-nums">{totalAppearances}</p>
+              <p className="text-2xl font-black mt-1 tabular-nums">{fmtUsd(totalCobradoUsd)}</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -253,7 +335,7 @@ export function PedidosPaymentMethods() {
               </div>
             )}
             {grouped.map((g) => {
-              const pct = totalAppearances ? (g.appearances / totalAppearances) * 100 : 0;
+              const pct = totalCobradoUsd ? (g.totalUsd / totalCobradoUsd) * 100 : 0;
               const color = methodColor(g.method);
               const open = !!openMethods[g.method];
               return (
@@ -272,12 +354,12 @@ export function PedidosPaymentMethods() {
                     <div className="flex-1 text-left min-w-0">
                       <p className="font-bold text-sm truncate">{g.method}</p>
                       <p className="text-xs text-muted-foreground">
-                        {g.appearances} apariciones · {pct.toFixed(1)}% · {g.orders.length} pedidos
+                        {g.orders.length} pedidos · {pct.toFixed(1)}% del cobrado
                       </p>
                     </div>
                     <div className="text-right hidden sm:block">
                       <p className="font-bold text-sm tabular-nums">{fmtUsd(g.totalUsd)}</p>
-                      <p className="text-xs text-muted-foreground">total pedidos</p>
+                      <p className="text-xs text-muted-foreground">cobrado por método</p>
                     </div>
                     <ChevronDown
                       className={cn(
@@ -293,49 +375,56 @@ export function PedidosPaymentMethods() {
                           <tr className="bg-muted/30 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                             <th className="text-left px-4 py-2">Nº</th>
                             <th className="text-left px-4 py-2">Cliente</th>
-                            <th className="text-left px-4 py-2">Total</th>
+                            <th className="text-left px-4 py-2">Pagado c/método</th>
+                            <th className="text-left px-4 py-2">Total pedido</th>
                             <th className="text-left px-4 py-2">Estado</th>
                             <th className="text-left px-4 py-2 hidden md:table-cell">Fecha</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {g.orders.slice(0, 200).map((o) => (
-                            <tr key={o.order_id} className="border-t border-border">
-                              <td className="px-4 py-2 font-bold">
-                                <div className="flex items-center gap-1.5">
-                                  <span>#{o.order_number}</span>
-                                  <a
-                                    href={`https://basicoclothes.com/wp-admin/post.php?post=${o.order_id}&action=edit`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-muted-foreground hover:text-primary transition-colors"
+                          {g.orders.slice(0, 200).map((o) => {
+                            const paidWith = perOrderMethodUsd.get(`${o.order_id}::${g.method}`) || 0;
+                            return (
+                              <tr key={o.order_id} className="border-t border-border">
+                                <td className="px-4 py-2 font-bold">
+                                  <div className="flex items-center gap-1.5">
+                                    <span>#{o.order_number}</span>
+                                    <a
+                                      href={`https://basicoclothes.com/wp-admin/post.php?post=${o.order_id}&action=edit`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-muted-foreground hover:text-primary transition-colors"
+                                    >
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-2 text-xs">{o.customer_email || "—"}</td>
+                                <td className="px-4 py-2 font-semibold tabular-nums">
+                                  {paidWith > 0 ? fmtUsd(paidWith) : "—"}
+                                </td>
+                                <td className="px-4 py-2 tabular-nums text-muted-foreground">
+                                  {fmtUsd(orderTotalUsd(o))}
+                                </td>
+                                <td className="px-4 py-2">
+                                  <span
+                                    className={
+                                      statusClass[o.order_status || ""] || "status-badge-inactive"
+                                    }
                                   >
-                                    <ExternalLink className="h-3.5 w-3.5" />
-                                  </a>
-                                </div>
-                              </td>
-                              <td className="px-4 py-2 text-xs">{o.customer_email || "—"}</td>
-                              <td className="px-4 py-2 font-semibold tabular-nums">
-                                {fmtUsd(toUsd(o))}
-                              </td>
-                              <td className="px-4 py-2">
-                                <span
-                                  className={
-                                    statusClass[o.order_status || ""] || "status-badge-inactive"
-                                  }
-                                >
-                                  {statusLabel[o.order_status || ""] || o.order_status || "—"}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2 text-xs text-muted-foreground hidden md:table-cell">
-                                {fmtDate(o.order_datetime)}
-                              </td>
-                            </tr>
-                          ))}
+                                    {statusLabel[o.order_status || ""] || o.order_status || "—"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2 text-xs text-muted-foreground hidden md:table-cell">
+                                  {fmtDate(o.order_datetime)}
+                                </td>
+                              </tr>
+                            );
+                          })}
                           {g.orders.length > 200 && (
                             <tr>
                               <td
-                                colSpan={5}
+                                colSpan={6}
                                 className="px-4 py-2 text-xs text-center text-muted-foreground"
                               >
                                 Mostrando 200 de {g.orders.length} pedidos.
@@ -354,7 +443,7 @@ export function PedidosPaymentMethods() {
           {/* Pie chart */}
           {pieData.length > 0 && (
             <div className="bg-card border border-border rounded-lg p-4">
-              <h3 className="text-sm font-bold mb-3">Distribución por método de pago</h3>
+              <h3 className="text-sm font-bold mb-3">Distribución real por método (USD cobrado)</h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -373,7 +462,7 @@ export function PedidosPaymentMethods() {
                     </Pie>
                     <Tooltip
                       formatter={(value: any, _name: any, item: any) => [
-                        `${value} apariciones · ${item?.payload?.orders ?? 0} pedidos · ${fmtUsd(item?.payload?.totalUsd ?? 0)}`,
+                        `${fmtUsd(Number(value))} · ${item?.payload?.orders ?? 0} pedidos`,
                         item?.payload?.name,
                       ]}
                     />
