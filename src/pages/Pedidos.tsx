@@ -229,10 +229,20 @@ export default function Pedidos() {
           <PieChart className="h-3.5 w-3.5" />
           Canales
         </button>
+        <button
+          onClick={() => setView("payments")}
+          className={`px-4 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1.5 ${
+            view === "payments" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <CreditCard className="h-3.5 w-3.5" />
+          Métodos de pago
+        </button>
       </div>
 
       {view === "dashboard" && <PedidosDashboard key={dashboardKey} />}
       {view === "channels" && <PedidosChannels />}
+      {view === "payments" && <PedidosPaymentMethods />}
 
       {view === "list" && (
         <>
