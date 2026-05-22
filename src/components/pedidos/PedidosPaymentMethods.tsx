@@ -119,8 +119,9 @@ const MAX_REASONABLE_USD = 4000;
 
 function normalizeMethod(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  if (!ALLOWED_METHODS.has(raw)) return null;
-  return NORMALIZE[raw] || raw;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  return NORMALIZE[trimmed] || trimmed;
 }
 
 export function PedidosPaymentMethods() {
