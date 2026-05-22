@@ -1,4 +1,4 @@
-import { Search, Loader2, ChevronLeft, ChevronRight, Filter, ChevronDown, ChevronUp, ExternalLink, LayoutDashboard, List, RefreshCw, PieChart } from "lucide-react";
+import { Search, Loader2, ChevronLeft, ChevronRight, Filter, ChevronDown, ChevronUp, ExternalLink, LayoutDashboard, List, RefreshCw, PieChart, CreditCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useCallback } from "react";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isQuickAccess } from "@/config/orderStatuses";
 import { PedidosDashboard } from "@/components/pedidos/PedidosDashboard";
 import { PedidosChannels } from "@/components/pedidos/PedidosChannels";
+import { PedidosPaymentMethods } from "@/components/pedidos/PedidosPaymentMethods";
 import { toast } from "sonner";
 
 const STATUS_OPTIONS_RAW = [
@@ -64,7 +65,7 @@ const statusLabel: Record<string, string> = {
 const PER_PAGE = 25;
 
 export default function Pedidos() {
-  const [view, setView] = useState<"dashboard" | "list" | "channels">("dashboard");
+  const [view, setView] = useState<"dashboard" | "list" | "channels" | "payments">("dashboard");
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -228,10 +229,20 @@ export default function Pedidos() {
           <PieChart className="h-3.5 w-3.5" />
           Canales
         </button>
+        <button
+          onClick={() => setView("payments")}
+          className={`px-4 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1.5 ${
+            view === "payments" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <CreditCard className="h-3.5 w-3.5" />
+          Métodos de pago
+        </button>
       </div>
 
       {view === "dashboard" && <PedidosDashboard key={dashboardKey} />}
       {view === "channels" && <PedidosChannels />}
+      {view === "payments" && <PedidosPaymentMethods />}
 
       {view === "list" && (
         <>
