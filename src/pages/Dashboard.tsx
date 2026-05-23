@@ -64,17 +64,17 @@ export default function Dashboard() {
   const [syncing, setSyncing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      const { data: d, error } = await supabase
-        .from("orders")
-        .select("synced_at")
-        .order("synced_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!error && d?.synced_at) setLastSyncedAt(d.synced_at);
-    })();
-  }, []);
+  const fetchLastSync = async () => {
+    const { data: d, error } = await supabase
+      .from("orders")
+      .select("synced_at")
+      .order("synced_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!error && d?.synced_at) setLastSyncedAt(d.synced_at);
+  };
+
+  useEffect(() => { fetchLastSync(); }, []);
 
   const handleSync = async (totalDays = 7) => {
     setSyncing(true);
