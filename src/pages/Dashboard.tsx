@@ -1,5 +1,5 @@
 import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw, ShoppingCart, Calendar } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,22 @@ import { useDashboardData, type Period } from "@/hooks/useDashboardData";
 import { isQuickAccess } from "@/config/orderStatuses";
 import { useBlurSales } from "@/hooks/useBlurSales";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+function timeAgo(iso: string | null): string {
+  if (!iso) return "";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "actualizado hace un momento";
+  if (diffMin < 60) return `actualizado hace ${diffMin} min`;
+  const diffHrs = Math.floor(diffMin / 60);
+  const remMin = diffMin % 60;
+  if (diffHrs < 24) {
+    return remMin > 1 ? `actualizado hace ${diffHrs} h ${remMin} min` : `actualizado hace ${diffHrs} h`;
+  }
+  const diffDays = Math.floor(diffHrs / 24);
+  return `actualizado hace ${diffDays} d`;
+}
 
 const periods: { key: Period; label: string }[] = [
   { key: "today", label: "Hoy" },
@@ -46,6 +62,19 @@ export default function Dashboard() {
   const { data, loading, error, refetch } = useDashboardData(period, customRange);
   const blurSales = useBlurSales();
   const [syncing, setSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data: d, error } = await supabase
+        .from("orders")
+        .select("synced_at")
+        .order("synced_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!error && d?.synced_at) setLastSyncedAt(d.synced_at);
+    })();
+  }, []);
 
   const handleSync = async (totalDays = 7) => {
     setSyncing(true);
@@ -119,7 +148,14 @@ export default function Dashboard() {
     <div className="space-y-6 w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight">Resumen de ventas</h2>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight">Resumen de ventas</h2>
+          {lastSyncedAt && (
+            <p className="text-xs text-muted-foreground mt-1">
+              <span className="text-primary/80 font-medium">{timeAgo(lastSyncedAt)}</span>
+            </p>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center">
             <Button variant="destructive" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="gap-2 rounded-r-none">

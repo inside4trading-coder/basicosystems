@@ -107,6 +107,21 @@ const TONE_CLASSES: Record<string, { bg: string; text: string; border: string; r
 const fmtUsd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
 
+function timeAgo(iso: string | null): string {
+  if (!iso) return "";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "actualizado hace un momento";
+  if (diffMin < 60) return `actualizado hace ${diffMin} min`;
+  const diffHrs = Math.floor(diffMin / 60);
+  const remMin = diffMin % 60;
+  if (diffHrs < 24) {
+    return remMin > 1 ? `actualizado hace ${diffHrs} h ${remMin} min` : `actualizado hace ${diffHrs} h`;
+  }
+  const diffDays = Math.floor(diffHrs / 24);
+  return `actualizado hace ${diffDays} d`;
+}
+
 type OrderRow = {
   order_id: number;
   order_status: string | null;
@@ -132,6 +147,7 @@ export function PedidosDashboard() {
   });
 
   const [syncing, setSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
 
   const { from, to } = useMemo(() => periodBounds(period), [period]);
 
@@ -159,14 +175,26 @@ export function PedidosDashboard() {
     setLoading(false);
   }, [from, to]);
 
+  const fetchLastSync = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("synced_at")
+      .order("synced_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!error && data?.synced_at) {
+      setLastSyncedAt(data.synced_at);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      await fetchOrders();
+      await Promise.all([fetchOrders(), fetchLastSync()]);
       if (cancelled) return;
     })();
     return () => { cancelled = true; };
-  }, [fetchOrders]);
+  }, [fetchOrders, fetchLastSync]);
 
   const handleResync = async () => {
     if (syncing) return;
@@ -267,8 +295,13 @@ export function PedidosDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h3 className="text-base font-black tracking-tight">Resumen por etiqueta</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Conteo desde <span className="font-semibold">2026</span> en adelante.
+          <p className="text-xs text-muted-foreground mt-1">
+            Conteo desde <span className="font-semibold">2026</span> en adelante
+            {lastSyncedAt && (
+              <span className="ml-1 text-[11px] text-primary/80 font-medium">
+                · {timeAgo(lastSyncedAt)}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
