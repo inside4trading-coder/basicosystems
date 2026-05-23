@@ -147,6 +147,7 @@ export function PedidosDashboard() {
   });
 
   const [syncing, setSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
 
   const { from, to } = useMemo(() => periodBounds(period), [period]);
 
@@ -174,14 +175,26 @@ export function PedidosDashboard() {
     setLoading(false);
   }, [from, to]);
 
+  const fetchLastSync = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("synced_at")
+      .order("synced_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!error && data?.synced_at) {
+      setLastSyncedAt(data.synced_at);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      await fetchOrders();
+      await Promise.all([fetchOrders(), fetchLastSync()]);
       if (cancelled) return;
     })();
     return () => { cancelled = true; };
-  }, [fetchOrders]);
+  }, [fetchOrders, fetchLastSync]);
 
   const handleResync = async () => {
     if (syncing) return;
