@@ -295,8 +295,13 @@ export function PedidosDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h3 className="text-base font-black tracking-tight">Resumen por etiqueta</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Conteo desde <span className="font-semibold">2026</span> en adelante.
+          <p className="text-xs text-muted-foreground mt-1">
+            Conteo desde <span className="font-semibold">2026</span> en adelante
+            {lastSyncedAt && (
+              <span className="ml-1 text-[11px] text-primary/80 font-medium">
+                · {timeAgo(lastSyncedAt)}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
