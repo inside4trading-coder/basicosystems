@@ -120,6 +120,7 @@ export default function Dashboard() {
       
       toast.success(`Sincronización completada: ${totalSynced.orders} pedidos, ${totalSynced.items} items, ${totalSynced.payments} pagos`);
       refetch();
+      fetchLastSync();
     } catch (e: any) {
       if (e.name === "AbortError") {
         toast.error("La sincronización tardó demasiado. Intenta con un período más corto.");
