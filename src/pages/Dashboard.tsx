@@ -1,5 +1,5 @@
 import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, Package, Loader2, AlertTriangle, RefreshCw, ShoppingCart, Calendar } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,22 @@ import { useDashboardData, type Period } from "@/hooks/useDashboardData";
 import { isQuickAccess } from "@/config/orderStatuses";
 import { useBlurSales } from "@/hooks/useBlurSales";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+function timeAgo(iso: string | null): string {
+  if (!iso) return "";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "actualizado hace un momento";
+  if (diffMin < 60) return `actualizado hace ${diffMin} min`;
+  const diffHrs = Math.floor(diffMin / 60);
+  const remMin = diffMin % 60;
+  if (diffHrs < 24) {
+    return remMin > 1 ? `actualizado hace ${diffHrs} h ${remMin} min` : `actualizado hace ${diffHrs} h`;
+  }
+  const diffDays = Math.floor(diffHrs / 24);
+  return `actualizado hace ${diffDays} d`;
+}
 
 const periods: { key: Period; label: string }[] = [
   { key: "today", label: "Hoy" },
