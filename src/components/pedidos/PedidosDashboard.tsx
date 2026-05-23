@@ -107,6 +107,21 @@ const TONE_CLASSES: Record<string, { bg: string; text: string; border: string; r
 const fmtUsd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
 
+function timeAgo(iso: string | null): string {
+  if (!iso) return "";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "actualizado hace un momento";
+  if (diffMin < 60) return `actualizado hace ${diffMin} min`;
+  const diffHrs = Math.floor(diffMin / 60);
+  const remMin = diffMin % 60;
+  if (diffHrs < 24) {
+    return remMin > 1 ? `actualizado hace ${diffHrs} h ${remMin} min` : `actualizado hace ${diffHrs} h`;
+  }
+  const diffDays = Math.floor(diffHrs / 24);
+  return `actualizado hace ${diffDays} d`;
+}
+
 type OrderRow = {
   order_id: number;
   order_status: string | null;
