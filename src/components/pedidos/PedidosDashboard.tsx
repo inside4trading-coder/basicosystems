@@ -206,7 +206,7 @@ export function PedidosDashboard() {
       });
       if (error) throw error;
       toast.success("Sincronización completa. Refrescando…", { id: t });
-      await fetchOrders();
+      await Promise.all([fetchOrders(), fetchLastSync()]);
     } catch (e: any) {
       toast.error(`Error al sincronizar: ${e?.message || "desconocido"}`, { id: t });
     } finally {
