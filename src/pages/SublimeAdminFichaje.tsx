@@ -871,7 +871,7 @@ export default function SublimeAdminFichaje() {
                               <div className="flex flex-wrap gap-2 mt-1">
                                 {row.entryLat != null && row.entryLng != null && (
                                   <a
-                                    href={`https://www.openstreetmap.org/?mlat=${row.entryLat}&mlon=${row.entryLng}#map=18/${row.entryLat}/${row.entryLng}`}
+                                    href={`https://www.google.com/maps/search/?api=1&query=${row.entryLat}%2C${row.entryLng}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
