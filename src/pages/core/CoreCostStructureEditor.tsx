@@ -222,10 +222,11 @@ export default function CoreCostStructureEditor() {
     for (const it of items) {
       if ((Number(it.unit_cost) || 0) < 0) return `Costo negativo en línea "${it.name || it.section}"`;
       if ((Number(it.quantity) || 0) < 0) return `Cantidad negativa en línea "${it.name || it.section}"`;
-      if (it.section === "labor" && it.adds_to_payroll && (Number(it.unit_cost) || 0) < 0) {
-        return `Tarifa de mano de obra inválida en "${it.name}"`;
+      if (it.section === "labor") {
+        if (!it.item_type) return "Selecciona un tipo de proceso en cada línea de mano de obra";
+      } else if (!it.name?.trim()) {
+        return `Falta nombre en una línea de ${sectionLabel(it.section)}`;
       }
-      if (!it.name?.trim()) return `Falta nombre en una línea de ${sectionLabel(it.section)}`;
     }
     return null;
   }
