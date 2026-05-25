@@ -16,7 +16,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Eye, Search, Download, Upload, Power, PowerOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff } from "lucide-react";
+import { RawMaterialImportButton, RawMaterialExportButton } from "./CoreRawMaterialImportFlow";
 
 type Category = { id: string; name: string; status: string };
 type Unit = { id: string; name: string; abbreviation: string; status: string };
@@ -189,12 +190,8 @@ export default function CoreRawMaterials() {
                 </Select>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => navigate("/core/templates-carga")}>
-                  <Upload className="h-4 w-4 mr-1" />Importar
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => navigate("/core/templates-carga")}>
-                  <Download className="h-4 w-4 mr-1" />Exportar
-                </Button>
+                <RawMaterialImportButton onImported={load} />
+                <RawMaterialExportButton />
                 <Button size="sm" onClick={() => { setEditing(null); setOpenForm(true); }}>
                   <Plus className="h-4 w-4 mr-1" />Nueva materia prima
                 </Button>
