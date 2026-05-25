@@ -258,27 +258,19 @@ function RawMaterialImporterDialog({
     });
 
     const text = await f.text();
-    const expectedCols = fields.map((x) => x.column_name);
-    const tryParse = (d: string) =>
-      Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true, delimiter: d });
-    const matchCount = (r: any) => {
-      const headers = (r.meta?.fields ?? []) as string[];
-      return expectedCols.filter((c) => headers.includes(c)).length;
-    };
+    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    const expectedCols = fields.map((x) => normalizeHeaderName(x.column_name));
+    const fallbackDelimiter = delimiter === "auto" ? ";" : delimiter;
+    const headerDelimiter = bestHeaderDelimiter(lines[0] ?? "", expectedCols, fallbackDelimiter);
+    const dataDelimiter = bestDataDelimiter(lines, expectedCols.length, headerDelimiter);
+    const headerValues = parseCsvLine(lines[0] ?? "", headerDelimiter).map(normalizeHeaderName);
+    const normalizedText = [headerValues.join(dataDelimiter), ...lines.slice(1)].join("\n");
 
-    let delim = delimiter === "auto" ? detectDelimiter(text) : delimiter;
-    let parsedRes = tryParse(delim);
-    if (matchCount(parsedRes) === 0) {
-      for (const alt of [";", ",", "\t"]) {
-        if (alt === delim) continue;
-        const r2 = tryParse(alt);
-        if (matchCount(r2) > matchCount(parsedRes)) { parsedRes = r2; delim = alt; }
-      }
-      const shown = delim === "\t" ? "TAB" : delim;
-      toast.info(`Las columnas no coincidían con el separador elegido. Se usó "${shown}".`);
+    if (headerDelimiter !== dataDelimiter || delimiter !== dataDelimiter) {
+      toast.info(`Separador detectado: "${delimiterLabel(dataDelimiter)}".`);
     }
 
-    Papa.parse(text, {
+    Papa.parse(normalizedText, {
       header: true, skipEmptyLines: true, delimiter: delim,
       complete: (res) => {
         const onExisting = (template.settings?.on_existing_code as string) ?? "update";
