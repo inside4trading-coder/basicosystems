@@ -28,7 +28,7 @@ const mainItems = [
   { title: "Campañas", url: "/campaigns", icon: Mail },
   { title: "CRM", url: "/crm", icon: Users },
   { title: "Sublime", url: "/sublime", icon: Store },
-  { title: "BASICO CORE", url: "/core", icon: Factory },
+  { title: "Basico Core", url: "/core", icon: Factory },
 ];
 
 const adminItems = [

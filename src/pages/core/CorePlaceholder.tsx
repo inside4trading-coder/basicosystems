@@ -19,7 +19,7 @@ export default function CorePlaceholder({ title, description }: Props) {
         </div>
         <h2 className="text-xl font-bold">Próximamente</h2>
         <p className="text-sm text-muted-foreground mt-2 max-w-md">
-          Esta sección se habilitará en un bloque futuro de BASICO CORE.
+          Esta sección se habilitará en un bloque futuro de Basico Core.
         </p>
       </Card>
     </div>
