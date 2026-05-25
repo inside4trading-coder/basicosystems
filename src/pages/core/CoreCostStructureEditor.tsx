@@ -629,15 +629,14 @@ function LaborBlock({
       {items.length === 0 && <EmptyState label="Sin procesos de mano de obra" />}
       {items.map(it => (
         <div key={it._local_id} className="rounded-lg border p-3 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-2 items-end">
             <div>
-              <Label className="text-xs">Nombre del proceso</Label>
-              <Input value={it.name} onChange={(e) => onUpdate(it._local_id, { name: e.target.value, process_name: e.target.value })} />
-            </div>
-            <div>
-              <Label className="text-xs">Tipo</Label>
-              <Select value={it.item_type ?? ""} onValueChange={(v) => onUpdate(it._local_id, { item_type: v })}>
-                <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <Label className="text-xs">Tipo de proceso</Label>
+              <Select
+                value={it.item_type ?? ""}
+                onValueChange={(v) => onUpdate(it._local_id, { item_type: v, name: v, process_name: v })}
+              >
+                <SelectTrigger><SelectValue placeholder="Seleccionar tipo" /></SelectTrigger>
                 <SelectContent>
                   {LABOR_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
