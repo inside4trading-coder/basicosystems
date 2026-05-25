@@ -8,6 +8,8 @@ import {
   RELATIONSHIP_LABELS, CONTACT_TYPE_LABELS, formatFollowers,
 } from "@/components/rrpp/rrppConstants";
 import type { Contact, Collaboration, Interaction, RelationshipStatus, ContactType } from "@/types/rrpp";
+import { useRRPPGoals, type BrandGoals } from "@/hooks/useRRPPGoals";
+import { RRPP_BRAND_LABELS, type RRPPBrand } from "@/hooks/useRRPPBrand";
 
 const db = supabase as any;
 
@@ -175,31 +177,8 @@ function MonthlyTrendCard({ data }: { data: { label: string; added: number; conv
   );
 }
 
-// ---------------- Monthly Goals ----------------
+// ---------------- Monthly Goals (now from DB per brand via useRRPPGoals) ----------------
 
-interface MonthlyGoals {
-  added: number;
-  activations: number;
-  successful: number;
-}
-
-const DEFAULT_GOALS: MonthlyGoals = { added: 10, activations: 8, successful: 7 };
-const GOALS_STORAGE_KEY = "rrpp_monthly_goals_v1";
-
-function loadGoals(): MonthlyGoals {
-  try {
-    const raw = localStorage.getItem(GOALS_STORAGE_KEY);
-    if (!raw) return DEFAULT_GOALS;
-    const parsed = JSON.parse(raw);
-    return {
-      added: Number(parsed.added) || DEFAULT_GOALS.added,
-      activations: Number(parsed.activations) || DEFAULT_GOALS.activations,
-      successful: Number(parsed.successful) || DEFAULT_GOALS.successful,
-    };
-  } catch {
-    return DEFAULT_GOALS;
-  }
-}
 
 function GoalRow({
   label,
@@ -247,13 +226,15 @@ function MonthlyGoalsCard({
   current,
   goals,
   onSave,
+  brandLabel,
 }: {
   current: { added: number; activations: number; successful: number };
-  goals: MonthlyGoals;
-  onSave: (g: MonthlyGoals) => void;
+  goals: BrandGoals;
+  onSave: (g: BrandGoals) => void;
+  brandLabel: string;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<MonthlyGoals>(goals);
+  const [draft, setDraft] = useState<BrandGoals>(goals);
 
   useEffect(() => { setDraft(goals); }, [goals]);
 
@@ -267,7 +248,7 @@ function MonthlyGoalsCard({
             <Target className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <h3 className="font-bold text-sm">Metas del mes</h3>
+            <h3 className="font-bold text-sm">Metas del mes · {brandLabel}</h3>
             <p className="text-[11px] text-muted-foreground capitalize truncate">{monthLabel}</p>
           </div>
         </div>
@@ -302,9 +283,9 @@ function MonthlyGoalsCard({
       {editing ? (
         <div className="space-y-3">
           {[
-            { key: "added" as const, label: "Personas agregadas" },
-            { key: "activations" as const, label: "Activaciones (productos enviados)" },
-            { key: "successful" as const, label: "Colaboraciones exitosas" },
+            { key: "captaciones" as const, label: "Captaciones (perfiles agregados)" },
+            { key: "activaciones" as const, label: "Activaciones (productos enviados)" },
+            { key: "colaboraciones" as const, label: "Colaboraciones exitosas" },
           ].map((f) => (
             <div key={f.key}>
               <label className="text-[11px] font-semibold text-muted-foreground block mb-1">{f.label}</label>
@@ -320,28 +301,32 @@ function MonthlyGoalsCard({
         </div>
       ) : (
         <div className="space-y-4">
-          <GoalRow label="Personas agregadas" current={current.added} goal={goals.added} accent="primary" />
-          <GoalRow label="Activaciones" current={current.activations} goal={goals.activations} accent="warning" />
-          <GoalRow label="Colaboraciones exitosas" current={current.successful} goal={goals.successful} accent="success" />
+          <GoalRow label="Captaciones" current={current.added} goal={goals.captaciones} accent="primary" />
+          <GoalRow label="Activaciones" current={current.activations} goal={goals.activaciones} accent="warning" />
+          <GoalRow label="Colaboraciones exitosas" current={current.successful} goal={goals.colaboraciones} accent="success" />
         </div>
       )}
     </div>
   );
 }
 
-export default function RRPPDashboard() {
+export default function RRPPDashboard({ brand }: { brand: RRPPBrand }) {
   const [range, setRange] = useState<RangeKey>("this_month");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [collabs, setCollabs] = useState<Collaboration[]>([]);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [goals, setGoals] = useState<MonthlyGoals>(() => loadGoals());
+  const { goals, save: persistGoals } = useRRPPGoals(brand);
 
-  const saveGoals = (g: MonthlyGoals) => {
-    setGoals(g);
-    try { localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(g)); } catch { /* ignore */ }
+  const saveGoals = async (g: BrandGoals) => {
+    try {
+      await persistGoals(g);
+    } catch (e) {
+      console.error("Error saving goals", e);
+    }
   };
+
 
   useEffect(() => {
     let cancelled = false;
@@ -368,15 +353,28 @@ export default function RRPPDashboard() {
 
   const { from, to } = useMemo(() => rangeBounds(range), [range]);
 
+  // Scope by active brand (contacts have brand; collabs+interactions linked via contact_id)
+  const brandContactIds = useMemo(
+    () => new Set(contacts.filter((c) => c.brand === brand).map((c) => c.id)),
+    [contacts, brand]
+  );
+  const scopedContacts = useMemo(() => contacts.filter((c) => c.brand === brand), [contacts, brand]);
+  const scopedCollabs = useMemo(() => collabs.filter((co) => brandContactIds.has(co.contact_id)), [collabs, brandContactIds]);
+  const scopedInteractions = useMemo(() => interactions.filter((i) => brandContactIds.has(i.contact_id)), [interactions, brandContactIds]);
+
   const data = useMemo(() => {
     const inRng = (d?: string | null) => inRange(d, from, to);
+    const contactsB = scopedContacts;
+    const collabsB = scopedCollabs;
+    const interactionsB = scopedInteractions;
 
-    const addedContacts = contacts.filter((c) => inRng(c.created_at));
-    const allActiveContacts = contacts.filter((c) => c.status === "active");
+
+    const addedContacts = contactsB.filter((c) => inRng(c.created_at));
+    const allActiveContacts = contactsB.filter((c) => c.status === "active");
 
     // Conversions: relationship_status = "colaboracion_exitosa" updated in range,
     // approximated by collaborations marked done in range (more precise) + fallback by updated_at.
-    const collabsInRange = collabs.filter((co) => inRng(co.created_at) || inRng(co.send_date) || inRng(co.post_date));
+    const collabsInRange = collabsB.filter((co) => inRng(co.created_at) || inRng(co.send_date) || inRng(co.post_date));
     const successfulCollabs = collabsInRange.filter((co) => co.collab_done);
     const successfulContactIds = new Set(successfulCollabs.map((co) => co.contact_id));
     const convertedCount = successfulContactIds.size;
@@ -387,7 +385,8 @@ export default function RRPPDashboard() {
       : 0;
 
     // Advances: any interaction in range (= "avance")
-    const interactionsInRange = interactions.filter((i) => inRng(i.date) || inRng(i.created_at));
+    const interactionsInRange = interactionsB.filter((i) => inRng(i.date) || inRng(i.created_at));
+
 
     // Products sent / received
     const productsSent = collabsInRange.filter((co) => !!co.send_date).length;
@@ -469,9 +468,9 @@ export default function RRPPDashboard() {
         const t = new Date(d).getTime();
         return t >= start.getTime() && t < end.getTime();
       };
-      const added = contacts.filter((c) => inMonth(c.created_at)).length;
+      const added = contactsB.filter((c) => inMonth(c.created_at)).length;
       const monthCollabIds = new Set(
-        collabs.filter((co) => co.collab_done && (inMonth(co.post_date) || inMonth(co.created_at)))
+        collabsB.filter((co) => co.collab_done && (inMonth(co.post_date) || inMonth(co.created_at)))
           .map((co) => co.contact_id)
       );
       trend.push({
@@ -499,18 +498,18 @@ export default function RRPPDashboard() {
       reachRows,
       trend,
     };
-  }, [contacts, collabs, interactions, from, to, range]);
+  }, [scopedContacts, scopedCollabs, scopedInteractions, from, to, range]);
 
-  // Monthly goal progress — always current month, independent of range filter
+  // Monthly goal progress — always current month, independent of range filter, scoped by brand
   const monthProgress = useMemo(() => {
     const { from: mFrom, to: mTo } = rangeBounds("this_month");
     const inMonth = (d?: string | null) => inRange(d, mFrom, mTo);
-    const added = contacts.filter((c) => inMonth(c.created_at)).length;
-    const monthCollabs = collabs.filter((co) => inMonth(co.created_at) || inMonth(co.send_date) || inMonth(co.post_date));
-    const activations = monthCollabs.filter((co) => !!co.send_date).length;
+    const added = scopedContacts.filter((c) => inMonth(c.created_at)).length;
+    const monthCollabs = scopedCollabs.filter((co) => inMonth(co.created_at) || inMonth(co.send_date) || inMonth(co.post_date));
+    const activations = monthCollabs.filter((co) => !!co.send_date || !!co.shipped_at).length;
     const successful = new Set(monthCollabs.filter((co) => co.collab_done).map((co) => co.contact_id)).size;
     return { added, activations, successful };
-  }, [contacts, collabs]);
+  }, [scopedContacts, scopedCollabs]);
 
   if (loading) {
     return (
@@ -682,7 +681,7 @@ export default function RRPPDashboard() {
       )}
 
       {/* Monthly goals */}
-      <MonthlyGoalsCard current={monthProgress} goals={goals} onSave={saveGoals} />
+      <MonthlyGoalsCard current={monthProgress} goals={goals} onSave={saveGoals} brandLabel={RRPP_BRAND_LABELS[brand]} />
     </div>
   );
 }

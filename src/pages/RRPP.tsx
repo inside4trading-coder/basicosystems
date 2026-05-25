@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Plus, Star, Search, MapPin, User as UserIcon, Archive, BarChart3, Users } from "lucide-react";
 import { fetchContacts, fetchConfig } from "@/hooks/useRRPPData";
 import type { Contact, ContactType, RelationshipStatus } from "@/types/rrpp";
+import { useRRPPBrand, RRPP_BRAND_LABELS } from "@/hooks/useRRPPBrand";
+import { BrandSwitcher } from "@/components/rrpp/BrandSwitcher";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -22,6 +24,7 @@ import { AlertTriangle } from "lucide-react";
 const ALL = "__all__";
 
 export default function RRPP() {
+  const [brand, setBrand] = useRRPPBrand();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,13 +60,19 @@ export default function RRPP() {
     fetchConfig("city").then((rows) => setCityOptions(rows.map((r) => r.value))).catch(() => {});
   }, []);
 
+  // Scope by brand first
+  const brandContacts = useMemo(
+    () => contacts.filter((c) => c.brand === brand),
+    [contacts, brand]
+  );
+
   const responsibles = useMemo(
-    () => Array.from(new Set(contacts.map((c) => c.responsible).filter(Boolean))).sort(),
-    [contacts]
+    () => Array.from(new Set(brandContacts.map((c) => c.responsible).filter(Boolean))).sort(),
+    [brandContacts]
   );
 
   const filtered = useMemo(() => {
-    return contacts.filter((c) => {
+    return brandContacts.filter((c) => {
       if (typeFilter !== ALL && c.contact_type !== typeFilter) return false;
       if (relFilter !== ALL && c.relationship_status !== relFilter) return false;
       if (respFilter !== ALL && c.responsible !== respFilter) return false;
@@ -75,7 +84,7 @@ export default function RRPP() {
       }
       return true;
     });
-  }, [contacts, search, typeFilter, relFilter, respFilter, cityFilter]);
+  }, [brandContacts, search, typeFilter, relFilter, respFilter, cityFilter]);
 
   const hasFilters = search || typeFilter !== ALL || relFilter !== ALL || respFilter !== ALL || cityFilter;
   const clearFilters = () => {
@@ -93,16 +102,19 @@ export default function RRPP() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight">RRPP</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Relaciones y contactos estratégicos de la marca
-          </p>
+      <header className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight">RRPP</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Operando para <span className="font-semibold text-foreground">{RRPP_BRAND_LABELS[brand]}</span>
+            </p>
+          </div>
+          <Button onClick={() => setSheetOpen(true)} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" /> Agregar a {RRPP_BRAND_LABELS[brand].split(" / ")[0]}
+          </Button>
         </div>
-        <Button onClick={() => setSheetOpen(true)} className="w-full sm:w-auto">
-          <Plus className="h-4 w-4 mr-2" /> Agregar contacto
-        </Button>
+        <BrandSwitcher value={brand} onChange={setBrand} />
       </header>
 
       <Tabs defaultValue="dashboard" className="space-y-5">
@@ -112,7 +124,7 @@ export default function RRPP() {
         </TabsList>
 
         <TabsContent value="dashboard">
-          <RRPPDashboard />
+          <RRPPDashboard brand={brand} />
         </TabsContent>
 
         <TabsContent value="contacts" className="space-y-6">
@@ -195,25 +207,25 @@ export default function RRPP() {
         </div>
       )}
 
-      {!loading && !error && contacts.length === 0 && !showArchived && (
+      {!loading && !error && brandContacts.length === 0 && !showArchived && (
         <div className="kpi-card text-center py-16">
           <Star className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <h3 className="font-semibold">Sin contactos registrados</h3>
-          <p className="text-sm text-muted-foreground mt-1 mb-4">Empieza agregando tu primer contacto estratégico.</p>
+          <h3 className="font-semibold">Sin contactos en {RRPP_BRAND_LABELS[brand]}</h3>
+          <p className="text-sm text-muted-foreground mt-1 mb-4">Empieza agregando el primer contacto comprometido.</p>
           <Button onClick={() => setSheetOpen(true)}>
             <Plus className="h-4 w-4 mr-2" /> Agregar primer contacto
           </Button>
         </div>
       )}
 
-      {!loading && !error && contacts.length === 0 && showArchived && (
+      {!loading && !error && brandContacts.length === 0 && showArchived && (
         <div className="kpi-card text-center py-16">
           <Archive className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <h3 className="font-semibold">No hay contactos archivados</h3>
+          <h3 className="font-semibold">No hay contactos archivados en esta marca</h3>
         </div>
       )}
 
-      {!loading && !error && contacts.length > 0 && filtered.length === 0 && (
+      {!loading && !error && brandContacts.length > 0 && filtered.length === 0 && (
         <div className="kpi-card text-center py-16">
           <Search className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
           <h3 className="font-semibold">Sin resultados</h3>
@@ -291,7 +303,7 @@ export default function RRPP() {
         </TabsContent>
       </Tabs>
 
-      <AddContactSheet open={sheetOpen} onOpenChange={setSheetOpen} onCreated={load} />
+      <AddContactSheet open={sheetOpen} onOpenChange={setSheetOpen} onCreated={load} brand={brand} />
     </div>
   );
 }

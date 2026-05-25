@@ -41,9 +41,10 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
+  brand?: "basico_ve" | "sublime" | "basico_es";
 }
 
-export function AddContactSheet({ open, onOpenChange, onCreated }: Props) {
+export function AddContactSheet({ open, onOpenChange, onCreated, brand = "basico_ve" }: Props) {
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string>("");
   const [types, setTypes] = useState<{ value: string; label: string }[]>(DEFAULT_TYPES);
@@ -109,6 +110,7 @@ export function AddContactSheet({ open, onOpenChange, onCreated }: Props) {
         contact_type: parsed.data.contact_type as ContactType,
         relationship_status: parsed.data.relationship_status as RelationshipStatus,
         photo_url: photoUrl || null,
+        brand,
       } as any);
       toast.success("Contacto creado");
       reset();
@@ -126,6 +128,11 @@ export function AddContactSheet({ open, onOpenChange, onCreated }: Props) {
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="brand-heading text-xl">Agregar contacto</SheetTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Se agrega a: <span className="font-semibold text-foreground">
+              {brand === "basico_ve" ? "Básico Venezuela" : brand === "sublime" ? "Sublime" : "Básico España / Europa"}
+            </span>
+          </p>
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-6">
