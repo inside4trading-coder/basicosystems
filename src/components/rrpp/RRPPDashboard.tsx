@@ -369,12 +369,12 @@ export default function RRPPDashboard({ brand }: { brand: RRPPBrand }) {
     const interactionsB = scopedInteractions;
 
 
-    const addedContacts = contacts.filter((c) => inRng(c.created_at));
-    const allActiveContacts = contacts.filter((c) => c.status === "active");
+    const addedContacts = contactsB.filter((c) => inRng(c.created_at));
+    const allActiveContacts = contactsB.filter((c) => c.status === "active");
 
     // Conversions: relationship_status = "colaboracion_exitosa" updated in range,
     // approximated by collaborations marked done in range (more precise) + fallback by updated_at.
-    const collabsInRange = collabs.filter((co) => inRng(co.created_at) || inRng(co.send_date) || inRng(co.post_date));
+    const collabsInRange = collabsB.filter((co) => inRng(co.created_at) || inRng(co.send_date) || inRng(co.post_date));
     const successfulCollabs = collabsInRange.filter((co) => co.collab_done);
     const successfulContactIds = new Set(successfulCollabs.map((co) => co.contact_id));
     const convertedCount = successfulContactIds.size;
@@ -385,7 +385,8 @@ export default function RRPPDashboard({ brand }: { brand: RRPPBrand }) {
       : 0;
 
     // Advances: any interaction in range (= "avance")
-    const interactionsInRange = interactions.filter((i) => inRng(i.date) || inRng(i.created_at));
+    const interactionsInRange = interactionsB.filter((i) => inRng(i.date) || inRng(i.created_at));
+
 
     // Products sent / received
     const productsSent = collabsInRange.filter((co) => !!co.send_date).length;
@@ -467,9 +468,9 @@ export default function RRPPDashboard({ brand }: { brand: RRPPBrand }) {
         const t = new Date(d).getTime();
         return t >= start.getTime() && t < end.getTime();
       };
-      const added = contacts.filter((c) => inMonth(c.created_at)).length;
+      const added = contactsB.filter((c) => inMonth(c.created_at)).length;
       const monthCollabIds = new Set(
-        collabs.filter((co) => co.collab_done && (inMonth(co.post_date) || inMonth(co.created_at)))
+        collabsB.filter((co) => co.collab_done && (inMonth(co.post_date) || inMonth(co.created_at)))
           .map((co) => co.contact_id)
       );
       trend.push({
@@ -497,18 +498,18 @@ export default function RRPPDashboard({ brand }: { brand: RRPPBrand }) {
       reachRows,
       trend,
     };
-  }, [contacts, collabs, interactions, from, to, range]);
+  }, [scopedContacts, scopedCollabs, scopedInteractions, from, to, range]);
 
-  // Monthly goal progress — always current month, independent of range filter
+  // Monthly goal progress — always current month, independent of range filter, scoped by brand
   const monthProgress = useMemo(() => {
     const { from: mFrom, to: mTo } = rangeBounds("this_month");
     const inMonth = (d?: string | null) => inRange(d, mFrom, mTo);
-    const added = contacts.filter((c) => inMonth(c.created_at)).length;
-    const monthCollabs = collabs.filter((co) => inMonth(co.created_at) || inMonth(co.send_date) || inMonth(co.post_date));
-    const activations = monthCollabs.filter((co) => !!co.send_date).length;
+    const added = scopedContacts.filter((c) => inMonth(c.created_at)).length;
+    const monthCollabs = scopedCollabs.filter((co) => inMonth(co.created_at) || inMonth(co.send_date) || inMonth(co.post_date));
+    const activations = monthCollabs.filter((co) => !!co.send_date || !!co.shipped_at).length;
     const successful = new Set(monthCollabs.filter((co) => co.collab_done).map((co) => co.contact_id)).size;
     return { added, activations, successful };
-  }, [contacts, collabs]);
+  }, [scopedContacts, scopedCollabs]);
 
   if (loading) {
     return (
