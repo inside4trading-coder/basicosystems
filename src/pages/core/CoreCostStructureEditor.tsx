@@ -94,6 +94,11 @@ export default function CoreCostStructureEditor() {
   // Items
   const [items, setItems] = useState<Item[]>([]);
 
+  // Templates (for new structures)
+  const [templates, setTemplates] = useState<{ id: string; name: string; product_type: string | null; base_currency: string }[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
+
   // Data sources
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
   const [units, setUnits] = useState<Record<string, Unit>>({});
