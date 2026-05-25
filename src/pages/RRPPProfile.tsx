@@ -264,7 +264,13 @@ export default function RRPPProfile() {
         </TabsContent>
         <TabsContent value="relacion" className="mt-4 space-y-6">
           <RRPPPipeline contact={contact} onChanged={load} />
-          <RRPPCollaborations contactId={contact.id} onPipelineChanged={load} />
+          <RRPPCollaborations
+            contactId={contact.id}
+            brand={contact.brand}
+            contactName={contact.name}
+            contactAlias={contact.alias}
+            onPipelineChanged={load}
+          />
         </TabsContent>
         <TabsContent value="interactions" className="mt-4">
           <RRPPInteractions contactId={contact.id} />

@@ -60,6 +60,10 @@ export interface Collaboration {
   // Unified flow fields
   order_details?: string;
   shipping_name?: string;
+  shipping_last_name?: string;
+  shipping_id_number?: string;
+  shipping_email?: string;
+  shipping_postal_code?: string;
   shipping_address?: string;
   shipping_city?: string;
   shipping_country?: string;

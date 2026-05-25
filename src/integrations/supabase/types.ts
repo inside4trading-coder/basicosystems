@@ -1402,8 +1402,12 @@ export type Database = {
           shipping_address: string | null
           shipping_city: string | null
           shipping_country: string | null
+          shipping_email: string | null
+          shipping_id_number: string | null
+          shipping_last_name: string | null
           shipping_name: string | null
           shipping_phone: string | null
+          shipping_postal_code: string | null
           tracking_number: string | null
         }
         Insert: {
@@ -1428,8 +1432,12 @@ export type Database = {
           shipping_address?: string | null
           shipping_city?: string | null
           shipping_country?: string | null
+          shipping_email?: string | null
+          shipping_id_number?: string | null
+          shipping_last_name?: string | null
           shipping_name?: string | null
           shipping_phone?: string | null
+          shipping_postal_code?: string | null
           tracking_number?: string | null
         }
         Update: {
@@ -1454,8 +1462,12 @@ export type Database = {
           shipping_address?: string | null
           shipping_city?: string | null
           shipping_country?: string | null
+          shipping_email?: string | null
+          shipping_id_number?: string | null
+          shipping_last_name?: string | null
           shipping_name?: string | null
           shipping_phone?: string | null
+          shipping_postal_code?: string | null
           tracking_number?: string | null
         }
         Relationships: [
