@@ -49,6 +49,7 @@ export interface ClockSettings {
   employee_id: string;
   enabled: boolean;
   store_id: string | null;
+  extra_store_ids: string[];
   weekly_schedule: WeeklySchedule;
   entry_time: string | null;
   exit_time: string | null;
