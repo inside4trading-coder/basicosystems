@@ -57,6 +57,17 @@ export interface Collaboration {
   post_observation: string;
   observations: string;
   created_at: string;
+  // Unified flow fields
+  order_details?: string;
+  shipping_name?: string;
+  shipping_address?: string;
+  shipping_city?: string;
+  shipping_country?: string;
+  shipping_phone?: string;
+  tracking_number?: string;
+  shipped_at?: string | null;
+  published_at?: string | null;
+  post_url?: string;
 }
 
 export interface PrivateNote {
@@ -87,6 +98,7 @@ export interface Contact {
   observations: string;
   skills: string[];
   status: "active" | "archived";
+  brand: "basico_ve" | "sublime" | "basico_es";
   created_by: string;
   created_at: string;
   updated_at: string;
