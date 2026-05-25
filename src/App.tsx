@@ -37,6 +37,8 @@ import CoreRawMaterials from "./pages/core/CoreRawMaterials";
 import CoreImportTemplates from "./pages/core/CoreImportTemplates";
 import CoreCostStructures from "./pages/core/CoreCostStructures";
 import CoreCostStructureEditor from "./pages/core/CoreCostStructureEditor";
+import CoreCostTemplates from "./pages/core/CoreCostTemplates";
+import CoreCostTemplateEditor from "./pages/core/CoreCostTemplateEditor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -100,7 +102,9 @@ const App = () => (
                 <Route path="estructuras-costos" element={<CoreCostStructures />} />
                 <Route path="estructuras-costos/nueva" element={<CoreCostStructureEditor />} />
                 <Route path="estructuras-costos/:id" element={<CoreCostStructureEditor />} />
-                <Route path="templates-costos" element={<CorePlaceholder title="Templates de Costos / Producción" />} />
+                <Route path="templates-costos" element={<CoreCostTemplates />} />
+                <Route path="templates-costos/nuevo" element={<CoreCostTemplateEditor />} />
+                <Route path="templates-costos/:id" element={<CoreCostTemplateEditor />} />
                 <Route path="productos" element={<CorePlaceholder title="Productos Core" description="Catálogo Core con SKU automático." />} />
                 <Route path="partidas-fabricacion" element={<CorePlaceholder title="Partidas de Fabricación" />} />
                 <Route path="necesidades" element={<CorePlaceholder title="Necesidades de Producción" />} />
