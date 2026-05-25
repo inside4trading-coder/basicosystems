@@ -175,7 +175,7 @@ export default function SublimeAdminFichaje() {
 
     const { data, error } = await supabase
       .from("sublime_clock_events")
-      .select("id, employee_id, event_type, event_at, clock_state, location_state, distance_meters, allowed_radius_meters")
+      .select("id, employee_id, event_type, event_at, clock_state, location_state, distance_meters, allowed_radius_meters, latitude, longitude")
       .gte("event_at", start.toISOString())
       .lt("event_at", end.toISOString())
       .order("event_at", { ascending: true });
