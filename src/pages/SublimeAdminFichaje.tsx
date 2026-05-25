@@ -278,6 +278,10 @@ export default function SublimeAdminFichaje() {
             lastDistance: event.distance_meters,
             radius: event.allowed_radius_meters,
             eventIds: [event.id],
+            entryLat: event.latitude,
+            entryLng: event.longitude,
+            exitLat: null,
+            exitLng: null,
           };
           return;
         }
