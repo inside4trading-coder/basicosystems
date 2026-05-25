@@ -1,8 +1,37 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, UserPlus, Mail, CheckCircle2, Clock } from "lucide-react";
+import {
+  Loader2,
+  RefreshCw,
+  UserPlus,
+  Mail,
+  CheckCircle2,
+  Clock,
+  Trash2,
+  KeyRound,
+} from "lucide-react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
 
 type AppRole = "admin" | "manager" | "partner" | "rrpp" | "marketing";
 
@@ -25,11 +54,23 @@ const ROLE_OPTIONS: { value: AppRole | ""; label: string }[] = [
   { value: "marketing", label: "Marketing" },
 ];
 
-
 export function UserRolesPanel() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<HubUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    full_name: "",
+    role: "manager" as AppRole,
+  });
+
+  const [deleteTarget, setDeleteTarget] = useState<HubUser | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,14 +93,12 @@ export function UserRolesPanel() {
   const handleRoleChange = async (user: HubUser, newRole: AppRole | "") => {
     setUpdatingId(user.id);
     try {
-      // Drop all existing roles for this user
       const { error: delErr } = await supabase
         .from("user_roles")
         .delete()
         .eq("user_id", user.id);
       if (delErr) throw delErr;
 
-      // Insert new role if any
       if (newRole) {
         const { error: insErr } = await supabase
           .from("user_roles")
@@ -79,6 +118,68 @@ export function UserRolesPanel() {
       );
     } catch (e: any) {
       toast.error(e.message || "Error al actualizar rol");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!form.email || !form.password) {
+      toast.error("Email y contraseña son obligatorios");
+      return;
+    }
+    if (form.password.length < 8) {
+      toast.error("La contraseña debe tener al menos 8 caracteres");
+      return;
+    }
+    setCreating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action: "create", ...form },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`Usuario ${form.email} creado`);
+      setCreateOpen(false);
+      setForm({ email: "", password: "", full_name: "", role: "manager" });
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Error al crear usuario");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action: "delete", user_id: deleteTarget.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`Usuario ${deleteTarget.email} eliminado`);
+      setDeleteTarget(null);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Error al eliminar usuario");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleResetPassword = async (user: HubUser) => {
+    setUpdatingId(user.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action: "reset_password", email: user.email },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`Email de recuperación enviado a ${user.email}`);
+    } catch (e: any) {
+      toast.error(e.message || "Error al enviar email");
     } finally {
       setUpdatingId(null);
     }
@@ -105,6 +206,10 @@ export function UserRolesPanel() {
             <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
             Refrescar
           </Button>
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <UserPlus className="h-4 w-4 mr-1" />
+            Nuevo usuario
+          </Button>
         </div>
       </div>
 
@@ -122,6 +227,7 @@ export function UserRolesPanel() {
           users.map((user) => {
             const currentRole = user.roles[0] ?? "";
             const isPending = user.roles.length === 0;
+            const isSelf = currentUser?.id === user.id;
             return (
               <div
                 key={user.id}
@@ -132,6 +238,11 @@ export function UserRolesPanel() {
                     <p className="font-bold text-sm truncate">
                       {user.full_name || user.email.split("@")[0]}
                     </p>
+                    {isSelf && (
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-primary/20 text-primary">
+                        Tú
+                      </span>
+                    )}
                     {!user.email_confirmed && (
                       <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-status-warning/20 text-status-warning">
                         <Mail className="h-3 w-3" /> Email sin verificar
@@ -150,7 +261,7 @@ export function UserRolesPanel() {
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {updatingId === user.id && (
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   )}
@@ -160,7 +271,7 @@ export function UserRolesPanel() {
                       handleRoleChange(user, e.target.value as AppRole | "")
                     }
                     disabled={updatingId === user.id}
-                    className="text-xs border border-border rounded-md px-2 py-1.5 bg-background font-semibold w-full sm:w-auto disabled:opacity-50"
+                    className="text-xs border border-border rounded-md px-2 py-1.5 bg-background font-semibold disabled:opacity-50"
                   >
                     {ROLE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -168,6 +279,26 @@ export function UserRolesPanel() {
                       </option>
                     ))}
                   </select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Enviar email de recuperación"
+                    onClick={() => handleResetPassword(user)}
+                    disabled={updatingId === user.id}
+                    className="h-8 w-8"
+                  >
+                    <KeyRound className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title={isSelf ? "No puedes eliminarte" : "Eliminar usuario"}
+                    onClick={() => setDeleteTarget(user)}
+                    disabled={isSelf || updatingId === user.id}
+                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             );
@@ -175,13 +306,97 @@ export function UserRolesPanel() {
         )}
       </div>
 
-      {/* How to add new users */}
+      {/* Create user dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuevo usuario</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="nu-name">Nombre completo</Label>
+              <Input
+                id="nu-name"
+                value={form.full_name}
+                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                placeholder="Nombre y apellido"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="nu-email">Email</Label>
+              <Input
+                id="nu-email"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="usuario@basico.com"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="nu-pass">Contraseña (mín. 8 caracteres)</Label>
+              <Input
+                id="nu-pass"
+                type="text"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="nu-role">Rol</Label>
+              <select
+                id="nu-role"
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value as AppRole })}
+                className="w-full text-sm border border-border rounded-md px-3 py-2 bg-background"
+              >
+                {ROLE_OPTIONS.filter((o) => o.value !== "").map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreate} disabled={creating}>
+              {creating && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Crear usuario
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará permanentemente a <strong>{deleteTarget?.email}</strong>, su perfil y todos sus roles. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="mt-3 text-xs text-muted-foreground flex items-start gap-2">
         <UserPlus className="h-3.5 w-3.5 mt-0.5 shrink-0" />
         <span>
-          Para añadir un usuario: pídele que se registre en{" "}
-          <code className="bg-muted px-1 py-0.5 rounded font-mono">/login</code>, verifique
-          su email, y luego asígnale rol desde esta tabla.
+          Usá "Nuevo usuario" para crear cuentas directamente con email, contraseña y rol asignado.
         </span>
       </div>
     </section>
