@@ -39,6 +39,7 @@ import {
   RefreshCw,
   Loader2,
   Trash2,
+  MapPin,
 } from "lucide-react";
 
 type ClockEvent = {
@@ -50,6 +51,8 @@ type ClockEvent = {
   location_state: string;
   distance_meters: number | null;
   allowed_radius_meters: number | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 type AttendanceRow = {
@@ -65,6 +68,10 @@ type AttendanceRow = {
   lastDistance: number | null;
   radius: number | null;
   eventIds: string[];
+  entryLat: number | null;
+  entryLng: number | null;
+  exitLat: number | null;
+  exitLng: number | null;
 };
 
 type RangeKey = "today" | "yesterday" | "week" | "month" | "lastMonth" | "3m" | "6m" | "year";
@@ -169,7 +176,7 @@ export default function SublimeAdminFichaje() {
 
     const { data, error } = await supabase
       .from("sublime_clock_events")
-      .select("id, employee_id, event_type, event_at, clock_state, location_state, distance_meters, allowed_radius_meters")
+      .select("id, employee_id, event_type, event_at, clock_state, location_state, distance_meters, allowed_radius_meters, latitude, longitude")
       .gte("event_at", start.toISOString())
       .lt("event_at", end.toISOString())
       .order("event_at", { ascending: true });
@@ -272,6 +279,10 @@ export default function SublimeAdminFichaje() {
             lastDistance: event.distance_meters,
             radius: event.allowed_radius_meters,
             eventIds: [event.id],
+            entryLat: event.latitude,
+            entryLng: event.longitude,
+            exitLat: null,
+            exitLng: null,
           };
           return;
         }
@@ -290,10 +301,18 @@ export default function SublimeAdminFichaje() {
             lastDistance: event.distance_meters,
             radius: event.allowed_radius_meters,
             eventIds: [],
+            entryLat: null,
+            entryLng: null,
+            exitLat: null,
+            exitLng: null,
           };
         }
         current.eventIds.push(event.id);
-        if (event.event_type === "salida") current.exitAt = event.event_at;
+        if (event.event_type === "salida") {
+          current.exitAt = event.event_at;
+          current.exitLat = event.latitude;
+          current.exitLng = event.longitude;
+        }
         current.pending = current.pending || event.clock_state === "pendiente_revision";
         current.outOfRange = current.outOfRange || event.location_state === "fuera_del_radio";
         current.lastEventAt = event.event_at;
@@ -847,6 +866,32 @@ export default function SublimeAdminFichaje() {
                               <span className="text-xs text-muted-foreground">
                                 Fuera de radio: {row.lastDistance.toLocaleString("es-ES")} m / {row.radius ?? "—"} m
                               </span>
+                            )}
+                            {(row.entryLat != null || row.exitLat != null) && (
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {row.entryLat != null && row.entryLng != null && (
+                                  <a
+                                    href={`https://www.google.com/maps?q=${row.entryLat},${row.entryLng}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                                    title={`${row.entryLat.toFixed(6)}, ${row.entryLng.toFixed(6)}`}
+                                  >
+                                    <MapPin className="h-3 w-3" /> Entrada
+                                  </a>
+                                )}
+                                {row.exitLat != null && row.exitLng != null && (
+                                  <a
+                                    href={`https://www.google.com/maps?q=${row.exitLat},${row.exitLng}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                                    title={`${row.exitLat.toFixed(6)}, ${row.exitLng.toFixed(6)}`}
+                                  >
+                                    <MapPin className="h-3 w-3" /> Salida
+                                  </a>
+                                )}
+                              </div>
                             )}
                           </div>
                         </TableCell>
