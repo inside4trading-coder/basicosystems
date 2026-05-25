@@ -82,6 +82,7 @@ export default function CoreCostStructureEditor() {
 
   // Header fields
   const [name, setName] = useState("");
+  const [sku, setSku] = useState("");
   const [description, setDescription] = useState("");
   const [productType, setProductType] = useState("");
   const [productTypeOther, setProductTypeOther] = useState("");
