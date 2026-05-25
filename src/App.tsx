@@ -33,6 +33,7 @@ import CoreLayout from "./pages/core/CoreLayout";
 import CoreDashboard from "./pages/core/CoreDashboard";
 import CoreConfiguracion from "./pages/core/CoreConfiguracion";
 import CorePlaceholder from "./pages/core/CorePlaceholder";
+import CoreRawMaterials from "./pages/core/CoreRawMaterials";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -91,7 +92,7 @@ const App = () => (
               <Route path="/core" element={<CoreLayout />}>
                 <Route index element={<CoreDashboard />} />
                 <Route path="configuracion" element={<CoreConfiguracion />} />
-                <Route path="materia-prima" element={<CorePlaceholder title="Materia Prima" description="Catálogo y stock de materias primas." />} />
+                <Route path="materia-prima" element={<CoreRawMaterials />} />
                 <Route path="templates-carga" element={<CorePlaceholder title="Templates de Carga" description="Plantillas para carga masiva (CSV)." />} />
                 <Route path="estructuras-costos" element={<CorePlaceholder title="Estructuras de Costos" description="MP + procesos + mano de obra + variables + logística." />} />
                 <Route path="templates-costos" element={<CorePlaceholder title="Templates de Costos / Producción" />} />
