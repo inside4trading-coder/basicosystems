@@ -186,20 +186,48 @@ export function RawMaterialExportButton() {
 }
 
 // ============ Importer dialog (Materia Prima) ============
-function detectDelimiter(text: string): string {
-  const candidates = [";", ",", "\t"];
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0).slice(0, 5);
-  if (!lines.length) return ";";
-  let best = ";";
+const DELIMITERS = [";", ",", "\t"] as const;
+
+function normalizeHeaderName(value: string) {
+  return String(value ?? "").replace(/^\uFEFF/, "").trim();
+}
+
+function delimiterLabel(value: string) {
+  return value === "\t" ? "TAB" : value;
+}
+
+function parseCsvLine(line: string, delimiter: string) {
+  const parsed = Papa.parse<string[]>(line, { delimiter, skipEmptyLines: false });
+  return (parsed.data?.[0] ?? []).map((v) => String(v ?? ""));
+}
+
+function bestHeaderDelimiter(headerLine: string, expectedCols: string[], fallback: string) {
+  let best = fallback;
   let bestScore = -1;
-  for (const d of candidates) {
-    const counts = lines.map((l) => l.split(d).length);
-    const max = Math.max(...counts);
-    if (max < 2) continue;
-    const consistent = counts.every((c) => c === counts[0]);
-    const score = max * 10 + (consistent ? 5 : 0);
+  for (const d of DELIMITERS) {
+    const headers = parseCsvLine(headerLine, d).map(normalizeHeaderName);
+    const matches = expectedCols.filter((c) => headers.includes(c)).length;
+    const score = matches * 100 + headers.length;
     if (score > bestScore) { bestScore = score; best = d; }
   }
+  return best;
+}
+
+function bestDataDelimiter(lines: string[], expectedCount: number, preferred: string) {
+  const dataLines = lines.slice(1).filter((l) => l.trim().length > 0).slice(0, 10);
+  const sampleLines = dataLines.length ? dataLines : lines.slice(0, 10);
+  let best = preferred;
+  let bestScore = -1;
+
+  for (const d of DELIMITERS) {
+    const counts = sampleLines.map((l) => parseCsvLine(l, d).length);
+    const exact = counts.filter((c) => c === expectedCount).length;
+    const multi = counts.filter((c) => c > 1).length;
+    const mode = Math.max(...counts.map((c) => counts.filter((x) => x === c).length));
+    const score = exact * 100 + multi * 10 + mode;
+    if (score > bestScore) { bestScore = score; best = d; }
+  }
+
   return best;
 }
 
@@ -211,6 +239,7 @@ function RawMaterialImporterDialog({
   const [parsing, setParsing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [delimiter, setDelimiter] = useState<string>(";");
+  const [usedDelimiter, setUsedDelimiter] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function parseFile(f: File) {
@@ -230,28 +259,21 @@ function RawMaterialImporterDialog({
     });
 
     const text = await f.text();
-    const expectedCols = fields.map((x) => x.column_name);
-    const tryParse = (d: string) =>
-      Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true, delimiter: d });
-    const matchCount = (r: any) => {
-      const headers = (r.meta?.fields ?? []) as string[];
-      return expectedCols.filter((c) => headers.includes(c)).length;
-    };
+    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    const expectedCols = fields.map((x) => normalizeHeaderName(x.column_name));
+    const fallbackDelimiter = delimiter === "auto" ? ";" : delimiter;
+    const headerDelimiter = bestHeaderDelimiter(lines[0] ?? "", expectedCols, fallbackDelimiter);
+    const dataDelimiter = bestDataDelimiter(lines, expectedCols.length, headerDelimiter);
+    const headerValues = parseCsvLine(lines[0] ?? "", headerDelimiter).map(normalizeHeaderName);
+    const normalizedText = [headerValues.join(dataDelimiter), ...lines.slice(1)].join("\n");
 
-    let delim = delimiter === "auto" ? detectDelimiter(text) : delimiter;
-    let parsedRes = tryParse(delim);
-    if (matchCount(parsedRes) === 0) {
-      for (const alt of [";", ",", "\t"]) {
-        if (alt === delim) continue;
-        const r2 = tryParse(alt);
-        if (matchCount(r2) > matchCount(parsedRes)) { parsedRes = r2; delim = alt; }
-      }
-      const shown = delim === "\t" ? "TAB" : delim;
-      toast.info(`Las columnas no coincidían con el separador elegido. Se usó "${shown}".`);
+    if (headerDelimiter !== dataDelimiter || delimiter !== dataDelimiter) {
+      toast.info(`Separador detectado: "${delimiterLabel(dataDelimiter)}".`);
     }
+    setUsedDelimiter(dataDelimiter);
 
-    Papa.parse(text, {
-      header: true, skipEmptyLines: true, delimiter: delim,
+    Papa.parse(normalizedText, {
+      header: true, skipEmptyLines: true, delimiter: dataDelimiter,
       complete: (res) => {
         const onExisting = (template.settings?.on_existing_code as string) ?? "update";
         const seenCodes = new Set<string>();
@@ -501,6 +523,7 @@ function RawMaterialImporterDialog({
               <Badge variant="secondary">A actualizar: {summary?.update}</Badge>
               <Badge variant="outline">Saltar: {summary?.skip}</Badge>
               <Badge variant="destructive">Errores: {summary?.error}</Badge>
+              {usedDelimiter && <Badge variant="outline">Separador: {delimiterLabel(usedDelimiter)}</Badge>}
               <span className="text-xs text-muted-foreground ml-auto">{file?.name}</span>
             </div>
             <div className="rounded-lg border overflow-x-auto max-h-[55vh]">
@@ -549,7 +572,7 @@ function RawMaterialImporterDialog({
           </Button>
           {preview && (
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => { setPreview(null); setFile(null); if (fileRef.current) fileRef.current.value = ""; }} disabled={confirming}>Volver</Button>
+              <Button variant="outline" onClick={() => { setPreview(null); setFile(null); setUsedDelimiter(null); if (fileRef.current) fileRef.current.value = ""; }} disabled={confirming}>Volver</Button>
               <Button onClick={confirmImport} disabled={confirming || (summary?.create === 0 && summary?.update === 0)}>
                 {confirming ? "Importando…" : "Confirmar importación"}
               </Button>
