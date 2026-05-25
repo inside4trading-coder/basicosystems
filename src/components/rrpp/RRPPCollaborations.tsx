@@ -19,8 +19,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { fetchConfig } from "@/hooks/useRRPPData";
 import type { Collaboration, RelationshipStatus } from "@/types/rrpp";
+import type { RRPPBrand } from "@/hooks/useRRPPBrand";
 import { useRRPPPermissions } from "./useRRPPPermissions";
 import { cn } from "@/lib/utils";
+import { generateShippingPdf } from "@/lib/rrppShippingPdf";
 
 const db = supabase as any;
 const DEFAULT_NETWORKS = ["Instagram", "TikTok", "YouTube", "X", "Facebook", "LinkedIn"];
