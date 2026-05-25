@@ -218,6 +218,76 @@ export default function CoreCostStructureEditor() {
     });
   }
 
+  async function applyTemplate() {
+    if (!selectedTemplate) return;
+    if (items.length > 0 && !confirm("Esto reemplazará las líneas actuales. ¿Continuar?")) return;
+    setApplyingTemplate(true);
+    try {
+      const { data: tpl, error: e1 } = await supabase.from("core_cost_templates").select("*").eq("id", selectedTemplate).maybeSingle();
+      if (e1 || !tpl) { toast.error("No se pudo cargar el template"); return; }
+      const { data: tplItems, error: e2 } = await supabase.from("core_cost_template_items").select("*").eq("cost_template_id", selectedTemplate).order("section").order("sort_order");
+      if (e2) { toast.error("Error cargando líneas del template"); return; }
+
+      // Prefill header fields if empty
+      if (!name.trim()) setName(`${tpl.name} — Estructura`);
+      if (!description.trim() && tpl.description) setDescription(tpl.description);
+      if (!productType && tpl.product_type) {
+        if (PRODUCT_TYPES.includes(tpl.product_type)) setProductType(tpl.product_type);
+        else { setProductType("Otro"); setProductTypeOther(tpl.product_type); }
+      }
+      if (tpl.base_currency) setBaseCurrency(tpl.base_currency);
+
+      // Snapshot raw materials
+      const rmIds = Array.from(new Set((tplItems as any[] ?? []).filter(i => i.raw_material_id).map(i => i.raw_material_id)));
+      const rmMap: Record<string, any> = {};
+      if (rmIds.length > 0) {
+        const { data: rms } = await supabase.from("core_raw_materials").select("id, code, name, unit_cost, currency, unit_of_measure_id").in("id", rmIds);
+        (rms as any[] ?? []).forEach(r => { rmMap[r.id] = r; });
+      }
+
+      const newItems: Item[] = (tplItems as any[] ?? []).map(it => {
+        const fresh = it.raw_material_id ? rmMap[it.raw_material_id] : null;
+        const unitCost = fresh ? Number(fresh.unit_cost) : Number(it.unit_cost) || 0;
+        const qty = Number(it.quantity) || 0;
+        return {
+          _local_id: uid(),
+          section: it.section,
+          item_type: it.item_type ?? null,
+          raw_material_id: it.raw_material_id ?? null,
+          name: it.name ?? "",
+          description: it.description ?? null,
+          unit_of_measure: it.unit_of_measure ?? (fresh ? units[fresh.unit_of_measure_id]?.abbreviation ?? null : null),
+          unit_cost: unitCost,
+          quantity: qty,
+          subtotal: Number((unitCost * qty).toFixed(4)),
+          currency: it.currency ?? tpl.base_currency,
+          cost_snapshot: fresh ? {
+            raw_material_id: fresh.id,
+            code: fresh.code,
+            name: fresh.name,
+            unit_cost: unitCost,
+            currency: fresh.currency,
+            taken_at: new Date().toISOString(),
+            from_template_id: selectedTemplate,
+          } : null,
+          process_name: it.process_name ?? null,
+          process_order: it.process_order ?? null,
+          adds_to_payroll: !!it.adds_to_payroll,
+          suggested_role: it.suggested_role ?? null,
+          supplier: it.supplier ?? null,
+          notes: it.notes ?? null,
+          sort_order: it.sort_order ?? 0,
+        };
+      });
+      setItems(newItems);
+      toast.success(`Template "${tpl.name}" aplicado (${newItems.length} líneas)`);
+    } finally {
+      setApplyingTemplate(false);
+    }
+  }
+
+
+
   function validate(): string | null {
     if (!name.trim()) return "El nombre es obligatorio";
     if (!baseCurrency) return "La moneda base es obligatoria";
