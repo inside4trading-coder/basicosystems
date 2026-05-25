@@ -37,6 +37,14 @@ const TERMINAL_STATUSES = new Set(["colaboracion_exitosa", "no_colaboro", "desca
 
 interface Props { contactId: string; onPipelineChanged?: () => void; }
 
+interface Props {
+  contactId: string;
+  brand?: RRPPBrand;
+  contactName?: string;
+  contactAlias?: string;
+  onPipelineChanged?: () => void;
+}
+
 const today = () => new Date().toISOString().slice(0, 10);
 
 const emptyForm = () => ({
@@ -44,12 +52,17 @@ const emptyForm = () => ({
   send_date: today(),
   products: "",
   order_details: "",
-  // Step 2 - Envío
+  // Step 2 - Envío (destinatario)
   shipping_name: "",
+  shipping_last_name: "",
+  shipping_id_number: "",
+  shipping_email: "",
+  shipping_phone: "",
+  shipping_postal_code: "",
   shipping_address: "",
   shipping_city: "",
   shipping_country: "",
-  shipping_phone: "",
+  // Step 2.1 - Confirmación de envío
   tracking_number: "",
   shipped_at: "",
   received: false,
