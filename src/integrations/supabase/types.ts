@@ -1349,6 +1349,36 @@ export type Database = {
         }
         Relationships: []
       }
+      rrpp_brand_goals: {
+        Row: {
+          activaciones: number
+          brand: string
+          captaciones: number
+          colaboraciones: number
+          month: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          activaciones?: number
+          brand: string
+          captaciones?: number
+          colaboraciones?: number
+          month: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          activaciones?: number
+          brand?: string
+          captaciones?: number
+          colaboraciones?: number
+          month?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       rrpp_collaborations: {
         Row: {
           collab_done: boolean
@@ -1360,11 +1390,21 @@ export type Database = {
           id: string
           network_posted: string | null
           observations: string | null
+          order_details: string | null
           post_date: string | null
           post_observation: string | null
+          post_url: string | null
           products: string | null
+          published_at: string | null
           received: boolean
           send_date: string | null
+          shipped_at: string | null
+          shipping_address: string | null
+          shipping_city: string | null
+          shipping_country: string | null
+          shipping_name: string | null
+          shipping_phone: string | null
+          tracking_number: string | null
         }
         Insert: {
           collab_done?: boolean
@@ -1376,11 +1416,21 @@ export type Database = {
           id?: string
           network_posted?: string | null
           observations?: string | null
+          order_details?: string | null
           post_date?: string | null
           post_observation?: string | null
+          post_url?: string | null
           products?: string | null
+          published_at?: string | null
           received?: boolean
           send_date?: string | null
+          shipped_at?: string | null
+          shipping_address?: string | null
+          shipping_city?: string | null
+          shipping_country?: string | null
+          shipping_name?: string | null
+          shipping_phone?: string | null
+          tracking_number?: string | null
         }
         Update: {
           collab_done?: boolean
@@ -1392,11 +1442,21 @@ export type Database = {
           id?: string
           network_posted?: string | null
           observations?: string | null
+          order_details?: string | null
           post_date?: string | null
           post_observation?: string | null
+          post_url?: string | null
           products?: string | null
+          published_at?: string | null
           received?: boolean
           send_date?: string | null
+          shipped_at?: string | null
+          shipping_address?: string | null
+          shipping_city?: string | null
+          shipping_country?: string | null
+          shipping_name?: string | null
+          shipping_phone?: string | null
+          tracking_number?: string | null
         }
         Relationships: [
           {
@@ -1435,6 +1495,7 @@ export type Database = {
       rrpp_contacts: {
         Row: {
           alias: string | null
+          brand: string
           city: string | null
           contact_type: string
           country: string | null
@@ -1456,6 +1517,7 @@ export type Database = {
         }
         Insert: {
           alias?: string | null
+          brand?: string
           city?: string | null
           contact_type?: string
           country?: string | null
@@ -1477,6 +1539,7 @@ export type Database = {
         }
         Update: {
           alias?: string | null
+          brand?: string
           city?: string | null
           contact_type?: string
           country?: string | null
