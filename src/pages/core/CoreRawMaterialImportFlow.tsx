@@ -453,17 +453,18 @@ function RawMaterialImporterDialog({
               <Input ref={fileRef} type="file" accept=".csv,text/csv" onChange={(e) => e.target.files?.[0] && parseFile(e.target.files[0])} disabled={parsing} />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Separador CSV:</span>
+              <span className="text-xs font-medium">Separador CSV:</span>
               <select
                 className="text-xs border rounded px-2 py-1 bg-background"
                 value={delimiter}
                 onChange={(e) => setDelimiter(e.target.value)}
                 disabled={parsing}
               >
-                <option value="auto">Auto-detectar</option>
-                <option value=",">Coma (,)</option>
                 <option value=";">Punto y coma (;)</option>
+                <option value=",">Coma (,)</option>
+                <option value="auto">Auto-detectar</option>
               </select>
+              <span className="text-[10px] text-muted-foreground">Elija el separador usado en su archivo</span>
             </div>
             <p className="text-xs text-muted-foreground">
               Columnas esperadas: <span className="font-mono">{fields.map(f => f.column_name).join(", ")}</span>
