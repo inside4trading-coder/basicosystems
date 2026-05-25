@@ -23,7 +23,7 @@ const STATUSES = [
 ];
 const LABOR_TYPES = ["Corte", "Costura", "Estampado", "Bordado", "Empaque", "Otro"];
 
-type Section = "raw_material" | "labor" | "technical_process" | "variable_cost" | "logistics" | "other";
+type Section = "raw_material" | "labor" | "technical_process" | "variable_cost" | "logistics" | "packaging" | "other";
 
 type Item = {
   id?: string;
@@ -82,6 +82,7 @@ export default function CoreCostStructureEditor() {
 
   // Header fields
   const [name, setName] = useState("");
+  const [sku, setSku] = useState("");
   const [description, setDescription] = useState("");
   const [productType, setProductType] = useState("");
   const [productTypeOther, setProductTypeOther] = useState("");
@@ -121,6 +122,7 @@ export default function CoreCostStructureEditor() {
           return;
         }
         setName(head.name);
+        setSku((head as any).sku ?? "");
         setDescription(head.description ?? "");
         if (head.product_type && !PRODUCT_TYPES.includes(head.product_type)) {
           setProductType("Otro");
@@ -157,7 +159,7 @@ export default function CoreCostStructureEditor() {
 
   const totals = useMemo(() => {
     const by: Record<Section, number> = {
-      raw_material: 0, labor: 0, technical_process: 0, variable_cost: 0, logistics: 0, other: 0,
+      raw_material: 0, labor: 0, technical_process: 0, variable_cost: 0, logistics: 0, packaging: 0, other: 0,
     };
     items.forEach(it => {
       by[it.section] += Number(it.subtotal) || 0;
@@ -220,10 +222,11 @@ export default function CoreCostStructureEditor() {
     for (const it of items) {
       if ((Number(it.unit_cost) || 0) < 0) return `Costo negativo en línea "${it.name || it.section}"`;
       if ((Number(it.quantity) || 0) < 0) return `Cantidad negativa en línea "${it.name || it.section}"`;
-      if (it.section === "labor" && it.adds_to_payroll && (Number(it.unit_cost) || 0) < 0) {
-        return `Tarifa de mano de obra inválida en "${it.name}"`;
+      if (it.section === "labor") {
+        if (!it.item_type) return "Selecciona un tipo de proceso en cada línea de mano de obra";
+      } else if (!it.name?.trim()) {
+        return `Falta nombre en una línea de ${sectionLabel(it.section)}`;
       }
-      if (!it.name?.trim()) return `Falta nombre en una línea de ${sectionLabel(it.section)}`;
     }
     return null;
   }
@@ -236,8 +239,9 @@ export default function CoreCostStructureEditor() {
       const { data: { user } } = await supabase.auth.getUser();
       const ptValue = productType === "Otro" ? (productTypeOther.trim() || "Otro") : (productType || null);
       const salePrice = estimatedSalePrice !== "" ? parseFloat(estimatedSalePrice) : null;
-      const head = {
+      const head: any = {
         name: name.trim(),
+        sku: sku.trim() || null,
         description: description.trim() || null,
         product_type: ptValue,
         base_currency: baseCurrency,
@@ -249,6 +253,7 @@ export default function CoreCostStructureEditor() {
         total_technical_processes: totals.by.technical_process,
         total_variable_costs: totals.by.variable_cost,
         total_logistics: totals.by.logistics,
+        total_packaging: totals.by.packaging,
         total_other_costs: totals.by.other,
         total_unit_cost: totals.totalUnitCost,
         estimated_gross_margin: totals.margin,
@@ -343,9 +348,13 @@ export default function CoreCostStructureEditor() {
           <Card className="p-5 space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Información general</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
+              <div>
                 <Label>Nombre *</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Hoodie clásico negro" />
+              </div>
+              <div>
+                <Label>SKU</Label>
+                <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Ej: HOD-NEG-001" />
               </div>
               <div>
                 <Label>Tipo de producto</Label>
@@ -400,6 +409,7 @@ export default function CoreCostStructureEditor() {
                 <TabsTrigger value="technical_process">Procesos técnicos</TabsTrigger>
                 <TabsTrigger value="variable_cost">Variables</TabsTrigger>
                 <TabsTrigger value="logistics">Logística</TabsTrigger>
+                <TabsTrigger value="packaging">Empaque</TabsTrigger>
                 <TabsTrigger value="other">Otros</TabsTrigger>
               </TabsList>
 
@@ -452,6 +462,17 @@ export default function CoreCostStructureEditor() {
                 />
               </TabsContent>
 
+              <TabsContent value="packaging" className="mt-4">
+                <GenericBlock
+                  items={items.filter(i => i.section === "packaging")}
+                  onAdd={() => addItem("packaging")}
+                  onUpdate={updateItem}
+                  onRemove={removeItem}
+                  extraField="supplier"
+                  extraLabel="Proveedor"
+                />
+              </TabsContent>
+
               <TabsContent value="other" className="mt-4">
                 <GenericBlock
                   items={items.filter(i => i.section === "other")}
@@ -476,6 +497,7 @@ export default function CoreCostStructureEditor() {
               <SummaryRow label="Procesos técnicos" value={fmt(totals.by.technical_process)} currency={baseCurrency} />
               <SummaryRow label="Variables" value={fmt(totals.by.variable_cost)} currency={baseCurrency} />
               <SummaryRow label="Logística" value={fmt(totals.by.logistics)} currency={baseCurrency} />
+              <SummaryRow label="Empaque" value={fmt(totals.by.packaging)} currency={baseCurrency} />
               <SummaryRow label="Otros" value={fmt(totals.by.other)} currency={baseCurrency} />
             </div>
             <div className="border-t pt-3 space-y-2">
@@ -529,6 +551,7 @@ function sectionLabel(s: Section): string {
     technical_process: "Procesos técnicos",
     variable_cost: "Variables",
     logistics: "Logística",
+    packaging: "Empaque",
     other: "Otros",
   } as Record<Section, string>)[s];
 }
@@ -606,15 +629,14 @@ function LaborBlock({
       {items.length === 0 && <EmptyState label="Sin procesos de mano de obra" />}
       {items.map(it => (
         <div key={it._local_id} className="rounded-lg border p-3 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-2 items-end">
             <div>
-              <Label className="text-xs">Nombre del proceso</Label>
-              <Input value={it.name} onChange={(e) => onUpdate(it._local_id, { name: e.target.value, process_name: e.target.value })} />
-            </div>
-            <div>
-              <Label className="text-xs">Tipo</Label>
-              <Select value={it.item_type ?? ""} onValueChange={(v) => onUpdate(it._local_id, { item_type: v })}>
-                <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <Label className="text-xs">Tipo de proceso</Label>
+              <Select
+                value={it.item_type ?? ""}
+                onValueChange={(v) => onUpdate(it._local_id, { item_type: v, name: v, process_name: v })}
+              >
+                <SelectTrigger><SelectValue placeholder="Seleccionar tipo" /></SelectTrigger>
                 <SelectContent>
                   {LABOR_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>

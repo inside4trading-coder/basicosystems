@@ -535,11 +535,13 @@ export type Database = {
           name: string
           notes: string | null
           product_type: string | null
+          sku: string | null
           status: string
           suggested_fabrication_fund: number
           total_labor: number
           total_logistics: number
           total_other_costs: number
+          total_packaging: number
           total_raw_materials: number
           total_technical_processes: number
           total_unit_cost: number
@@ -559,11 +561,13 @@ export type Database = {
           name: string
           notes?: string | null
           product_type?: string | null
+          sku?: string | null
           status?: string
           suggested_fabrication_fund?: number
           total_labor?: number
           total_logistics?: number
           total_other_costs?: number
+          total_packaging?: number
           total_raw_materials?: number
           total_technical_processes?: number
           total_unit_cost?: number
@@ -583,11 +587,13 @@ export type Database = {
           name?: string
           notes?: string | null
           product_type?: string | null
+          sku?: string | null
           status?: string
           suggested_fabrication_fund?: number
           total_labor?: number
           total_logistics?: number
           total_other_costs?: number
+          total_packaging?: number
           total_raw_materials?: number
           total_technical_processes?: number
           total_unit_cost?: number
