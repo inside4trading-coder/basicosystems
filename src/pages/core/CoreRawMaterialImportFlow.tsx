@@ -239,6 +239,7 @@ function RawMaterialImporterDialog({
   const [parsing, setParsing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [delimiter, setDelimiter] = useState<string>(";");
+  const [usedDelimiter, setUsedDelimiter] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function parseFile(f: File) {
@@ -269,6 +270,7 @@ function RawMaterialImporterDialog({
     if (headerDelimiter !== dataDelimiter || delimiter !== dataDelimiter) {
       toast.info(`Separador detectado: "${delimiterLabel(dataDelimiter)}".`);
     }
+    setUsedDelimiter(dataDelimiter);
 
     Papa.parse(normalizedText, {
       header: true, skipEmptyLines: true, delimiter: dataDelimiter,
@@ -521,6 +523,7 @@ function RawMaterialImporterDialog({
               <Badge variant="secondary">A actualizar: {summary?.update}</Badge>
               <Badge variant="outline">Saltar: {summary?.skip}</Badge>
               <Badge variant="destructive">Errores: {summary?.error}</Badge>
+              {usedDelimiter && <Badge variant="outline">Separador: {delimiterLabel(usedDelimiter)}</Badge>}
               <span className="text-xs text-muted-foreground ml-auto">{file?.name}</span>
             </div>
             <div className="rounded-lg border overflow-x-auto max-h-[55vh]">
@@ -569,7 +572,7 @@ function RawMaterialImporterDialog({
           </Button>
           {preview && (
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => { setPreview(null); setFile(null); if (fileRef.current) fileRef.current.value = ""; }} disabled={confirming}>Volver</Button>
+              <Button variant="outline" onClick={() => { setPreview(null); setFile(null); setUsedDelimiter(null); if (fileRef.current) fileRef.current.value = ""; }} disabled={confirming}>Volver</Button>
               <Button onClick={confirmImport} disabled={confirming || (summary?.create === 0 && summary?.update === 0)}>
                 {confirming ? "Importando…" : "Confirmar importación"}
               </Button>
