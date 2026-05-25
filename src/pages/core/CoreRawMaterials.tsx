@@ -64,6 +64,8 @@ export default function CoreRawMaterials() {
   const [fStatus, setFStatus] = useState("all");
   const [fCurrency, setFCurrency] = useState("all");
   const [sortBy, setSortBy] = useState("updated_at");
+  const [sortColumn, setSortColumn] = useState<string | null>("updated_at");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // dialogs
   const [editing, setEditing] = useState<RawMaterial | null>(null);
