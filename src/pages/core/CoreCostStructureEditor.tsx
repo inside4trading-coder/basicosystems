@@ -422,6 +422,36 @@ export default function CoreCostStructureEditor() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         <div className="space-y-6">
+          {isNew && templates.length > 0 && (
+            <Card className="p-5 space-y-3 border-dashed">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Partir de un template</h2>
+                  <p className="text-xs text-muted-foreground mt-1">Opcional: carga las líneas base de un template activo. Podrás editarlas antes de guardar.</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[240px]">
+                  <Label>Template</Label>
+                  <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                    <SelectTrigger><SelectValue placeholder="Selecciona un template" /></SelectTrigger>
+                    <SelectContent>
+                      {templates.map(t => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}{t.product_type ? ` · ${t.product_type}` : ""} ({t.base_currency})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={applyTemplate} disabled={!selectedTemplate || applyingTemplate}>
+                  {applyingTemplate ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+                  Aplicar template
+                </Button>
+              </div>
+            </Card>
+          )}
+
           <Card className="p-5 space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Información general</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
