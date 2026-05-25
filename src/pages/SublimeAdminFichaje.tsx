@@ -867,6 +867,32 @@ export default function SublimeAdminFichaje() {
                                 Fuera de radio: {row.lastDistance.toLocaleString("es-ES")} m / {row.radius ?? "—"} m
                               </span>
                             )}
+                            {(row.entryLat != null || row.exitLat != null) && (
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {row.entryLat != null && row.entryLng != null && (
+                                  <a
+                                    href={`https://www.google.com/maps?q=${row.entryLat},${row.entryLng}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                                    title={`${row.entryLat.toFixed(6)}, ${row.entryLng.toFixed(6)}`}
+                                  >
+                                    <MapPin className="h-3 w-3" /> Entrada
+                                  </a>
+                                )}
+                                {row.exitLat != null && row.exitLng != null && (
+                                  <a
+                                    href={`https://www.google.com/maps?q=${row.exitLat},${row.exitLng}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                                    title={`${row.exitLat.toFixed(6)}, ${row.exitLng.toFixed(6)}`}
+                                  >
+                                    <MapPin className="h-3 w-3" /> Salida
+                                  </a>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
