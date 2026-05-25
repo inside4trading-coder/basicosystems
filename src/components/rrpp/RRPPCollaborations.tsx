@@ -537,7 +537,7 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
               <div key={c.id} className="kpi-card">
                 <div className="flex items-start justify-between flex-wrap gap-3">
                   <div>
-                    <p className="text-xs text-muted-foreground">Envío</p>
+                    <p className="text-xs text-muted-foreground">Pedido</p>
                     <p className="font-semibold">{c.send_date ? new Date(c.send_date).toLocaleDateString() : "—"}</p>
                   </div>
                   <div className="flex gap-2 flex-wrap items-center">
@@ -546,11 +546,20 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                         <TagIcon className="h-3 w-3" /> Cupón
                       </span>
                     )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => generateShippingPdf({ collab: c, brand, contactName, contactAlias })}
+                    >
+                      <FileDown className="h-3.5 w-3.5 mr-1" /> PDF tienda
+                    </Button>
                     {perms.canManageCollaborations && (
                       <>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
+
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7">
