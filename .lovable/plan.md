@@ -1,40 +1,49 @@
-## Validación BLOQUE 1 — Basico Core
+## Gestión completa de usuarios del Hub
 
-Revisé la app y la base de datos. El bloque está casi completo. Solo hay dos ajustes menores antes de avanzar al BLOQUE 2.
+Ampliar el panel **Usuarios del hub** (en Configuración) para que un admin pueda crear, eliminar y reenviar invitaciones a usuarios, además de asignar rol.
 
-### Checklist
+### Funcionalidades nuevas
 
-| # | Item | Estado |
-|---|------|--------|
-| 1 | Módulo llamado "Basico Core" en UI (sidebar, layout, placeholders) | ✅ |
-| 1b | Campo `module_name` en BD aún dice "BASICO CORE" | ⚠️ corregir |
-| 2 | Icono `Factory` (fábrica) en sidebar y header del módulo | ✅ |
-| 3 | Navegación interna con TODOS los submódulos futuros (4 grupos, 14 rutas) | ✅ |
-| 4 | Solo Configuración Core funcional | ✅ |
-| 5 | Resto de secciones como placeholder "Próximamente" | ✅ |
-| 6 | Tablas `core_settings`, `core_locations`, `core_woocommerce_status_rules`, `core_role_definitions`, `core_audit_logs` | ✅ |
-| 7 | Estados WooCommerce clasificados: confirmado (10), pendiente (5), excluido (4) | ✅ |
-| 8 | SKU = `CORE` + 6 dígitos | ✅ |
-| 9 | Etiqueta QR 57 × 40 mm | ✅ |
-| 10 | Sede principal = Pop Up Sublime Barquicenter (`is_main=true`) | ✅ |
-| 11 | "Stock en tránsito" como ubicación tipo `transito` | ✅ |
-| 12 | Roles Core: admin, manager, administracion, responsable, operario | ✅ |
-| 13 | Auditoría: tabla `core_audit_logs` + helper `logCoreAudit` invocado desde todos los hooks de settings/locations/roles/status | ✅ |
+1. **Crear usuario** (botón "Nuevo usuario" arriba del listado)
+   - Diálogo con: email, contraseña, nombre completo, rol (admin/manager/partner/rrpp/marketing)
+   - Crea el usuario directamente con email confirmado (sin necesidad de verificación)
+   - Asigna el rol elegido inmediatamente
+   - Aparece en el listado al instante
 
-### Cambios a aplicar
+2. **Eliminar usuario** (botón rojo por fila, con confirmación)
+   - Borra el usuario de auth + sus roles + su profile
+   - Protección: no permite eliminar al admin que está logueado (autoeliminación)
+   - Diálogo de confirmación antes de borrar
 
-1. **Actualizar `core_settings.module_name`** de `"BASICO CORE"` → `"Basico Core"` (migración / update).
-2. **Marca "BASICO SYSTEMS" → "BASICO SYSTEM"**. Encontrado en:
-   - `index.html` (title + og + twitter + meta description: 6 ocurrencias, ya estaban mezcladas: "Basico Systems" y "Basico System")
-   - `src/components/AppLayout.tsx` (header superior)
-   - `src/pages/Login.tsx`
-   - `src/pages/Landing.tsx` (varias ocurrencias del hero/footer)
-   
-   Reemplazo global de `Basico Systems` → `Basico System` (y `BASICO SYSTEMS` → `BASICO SYSTEM` si aparece en mayúsculas).
+3. **Reenviar invitación / resetear contraseña** (acción secundaria por fila)
+   - Envía email de recuperación de contraseña al usuario
+   - Útil cuando alguien olvida su clave
 
-### Detalles técnicos
+4. **Validaciones**
+   - Email válido, contraseña mínimo 8 caracteres
+   - Solo admin puede crear/eliminar (verificado en edge function)
+   - Todas las acciones quedan registradas
 
-- El update de `module_name` se hará vía migración `UPDATE public.core_settings SET module_name = 'Basico Core' WHERE module_name = 'BASICO CORE';`.
-- El resto son ediciones de texto en componentes React/HTML, sin cambios de lógica.
+### Cambios técnicos
 
-Tras aplicar estos dos ajustes, BLOQUE 1 queda 100 % validado y listo para BLOQUE 2 (Materia Prima).
+**Nueva edge function `admin-manage-users`** (`supabase/functions/admin-manage-users/index.ts`)
+- Verifica que el caller sea admin (usando service role)
+- Acciones soportadas vía body `{ action, ...params }`:
+  - `create`: crea user en `auth.users` con `email_confirm: true`, inserta profile, inserta user_role
+  - `delete`: valida que no sea self-delete, borra de auth (cascade limpia profile y user_roles)
+  - `reset_password`: genera link de recovery y lo envía por email
+- CORS habilitado, retorna errores claros
+
+**Actualizar `src/components/configuracion/UserRolesPanel.tsx`**
+- Botón "Nuevo usuario" arriba a la derecha → abre `Dialog` con form
+- Por fila: menú con "Resetear contraseña" y "Eliminar usuario" (icono trash rojo)
+- AlertDialog de confirmación para eliminar
+- Toasts de éxito/error
+- Refresca el listado tras cada acción
+
+**Sin cambios de BD ni de RLS** — todo se hace vía edge function con service role.
+
+### Archivos afectados
+
+- `supabase/functions/admin-manage-users/index.ts` (nuevo)
+- `src/components/configuracion/UserRolesPanel.tsx` (editar)
