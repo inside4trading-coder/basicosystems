@@ -130,9 +130,9 @@ export function RawMaterialExportButton() {
   async function downloadBase() {
     const r = await ensureTemplate(); if (!r) return;
     const headers = r.fields.map((f) => f.column_name);
-    downloadCsv(headers.join(",") + "\n", `${slug(r.template.name)}-formato.csv`);
+    downloadCsv(headers.join(";") + "\n", `${slug(r.template.name)}-formato.csv`);
     await logCoreAudit({ table: "core_import_templates", recordId: r.template.id, action: "download_base" });
-    toast.success("Formato base descargado");
+    toast.success("Formato base descargado (separador: ;)");
   }
 
   async function exportData() {
@@ -160,7 +160,7 @@ export function RawMaterialExportButton() {
         }
       })
     );
-    const csv = Papa.unparse({ fields: r.fields.map((f) => f.column_name), data: rows });
+    const csv = Papa.unparse({ fields: r.fields.map((f) => f.column_name), data: rows }, { delimiter: ";" });
     downloadCsv(csv, `${slug(r.template.name)}-export-${new Date().toISOString().slice(0, 10)}.csv`);
     await logCoreAudit({ table: "core_import_templates", recordId: r.template.id, action: "export_data", newValue: String(rows.length) });
     toast.success(`${rows.length} filas exportadas`);
