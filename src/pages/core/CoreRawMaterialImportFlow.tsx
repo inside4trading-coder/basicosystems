@@ -290,47 +290,49 @@ function RawMaterialImporterDialog({
               if (f.default_value) val = f.default_value;
             }
             const s = val == null ? "" : String(val).trim();
+            const label = f.display_name || f.column_name;
 
             switch (f.internal_field) {
               case "code":
-                if (!s) errors.push("Código vacío");
+                if (!s) errors.push(`Falta "${label}" (código): es obligatorio`);
                 parsed.code = s; break;
               case "name":
-                if (!s && f.is_required) errors.push("Nombre vacío");
+                if (!s) errors.push(`Falta "${label}" (nombre): es obligatorio`);
                 parsed.name = s; break;
               case "category_id": {
-                if (!s) { if (f.is_required) errors.push("Categoría vacía"); break; }
+                if (!s) { errors.push(`Falta "${label}" (categoría): es obligatoria`); break; }
                 const id = catByName.get(s.toLowerCase());
                 if (id) parsed.category_id = id;
-                else errors.push(`Categoría no encontrada: ${s}`);
+                else errors.push(`Categoría "${s}" no existe en el sistema`);
                 parsed._category_name = s; break;
               }
               case "unit_of_measure_id": {
-                if (!s) { if (f.is_required) errors.push("Unidad vacía"); break; }
+                if (!s) { errors.push(`Falta "${label}" (unidad): es obligatoria`); break; }
                 const id = unitByName.get(s.toLowerCase());
                 if (id) parsed.unit_of_measure_id = id;
-                else errors.push(`Unidad no encontrada: ${s}`);
+                else errors.push(`Unidad "${s}" no existe en el sistema`);
                 parsed._unit_name = s; break;
               }
               case "unit_cost": {
-                if (!s) { if (f.is_required) errors.push("Costo vacío"); break; }
+                if (!s) { errors.push(`Falta "${label}" (costo): es obligatorio`); break; }
                 const n = parseFloat(s.replace(",", "."));
-                if (Number.isNaN(n)) errors.push("Costo inválido");
-                else if (n < 0) errors.push("Costo negativo");
+                if (Number.isNaN(n)) errors.push(`Costo "${s}" no es un número válido`);
+                else if (n < 0) errors.push(`Costo "${s}" no puede ser negativo`);
                 else parsed.unit_cost = n; break;
               }
               case "currency": {
                 const up = s.toUpperCase();
-                if (!up) { if (f.is_required) errors.push("Moneda vacía"); break; }
-                if (!CURRENCIES.includes(up)) errors.push(`Moneda inválida: ${s}`);
+                if (!up) { errors.push(`Falta "${label}" (moneda): es obligatoria`); break; }
+                if (!CURRENCIES.includes(up)) errors.push(`Moneda "${s}" inválida. Permitidas: ${CURRENCIES.join(", ")}`);
                 else parsed.currency = up; break;
               }
               case "supplier": parsed.supplier = s || null; break;
               case "status": {
+                if (!s) { parsed.status = "active"; break; }
                 const ls = s.toLowerCase();
                 const map: Record<string, string> = { activo: "active", active: "active", inactivo: "inactive", inactive: "inactive" };
                 const v = map[ls];
-                if (!v) { if (f.is_required) errors.push(`Estado inválido: ${s}`); }
+                if (!v) errors.push(`Estado "${s}" inválido. Permitidos: activo, inactivo (vacío = activo)`);
                 else parsed.status = v; break;
               }
               case "notes": parsed.notes = s || null; break;
