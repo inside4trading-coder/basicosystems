@@ -462,6 +462,17 @@ export default function CoreCostStructureEditor() {
                 />
               </TabsContent>
 
+              <TabsContent value="packaging" className="mt-4">
+                <GenericBlock
+                  items={items.filter(i => i.section === "packaging")}
+                  onAdd={() => addItem("packaging")}
+                  onUpdate={updateItem}
+                  onRemove={removeItem}
+                  extraField="supplier"
+                  extraLabel="Proveedor"
+                />
+              </TabsContent>
+
               <TabsContent value="other" className="mt-4">
                 <GenericBlock
                   items={items.filter(i => i.section === "other")}
