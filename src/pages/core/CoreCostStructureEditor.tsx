@@ -652,9 +652,7 @@ function LaborBlock({
             </div>
             <Button variant="ghost" size="icon" onClick={() => onRemove(it._local_id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
-            <Input placeholder="Rol sugerido" value={it.suggested_role ?? ""} onChange={(e) => onUpdate(it._local_id, { suggested_role: e.target.value })} />
-            <Input type="number" min="0" placeholder="Orden" value={it.process_order ?? ""} onChange={(e) => onUpdate(it._local_id, { process_order: parseInt(e.target.value) || null })} />
+          <div className="flex items-center justify-between gap-2">
             <label className="flex items-center gap-2 text-sm whitespace-nowrap">
               <Switch checked={!!it.adds_to_payroll} onCheckedChange={(v) => onUpdate(it._local_id, { adds_to_payroll: v })} />
               Suma a nómina
@@ -663,7 +661,7 @@ function LaborBlock({
               {it.subtotal.toFixed(2)} {it.currency}
             </div>
           </div>
-          <Input placeholder="Notas" value={it.notes ?? ""} onChange={(e) => onUpdate(it._local_id, { notes: e.target.value })} />
+          <Input placeholder="Notas (opcional)" value={it.notes ?? ""} onChange={(e) => onUpdate(it._local_id, { notes: e.target.value })} />
         </div>
       ))}
       <Button variant="outline" size="sm" onClick={onAdd}><Plus className="h-4 w-4 mr-1" />Agregar proceso</Button>
