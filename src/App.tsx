@@ -29,6 +29,10 @@ import SublimeFichajePublico from "./pages/SublimeFichajePublico";
 import Sublime from "./pages/Sublime";
 import SublimeAdminFichaje from "./pages/SublimeAdminFichaje";
 import { AdminScopeProvider } from "@/contexts/AdminScope";
+import CoreLayout from "./pages/core/CoreLayout";
+import CoreDashboard from "./pages/core/CoreDashboard";
+import CoreConfiguracion from "./pages/core/CoreConfiguracion";
+import CorePlaceholder from "./pages/core/CorePlaceholder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -84,6 +88,23 @@ const App = () => (
                   </AdminScopeProvider>
                 }
               />
+              <Route path="/core" element={<CoreLayout />}>
+                <Route index element={<CoreDashboard />} />
+                <Route path="configuracion" element={<CoreConfiguracion />} />
+                <Route path="materia-prima" element={<CorePlaceholder title="Materia Prima" description="Catálogo y stock de materias primas." />} />
+                <Route path="templates-carga" element={<CorePlaceholder title="Templates de Carga" description="Plantillas para carga masiva (CSV)." />} />
+                <Route path="estructuras-costos" element={<CorePlaceholder title="Estructuras de Costos" description="MP + procesos + mano de obra + variables + logística." />} />
+                <Route path="templates-costos" element={<CorePlaceholder title="Templates de Costos / Producción" />} />
+                <Route path="productos" element={<CorePlaceholder title="Productos Core" description="Catálogo Core con SKU automático." />} />
+                <Route path="partidas-fabricacion" element={<CorePlaceholder title="Partidas de Fabricación" />} />
+                <Route path="necesidades" element={<CorePlaceholder title="Necesidades de Producción" />} />
+                <Route path="ordenes-produccion" element={<CorePlaceholder title="Órdenes de Producción" />} />
+                <Route path="qr" element={<CorePlaceholder title="QR / Ficha Viajera" description="Generación e impresión 57×40 mm." />} />
+                <Route path="escaneo" element={<CorePlaceholder title="Escaneo" description="Escaneo móvil con cámara." />} />
+                <Route path="nomina" element={<CorePlaceholder title="Nómina" description="Cierre semanal y pagos." />} />
+                <Route path="inventario" element={<CorePlaceholder title="Inventario" description="Movimientos y sincronización con WooCommerce." />} />
+                <Route path="reportes" element={<CorePlaceholder title="Reportes" />} />
+              </Route>
             </Route>
             <Route path="/crew/incidencias" element={<CrewIncidencias />} />
             <Route path="/sublime/fichaje" element={<SublimeFichajePublico />} />

@@ -31,11 +31,12 @@ export const ALL_ROUTES: { path: string; label: string }[] = [
   { path: "/campaigns", label: "Campañas" },
   { path: "/crm", label: "CRM" },
   { path: "/configuracion", label: "Configuración" },
+  { path: "/core", label: "BASICO CORE" },
 ];
 
 const DEFAULT_ROLE_ROUTES: Record<ProfileRole, string[]> = {
-  admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/crew", "/rrpp", "/campaigns", "/llamadas", "/configuracion", "/administracion", "/sublime"],
-  manager: ["/pedidos", "/crm", "/planning", "/campaigns", "/llamadas"],
+  admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/crew", "/rrpp", "/campaigns", "/llamadas", "/configuracion", "/administracion", "/sublime", "/core"],
+  manager: ["/pedidos", "/crm", "/planning", "/campaigns", "/llamadas", "/core"],
   partner: ["/planning"],
   rrpp: ["/rrpp"],
   marketing: ["/rrpp", "/campaigns"],
