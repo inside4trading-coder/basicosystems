@@ -882,7 +882,7 @@ export default function SublimeAdminFichaje() {
                                 )}
                                 {row.exitLat != null && row.exitLng != null && (
                                   <a
-                                    href={`https://www.openstreetmap.org/?mlat=${row.exitLat}&mlon=${row.exitLng}#map=18/${row.exitLat}/${row.exitLng}`}
+                                    href={`https://www.google.com/maps/search/?api=1&query=${row.exitLat}%2C${row.exitLng}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
