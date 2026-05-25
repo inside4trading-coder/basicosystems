@@ -12,7 +12,7 @@ export default function CoreConfiguracion() {
       <div>
         <h1 className="text-3xl font-black tracking-tight">Configuración Core</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Parámetros base del módulo de fábrica BASICO CORE.
+          Parámetros base del módulo de fábrica Basico Core.
         </p>
       </div>
 

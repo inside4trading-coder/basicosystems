@@ -52,7 +52,7 @@ export default function CoreLayout() {
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Módulo</p>
-            <h2 className="text-base font-black tracking-tight">BASICO CORE</h2>
+            <h2 className="text-base font-black tracking-tight">Basico Core</h2>
           </div>
         </div>
         <nav className="flex flex-col gap-4">
