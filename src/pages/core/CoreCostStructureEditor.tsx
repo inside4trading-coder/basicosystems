@@ -348,9 +348,13 @@ export default function CoreCostStructureEditor() {
           <Card className="p-5 space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Información general</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
+              <div>
                 <Label>Nombre *</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Hoodie clásico negro" />
+              </div>
+              <div>
+                <Label>SKU</Label>
+                <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Ej: HOD-NEG-001" />
               </div>
               <div>
                 <Label>Tipo de producto</Label>
