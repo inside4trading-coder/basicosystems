@@ -33,6 +33,7 @@ import CoreLayout from "./pages/core/CoreLayout";
 import CoreDashboard from "./pages/core/CoreDashboard";
 import CoreConfiguracion from "./pages/core/CoreConfiguracion";
 import CorePlaceholder from "./pages/core/CorePlaceholder";
+import CoreRawMaterials from "./pages/core/CoreRawMaterials";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
