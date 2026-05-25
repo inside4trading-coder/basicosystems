@@ -50,6 +50,7 @@ async function logAudit(action: string, recordId: string | null, field?: string,
 }
 
 export default function CoreRawMaterials() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("materias");
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
