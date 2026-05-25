@@ -396,6 +396,251 @@ export type Database = {
           },
         ]
       }
+      core_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          field_changed: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          performed_by: string | null
+          record_id: string | null
+          table_name: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          performed_by?: string | null
+          record_id?: string | null
+          table_name: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          performed_by?: string | null
+          record_id?: string | null
+          table_name?: string
+        }
+        Relationships: []
+      }
+      core_locations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_main: boolean
+          name: string
+          notes: string | null
+          status: string
+          type: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_main?: boolean
+          name: string
+          notes?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_main?: boolean
+          name?: string
+          notes?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      core_role_definitions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          display_name: string
+          id: string
+          key: string
+          permissions: Json
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          display_name: string
+          id?: string
+          key: string
+          permissions?: Json
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          display_name?: string
+          id?: string
+          key?: string
+          permissions?: Json
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      core_settings: {
+        Row: {
+          allow_stock_in_transit: boolean
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          main_location_id: string | null
+          module_name: string
+          multi_location_mode: string
+          qr_height_mm: number
+          qr_include_human_code: boolean
+          qr_include_production_order: boolean
+          qr_include_qr: boolean
+          qr_include_size: boolean
+          qr_include_sku: boolean
+          qr_include_unit_number: boolean
+          qr_width_mm: number
+          sku_digits: number
+          sku_last_number: number
+          sku_prefix: string
+          status: string
+          update_woocommerce_inventory: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allow_stock_in_transit?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          main_location_id?: string | null
+          module_name?: string
+          multi_location_mode?: string
+          qr_height_mm?: number
+          qr_include_human_code?: boolean
+          qr_include_production_order?: boolean
+          qr_include_qr?: boolean
+          qr_include_size?: boolean
+          qr_include_sku?: boolean
+          qr_include_unit_number?: boolean
+          qr_width_mm?: number
+          sku_digits?: number
+          sku_last_number?: number
+          sku_prefix?: string
+          status?: string
+          update_woocommerce_inventory?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allow_stock_in_transit?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          main_location_id?: string | null
+          module_name?: string
+          multi_location_mode?: string
+          qr_height_mm?: number
+          qr_include_human_code?: boolean
+          qr_include_production_order?: boolean
+          qr_include_qr?: boolean
+          qr_include_size?: boolean
+          qr_include_sku?: boolean
+          qr_include_unit_number?: boolean
+          qr_width_mm?: number
+          sku_digits?: number
+          sku_last_number?: number
+          sku_prefix?: string
+          status?: string
+          update_woocommerce_inventory?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_settings_main_location_id_fkey"
+            columns: ["main_location_id"]
+            isOneToOne: false
+            referencedRelation: "core_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_woocommerce_status_rules: {
+        Row: {
+          active: boolean
+          canonical_name: string
+          created_at: string
+          created_by: string | null
+          enters_production: boolean
+          excluded: boolean
+          id: string
+          monitored: boolean
+          slug: string
+          status_group: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          canonical_name: string
+          created_at?: string
+          created_by?: string | null
+          enters_production?: boolean
+          excluded?: boolean
+          id?: string
+          monitored?: boolean
+          slug: string
+          status_group: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          canonical_name?: string
+          created_at?: string
+          created_by?: string | null
+          enters_production?: boolean
+          excluded?: boolean
+          id?: string
+          monitored?: boolean
+          slug?: string
+          status_group?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       crew_audit_log: {
         Row: {
           action: string
