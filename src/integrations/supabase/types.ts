@@ -1801,6 +1801,7 @@ export type Database = {
           enabled: boolean
           entry_time: string | null
           exit_time: string | null
+          extra_store_ids: string[]
           failed_attempts: number
           hybrid_mode: boolean
           last_pin_attempt_at: string | null
@@ -1826,6 +1827,7 @@ export type Database = {
           enabled?: boolean
           entry_time?: string | null
           exit_time?: string | null
+          extra_store_ids?: string[]
           failed_attempts?: number
           hybrid_mode?: boolean
           last_pin_attempt_at?: string | null
@@ -1851,6 +1853,7 @@ export type Database = {
           enabled?: boolean
           entry_time?: string | null
           exit_time?: string | null
+          extra_store_ids?: string[]
           failed_attempts?: number
           hybrid_mode?: boolean
           last_pin_attempt_at?: string | null
