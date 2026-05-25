@@ -186,6 +186,20 @@ export function RawMaterialExportButton() {
 }
 
 // ============ Importer dialog (Materia Prima) ============
+function detectDelimiter(text: string): string {
+  const candidates = [",", ";", "\t"];
+  const firstLine = (text.split(/\r?\n/)[0] || "").trim();
+  if (!firstLine) return ",";
+  let best = ",";
+  let bestScore = 0;
+  for (const d of candidates) {
+    const cols = firstLine.split(d).length;
+    const score = cols;
+    if (score > bestScore) { bestScore = score; best = d; }
+  }
+  return best;
+}
+
 function RawMaterialImporterDialog({
   template, fields, onClose,
 }: { template: Template; fields: Field[]; onClose: () => void }) {
@@ -193,6 +207,7 @@ function RawMaterialImporterDialog({
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [parsing, setParsing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [delimiter, setDelimiter] = useState<string>("auto");
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function parseFile(f: File) {
