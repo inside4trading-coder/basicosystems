@@ -298,7 +298,7 @@ const MONTHS = [
 ];
 
 function BirthDateInput({ value, onChange }: { value: string | null; onChange: (iso: string | null) => void }) {
-  const parsed = value ? new Date(value) : undefined;
+  const parsed = value ? parseLocalDate(value) : undefined;
   const currentYear = new Date().getFullYear();
 
   const [day, setDay] = useState<string>(parsed ? String(parsed.getDate()) : "");
@@ -307,7 +307,7 @@ function BirthDateInput({ value, onChange }: { value: string | null; onChange: (
 
   useEffect(() => {
     if (value) {
-      const d = new Date(value);
+      const d = parseLocalDate(value);
       setDay(String(d.getDate()));
       setMonth(String(d.getMonth() + 1));
       setYear(String(d.getFullYear()));
