@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Package, Check, Tag as TagIcon, Pencil, Trash2, ShoppingBag, Truck, Megaphone, Trophy, ExternalLink } from "lucide-react";
+import { Plus, Package, Check, Tag as TagIcon, Pencil, Trash2, ShoppingBag, Truck, Megaphone, Trophy, ExternalLink, FileDown, Info } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
