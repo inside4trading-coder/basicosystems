@@ -226,8 +226,11 @@ function RawMaterialImporterDialog({
       if (u.abbreviation) unitByName.set(u.abbreviation.toLowerCase(), u.id);
     });
 
-    Papa.parse(f, {
-      header: true, skipEmptyLines: true,
+    const text = await f.text();
+    const delim = delimiter === "auto" ? detectDelimiter(text) : delimiter;
+
+    Papa.parse(text, {
+      header: true, skipEmptyLines: true, delimiter: delim,
       complete: (res) => {
         const onExisting = (template.settings?.on_existing_code as string) ?? "update";
         const seenCodes = new Set<string>();
