@@ -41,9 +41,10 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
+  brand?: "basico_ve" | "sublime" | "basico_es";
 }
 
-export function AddContactSheet({ open, onOpenChange, onCreated }: Props) {
+export function AddContactSheet({ open, onOpenChange, onCreated, brand = "basico_ve" }: Props) {
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string>("");
   const [types, setTypes] = useState<{ value: string; label: string }[]>(DEFAULT_TYPES);

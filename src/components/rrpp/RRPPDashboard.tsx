@@ -681,7 +681,7 @@ export default function RRPPDashboard({ brand }: { brand: RRPPBrand }) {
       )}
 
       {/* Monthly goals */}
-      <MonthlyGoalsCard current={monthProgress} goals={goals} onSave={saveGoals} />
+      <MonthlyGoalsCard current={monthProgress} goals={goals} onSave={saveGoals} brandLabel={RRPP_BRAND_LABELS[brand]} />
     </div>
   );
 }
