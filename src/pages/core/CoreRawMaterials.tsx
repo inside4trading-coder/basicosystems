@@ -114,6 +114,15 @@ export default function CoreRawMaterials() {
     return list;
   }, [materials, search, fCategory, fStatus, fCurrency, sortColumn, sortDirection]);
 
+  function toggleSort(column: string) {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  }
+
   async function toggleStatus(m: RawMaterial) {
     const newStatus = m.status === "active" ? "inactive" : "active";
     const { error } = await supabase.from("core_raw_materials").update({ status: newStatus }).eq("id", m.id);
