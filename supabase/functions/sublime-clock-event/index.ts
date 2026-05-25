@@ -113,32 +113,30 @@ Deno.serve(async (req) => {
     if (!settings.enabled) return jsonResponse({ ok: false, error: "Fichaje no habilitado", code: "CLOCK_DISABLED" }, 403);
     if (!settings.store_id) return jsonResponse({ ok: false, error: "Sin tienda asignada", code: "STORE_NOT_ASSIGNED" }, 400);
 
-    const { data: store, error: storeError } = await admin
+    // Candidate stores: primary + extras
+    const candidateIds = Array.from(new Set([
+      settings.store_id as string,
+      ...((settings.extra_store_ids as string[] | null) ?? []),
+    ].filter(Boolean)));
+
+    const { data: candidateStores, error: storesError } = await admin
       .from("sublime_stores")
       .select("*")
-      .eq("id", settings.store_id)
-      .maybeSingle();
+      .in("id", candidateIds);
 
-    if (storeError) {
-      console.error("store query failed", storeError);
-      return jsonResponse({ ok: false, error: "No se pudo cargar la tienda asignada", code: "STORE_QUERY_FAILED" }, 500);
+    if (storesError) {
+      console.error("stores query failed", storesError);
+      return jsonResponse({ ok: false, error: "No se pudieron cargar las tiendas asignadas", code: "STORES_QUERY_FAILED" }, 500);
     }
-    if (!store) return jsonResponse({ ok: false, error: "Tienda no encontrada", code: "STORE_NOT_FOUND" }, 404);
-    if (store.active === false) {
-      return jsonResponse({ ok: false, error: "La tienda asignada está inactiva. Revisa la configuración del empleado.", code: "STORE_INACTIVE" }, 400);
-    }
-    if (store.latitude == null || store.longitude == null) {
-      return jsonResponse({ ok: false, error: "La tienda asignada no tiene coordenadas GPS. No se puede validar el rango.", code: "STORE_COORDS_MISSING" }, 400);
+    const activeStores = (candidateStores ?? []).filter((s: any) => s.active !== false);
+    if (activeStores.length === 0) {
+      return jsonResponse({ ok: false, error: "No hay tiendas activas asignadas", code: "NO_ACTIVE_STORES" }, 400);
     }
 
     const hasCoords = typeof latitude === "number" && typeof longitude === "number"
       && Number.isFinite(latitude) && Number.isFinite(longitude);
 
-    let distance: number | null = null;
-    let location_state = "ubicacion_no_disponible";
-    let clock_state: "valido" | "pendiente_revision" = "valido";
-
-    // Modo test global: permite fichar fuera de rango sin marcar para revisión
+    // Modo test global
     const { data: cfg } = await admin
       .from("sublime_clock_config")
       .select("test_mode")
@@ -146,24 +144,40 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const testMode = cfg?.test_mode === true;
 
+    let store: any = activeStores.find((s: any) => s.id === settings.store_id) ?? activeStores[0];
+    let distance: number | null = null;
+    let location_state = "ubicacion_no_disponible";
+    let clock_state: "valido" | "pendiente_revision" = "valido";
+
     if (hasCoords) {
-      distance = Math.round(distanceMeters(
-        Number(store.latitude), Number(store.longitude),
-        latitude!, longitude!,
-      ));
-      const radius = Number(store.radius_meters ?? 75);
-      if (distance <= radius) {
-        location_state = "dentro_del_radio";
-        if (typeof accuracy === "number" && accuracy > 100) {
-          location_state = "ubicacion_imprecisa";
+      // Pick closest store with coords
+      let best: { store: any; dist: number } | null = null;
+      for (const s of activeStores) {
+        if (s.latitude == null || s.longitude == null) continue;
+        const d = Math.round(distanceMeters(
+          Number(s.latitude), Number(s.longitude),
+          latitude!, longitude!,
+        ));
+        if (!best || d < best.dist) best = { store: s, dist: d };
+      }
+      if (best) {
+        store = best.store;
+        distance = best.dist;
+        const radius = Number(store.radius_meters ?? 75);
+        if (distance <= radius) {
+          location_state = "dentro_del_radio";
+          if (typeof accuracy === "number" && accuracy > 100) {
+            location_state = "ubicacion_imprecisa";
+            if (!testMode) clock_state = "pendiente_revision";
+          }
+        } else {
+          location_state = "fuera_del_radio";
           if (!testMode) clock_state = "pendiente_revision";
         }
       } else {
-        location_state = "fuera_del_radio";
         if (!testMode) clock_state = "pendiente_revision";
       }
     } else {
-      // No coords → require review (salvo modo test)
       if (!testMode) clock_state = "pendiente_revision";
     }
 
