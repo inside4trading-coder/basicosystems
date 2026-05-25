@@ -11,6 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import type { Employee, EmployeeStatus } from "@/types/crew";
+import { parseLocalDate } from "@/lib/dateUtils";
 
 interface CrewGeneralDataProps {
   employee: Employee;
