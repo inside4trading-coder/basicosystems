@@ -230,7 +230,25 @@ function RawMaterialImporterDialog({
     });
 
     const text = await f.text();
-    const delim = delimiter === "auto" ? detectDelimiter(text) : delimiter;
+    const expectedCols = fields.map((x) => x.column_name);
+    const tryParse = (d: string) =>
+      Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true, delimiter: d });
+    const matchCount = (r: any) => {
+      const headers = (r.meta?.fields ?? []) as string[];
+      return expectedCols.filter((c) => headers.includes(c)).length;
+    };
+
+    let delim = delimiter === "auto" ? detectDelimiter(text) : delimiter;
+    let parsedRes = tryParse(delim);
+    if (matchCount(parsedRes) === 0) {
+      for (const alt of [";", ",", "\t"]) {
+        if (alt === delim) continue;
+        const r2 = tryParse(alt);
+        if (matchCount(r2) > matchCount(parsedRes)) { parsedRes = r2; delim = alt; }
+      }
+      const shown = delim === "\t" ? "TAB" : delim;
+      toast.info(`Las columnas no coincidían con el separador elegido. Se usó "${shown}".`);
+    }
 
     Papa.parse(text, {
       header: true, skipEmptyLines: true, delimiter: delim,
