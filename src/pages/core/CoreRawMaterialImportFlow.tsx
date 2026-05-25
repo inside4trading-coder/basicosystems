@@ -130,9 +130,9 @@ export function RawMaterialExportButton() {
   async function downloadBase() {
     const r = await ensureTemplate(); if (!r) return;
     const headers = r.fields.map((f) => f.column_name);
-    downloadCsv(headers.join(",") + "\n", `${slug(r.template.name)}-formato.csv`);
+    downloadCsv(headers.join(";") + "\n", `${slug(r.template.name)}-formato.csv`);
     await logCoreAudit({ table: "core_import_templates", recordId: r.template.id, action: "download_base" });
-    toast.success("Formato base descargado");
+    toast.success("Formato base descargado (separador: ;)");
   }
 
   async function exportData() {
@@ -160,7 +160,7 @@ export function RawMaterialExportButton() {
         }
       })
     );
-    const csv = Papa.unparse({ fields: r.fields.map((f) => f.column_name), data: rows });
+    const csv = Papa.unparse({ fields: r.fields.map((f) => f.column_name), data: rows }, { delimiter: ";" });
     downloadCsv(csv, `${slug(r.template.name)}-export-${new Date().toISOString().slice(0, 10)}.csv`);
     await logCoreAudit({ table: "core_import_templates", recordId: r.template.id, action: "export_data", newValue: String(rows.length) });
     toast.success(`${rows.length} filas exportadas`);
@@ -187,14 +187,17 @@ export function RawMaterialExportButton() {
 
 // ============ Importer dialog (Materia Prima) ============
 function detectDelimiter(text: string): string {
-  const candidates = [",", ";", "\t"];
-  const firstLine = (text.split(/\r?\n/)[0] || "").trim();
-  if (!firstLine) return ",";
-  let best = ",";
-  let bestScore = 0;
+  const candidates = [";", ",", "\t"];
+  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0).slice(0, 5);
+  if (!lines.length) return ";";
+  let best = ";";
+  let bestScore = -1;
   for (const d of candidates) {
-    const cols = firstLine.split(d).length;
-    const score = cols;
+    const counts = lines.map((l) => l.split(d).length);
+    const max = Math.max(...counts);
+    if (max < 2) continue;
+    const consistent = counts.every((c) => c === counts[0]);
+    const score = max * 10 + (consistent ? 5 : 0);
     if (score > bestScore) { bestScore = score; best = d; }
   }
   return best;
