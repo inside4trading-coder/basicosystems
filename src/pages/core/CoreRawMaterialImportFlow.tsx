@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -186,6 +186,20 @@ export function RawMaterialExportButton() {
 }
 
 // ============ Importer dialog (Materia Prima) ============
+function detectDelimiter(text: string): string {
+  const candidates = [",", ";", "\t"];
+  const firstLine = (text.split(/\r?\n/)[0] || "").trim();
+  if (!firstLine) return ",";
+  let best = ",";
+  let bestScore = 0;
+  for (const d of candidates) {
+    const cols = firstLine.split(d).length;
+    const score = cols;
+    if (score > bestScore) { bestScore = score; best = d; }
+  }
+  return best;
+}
+
 function RawMaterialImporterDialog({
   template, fields, onClose,
 }: { template: Template; fields: Field[]; onClose: () => void }) {
@@ -193,6 +207,7 @@ function RawMaterialImporterDialog({
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [parsing, setParsing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [delimiter, setDelimiter] = useState<string>("auto");
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function parseFile(f: File) {
@@ -211,8 +226,11 @@ function RawMaterialImporterDialog({
       if (u.abbreviation) unitByName.set(u.abbreviation.toLowerCase(), u.id);
     });
 
-    Papa.parse(f, {
-      header: true, skipEmptyLines: true,
+    const text = await f.text();
+    const delim = delimiter === "auto" ? detectDelimiter(text) : delimiter;
+
+    Papa.parse(text, {
+      header: true, skipEmptyLines: true, delimiter: delim,
       complete: (res) => {
         const onExisting = (template.settings?.on_existing_code as string) ?? "update";
         const seenCodes = new Set<string>();
@@ -433,6 +451,19 @@ function RawMaterialImporterDialog({
             </p>
             <div className="flex items-center gap-2">
               <Input ref={fileRef} type="file" accept=".csv,text/csv" onChange={(e) => e.target.files?.[0] && parseFile(e.target.files[0])} disabled={parsing} />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Separador CSV:</span>
+              <select
+                className="text-xs border rounded px-2 py-1 bg-background"
+                value={delimiter}
+                onChange={(e) => setDelimiter(e.target.value)}
+                disabled={parsing}
+              >
+                <option value="auto">Auto-detectar</option>
+                <option value=",">Coma (,)</option>
+                <option value=";">Punto y coma (;)</option>
+              </select>
             </div>
             <p className="text-xs text-muted-foreground">
               Columnas esperadas: <span className="font-mono">{fields.map(f => f.column_name).join(", ")}</span>
