@@ -121,6 +121,35 @@ export default function CoreCostStructures() {
 
   const placeholder = () => toast.info("La importación/exportación de estructuras de costos se conectará al sistema de Templates de Carga en el siguiente ajuste.");
 
+  const downloadBaseFormat = () => {
+    const headers = [
+      "structure_name","sku","description","product_type","base_currency","estimated_sale_price","status","observations",
+      "section","item_name","raw_material_code","process_type","quantity","unit_cost","unit_of_measure","supplier","adds_to_payroll","notes"
+    ];
+    const example = [
+      ["Franela estampada Talla M","FRA-EST-M","Estructura base franela estampada","prenda","USD","18.00","draft","Ejemplo de referencia",
+        "raw_material","Tela algodón","MP-TELA-001","","1.5","3.20","metro","Proveedor A","false","Tela principal"],
+      ["Franela estampada Talla M","FRA-EST-M","","","","","","",
+        "labor","","","Estampado","1","2.50","unidad","","true","Proceso de estampado"],
+      ["Franela estampada Talla M","FRA-EST-M","","","","","","",
+        "packaging","Bolsa polietileno","","","1","0.15","unidad","Proveedor B","false","Empaque individual"],
+      ["Franela estampada Talla M","FRA-EST-M","","","","","","",
+        "logistics","Envío al almacén","","","1","0.50","unidad","","false",""],
+    ];
+    const escape = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g,'""')}"` : v;
+    const csv = [headers, ...example].map(r => r.map(c => escape(String(c))).join(",")).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "formato-base-estructuras-costos.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Formato base descargado");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
