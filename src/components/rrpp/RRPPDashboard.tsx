@@ -353,8 +353,21 @@ export default function RRPPDashboard({ brand }: { brand: RRPPBrand }) {
 
   const { from, to } = useMemo(() => rangeBounds(range), [range]);
 
+  // Scope by active brand (contacts have brand; collabs+interactions linked via contact_id)
+  const brandContactIds = useMemo(
+    () => new Set(contacts.filter((c) => c.brand === brand).map((c) => c.id)),
+    [contacts, brand]
+  );
+  const scopedContacts = useMemo(() => contacts.filter((c) => c.brand === brand), [contacts, brand]);
+  const scopedCollabs = useMemo(() => collabs.filter((co) => brandContactIds.has(co.contact_id)), [collabs, brandContactIds]);
+  const scopedInteractions = useMemo(() => interactions.filter((i) => brandContactIds.has(i.contact_id)), [interactions, brandContactIds]);
+
   const data = useMemo(() => {
     const inRng = (d?: string | null) => inRange(d, from, to);
+    const contactsB = scopedContacts;
+    const collabsB = scopedCollabs;
+    const interactionsB = scopedInteractions;
+
 
     const addedContacts = contacts.filter((c) => inRng(c.created_at));
     const allActiveContacts = contacts.filter((c) => c.status === "active");
