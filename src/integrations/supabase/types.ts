@@ -432,6 +432,210 @@ export type Database = {
         }
         Relationships: []
       }
+      core_import_batch_rows: {
+        Row: {
+          action: string | null
+          batch_id: string
+          created_at: string
+          errors: Json
+          id: string
+          parsed_data: Json
+          raw_data: Json
+          row_number: number
+          target_record_id: string | null
+          validation_status: string
+        }
+        Insert: {
+          action?: string | null
+          batch_id: string
+          created_at?: string
+          errors?: Json
+          id?: string
+          parsed_data?: Json
+          raw_data?: Json
+          row_number: number
+          target_record_id?: string | null
+          validation_status?: string
+        }
+        Update: {
+          action?: string | null
+          batch_id?: string
+          created_at?: string
+          errors?: Json
+          id?: string
+          parsed_data?: Json
+          raw_data?: Json
+          row_number?: number
+          target_record_id?: string | null
+          validation_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_import_batch_rows_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "core_import_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_import_batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_rows: number
+          data_type: string
+          error_rows: number
+          file_name: string | null
+          file_url: string | null
+          id: string
+          status: string
+          summary: Json
+          template_id: string | null
+          total_rows: number
+          updated_rows: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_rows?: number
+          data_type: string
+          error_rows?: number
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          status?: string
+          summary?: Json
+          template_id?: string | null
+          total_rows?: number
+          updated_rows?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_rows?: number
+          data_type?: string
+          error_rows?: number
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          status?: string
+          summary?: Json
+          template_id?: string | null
+          total_rows?: number
+          updated_rows?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_import_batches_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "core_import_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_import_template_fields: {
+        Row: {
+          column_name: string
+          created_at: string
+          data_type: string
+          default_value: string | null
+          display_name: string
+          id: string
+          internal_field: string
+          is_active: boolean
+          is_required: boolean
+          notes: string | null
+          sort_order: number
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          column_name: string
+          created_at?: string
+          data_type?: string
+          default_value?: string | null
+          display_name: string
+          id?: string
+          internal_field: string
+          is_active?: boolean
+          is_required?: boolean
+          notes?: string | null
+          sort_order?: number
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          column_name?: string
+          created_at?: string
+          data_type?: string
+          default_value?: string | null
+          display_name?: string
+          id?: string
+          internal_field?: string
+          is_active?: boolean
+          is_required?: boolean
+          notes?: string | null
+          sort_order?: number
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_import_template_fields_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "core_import_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_import_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_type: string
+          description: string | null
+          direction: string
+          id: string
+          name: string
+          notes: string | null
+          settings: Json
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_type: string
+          description?: string | null
+          direction?: string
+          id?: string
+          name: string
+          notes?: string | null
+          settings?: Json
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_type?: string
+          description?: string | null
+          direction?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          settings?: Json
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       core_locations: {
         Row: {
           created_at: string

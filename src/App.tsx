@@ -34,6 +34,7 @@ import CoreDashboard from "./pages/core/CoreDashboard";
 import CoreConfiguracion from "./pages/core/CoreConfiguracion";
 import CorePlaceholder from "./pages/core/CorePlaceholder";
 import CoreRawMaterials from "./pages/core/CoreRawMaterials";
+import CoreImportTemplates from "./pages/core/CoreImportTemplates";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -93,7 +94,7 @@ const App = () => (
                 <Route index element={<CoreDashboard />} />
                 <Route path="configuracion" element={<CoreConfiguracion />} />
                 <Route path="materia-prima" element={<CoreRawMaterials />} />
-                <Route path="templates-carga" element={<CorePlaceholder title="Templates de Carga" description="Plantillas para carga masiva (CSV)." />} />
+                <Route path="templates-carga" element={<CoreImportTemplates />} />
                 <Route path="estructuras-costos" element={<CorePlaceholder title="Estructuras de Costos" description="MP + procesos + mano de obra + variables + logística." />} />
                 <Route path="templates-costos" element={<CorePlaceholder title="Templates de Costos / Producción" />} />
                 <Route path="productos" element={<CorePlaceholder title="Productos Core" description="Catálogo Core con SKU automático." />} />

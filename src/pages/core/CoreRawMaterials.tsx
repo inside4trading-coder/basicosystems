@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ async function logAudit(action: string, recordId: string | null, field?: string,
 }
 
 export default function CoreRawMaterials() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("materias");
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -187,10 +189,10 @@ export default function CoreRawMaterials() {
                 </Select>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => toast.info("La carga masiva configurable se activará en el bloque Templates de Carga.")}>
+                <Button variant="outline" size="sm" onClick={() => navigate("/core/templates-carga")}>
                   <Upload className="h-4 w-4 mr-1" />Importar
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => toast.info("La carga masiva configurable se activará en el bloque Templates de Carga.")}>
+                <Button variant="outline" size="sm" onClick={() => navigate("/core/templates-carga")}>
                   <Download className="h-4 w-4 mr-1" />Exportar
                 </Button>
                 <Button size="sm" onClick={() => { setEditing(null); setOpenForm(true); }}>
