@@ -16,7 +16,7 @@ const groups: { label: string; items: Section[] }[] = [
     label: "Catálogo",
     items: [
       { to: "/core/materia-prima", label: "Materia Prima", icon: Package },
-      { to: "/core/templates-carga", label: "Templates de Carga", icon: FileSpreadsheet },
+      { to: "/core/templates-carga", label: "Template de Carga materia prima", icon: FileSpreadsheet },
       { to: "/core/estructuras-costos", label: "Estructuras de Costos", icon: Calculator },
       { to: "/core/templates-costos", label: "Templates Costos / Prod.", icon: FileStack },
       { to: "/core/productos", label: "Productos Core", icon: Boxes },

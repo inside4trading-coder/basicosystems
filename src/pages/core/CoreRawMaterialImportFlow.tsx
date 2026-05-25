@@ -77,7 +77,7 @@ export function RawMaterialImportButton({ onImported }: { onImported?: () => voi
     setLoading(false);
     if (!t) {
       toast.error("No hay template activo de Materia Prima.", {
-        action: { label: "Ir a Templates", onClick: () => navigate("/core/templates-carga") },
+        action: { label: "Ir a Templates de Carga", onClick: () => navigate("/core/templates-carga") },
       });
       return;
     }
@@ -116,7 +116,7 @@ export function RawMaterialExportButton() {
     setLoading(false);
     if (!template) {
       toast.error("No hay template de exportación activo.", {
-        action: { label: "Ir a Templates", onClick: () => navigate("/core/templates-carga") },
+        action: { label: "Ir a Templates de Carga", onClick: () => navigate("/core/templates-carga") },
       });
       return null;
     }
