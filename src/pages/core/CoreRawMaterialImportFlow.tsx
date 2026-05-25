@@ -187,14 +187,17 @@ export function RawMaterialExportButton() {
 
 // ============ Importer dialog (Materia Prima) ============
 function detectDelimiter(text: string): string {
-  const candidates = [",", ";", "\t"];
-  const firstLine = (text.split(/\r?\n/)[0] || "").trim();
-  if (!firstLine) return ",";
-  let best = ",";
-  let bestScore = 0;
+  const candidates = [";", ",", "\t"];
+  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0).slice(0, 5);
+  if (!lines.length) return ";";
+  let best = ";";
+  let bestScore = -1;
   for (const d of candidates) {
-    const cols = firstLine.split(d).length;
-    const score = cols;
+    const counts = lines.map((l) => l.split(d).length);
+    const max = Math.max(...counts);
+    if (max < 2) continue;
+    const consistent = counts.every((c) => c === counts[0]);
+    const score = max * 10 + (consistent ? 5 : 0);
     if (score > bestScore) { bestScore = score; best = d; }
   }
   return best;
