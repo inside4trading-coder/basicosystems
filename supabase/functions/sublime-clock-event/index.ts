@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
       .from("sublime_clock_events")
       .insert({
         employee_id: sess.employeeId,
-        store_id: settings.store_id,
+        store_id: store.id,
         event_type,
         event_at: nowIso,
         event_date: eventDate,
