@@ -122,6 +122,7 @@ export default function CoreCostStructureEditor() {
           return;
         }
         setName(head.name);
+        setSku((head as any).sku ?? "");
         setDescription(head.description ?? "");
         if (head.product_type && !PRODUCT_TYPES.includes(head.product_type)) {
           setProductType("Otro");
