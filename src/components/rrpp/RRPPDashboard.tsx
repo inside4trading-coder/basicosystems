@@ -177,31 +177,8 @@ function MonthlyTrendCard({ data }: { data: { label: string; added: number; conv
   );
 }
 
-// ---------------- Monthly Goals ----------------
+// ---------------- Monthly Goals (now from DB per brand via useRRPPGoals) ----------------
 
-interface MonthlyGoals {
-  added: number;
-  activations: number;
-  successful: number;
-}
-
-const DEFAULT_GOALS: MonthlyGoals = { added: 10, activations: 8, successful: 7 };
-const GOALS_STORAGE_KEY = "rrpp_monthly_goals_v1";
-
-function loadGoals(): MonthlyGoals {
-  try {
-    const raw = localStorage.getItem(GOALS_STORAGE_KEY);
-    if (!raw) return DEFAULT_GOALS;
-    const parsed = JSON.parse(raw);
-    return {
-      added: Number(parsed.added) || DEFAULT_GOALS.added,
-      activations: Number(parsed.activations) || DEFAULT_GOALS.activations,
-      successful: Number(parsed.successful) || DEFAULT_GOALS.successful,
-    };
-  } catch {
-    return DEFAULT_GOALS;
-  }
-}
 
 function GoalRow({
   label,
