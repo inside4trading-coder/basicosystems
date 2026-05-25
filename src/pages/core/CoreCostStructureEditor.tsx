@@ -158,7 +158,7 @@ export default function CoreCostStructureEditor() {
 
   const totals = useMemo(() => {
     const by: Record<Section, number> = {
-      raw_material: 0, labor: 0, technical_process: 0, variable_cost: 0, logistics: 0, other: 0,
+      raw_material: 0, labor: 0, technical_process: 0, variable_cost: 0, logistics: 0, packaging: 0, other: 0,
     };
     items.forEach(it => {
       by[it.section] += Number(it.subtotal) || 0;
