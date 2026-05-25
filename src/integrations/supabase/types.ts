@@ -432,6 +432,171 @@ export type Database = {
         }
         Relationships: []
       }
+      core_cost_structure_items: {
+        Row: {
+          adds_to_payroll: boolean
+          cost_snapshot: Json | null
+          cost_structure_id: string
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          item_type: string | null
+          name: string
+          notes: string | null
+          process_name: string | null
+          process_order: number | null
+          quantity: number
+          raw_material_id: string | null
+          section: string
+          sort_order: number
+          subtotal: number
+          suggested_role: string | null
+          supplier: string | null
+          unit_cost: number
+          unit_of_measure: string | null
+          updated_at: string
+        }
+        Insert: {
+          adds_to_payroll?: boolean
+          cost_snapshot?: Json | null
+          cost_structure_id: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          item_type?: string | null
+          name: string
+          notes?: string | null
+          process_name?: string | null
+          process_order?: number | null
+          quantity?: number
+          raw_material_id?: string | null
+          section: string
+          sort_order?: number
+          subtotal?: number
+          suggested_role?: string | null
+          supplier?: string | null
+          unit_cost?: number
+          unit_of_measure?: string | null
+          updated_at?: string
+        }
+        Update: {
+          adds_to_payroll?: boolean
+          cost_snapshot?: Json | null
+          cost_structure_id?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          item_type?: string | null
+          name?: string
+          notes?: string | null
+          process_name?: string | null
+          process_order?: number | null
+          quantity?: number
+          raw_material_id?: string | null
+          section?: string
+          sort_order?: number
+          subtotal?: number
+          suggested_role?: string | null
+          supplier?: string | null
+          unit_cost?: number
+          unit_of_measure?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_cost_structure_items_cost_structure_id_fkey"
+            columns: ["cost_structure_id"]
+            isOneToOne: false
+            referencedRelation: "core_cost_structures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_cost_structure_items_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "core_raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_cost_structures: {
+        Row: {
+          base_currency: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          estimated_gross_margin: number | null
+          estimated_gross_margin_percent: number | null
+          estimated_sale_price: number | null
+          id: string
+          name: string
+          notes: string | null
+          product_type: string | null
+          status: string
+          suggested_fabrication_fund: number
+          total_labor: number
+          total_logistics: number
+          total_other_costs: number
+          total_raw_materials: number
+          total_technical_processes: number
+          total_unit_cost: number
+          total_variable_costs: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          base_currency?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          estimated_gross_margin?: number | null
+          estimated_gross_margin_percent?: number | null
+          estimated_sale_price?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          product_type?: string | null
+          status?: string
+          suggested_fabrication_fund?: number
+          total_labor?: number
+          total_logistics?: number
+          total_other_costs?: number
+          total_raw_materials?: number
+          total_technical_processes?: number
+          total_unit_cost?: number
+          total_variable_costs?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          base_currency?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          estimated_gross_margin?: number | null
+          estimated_gross_margin_percent?: number | null
+          estimated_sale_price?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          product_type?: string | null
+          status?: string
+          suggested_fabrication_fund?: number
+          total_labor?: number
+          total_logistics?: number
+          total_other_costs?: number
+          total_raw_materials?: number
+          total_technical_processes?: number
+          total_unit_cost?: number
+          total_variable_costs?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       core_import_batch_rows: {
         Row: {
           action: string | null
