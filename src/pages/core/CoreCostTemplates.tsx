@@ -259,7 +259,7 @@ export default function CoreCostTemplates() {
     load();
   }
 
-  const placeholder = () => toast.info("La importación/exportación de templates de costos se conectará al sistema de Templates de Carga en un siguiente ajuste.");
+  const placeholder = () => toast.info("La importación/exportación de templates de costos se conectará al sistema de Template de Carga materia prima en un siguiente ajuste.");
 
   return (
     <div className="space-y-6">

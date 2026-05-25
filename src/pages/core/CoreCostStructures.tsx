@@ -119,7 +119,7 @@ export default function CoreCostStructures() {
     load();
   }
 
-  const placeholder = () => toast.info("La importación/exportación de estructuras de costos se conectará al sistema de Templates de Carga en el siguiente ajuste.");
+  const placeholder = () => toast.info("La importación/exportación de estructuras de costos se conectará al sistema de Template de Carga materia prima en el siguiente ajuste.");
 
   const downloadBaseFormat = () => {
     const headers = [
