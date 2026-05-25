@@ -8,6 +8,8 @@ import {
   RELATIONSHIP_LABELS, CONTACT_TYPE_LABELS, formatFollowers,
 } from "@/components/rrpp/rrppConstants";
 import type { Contact, Collaboration, Interaction, RelationshipStatus, ContactType } from "@/types/rrpp";
+import { useRRPPGoals, type BrandGoals } from "@/hooks/useRRPPGoals";
+import { RRPP_BRAND_LABELS, type RRPPBrand } from "@/hooks/useRRPPBrand";
 
 const db = supabase as any;
 
