@@ -16,7 +16,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { RawMaterialImportButton, RawMaterialExportButton } from "./CoreRawMaterialImportFlow";
 
 type Category = { id: string; name: string; status: string };
