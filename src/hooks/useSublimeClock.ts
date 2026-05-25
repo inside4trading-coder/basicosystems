@@ -93,6 +93,7 @@ export function useSublimeClockSettings(employeeId: string | undefined) {
       employee_id: employeeId,
       enabled: false,
       store_id: null,
+      extra_store_ids: [],
       weekly_schedule: EMPTY_SCHEDULE,
       entry_time: null,
       exit_time: null,

@@ -191,16 +191,19 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
           </div>
         </div>
 
-        {/* Tienda */}
+        {/* Tienda principal */}
         <div className="space-y-2">
           <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Tienda asignada
+            Tienda principal
           </Label>
           <div className="flex gap-2">
             <Select
               value={settings?.store_id ?? ""}
               disabled={!canEdit}
-              onValueChange={(v) => handleField({ store_id: v })}
+              onValueChange={(v) => handleField({
+                store_id: v,
+                extra_store_ids: (settings?.extra_store_ids ?? []).filter((id) => id !== v),
+              })}
             >
               <SelectTrigger className="rounded-xl">
                 <SelectValue placeholder="Selecciona una tienda" />
@@ -225,6 +228,44 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
             )}
           </div>
         </div>
+
+        {/* Tiendas adicionales */}
+        {stores.filter((s) => s.id !== settings?.store_id).length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+              Tiendas adicionales donde puede fichar
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {stores.filter((s) => s.id !== settings?.store_id).map((s) => {
+                const extras = settings?.extra_store_ids ?? [];
+                const checked = extras.includes(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    disabled={!canEdit}
+                    onClick={() => {
+                      const next = checked
+                        ? extras.filter((id) => id !== s.id)
+                        : [...extras, s.id];
+                      handleField({ extra_store_ids: next });
+                    }}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
+                      checked
+                        ? "bg-foreground text-background border-foreground"
+                        : "bg-background text-foreground border-border hover:bg-muted"
+                    } ${!canEdit ? "opacity-60 cursor-not-allowed" : ""}`}
+                  >
+                    <StoreIcon className="h-3.5 w-3.5" /> {s.name}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              El empleado podrá fichar en cualquiera de estas tiendas además de la principal. Se validará la más cercana.
+            </p>
+          </div>
+        )}
 
         {/* Modalidad híbrida */}
         <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/40">
