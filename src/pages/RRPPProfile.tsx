@@ -32,9 +32,8 @@ import { AlertTriangle } from "lucide-react";
 const ALL_TABS = [
   { value: "general", label: "Datos generales" },
   { value: "social", label: "Redes sociales" },
-  { value: "pipeline", label: "Relación / Pipeline" },
+  { value: "relacion", label: "Relación y colaboraciones" },
   { value: "interactions", label: "Interacciones" },
-  { value: "collaborations", label: "Colaboraciones" },
   { value: "notes", label: "Notas privadas" },
 ] as const;
 
@@ -50,7 +49,7 @@ export default function RRPPProfile() {
   // Tabs visible to current role
   const visibleTabs = useMemo(() => {
     if (perms.role === "limited") {
-      return ALL_TABS.filter((t) => t.value === "pipeline" || t.value === "interactions");
+      return ALL_TABS.filter((t) => t.value === "relacion" || t.value === "interactions");
     }
     return ALL_TABS.filter((t) => t.value !== "notes" || perms.canViewPrivateNotes);
   }, [perms.role, perms.canViewPrivateNotes]);
@@ -263,14 +262,12 @@ export default function RRPPProfile() {
         <TabsContent value="social" className="mt-4">
           <RRPPSocialMedia contactId={contact.id} />
         </TabsContent>
-        <TabsContent value="pipeline" className="mt-4">
+        <TabsContent value="relacion" className="mt-4 space-y-6">
           <RRPPPipeline contact={contact} onChanged={load} />
+          <RRPPCollaborations contactId={contact.id} onPipelineChanged={load} />
         </TabsContent>
         <TabsContent value="interactions" className="mt-4">
           <RRPPInteractions contactId={contact.id} />
-        </TabsContent>
-        <TabsContent value="collaborations" className="mt-4">
-          <RRPPCollaborations contactId={contact.id} onPipelineChanged={load} />
         </TabsContent>
         {perms.canViewPrivateNotes && (
           <TabsContent value="notes" className="mt-4">
