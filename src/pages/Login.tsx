@@ -217,7 +217,7 @@ export default function Login() {
 
 
           <p className="text-center text-xs text-white/40 mt-6">
-            Basico Systems — Panel de gestión
+            Basico System — Panel de gestión
           </p>
         </div>
       </div>
