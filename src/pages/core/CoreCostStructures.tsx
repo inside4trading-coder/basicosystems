@@ -160,7 +160,7 @@ export default function CoreCostStructures() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={placeholder}>
+          <Button variant="outline" size="sm" onClick={downloadBaseFormat}>
             <FileSpreadsheet className="h-4 w-4 mr-1" />Formato base
           </Button>
           <Button variant="outline" size="sm" onClick={placeholder}>
