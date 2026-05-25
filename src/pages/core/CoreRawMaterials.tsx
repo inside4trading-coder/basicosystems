@@ -102,13 +102,17 @@ export default function CoreRawMaterials() {
       if (fCurrency !== "all" && m.currency !== fCurrency) return false;
       return true;
     });
+
+    const dir = sortDirection === "asc" ? 1 : -1;
     list.sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (sortBy === "unit_cost") return Number(b.unit_cost) - Number(a.unit_cost);
-      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      if (sortColumn === "code") return dir * a.code.localeCompare(b.code);
+      if (sortColumn === "name") return dir * a.name.localeCompare(b.name);
+      if (sortColumn === "supplier") return dir * ((a.supplier || "").localeCompare(b.supplier || ""));
+      if (sortColumn === "unit_cost") return dir * (Number(a.unit_cost) - Number(b.unit_cost));
+      return dir * (new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
     });
     return list;
-  }, [materials, search, fCategory, fStatus, fCurrency, sortBy]);
+  }, [materials, search, fCategory, fStatus, fCurrency, sortColumn, sortDirection]);
 
   async function toggleStatus(m: RawMaterial) {
     const newStatus = m.status === "active" ? "inactive" : "active";
