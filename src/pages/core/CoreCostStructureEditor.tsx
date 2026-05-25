@@ -551,6 +551,7 @@ function sectionLabel(s: Section): string {
     technical_process: "Procesos técnicos",
     variable_cost: "Variables",
     logistics: "Logística",
+    packaging: "Empaque",
     other: "Otros",
   } as Record<Section, string>)[s];
 }
