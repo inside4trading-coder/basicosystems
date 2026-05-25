@@ -217,13 +217,31 @@ export default function CoreRawMaterials() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Nombre</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("code")}>
+                      <span className="inline-flex items-center gap-1">
+                        Código
+                        {sortColumn === "code" && (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+                        {sortColumn !== "code" && <ArrowUpDown className="h-3 w-3 text-muted-foreground/60" />}
+                      </span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
+                      <span className="inline-flex items-center gap-1">
+                        Nombre
+                        {sortColumn === "name" && (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+                        {sortColumn !== "name" && <ArrowUpDown className="h-3 w-3 text-muted-foreground/60" />}
+                      </span>
+                    </TableHead>
                     <TableHead>Categoría</TableHead>
                     <TableHead>Unidad</TableHead>
                     <TableHead className="text-right">Costo</TableHead>
                     <TableHead>Moneda</TableHead>
-                    <TableHead>Proveedor</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("supplier")}>
+                      <span className="inline-flex items-center gap-1">
+                        Proveedor
+                        {sortColumn === "supplier" && (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+                        {sortColumn !== "supplier" && <ArrowUpDown className="h-3 w-3 text-muted-foreground/60" />}
+                      </span>
+                    </TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Actualización</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
