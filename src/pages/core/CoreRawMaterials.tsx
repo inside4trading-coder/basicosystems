@@ -16,7 +16,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { RawMaterialImportButton, RawMaterialExportButton } from "./CoreRawMaterialImportFlow";
 
 type Category = { id: string; name: string; status: string };
@@ -64,6 +64,8 @@ export default function CoreRawMaterials() {
   const [fStatus, setFStatus] = useState("all");
   const [fCurrency, setFCurrency] = useState("all");
   const [sortBy, setSortBy] = useState("updated_at");
+  const [sortColumn, setSortColumn] = useState<string | null>("updated_at");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // dialogs
   const [editing, setEditing] = useState<RawMaterial | null>(null);
@@ -100,13 +102,26 @@ export default function CoreRawMaterials() {
       if (fCurrency !== "all" && m.currency !== fCurrency) return false;
       return true;
     });
+
+    const dir = sortDirection === "asc" ? 1 : -1;
     list.sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (sortBy === "unit_cost") return Number(b.unit_cost) - Number(a.unit_cost);
-      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      if (sortColumn === "code") return dir * a.code.localeCompare(b.code);
+      if (sortColumn === "name") return dir * a.name.localeCompare(b.name);
+      if (sortColumn === "supplier") return dir * ((a.supplier || "").localeCompare(b.supplier || ""));
+      if (sortColumn === "unit_cost") return dir * (Number(a.unit_cost) - Number(b.unit_cost));
+      return dir * (new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
     });
     return list;
-  }, [materials, search, fCategory, fStatus, fCurrency, sortBy]);
+  }, [materials, search, fCategory, fStatus, fCurrency, sortColumn, sortDirection]);
+
+  function toggleSort(column: string) {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  }
 
   async function toggleStatus(m: RawMaterial) {
     const newStatus = m.status === "active" ? "inactive" : "active";
@@ -202,13 +217,31 @@ export default function CoreRawMaterials() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Nombre</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("code")}>
+                      <span className="inline-flex items-center gap-1">
+                        Código
+                        {sortColumn === "code" && (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+                        {sortColumn !== "code" && <ArrowUpDown className="h-3 w-3 text-muted-foreground/60" />}
+                      </span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
+                      <span className="inline-flex items-center gap-1">
+                        Nombre
+                        {sortColumn === "name" && (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+                        {sortColumn !== "name" && <ArrowUpDown className="h-3 w-3 text-muted-foreground/60" />}
+                      </span>
+                    </TableHead>
                     <TableHead>Categoría</TableHead>
                     <TableHead>Unidad</TableHead>
                     <TableHead className="text-right">Costo</TableHead>
                     <TableHead>Moneda</TableHead>
-                    <TableHead>Proveedor</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("supplier")}>
+                      <span className="inline-flex items-center gap-1">
+                        Proveedor
+                        {sortColumn === "supplier" && (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+                        {sortColumn !== "supplier" && <ArrowUpDown className="h-3 w-3 text-muted-foreground/60" />}
+                      </span>
+                    </TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Actualización</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
