@@ -50,6 +50,8 @@ type ClockEvent = {
   location_state: string;
   distance_meters: number | null;
   allowed_radius_meters: number | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 type AttendanceRow = {
@@ -65,6 +67,10 @@ type AttendanceRow = {
   lastDistance: number | null;
   radius: number | null;
   eventIds: string[];
+  entryLat: number | null;
+  entryLng: number | null;
+  exitLat: number | null;
+  exitLng: number | null;
 };
 
 type RangeKey = "today" | "yesterday" | "week" | "month" | "lastMonth" | "3m" | "6m" | "year";
