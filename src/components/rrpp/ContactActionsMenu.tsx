@@ -120,29 +120,22 @@ export function ContactActionsMenu({ contact, onChanged, canDelete = true, canAr
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={deleteOpen} onOpenChange={(o) => { setDeleteOpen(o); if (!o) setConfirmName(""); }}>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar contacto permanentemente</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar a {contact.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminarán también sus interacciones, colaboraciones y notas.
-              Para confirmar, escribe el nombre exacto: <strong>{contact.name}</strong>
+              No podrás revertir esta decisión. Se eliminarán también sus interacciones, colaboraciones y notas.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Input
-            value={confirmName}
-            onChange={(e) => setConfirmName(e.target.value)}
-            placeholder="Nombre del contacto"
-            maxLength={120}
-          />
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={busy}>No</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={busy || confirmName !== contact.name}
+              disabled={busy}
               className="bg-destructive hover:bg-destructive/90"
             >
-              Eliminar definitivamente
+              Sí, eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
