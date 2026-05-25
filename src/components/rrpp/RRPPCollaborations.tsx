@@ -292,15 +292,20 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
           <div className="space-y-6 mt-6">
             {/* STEP 1 - PEDIDO */}
             <Section icon={ShoppingBag} title="1. Pedido" active={currentStage >= 1}>
+              <div className="rounded-md border-2 border-destructive/40 bg-destructive/5 p-3">
+                <p className="text-sm font-black text-destructive uppercase tracking-wide">
+                  ⚠ NO OLVIDES COLOCAR LA TALLA
+                </p>
+              </div>
               <div>
-                <Label>Fecha de envío</Label>
+                <Label>Fecha de pedido</Label>
                 <Input type="date" value={form.send_date}
                   onChange={(e) => setForm({ ...form, send_date: e.target.value })} className="mt-1" />
               </div>
               <div>
-                <Label>Productos enviados</Label>
+                <Label className="font-bold">Productos (incluye TALLA)</Label>
                 <Textarea rows={2} maxLength={500} value={form.products}
-                  placeholder="Ej. 2 bikinis modelo X talla M"
+                  placeholder="Ej. 2 bikinis modelo X — TALLA M"
                   onChange={(e) => setForm({ ...form, products: e.target.value })} className="mt-1" />
               </div>
               <div>
@@ -311,55 +316,129 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
               </div>
             </Section>
 
-            {/* STEP 2 - ENVÍO */}
-            <Section icon={Truck} title="2. Envío" active={currentStage >= 2}>
+            {/* STEP 2 - ENVÍO (destinatario por marca) */}
+            <Section icon={Truck} title="2. Datos de envío" active={currentStage >= 2}>
+              <p className="text-xs text-muted-foreground -mt-1">
+                {brand === "basico_es"
+                  ? "Datos para envío internacional (Básico España / Europa)."
+                  : "Datos para envío MRW (Venezuela)."}
+              </p>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <Label>Nombre destinatario</Label>
-                  <Input value={form.shipping_name} maxLength={120}
+                  <Label>Nombre</Label>
+                  <Input value={form.shipping_name} maxLength={80}
                     onChange={(e) => setForm({ ...form, shipping_name: e.target.value })} className="mt-1" />
                 </div>
                 <div>
-                  <Label>Teléfono</Label>
-                  <Input value={form.shipping_phone} maxLength={40}
-                    onChange={(e) => setForm({ ...form, shipping_phone: e.target.value })} className="mt-1" />
+                  <Label>Apellido</Label>
+                  <Input value={form.shipping_last_name} maxLength={80}
+                    onChange={(e) => setForm({ ...form, shipping_last_name: e.target.value })} className="mt-1" />
                 </div>
               </div>
-              <div>
-                <Label>Dirección</Label>
-                <Input value={form.shipping_address} maxLength={250}
-                  onChange={(e) => setForm({ ...form, shipping_address: e.target.value })} className="mt-1" />
+
+              {brand === "basico_es" ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label>Correo</Label>
+                      <Input type="email" value={form.shipping_email} maxLength={120}
+                        onChange={(e) => setForm({ ...form, shipping_email: e.target.value })} className="mt-1" />
+                    </div>
+                    <div>
+                      <Label>Teléfono</Label>
+                      <Input value={form.shipping_phone} maxLength={40}
+                        onChange={(e) => setForm({ ...form, shipping_phone: e.target.value })} className="mt-1" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <Label>Código postal</Label>
+                      <Input value={form.shipping_postal_code} maxLength={20}
+                        onChange={(e) => setForm({ ...form, shipping_postal_code: e.target.value })} className="mt-1" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Dirección</Label>
+                      <Input value={form.shipping_address} maxLength={250}
+                        onChange={(e) => setForm({ ...form, shipping_address: e.target.value })} className="mt-1" />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label>Cédula</Label>
+                      <Input value={form.shipping_id_number} maxLength={30}
+                        onChange={(e) => setForm({ ...form, shipping_id_number: e.target.value })} className="mt-1" />
+                    </div>
+                    <div>
+                      <Label>Teléfono</Label>
+                      <Input value={form.shipping_phone} maxLength={40}
+                        onChange={(e) => setForm({ ...form, shipping_phone: e.target.value })} className="mt-1" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Dirección oficina MRW</Label>
+                    <Input value={form.shipping_address} maxLength={250}
+                      placeholder="Ej. MRW Las Mercedes, Av. principal..."
+                      onChange={(e) => setForm({ ...form, shipping_address: e.target.value })} className="mt-1" />
+                  </div>
+                </>
+              )}
+
+              {/* PDF helper */}
+              <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <p className="text-xs text-muted-foreground">
+                    Genera el PDF con <b>datos del pedido + envío</b> y envíaselo al equipo de tienda
+                    para que preparen el paquete. Guarda primero los cambios para incluir lo más reciente.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={!editingId}
+                  onClick={() => {
+                    const c = items.find((i) => i.id === editingId);
+                    if (!c) return;
+                    generateShippingPdf({ collab: c, brand, contactName, contactAlias });
+                  }}
+                >
+                  <FileDown className="h-4 w-4 mr-2" />
+                  {editingId ? "Descargar PDF para tienda" : "Guarda la colaboración para generar el PDF"}
+                </Button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <Label>Ciudad</Label>
-                  <Input value={form.shipping_city} maxLength={80}
-                    onChange={(e) => setForm({ ...form, shipping_city: e.target.value })} className="mt-1" />
+
+              {/* STEP 2.1 - Confirmación de envío */}
+              <div className="rounded-md border border-dashed p-3 space-y-3 mt-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary px-2 py-0.5 rounded">Paso 2.1</span>
+                  <h5 className="text-sm font-semibold">Confirmación de envío (tienda / fábrica)</h5>
                 </div>
-                <div>
-                  <Label>País</Label>
-                  <Input value={form.shipping_country} maxLength={80}
-                    onChange={(e) => setForm({ ...form, shipping_country: e.target.value })} className="mt-1" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Número de guía</Label>
+                    <Input value={form.tracking_number} maxLength={80}
+                      placeholder="Cualquier miembro del equipo puede agregarlo"
+                      onChange={(e) => setForm({ ...form, tracking_number: e.target.value })} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label>Fecha de envío real</Label>
+                    <Input type="date" value={form.shipped_at}
+                      onChange={(e) => setForm({ ...form, shipped_at: e.target.value })} className="mt-1" />
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <Label>Número de guía</Label>
-                  <Input value={form.tracking_number} maxLength={80}
-                    placeholder="Cualquier miembro del equipo puede agregarlo"
-                    onChange={(e) => setForm({ ...form, tracking_number: e.target.value })} className="mt-1" />
+                <div className="flex items-center justify-between rounded-md border p-3">
+                  <Label className="cursor-pointer">Recibido por el contacto</Label>
+                  <Switch checked={form.received} onCheckedChange={(v) => setForm({ ...form, received: v })} />
                 </div>
-                <div>
-                  <Label>Fecha de envío real</Label>
-                  <Input type="date" value={form.shipped_at}
-                    onChange={(e) => setForm({ ...form, shipped_at: e.target.value })} className="mt-1" />
-                </div>
-              </div>
-              <div className="flex items-center justify-between rounded-md border p-3">
-                <Label className="cursor-pointer">Recibido por el contacto</Label>
-                <Switch checked={form.received} onCheckedChange={(v) => setForm({ ...form, received: v })} />
               </div>
             </Section>
+
 
             {/* CUPÓN */}
             <Section icon={TagIcon} title="Cupón (opcional)" active={form.has_coupon}>
