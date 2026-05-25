@@ -50,6 +50,6 @@ export function useRRPPPermissions(): RRPPPermissions {
     canAddPrivateNote: isAdmin || rrppRole === "rrpp",
     canDeletePrivateNote: isAdmin,
     canArchive: isTeam,
-    canDeleteContact: isAdmin,
+    canDeleteContact: isTeam,
   };
 }
