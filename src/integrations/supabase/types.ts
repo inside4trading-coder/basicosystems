@@ -471,6 +471,102 @@ export type Database = {
         }
         Relationships: []
       }
+      core_raw_material_categories: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      core_raw_materials: {
+        Row: {
+          category_id: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          name: string
+          notes: string | null
+          status: string
+          supplier: string | null
+          unit_cost: number
+          unit_of_measure_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          name: string
+          notes?: string | null
+          status?: string
+          supplier?: string | null
+          unit_cost?: number
+          unit_of_measure_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          status?: string
+          supplier?: string | null
+          unit_cost?: number
+          unit_of_measure_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_raw_materials_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "core_raw_material_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_raw_materials_unit_of_measure_id_fkey"
+            columns: ["unit_of_measure_id"]
+            isOneToOne: false
+            referencedRelation: "core_units_of_measure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       core_role_definitions: {
         Row: {
           created_at: string
@@ -595,6 +691,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      core_units_of_measure: {
+        Row: {
+          abbreviation: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          abbreviation: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          abbreviation?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       core_woocommerce_status_rules: {
         Row: {
