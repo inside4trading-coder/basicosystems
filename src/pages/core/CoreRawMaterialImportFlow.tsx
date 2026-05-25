@@ -271,7 +271,7 @@ function RawMaterialImporterDialog({
     }
 
     Papa.parse(normalizedText, {
-      header: true, skipEmptyLines: true, delimiter: delim,
+      header: true, skipEmptyLines: true, delimiter: dataDelimiter,
       complete: (res) => {
         const onExisting = (template.settings?.on_existing_code as string) ?? "update";
         const seenCodes = new Set<string>();
