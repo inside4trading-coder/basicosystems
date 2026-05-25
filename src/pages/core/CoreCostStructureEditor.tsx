@@ -409,6 +409,7 @@ export default function CoreCostStructureEditor() {
                 <TabsTrigger value="technical_process">Procesos técnicos</TabsTrigger>
                 <TabsTrigger value="variable_cost">Variables</TabsTrigger>
                 <TabsTrigger value="logistics">Logística</TabsTrigger>
+                <TabsTrigger value="packaging">Empaque</TabsTrigger>
                 <TabsTrigger value="other">Otros</TabsTrigger>
               </TabsList>
 
