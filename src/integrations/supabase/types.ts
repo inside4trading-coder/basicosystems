@@ -992,6 +992,217 @@ export type Database = {
         }
         Relationships: []
       }
+      core_product_cost_snapshots: {
+        Row: {
+          core_product_id: string
+          cost_structure_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          notes: string | null
+          snapshot_data: Json
+          unit_cost: number
+        }
+        Insert: {
+          core_product_id: string
+          cost_structure_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          notes?: string | null
+          snapshot_data?: Json
+          unit_cost?: number
+        }
+        Update: {
+          core_product_id?: string
+          cost_structure_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          notes?: string | null
+          snapshot_data?: Json
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_product_cost_snapshots_core_product_id_fkey"
+            columns: ["core_product_id"]
+            isOneToOne: false
+            referencedRelation: "core_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_product_variants: {
+        Row: {
+          core_product_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          size: string
+          sort_order: number
+          status: string
+          updated_at: string
+          variant_label: string | null
+          woo_last_sync_at: string | null
+          woo_regular_price: number | null
+          woo_sale_price: number | null
+          woo_sku: string | null
+          woo_stock_quantity: number | null
+          woo_variation_id: number | null
+        }
+        Insert: {
+          core_product_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          size: string
+          sort_order?: number
+          status?: string
+          updated_at?: string
+          variant_label?: string | null
+          woo_last_sync_at?: string | null
+          woo_regular_price?: number | null
+          woo_sale_price?: number | null
+          woo_sku?: string | null
+          woo_stock_quantity?: number | null
+          woo_variation_id?: number | null
+        }
+        Update: {
+          core_product_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          size?: string
+          sort_order?: number
+          status?: string
+          updated_at?: string
+          variant_label?: string | null
+          woo_last_sync_at?: string | null
+          woo_regular_price?: number | null
+          woo_sale_price?: number | null
+          woo_sku?: string | null
+          woo_stock_quantity?: number | null
+          woo_variation_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_product_variants_core_product_id_fkey"
+            columns: ["core_product_id"]
+            isOneToOne: false
+            referencedRelation: "core_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_products: {
+        Row: {
+          color: string | null
+          commercial_status: string
+          core_sku: string
+          cost_snapshot: Json | null
+          cost_structure_id: string | null
+          cost_template_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          estimated_sale_price: number | null
+          gross_margin: number | null
+          gross_margin_percent: number | null
+          id: string
+          image_url: string | null
+          is_restockable: boolean
+          name: string
+          notes: string | null
+          product_type: string | null
+          suggested_fabrication_fund: number
+          unit_cost: number
+          updated_at: string
+          updated_by: string | null
+          woo_last_sync_at: string | null
+          woo_permalink: string | null
+          woo_product_id: number | null
+          woo_product_name: string | null
+          woo_regular_price: number | null
+          woo_sale_price: number | null
+          woo_sku: string | null
+          woo_status: string | null
+          woo_stock_quantity: number | null
+        }
+        Insert: {
+          color?: string | null
+          commercial_status?: string
+          core_sku: string
+          cost_snapshot?: Json | null
+          cost_structure_id?: string | null
+          cost_template_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          estimated_sale_price?: number | null
+          gross_margin?: number | null
+          gross_margin_percent?: number | null
+          id?: string
+          image_url?: string | null
+          is_restockable?: boolean
+          name: string
+          notes?: string | null
+          product_type?: string | null
+          suggested_fabrication_fund?: number
+          unit_cost?: number
+          updated_at?: string
+          updated_by?: string | null
+          woo_last_sync_at?: string | null
+          woo_permalink?: string | null
+          woo_product_id?: number | null
+          woo_product_name?: string | null
+          woo_regular_price?: number | null
+          woo_sale_price?: number | null
+          woo_sku?: string | null
+          woo_status?: string | null
+          woo_stock_quantity?: number | null
+        }
+        Update: {
+          color?: string | null
+          commercial_status?: string
+          core_sku?: string
+          cost_snapshot?: Json | null
+          cost_structure_id?: string | null
+          cost_template_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          estimated_sale_price?: number | null
+          gross_margin?: number | null
+          gross_margin_percent?: number | null
+          id?: string
+          image_url?: string | null
+          is_restockable?: boolean
+          name?: string
+          notes?: string | null
+          product_type?: string | null
+          suggested_fabrication_fund?: number
+          unit_cost?: number
+          updated_at?: string
+          updated_by?: string | null
+          woo_last_sync_at?: string | null
+          woo_permalink?: string | null
+          woo_product_id?: number | null
+          woo_product_name?: string | null
+          woo_regular_price?: number | null
+          woo_sale_price?: number | null
+          woo_sku?: string | null
+          woo_status?: string | null
+          woo_stock_quantity?: number | null
+        }
+        Relationships: []
+      }
       core_raw_material_categories: {
         Row: {
           created_at: string
