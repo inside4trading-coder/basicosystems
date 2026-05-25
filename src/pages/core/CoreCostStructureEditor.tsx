@@ -238,8 +238,9 @@ export default function CoreCostStructureEditor() {
       const { data: { user } } = await supabase.auth.getUser();
       const ptValue = productType === "Otro" ? (productTypeOther.trim() || "Otro") : (productType || null);
       const salePrice = estimatedSalePrice !== "" ? parseFloat(estimatedSalePrice) : null;
-      const head = {
+      const head: any = {
         name: name.trim(),
+        sku: sku.trim() || null,
         description: description.trim() || null,
         product_type: ptValue,
         base_currency: baseCurrency,
@@ -251,6 +252,7 @@ export default function CoreCostStructureEditor() {
         total_technical_processes: totals.by.technical_process,
         total_variable_costs: totals.by.variable_cost,
         total_logistics: totals.by.logistics,
+        total_packaging: totals.by.packaging,
         total_other_costs: totals.by.other,
         total_unit_cost: totals.totalUnitCost,
         estimated_gross_margin: totals.margin,
