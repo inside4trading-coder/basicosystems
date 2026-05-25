@@ -22,7 +22,7 @@ export function AppLayout() {
           <header className="h-14 flex items-center border-b border-border bg-card px-3 sm:px-4 shrink-0">
             <SidebarTrigger className="mr-2 sm:mr-4" />
             <h1 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-foreground truncate">
-              Basico Systems
+              Basico System
             </h1>
           </header>
           <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6">

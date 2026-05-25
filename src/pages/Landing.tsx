@@ -214,11 +214,11 @@ export default function Landing() {
             Sistemas operativos para marcas que <span className="text-primary">no caben</span> en un SaaS genérico
           </h1>
           <p className="mt-6 sm:mt-8 max-w-2xl text-base sm:text-lg lg:text-xl text-background/70 leading-relaxed animate-fade-in">
-            Empieza con Basico Systems. Evoluciona a un sistema 100% a medida cuando tu operación lo pida.
+            Empieza con Basico System. Evoluciona a un sistema 100% a medida cuando tu operación lo pida.
           </p>
           <div className="mt-8 sm:mt-12 flex flex-col sm:flex-row gap-3 sm:gap-4 animate-fade-in">
             <Button variant="brand" size="lg" onClick={scrollTo("dos-formas")} className="w-full sm:w-auto">
-              Probar Basico Systems <ArrowRight className="ml-1" />
+              Probar Basico System <ArrowRight className="ml-1" />
             </Button>
             <Button
               size="lg"
@@ -262,7 +262,7 @@ export default function Landing() {
             {/* SaaS */}
             <article className="bg-background border border-border p-8 sm:p-10 lg:p-12 flex flex-col">
               <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-4">Producto</p>
-              <h3 className="text-3xl sm:text-4xl font-black uppercase tracking-tight mb-2">Basico Systems</h3>
+              <h3 className="text-3xl sm:text-4xl font-black uppercase tracking-tight mb-2">Basico System</h3>
               <p className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-muted-foreground mb-8">Arranca en días</p>
               <ul className="space-y-4 mb-10 flex-1">
                 {[
@@ -323,7 +323,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto">
           <div className="mb-12 sm:mb-16 max-w-3xl">
             <p className="text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-primary mb-4">El producto</p>
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight mb-6">Qué incluye Basico Systems hoy</h2>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight mb-6">Qué incluye Basico System hoy</h2>
             <p className="text-base sm:text-lg text-muted-foreground">
               Estos son los módulos en producción. En tailor-made, los combinamos, modificamos o construimos nuevos.
             </p>
@@ -406,7 +406,7 @@ export default function Landing() {
             </div>
             <div>
               <p className="text-lg sm:text-xl leading-relaxed mb-8">
-                Basico Clothes opera hoy sobre Basico Systems + módulos a medida construidos por el estudio.
+                Basico Clothes opera hoy sobre Basico System + módulos a medida construidos por el estudio.
                 Una sola fuente de verdad para pedidos, clientes, equipo y finanzas.
               </p>
               <div className="grid grid-cols-2 gap-px bg-border mb-10">
@@ -455,7 +455,7 @@ export default function Landing() {
             <p className="text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-primary mb-4">Adaptable</p>
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight mb-6">Da igual el rubro</h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              Lo que cambia es el negocio. Lo que se mantiene es el método. Cada rubro arranca con Basico Systems y crece a medida según el negocio.
+              Lo que cambia es el negocio. Lo que se mantiene es el método. Cada rubro arranca con Basico System y crece a medida según el negocio.
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -530,7 +530,7 @@ export default function Landing() {
               <Label className="text-xs font-bold uppercase tracking-wider mb-3 block">¿Qué te interesa?</Label>
               <RadioGroup value={interest} onValueChange={(v) => setInterest(v as typeof interest)} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {([
-                  ["saas", "Probar Basico Systems"],
+                  ["saas", "Probar Basico System"],
                   ["tailor", "Construir uno a medida"],
                   ["unsure", "Aún no lo sé"],
                 ] as const).map(([v, l]) => (
@@ -577,7 +577,7 @@ export default function Landing() {
       <footer className="border-t border-border py-10 px-4 sm:px-8 lg:px-16">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
-            Basico Systems · Un área de Basico · {new Date().getFullYear()}
+            Basico System · Un área de Basico · {new Date().getFullYear()}
           </p>
           <div className="flex items-center gap-6">
             <a href="https://basicoclothes.com" target="_blank" rel="noopener noreferrer" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
