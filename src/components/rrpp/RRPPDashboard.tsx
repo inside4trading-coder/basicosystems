@@ -226,13 +226,15 @@ function MonthlyGoalsCard({
   current,
   goals,
   onSave,
+  brandLabel,
 }: {
   current: { added: number; activations: number; successful: number };
-  goals: MonthlyGoals;
-  onSave: (g: MonthlyGoals) => void;
+  goals: BrandGoals;
+  onSave: (g: BrandGoals) => void;
+  brandLabel: string;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<MonthlyGoals>(goals);
+  const [draft, setDraft] = useState<BrandGoals>(goals);
 
   useEffect(() => { setDraft(goals); }, [goals]);
 
@@ -246,7 +248,7 @@ function MonthlyGoalsCard({
             <Target className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <h3 className="font-bold text-sm">Metas del mes</h3>
+            <h3 className="font-bold text-sm">Metas del mes · {brandLabel}</h3>
             <p className="text-[11px] text-muted-foreground capitalize truncate">{monthLabel}</p>
           </div>
         </div>
@@ -281,9 +283,9 @@ function MonthlyGoalsCard({
       {editing ? (
         <div className="space-y-3">
           {[
-            { key: "added" as const, label: "Personas agregadas" },
-            { key: "activations" as const, label: "Activaciones (productos enviados)" },
-            { key: "successful" as const, label: "Colaboraciones exitosas" },
+            { key: "captaciones" as const, label: "Captaciones (perfiles agregados)" },
+            { key: "activaciones" as const, label: "Activaciones (productos enviados)" },
+            { key: "colaboraciones" as const, label: "Colaboraciones exitosas" },
           ].map((f) => (
             <div key={f.key}>
               <label className="text-[11px] font-semibold text-muted-foreground block mb-1">{f.label}</label>
@@ -299,28 +301,32 @@ function MonthlyGoalsCard({
         </div>
       ) : (
         <div className="space-y-4">
-          <GoalRow label="Personas agregadas" current={current.added} goal={goals.added} accent="primary" />
-          <GoalRow label="Activaciones" current={current.activations} goal={goals.activations} accent="warning" />
-          <GoalRow label="Colaboraciones exitosas" current={current.successful} goal={goals.successful} accent="success" />
+          <GoalRow label="Captaciones" current={current.added} goal={goals.captaciones} accent="primary" />
+          <GoalRow label="Activaciones" current={current.activations} goal={goals.activaciones} accent="warning" />
+          <GoalRow label="Colaboraciones exitosas" current={current.successful} goal={goals.colaboraciones} accent="success" />
         </div>
       )}
     </div>
   );
 }
 
-export default function RRPPDashboard() {
+export default function RRPPDashboard({ brand }: { brand: RRPPBrand }) {
   const [range, setRange] = useState<RangeKey>("this_month");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [collabs, setCollabs] = useState<Collaboration[]>([]);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [goals, setGoals] = useState<MonthlyGoals>(() => loadGoals());
+  const { goals, save: persistGoals } = useRRPPGoals(brand);
 
-  const saveGoals = (g: MonthlyGoals) => {
-    setGoals(g);
-    try { localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(g)); } catch { /* ignore */ }
+  const saveGoals = async (g: BrandGoals) => {
+    try {
+      await persistGoals(g);
+    } catch (e) {
+      console.error("Error saving goals", e);
+    }
   };
+
 
   useEffect(() => {
     let cancelled = false;
