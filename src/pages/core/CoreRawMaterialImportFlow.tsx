@@ -207,7 +207,7 @@ function RawMaterialImporterDialog({
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [parsing, setParsing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [delimiter, setDelimiter] = useState<string>("auto");
+  const [delimiter, setDelimiter] = useState<string>(";");
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function parseFile(f: File) {
