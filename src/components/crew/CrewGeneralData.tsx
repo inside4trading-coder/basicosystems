@@ -11,6 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import type { Employee, EmployeeStatus } from "@/types/crew";
+import { parseLocalDate } from "@/lib/dateUtils";
 
 interface CrewGeneralDataProps {
   employee: Employee;
@@ -85,9 +86,9 @@ export function CrewGeneralData({ employee, editMode, onUpdate, canViewSalary = 
   };
 
   const startDate = val("start_date");
-  const parsedDate = startDate ? new Date(startDate) : undefined;
+  const parsedDate = startDate ? parseLocalDate(startDate as string) : undefined;
   const birthDate = val("birth_date") as string | null | undefined;
-  const parsedBirth = birthDate ? new Date(birthDate) : undefined;
+  const parsedBirth = birthDate ? parseLocalDate(birthDate) : undefined;
 
   return (
     <div className="kpi-card space-y-6">
@@ -297,7 +298,7 @@ const MONTHS = [
 ];
 
 function BirthDateInput({ value, onChange }: { value: string | null; onChange: (iso: string | null) => void }) {
-  const parsed = value ? new Date(value) : undefined;
+  const parsed = value ? parseLocalDate(value) : undefined;
   const currentYear = new Date().getFullYear();
 
   const [day, setDay] = useState<string>(parsed ? String(parsed.getDate()) : "");
@@ -306,7 +307,7 @@ function BirthDateInput({ value, onChange }: { value: string | null; onChange: (
 
   useEffect(() => {
     if (value) {
-      const d = new Date(value);
+      const d = parseLocalDate(value);
       setDay(String(d.getDate()));
       setMonth(String(d.getMonth() + 1));
       setYear(String(d.getFullYear()));
