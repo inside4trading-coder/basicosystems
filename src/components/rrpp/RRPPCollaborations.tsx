@@ -95,7 +95,7 @@ function computeStage(c: Partial<Collaboration>): Stage {
   return 1;
 }
 
-export function RRPPCollaborations({ contactId, onPipelineChanged }: Props) {
+export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName = "", contactAlias = "", onPipelineChanged }: Props) {
   const perms = useRRPPPermissions();
   const [items, setItems] = useState<Collaboration[]>([]);
   const [loading, setLoading] = useState(true);
