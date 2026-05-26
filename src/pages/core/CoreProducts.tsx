@@ -371,7 +371,7 @@ export default function CoreProducts() {
                             <div className="text-xs text-muted-foreground italic">Este producto no tiene tallas/variaciones configuradas. <Button variant="link" size="sm" className="h-auto p-0 ml-1" onClick={() => navigate(`/core/productos/${p.id}`)}>Configurar</Button></div>
                           ) : (
                             <div className="space-y-2">
-                              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tallas / variaciones en Core</div>
+                              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tallas / variaciones</div>
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                 {vars.map(v => (
                                   <div key={v.id} className={cn(
