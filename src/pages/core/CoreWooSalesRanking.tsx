@@ -332,14 +332,17 @@ export default function CoreWooSalesRanking() {
 
   async function markCandidate(g: ProductAgg, status: "ignorado" | "no_fabricable") {
     if (!g.parentSku) return toast.error("Sin SKU para registrar");
-    // upsert candidate row
-    await supabase.from("core_woo_product_candidates").upsert({
-      woo_product_id: 0,
-      woo_sku: g.parentSku,
-      woo_product_name: g.name,
-      detected_from: "sales_ranking",
-      status,
-    } as any, { onConflict: "woo_sku" } as any);
+    const { data: existing } = await supabase
+      .from("core_woo_product_candidates")
+      .select("id").eq("woo_sku", g.parentSku).maybeSingle();
+    if (existing) {
+      await supabase.from("core_woo_product_candidates").update({ status, detected_from: "sales_ranking" }).eq("id", existing.id);
+    } else {
+      await supabase.from("core_woo_product_candidates").insert({
+        woo_product_id: 0, woo_sku: g.parentSku, woo_product_name: g.name,
+        detected_from: "sales_ranking", status,
+      } as any);
+    }
     toast.success(status === "ignorado" ? "Ignorado" : "Marcado no fabricable");
     load();
   }
