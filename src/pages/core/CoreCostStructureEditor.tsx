@@ -520,6 +520,61 @@ export default function CoreCostStructureEditor() {
             </div>
           </Card>
 
+          <Card className="p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Conexión con WooCommerce</h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Vincula esta estructura con el producto real en WooCommerce. Sin esta conexión, las ventas de este producto caerán en "Pendientes" en Partidas de Fabricación.
+                </p>
+              </div>
+              {!wooProductId.trim() && (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" />Sin conectar
+                </Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Woo Product ID *</Label>
+                <Input
+                  type="number"
+                  value={wooProductId}
+                  onChange={(e) => setWooProductId(e.target.value)}
+                  placeholder="Ej: 12345"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">ID del producto padre en WooCommerce.</p>
+              </div>
+              <div>
+                <Label>Woo Variation ID</Label>
+                <Input
+                  type="number"
+                  value={wooVariationId}
+                  onChange={(e) => setWooVariationId(e.target.value)}
+                  placeholder="Opcional · Ej: 67890"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Solo si esta estructura corresponde a una variación específica (talla/color).</p>
+              </div>
+              <div>
+                <Label>Nombre en WooCommerce</Label>
+                <Input
+                  value={wooProductName}
+                  onChange={(e) => setWooProductName(e.target.value)}
+                  placeholder="Como aparece en la tienda"
+                />
+              </div>
+              <div>
+                <Label>URL del producto</Label>
+                <Input
+                  value={wooPermalink}
+                  onChange={(e) => setWooPermalink(e.target.value)}
+                  placeholder="https://basicoclothes.com/producto/..."
+                />
+              </div>
+            </div>
+          </Card>
+
+
           <Card className="p-5">
             <Tabs defaultValue="raw_material">
               <TabsList className="flex-wrap h-auto">
