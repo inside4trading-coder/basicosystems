@@ -184,6 +184,23 @@ export default function CoreCostStructures() {
         </div>
       </div>
 
+      {missingWooCount > 0 && (
+        <Card className="p-4 border-destructive/40 bg-destructive/5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-destructive">
+                {missingWooCount} {missingWooCount === 1 ? "estructura sin conectar" : "estructuras sin conectar"} a WooCommerce
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Las ventas de productos sin Woo Product ID caerán en "Pendientes" en Partidas de Fabricación y no generarán movimientos hasta resolverse.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setFWoo("missing")}>Ver sin conectar</Button>
+          </div>
+        </Card>
+      )}
+
       <Card className="p-4 space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[220px] flex-1 max-w-sm">
@@ -215,7 +232,16 @@ export default function CoreCostStructures() {
               <SelectItem value="EUR">EUR</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={fWoo} onValueChange={(v) => setFWoo(v as any)}>
+            <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Woo: todas</SelectItem>
+              <SelectItem value="connected">Woo: conectadas</SelectItem>
+              <SelectItem value="missing">Woo: sin conectar</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+
 
         <div className="rounded-lg border overflow-x-auto">
           <Table>
