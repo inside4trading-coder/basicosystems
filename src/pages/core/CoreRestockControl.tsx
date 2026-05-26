@@ -164,13 +164,65 @@ export default function CoreRestockControl() {
     setOpen(true);
   }
 
+  function changeRefType(v: string) {
+    setForm(f => ({
+      ...f,
+      reference_type: v,
+      sku: "",
+      product_name: "",
+      variant_label: "",
+      woo_product_id: undefined,
+      woo_variation_id: undefined,
+      core_product_id: undefined,
+      core_variant_id: undefined,
+    }));
+    setWooSearch("");
+    setCoreSearch("");
+  }
+
+  function pickWooParent(c: WooCand) {
+    setForm(f => ({ ...f, woo_product_id: c.woo_product_id, woo_variation_id: undefined, sku: c.woo_sku ?? "", product_name: c.woo_product_name ?? "", variant_label: "" }));
+  }
+  function pickWooVariation(c: WooCand) {
+    const parent = wooCandidates.find(x => x.woo_product_id === c.woo_product_id && !x.woo_variation_id);
+    const variantLabel = Array.isArray(c.woo_variations)
+      ? c.woo_variations.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ")
+      : "";
+    setForm(f => ({ ...f, woo_product_id: c.woo_product_id, woo_variation_id: c.woo_variation_id ?? undefined, sku: c.woo_sku ?? "", product_name: parent?.woo_product_name ?? c.woo_product_name ?? "", variant_label: variantLabel }));
+  }
+  function pickCoreProduct(p: { id: string; core_sku: string; name: string }) {
+    setForm(f => ({ ...f, core_product_id: p.id, core_variant_id: undefined, sku: p.core_sku, product_name: p.name, variant_label: "" }));
+  }
+  function pickCoreVariant(v: CoreVariant) {
+    const parent = coreProducts.find(p => p.id === v.core_product_id);
+    setForm(f => ({ ...f, core_product_id: v.core_product_id, core_variant_id: v.id, sku: parent?.core_sku ?? "", product_name: parent?.name ?? "", variant_label: v.variant_label || v.size, woo_variation_id: v.woo_variation_id ?? undefined }));
+  }
+
   async function save() {
     if (!form.reference_type) return toast.error("Tipo de referencia obligatorio");
     if (!form.reason) return toast.error("Motivo obligatorio");
     if (!form.status) return toast.error("Estado obligatorio");
     if (!form.start_date) return toast.error("Fecha de inicio obligatoria");
-    if (!form.sku && !form.woo_product_id && !form.woo_variation_id && !form.core_product_id && !form.core_variant_id) {
-      return toast.error("Debes indicar al menos un SKU o ID de referencia");
+    switch (form.reference_type) {
+      case "woocommerce_product":
+        if (!form.woo_product_id) return toast.error("Selecciona el producto WooCommerce");
+        if (!form.sku) return toast.error("SKU WooCommerce obligatorio");
+        break;
+      case "woocommerce_variation":
+        if (!form.woo_product_id || !form.woo_variation_id) return toast.error("Selecciona la variación WooCommerce");
+        if (!form.sku) return toast.error("SKU de variación obligatorio");
+        break;
+      case "core_product":
+        if (!form.core_product_id) return toast.error("Selecciona el Producto Core");
+        if (!form.sku) return toast.error("SKU Core obligatorio");
+        break;
+      case "core_variant":
+        if (!form.core_product_id || !form.core_variant_id) return toast.error("Selecciona la variante Core");
+        if (!form.variant_label) return toast.error("Talla / variante obligatoria");
+        break;
+      case "manual_sku":
+        if (!form.sku) return toast.error("SKU obligatorio");
+        break;
     }
     const { data: { user } } = await supabase.auth.getUser();
     const payload: any = {
