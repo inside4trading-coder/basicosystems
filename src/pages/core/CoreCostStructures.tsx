@@ -249,6 +249,7 @@ export default function CoreCostStructures() {
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Tipo</TableHead>
+                <TableHead>Woo</TableHead>
                 <TableHead className="text-right">Costo total unitario</TableHead>
                 <TableHead>Moneda</TableHead>
                 <TableHead className="text-right">Margen</TableHead>
@@ -259,15 +260,27 @@ export default function CoreCostStructures() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Cargando…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Cargando…</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Sin estructuras de costos</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Sin estructuras de costos</TableCell></TableRow>
               ) : filtered.map(s => {
                 const st = STATUS_LABELS[s.status] ?? { label: s.status, variant: "outline" as const };
+                const wooConnected = !!s.woo_product_id;
                 return (
-                  <TableRow key={s.id}>
+                  <TableRow key={s.id} className={!wooConnected ? "bg-destructive/5" : ""}>
                     <TableCell className="font-medium">{s.name}</TableCell>
                     <TableCell className="text-muted-foreground">{s.product_type || "—"}</TableCell>
+                    <TableCell>
+                      {wooConnected ? (
+                        <Badge variant="outline" className="font-mono text-[11px]">
+                          #{s.woo_product_id}{s.woo_variation_id ? `·${s.woo_variation_id}` : ""}
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="gap-1">
+                          <AlertTriangle className="h-3 w-3" />Sin conectar
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right tabular-nums">{Number(s.total_unit_cost).toFixed(2)}</TableCell>
                     <TableCell>{s.base_currency}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
