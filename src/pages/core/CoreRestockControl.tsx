@@ -478,7 +478,7 @@ export default function CoreRestockControl() {
                   </div>
                 )}
 
-                {isWooV && form.woo_product_id && wooVariations.length === 0 && (
+                {isWooV && form.woo_product_id && parentVariations.length === 0 && (
                   <div className="col-span-2">
                     <Alert variant="destructive">
                       <AlertTriangle className="h-4 w-4" />
@@ -491,13 +491,13 @@ export default function CoreRestockControl() {
                     </Alert>
                   </div>
                 )}
-                {isWooV && wooVariations.length > 0 && (
+                {isWooV && parentVariations.length > 0 && (
                   <div className="col-span-2">
                     <Label>Variación WooCommerce *</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full justify-between font-normal" disabled={!form.woo_product_id}>
-                          {selectedWooVar ? `${selectedWooVar.woo_sku ?? "—"} · ${form.variant_label ?? ""}` : "Selecciona una variación…"}
+                          {selectedWooVar ? `${selectedWooVar.sku ?? "—"} · ${form.variant_label ?? ""}` : "Selecciona una variación…"}
                           <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
                         </Button>
                       </PopoverTrigger>
@@ -507,13 +507,15 @@ export default function CoreRestockControl() {
                           <CommandList>
                             <CommandEmpty>Sin coincidencias.</CommandEmpty>
                             <CommandGroup>
-                              {wooVariations.slice(0, 300).map(c => {
-                                const label = Array.isArray(c.woo_variations) ? c.woo_variations.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ") : "";
+                              {parentVariations.slice(0, 300).map((v: any, idx: number) => {
+                                const attrs = Array.isArray(v?.attributes) ? v.attributes : [];
+                                const label = attrs.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ") || v?.name || `#${v?.id ?? idx}`;
+                                const vid = v?.id ?? v?.variation_id;
                                 return (
-                                  <CommandItem key={c.id} value={`${c.woo_sku ?? ""} ${label}`} onSelect={() => pickWooVariation(c)}>
-                                    <Check className={`mr-2 h-3.5 w-3.5 ${form.woo_variation_id === c.woo_variation_id ? "opacity-100" : "opacity-0"}`} />
-                                    <span className="font-mono text-xs mr-2">{c.woo_sku ?? "—"}</span>
-                                    <span>{label || `#${c.woo_variation_id}`}</span>
+                                  <CommandItem key={`${vid}-${idx}`} value={`${v?.sku ?? ""} ${label}`} onSelect={() => pickWooVariation(selectedWooParent!, v)}>
+                                    <Check className={`mr-2 h-3.5 w-3.5 ${form.woo_variation_id === vid ? "opacity-100" : "opacity-0"}`} />
+                                    <span className="font-mono text-xs mr-2">{v?.sku ?? "—"}</span>
+                                    <span>{label}</span>
                                   </CommandItem>
                                 );
                               })}
