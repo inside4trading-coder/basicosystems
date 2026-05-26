@@ -334,6 +334,8 @@ serve(async (req) => {
             line_item_id: li.id,
             sku,
             parent_sku: li.parent_name ? null : null,
+            product_id: li.product_id || null,
+            variation_id: li.variation_id || null,
             product_name: li.name,
             quantity: li.quantity || 0,
             unit_price: parseFloat(li.price || "0"),
