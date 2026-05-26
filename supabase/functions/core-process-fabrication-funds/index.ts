@@ -120,14 +120,17 @@ serve(async (req) => {
     const pendByKey = new Map<string, any>();
     for (const p of existingPend ?? []) pendByKey.set(pendKey(p.source_order_id, p.source_order_item_id), p);
 
-    // Create run row
+    // Create run row FIRST so every record can reference it
     const { data: runRow } = await supabase.from("core_fabrication_fund_runs").insert({
       run_type: "process_sales",
       status: "completed",
       summary: {},
+      period_start: periodStart,
+      period_end: periodEnd,
       created_by: userId,
     }).select().single();
     runId = runRow?.id ?? null;
+
 
     // ---- Pass 1: confirmed orders → generate movements / pendings ----
     const pageSize = 1000;
