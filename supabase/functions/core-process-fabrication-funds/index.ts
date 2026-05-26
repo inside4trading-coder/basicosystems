@@ -303,7 +303,11 @@ serve(async (req) => {
 
 
 
-    // ---- Pass 2: reverting orders → generate reversals ----
+    // ---- Pass 2: reverting orders → generate reversals (BATCHED) ----
+    const revInserts: any[] = [];
+    const revOriginalIds: string[] = [];
+    const revFundDeltas = new Map<string, number>();
+
     let from2 = 0;
     while (true) {
       const { data: orders2 } = await supabase
@@ -317,16 +321,15 @@ serve(async (req) => {
       const orderStatusMap = new Map(orders2.map((o: any) => [o.order_id, o.order_status]));
       const { data: movs } = await supabase
         .from("core_fabrication_fund_movements")
-        .select("id, source_order_id, source_order_item_id, fund_id, amount, currency, sku, product_name, core_product_id, core_variant_id, woo_product_id, woo_variation_id, movement_type, status")
+        .select("id, source_order_id, source_order_item_id, fund_id, amount, currency, sku, product_name, core_product_id, core_variant_id, movement_type, status")
         .in("source_order_id", orderIds2)
         .in("movement_type", ["sale_generated", "sale_generated_non_restockable"])
         .neq("status", "reversed");
 
       for (const m of movs ?? []) {
-        // Skip if a reversal exists
         if (movByKey.has(movKey(m.source_order_id, m.source_order_item_id, "reversal"))) continue;
         const status = orderStatusMap.get(m.source_order_id);
-        const { data: rev, error: revErr } = await supabase.from("core_fabrication_fund_movements").insert({
+        revInserts.push({
           fund_id: m.fund_id,
           fabrication_fund_run_id: runId,
           movement_type: "reversal",
@@ -344,25 +347,41 @@ serve(async (req) => {
           reason: `Reverso por estado ${status}`,
           status: "posted",
           created_by: userId,
-        }).select().single();
-        if (revErr) {
-          if ((revErr as any).code === "23505") continue;
-          summary.errors_count += 1;
-          summary.errors.push({ order: m.source_order_id, error: revErr.message });
-          continue;
-        }
-        // mark original as reversed
-        await supabase.from("core_fabrication_fund_movements").update({ status: "reversed" }).eq("id", m.id);
-        // update fund balance
-        const newBal = roundAmt((await currentFund(supabase, m.fund_id)) - Number(m.amount));
-        await supabase.from("core_fabrication_funds").update({ available_amount: newBal }).eq("id", m.fund_id);
-        summary.reversals_created += 1;
-        movByKey.set(movKey(m.source_order_id, m.source_order_item_id, "reversal"), rev);
+        });
+        revOriginalIds.push(m.id);
+        revFundDeltas.set(m.fund_id, (revFundDeltas.get(m.fund_id) ?? 0) - Number(m.amount));
+        movByKey.set(movKey(m.source_order_id, m.source_order_item_id, "reversal"), { id: "queued" });
       }
 
       if (orders2.length < pageSize) break;
       from2 += pageSize;
     }
+
+    const chunkR = <T,>(arr: T[], n: number) => { const out: T[][] = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
+    for (const batch of chunkR(revInserts, 500)) {
+      const { error, count } = await supabase.from("core_fabrication_fund_movements").insert(batch, { count: "exact" });
+      if (error) {
+        for (const row of batch) {
+          const { error: e1 } = await supabase.from("core_fabrication_fund_movements").insert(row);
+          if (!e1) summary.reversals_created += 1;
+          else if ((e1 as any).code !== "23505") { summary.errors_count += 1; summary.errors.push({ error: e1.message }); }
+        }
+      } else {
+        summary.reversals_created += count ?? batch.length;
+      }
+    }
+    if (revOriginalIds.length > 0) {
+      for (const batch of chunkR(revOriginalIds, 500)) {
+        await supabase.from("core_fabrication_fund_movements").update({ status: "reversed" }).in("id", batch);
+      }
+    }
+    for (const [fundId, delta] of revFundDeltas) {
+      const cur = await currentFund(supabase, fundId);
+      await supabase.from("core_fabrication_funds")
+        .update({ available_amount: roundAmt(cur + delta) })
+        .eq("id", fundId);
+    }
+
 
     const finalStatus = summary.errors_count > 0 ? "completed_warnings" : "completed";
     if (runId) {
