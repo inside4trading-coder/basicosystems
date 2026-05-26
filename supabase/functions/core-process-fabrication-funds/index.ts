@@ -132,14 +132,23 @@ serve(async (req) => {
     runId = runRow?.id ?? null;
 
 
-    // ---- Pass 1: confirmed orders → generate movements / pendings ----
+    // ---- Pass 1: confirmed orders → generate movements / pendings (BATCHED) ----
+    const fundDeltas = new Map<string, number>();  // fund_id -> delta
+    const pendingInserts: any[] = [];
+    const pendingUpdates: { id: string; reason: string; suggested: string; order_status: string | null }[] = [];
+    const movementInserts: any[] = [];
+    const resolvedPendingIds: string[] = [];
+
     const pageSize = 1000;
     let from = 0;
     while (true) {
-      const { data: orders, error: ordErr } = await supabase
+      let q = supabase
         .from("orders")
         .select("order_id, order_status, order_datetime")
-        .in("order_status", Array.from(CONFIRMED_STATUSES))
+        .in("order_status", Array.from(CONFIRMED_STATUSES));
+      if (periodStart) q = q.gte("order_datetime", periodStart);
+      if (periodEnd) q = q.lte("order_datetime", periodEnd);
+      const { data: orders, error: ordErr } = await q
         .order("order_id", { ascending: true })
         .range(from, from + pageSize - 1);
       if (ordErr) throw ordErr;
@@ -160,7 +169,6 @@ serve(async (req) => {
         const order = orderById.get(oid);
         if (!order) continue;
 
-        // Skip if any sale movement already exists for this item
         if (
           movByKey.has(movKey(oid, iid, "sale_generated")) ||
           movByKey.has(movKey(oid, iid, "sale_generated_non_restockable"))
@@ -175,38 +183,33 @@ serve(async (req) => {
           ? productById.get(variant.core_product_id)
           : (skuLower ? skuToProduct.get(skuLower) : null);
 
-        // Missing SKU
-        if (!skuLower) {
-          await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, runId, reason: "missing_sku",
-            suggested: "Asignar SKU al producto Woo",
-          });
+        const queuePending = (reason: string, suggested: string) => {
+          const key = pendKey(oid, iid);
+          const existing = pendByKey.get(key);
+          if (existing) {
+            if (existing.status === "ignored" || existing.status === "resolved") return;
+            pendingUpdates.push({ id: existing.id, reason, suggested, order_status: order?.order_status ?? null });
+          } else {
+            pendingInserts.push({
+              source_order_id: oid, source_order_item_id: iid,
+              woo_sku: it.sku ?? it.parent_sku ?? null,
+              product_name: it.product_name ?? null,
+              quantity: it.quantity ?? null, revenue: it.line_total ?? null,
+              order_status: order?.order_status ?? null,
+              reason, suggested_action: suggested, status: "pending",
+              fabrication_fund_run_id: runId,
+            });
+            // Mark so we don't double-insert within same run
+            pendByKey.set(key, { id: "queued", status: "pending" });
+          }
           summary.pending_items_created += 1;
-          continue;
-        }
+        };
 
-        // No core product mapped
-        if (!product) {
-          await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, runId, reason: "product_not_in_core",
-            suggested: "Crear Producto Core o asociar",
-          });
-          summary.pending_items_created += 1;
-          continue;
-        }
-
-        // Determine cost from snapshot or product
+        if (!skuLower) { queuePending("missing_sku", "Asignar SKU al producto Woo"); continue; }
+        if (!product) { queuePending("product_not_in_core", "Crear Producto Core o asociar"); continue; }
         const unitCost = Number(product.unit_cost ?? 0);
-        if (!unitCost || unitCost <= 0) {
-          await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, runId, reason: "missing_cost",
-            suggested: "Asignar estructura de costos / snapshot",
-          });
-          summary.pending_items_created += 1;
-          continue;
-        }
+        if (!unitCost || unitCost <= 0) { queuePending("missing_cost", "Asignar estructura de costos / snapshot"); continue; }
 
-        // Restock classification
         const isNonRestock =
           restockSkuSet.has(skuLower) ||
           restockCoreProdSet.has(product.id) ||
@@ -215,20 +218,13 @@ serve(async (req) => {
           (variant && variant.status === "inactive");
 
         const qty = Number(it.quantity ?? 0) || 0;
-        if (qty <= 0) {
-          await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, runId, reason: "sync_error",
-            suggested: "Cantidad inválida en la línea de pedido",
-          });
-          summary.pending_items_created += 1;
-          continue;
-        }
+        if (qty <= 0) { queuePending("sync_error", "Cantidad inválida en la línea de pedido"); continue; }
 
         const amount = +(qty * unitCost).toFixed(4);
         const fund = isNonRestock ? nonRestockFundUSD : generalFundUSD;
         const movementType = isNonRestock ? "sale_generated_non_restockable" : "sale_generated";
 
-        const { error: insErr } = await supabase.from("core_fabrication_fund_movements").insert({
+        movementInserts.push({
           fund_id: fund.id,
           fabrication_fund_run_id: runId,
           movement_type: movementType,
@@ -248,39 +244,64 @@ serve(async (req) => {
           status: "posted",
           created_by: userId,
         });
-        if (insErr) {
-          // Likely unique conflict from a race — count as skipped
-          if ((insErr as any).code === "23505") {
-            summary.skipped_existing += 1;
-          } else {
-            summary.errors_count += 1;
-            summary.errors.push({ oid, iid, error: insErr.message });
-          }
-          continue;
-        }
-
-        // Update fund balance
-        await supabase
-          .from("core_fabrication_funds")
-          .update({ available_amount: roundAmt((await currentFund(supabase, fund.id)) + amount) })
-          .eq("id", fund.id);
-
-        summary.movements_created += 1;
-        if (isNonRestock) summary.by_fund.non_restockable += 1; else summary.by_fund.general += 1;
+        fundDeltas.set(fund.id, (fundDeltas.get(fund.id) ?? 0) + amount);
         movByKey.set(movKey(oid, iid, movementType), { source_order_id: oid, source_order_item_id: iid, movement_type: movementType });
+        if (isNonRestock) summary.by_fund.non_restockable += 1; else summary.by_fund.general += 1;
 
-        // If pending existed, mark resolved
         const existingPendRow = pendByKey.get(pendKey(oid, iid));
-        if (existingPendRow && existingPendRow.status === "pending") {
-          await supabase.from("core_fabrication_fund_pending_items")
-            .update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: userId })
-            .eq("id", existingPendRow.id);
+        if (existingPendRow && existingPendRow.id !== "queued" && existingPendRow.status === "pending") {
+          resolvedPendingIds.push(existingPendRow.id);
         }
       }
 
       if (orders.length < pageSize) break;
       from += pageSize;
     }
+
+    // BULK INSERT movements in chunks
+    const chunk = <T,>(arr: T[], n: number) => { const out: T[][] = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
+    for (const batch of chunk(movementInserts, 500)) {
+      const { error, count } = await supabase.from("core_fabrication_fund_movements").insert(batch, { count: "exact" });
+      if (error) {
+        // Fallback: insert one-by-one to skip duplicates
+        for (const row of batch) {
+          const { error: e1 } = await supabase.from("core_fabrication_fund_movements").insert(row);
+          if (!e1) summary.movements_created += 1;
+          else if ((e1 as any).code === "23505") summary.skipped_existing += 1;
+          else { summary.errors_count += 1; summary.errors.push({ error: e1.message }); }
+        }
+      } else {
+        summary.movements_created += count ?? batch.length;
+      }
+    }
+    // BULK INSERT pendings
+    for (const batch of chunk(pendingInserts, 500)) {
+      const { error } = await supabase.from("core_fabrication_fund_pending_items").insert(batch);
+      if (error) { summary.errors_count += 1; summary.errors.push({ error: error.message }); }
+    }
+    // BULK UPDATE existing pendings (reason changed)
+    for (const u of pendingUpdates) {
+      await supabase.from("core_fabrication_fund_pending_items")
+        .update({ reason: u.reason, suggested_action: u.suggested, order_status: u.order_status, fabrication_fund_run_id: runId })
+        .eq("id", u.id);
+    }
+    // BULK resolve pendings that now have a movement
+    if (resolvedPendingIds.length > 0) {
+      for (const batch of chunk(resolvedPendingIds, 500)) {
+        await supabase.from("core_fabrication_fund_pending_items")
+          .update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: userId })
+          .in("id", batch);
+      }
+    }
+    // Apply fund deltas in a single update per fund
+    for (const [fundId, delta] of fundDeltas) {
+      const cur = await currentFund(supabase, fundId);
+      await supabase.from("core_fabrication_funds")
+        .update({ available_amount: roundAmt(cur + delta) })
+        .eq("id", fundId);
+    }
+
+
 
     // ---- Pass 2: reverting orders → generate reversals ----
     let from2 = 0;
