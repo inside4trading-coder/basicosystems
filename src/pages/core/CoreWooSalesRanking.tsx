@@ -443,8 +443,8 @@ export default function CoreWooSalesRanking() {
               const badge = STATUS_BADGE[g.coreStatus];
               return (
                 <Fragment key={g.key}>
-                  <TableRow className={STATUS_COLORS[g.coreStatus]}>
-                    <TableCell>
+                  <TableRow className={cn(STATUS_COLORS[g.coreStatus], "cursor-pointer")} onClick={() => toggleExpand(g.key)}>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       {g.variants.size >= 1 && (
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleExpand(g.key)} title={`${g.variants.size} variación(es)`}>
                           {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
