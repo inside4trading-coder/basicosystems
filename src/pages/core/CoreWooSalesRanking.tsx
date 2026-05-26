@@ -62,6 +62,7 @@ type VariantAgg = {
   lastAt: string | null;
   matchedVariantId?: string | null;
   matchedProductId?: string | null;
+  coreStatus?: "en_core" | "no_en_core" | "sin_padre";
 };
 
 type ProductAgg = {
@@ -154,9 +155,13 @@ export default function CoreWooSalesRanking() {
         const stripped = sku.replace(SIZE_RE, "").trim();
         return stripped || sku;
       };
+      const deriveSize = (sku: string): string | null => {
+        if (!sku) return null;
+        const m = sku.match(SIZE_RE);
+        return m ? m[1].toUpperCase() : null;
+      };
       const deriveParentName = (name: string) => {
         if (!name) return "";
-        // Strip trailing " - Talla X, Color" or " - Talla X"
         return name.replace(/\s*[-–]\s*Talla\s+[^,]+(,.*)?$/i, "").trim() || name;
       };
       const groups = new Map<string, ProductAgg>();
@@ -180,9 +185,10 @@ export default function CoreWooSalesRanking() {
         g.revenue += Number(it.line_total) || 0;
         if (lastAt && (!g.lastAt || lastAt > g.lastAt)) g.lastAt = lastAt;
 
-        const vkey = sku || `${it.size || ""}|${it.color || ""}`;
+        const size = (it.size || deriveSize(sku) || "").toString().toUpperCase() || null;
+        const vkey = sku || `${size || ""}|${it.color || ""}`;
         if (!g.variants.has(vkey)) {
-          g.variants.set(vkey, { sku: sku || null, size: it.size || null, color: it.color || null, units: 0, orders: new Set(), revenue: 0, lastAt: null });
+          g.variants.set(vkey, { sku: sku || null, size, color: it.color || null, units: 0, orders: new Set(), revenue: 0, lastAt: null });
         }
         const v = g.variants.get(vkey)!;
         v.units += qty;
@@ -204,7 +210,7 @@ export default function CoreWooSalesRanking() {
         const slice = skuArr.slice(i, i + 300);
         const [{ data: p }, { data: v }] = await Promise.all([
           supabase.from("core_products").select("id, core_sku, name, commercial_status, is_restockable, woo_sku, woo_product_id").or(`core_sku.in.(${slice.map(s => `"${s}"`).join(",")}),woo_sku.in.(${slice.map(s => `"${s}"`).join(",")})`),
-          supabase.from("core_product_variants").select("id, core_product_id, variant_sku, woo_sku").or(`variant_sku.in.(${slice.map(s => `"${s}"`).join(",")}),woo_sku.in.(${slice.map(s => `"${s}"`).join(",")})`),
+          supabase.from("core_product_variants").select("id, core_product_id, variant_sku, woo_sku, size").or(`variant_sku.in.(${slice.map(s => `"${s}"`).join(",")}),woo_sku.in.(${slice.map(s => `"${s}"`).join(",")})`),
         ]);
         if (p) products.push(...p);
         if (v) variants.push(...v);
@@ -226,6 +232,14 @@ export default function CoreWooSalesRanking() {
           arr.push(v);
           variantBySku.set(s, arr);
         });
+      });
+
+      // Also fetch ALL variants of matched parent products (to match by size when SKU mapping is missing)
+      const variantsByProduct = new Map<string, any[]>();
+      variants.forEach(v => {
+        const arr = variantsByProduct.get(v.core_product_id) ?? [];
+        arr.push(v);
+        variantsByProduct.set(v.core_product_id, arr);
       });
 
       groups.forEach(g => {
@@ -254,14 +268,26 @@ export default function CoreWooSalesRanking() {
           g.matchedCount = unique.length;
           g.coreProduct = unique[0];
         }
-        // attach variant matches
+        // attach variant matches + per-variant core status
+        const parentCoreId = g.coreProduct?.id;
+        const parentVariants = parentCoreId ? (variantsByProduct.get(parentCoreId) ?? []) : [];
+        const sizesInCore = new Set(parentVariants.map(pv => (pv.size || "").toUpperCase()));
         g.variants.forEach(v => {
-          if (!v.sku) return;
-          const vrs = variantBySku.get(v.sku) ?? [];
-          if (vrs.length > 0) {
-            v.matchedVariantId = vrs[0].id;
-            v.matchedProductId = vrs[0].core_product_id;
+          let inCore = false;
+          if (v.sku) {
+            const vrs = variantBySku.get(v.sku) ?? [];
+            if (vrs.length > 0) {
+              v.matchedVariantId = vrs[0].id;
+              v.matchedProductId = vrs[0].core_product_id;
+              inCore = true;
+            }
           }
+          if (!inCore && parentCoreId && v.size && sizesInCore.has(v.size.toUpperCase())) {
+            inCore = true;
+            v.matchedProductId = parentCoreId;
+          }
+          if (!parentCoreId) v.coreStatus = "sin_padre";
+          else v.coreStatus = inCore ? "en_core" : "no_en_core";
         });
       });
 
@@ -419,8 +445,8 @@ export default function CoreWooSalesRanking() {
                 <Fragment key={g.key}>
                   <TableRow className={STATUS_COLORS[g.coreStatus]}>
                     <TableCell>
-                      {g.variants.size > 1 && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleExpand(g.key)}>
+                      {g.variants.size >= 1 && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleExpand(g.key)} title={`${g.variants.size} variación(es)`}>
                           {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </Button>
                       )}
@@ -465,24 +491,48 @@ export default function CoreWooSalesRanking() {
                       </div>
                     </TableCell>
                   </TableRow>
-                  {isOpen && Array.from(g.variants.values()).sort((a, b) => b.units - a.units).map((v, i) => (
-                    <TableRow key={g.key + "_v_" + i} className="bg-muted/20">
-                      <TableCell></TableCell>
-                      <TableCell colSpan={2} className="pl-8 text-xs">
-                        <span className="font-mono">{v.sku || "—"}</span>
-                        {v.matchedVariantId && <Badge variant="outline" className="ml-2 text-[10px]">mapeada</Badge>}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {v.size && <span>Talla <strong>{v.size}</strong></span>}
-                        {v.color && <span className="ml-2 text-muted-foreground">{v.color}</span>}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{v.units}</TableCell>
-                      <TableCell className="text-right tabular-nums">{v.orders.size}</TableCell>
-                      <TableCell className="text-right tabular-nums">{v.revenue.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{v.lastAt ? new Date(v.lastAt).toLocaleDateString() : "—"}</TableCell>
-                      <TableCell></TableCell>
-                    </TableRow>
-                  ))}
+                  {isOpen && Array.from(g.variants.values()).sort((a, b) => b.units - a.units).map((v, i) => {
+                    const vStatus = v.coreStatus ?? "no_en_core";
+                    const vBadge = vStatus === "en_core"
+                      ? { label: "En Core", cls: "bg-green-600 text-white" }
+                      : vStatus === "sin_padre"
+                        ? { label: "Sin padre", cls: "bg-muted text-muted-foreground" }
+                        : { label: "Falta en Core", cls: "bg-red-600 text-white" };
+                    const rowCls = vStatus === "en_core"
+                      ? "bg-green-50/40 dark:bg-green-950/10"
+                      : vStatus === "sin_padre"
+                        ? "bg-muted/20"
+                        : "bg-red-50/40 dark:bg-red-950/10";
+                    return (
+                      <TableRow key={g.key + "_v_" + i} className={rowCls}>
+                        <TableCell></TableCell>
+                        <TableCell>
+                          <Badge className={cn("text-[10px]", vBadge.cls)}>{vBadge.label}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{v.sku || <span className="text-muted-foreground">—</span>}</TableCell>
+                        <TableCell className="text-xs">
+                          {v.size ? <span>Talla <strong>{v.size}</strong></span> : <span className="text-muted-foreground">sin talla</span>}
+                          {v.color && <span className="ml-2 text-muted-foreground">· {v.color}</span>}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums font-semibold">{v.units}</TableCell>
+                        <TableCell className="text-right tabular-nums">{v.orders.size}</TableCell>
+                        <TableCell className="text-right tabular-nums">{v.revenue.toFixed(2)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{v.lastAt ? new Date(v.lastAt).toLocaleDateString() : "—"}</TableCell>
+                        <TableCell className="text-right">
+                          {vStatus === "en_core" && v.matchedProductId && (
+                            <Button size="sm" variant="ghost" onClick={() => navigate(`/core/productos/${v.matchedProductId}`)}>
+                              <ExternalLink className="h-3 w-3 mr-1" />Ver
+                            </Button>
+                          )}
+                          {vStatus === "no_en_core" && v.matchedProductId && (
+                            <Button size="sm" variant="outline" onClick={() => navigate(`/core/productos/${v.matchedProductId}`)}>
+                              <Plus className="h-3 w-3 mr-1" />Agregar talla
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </Fragment>
               );
             })}
