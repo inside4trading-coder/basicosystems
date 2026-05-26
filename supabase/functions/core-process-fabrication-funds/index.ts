@@ -218,6 +218,7 @@ serve(async (req) => {
 
         const { error: insErr } = await supabase.from("core_fabrication_fund_movements").insert({
           fund_id: fund.id,
+          fabrication_fund_run_id: runId,
           movement_type: movementType,
           source: "woocommerce",
           source_order_id: oid,
