@@ -44,6 +44,7 @@ import CoreProductEditor from "./pages/core/CoreProductEditor";
 import CoreWooCandidates from "./pages/core/CoreWooCandidates";
 import CoreRestockControl from "./pages/core/CoreRestockControl";
 import CoreFabricationFunds from "./pages/core/CoreFabricationFunds";
+import CoreProductionNeeds from "./pages/core/CoreProductionNeeds";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
