@@ -405,7 +405,7 @@ export default function CoreWooSalesRanking() {
               const isOpen = expanded.has(g.key);
               const badge = STATUS_BADGE[g.coreStatus];
               return (
-                <FragmentRow key={g.key}>
+                <Fragment key={g.key}>
                   <TableRow className={STATUS_COLORS[g.coreStatus]}>
                     <TableCell>
                       {g.variants.size > 1 && (
@@ -472,7 +472,7 @@ export default function CoreWooSalesRanking() {
                       <TableCell></TableCell>
                     </TableRow>
                   ))}
-                </FragmentRow>
+                </Fragment>
               );
             })}
           </TableBody>
