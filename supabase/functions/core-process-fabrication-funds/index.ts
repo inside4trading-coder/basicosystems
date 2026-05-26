@@ -34,7 +34,7 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // Auth: validate JWT and role
+  // Auth
   const authHeader = req.headers.get("Authorization") || "";
   const token = authHeader.replace("Bearer ", "");
   if (!token) return json({ error: "missing_token" }, 401);
@@ -45,15 +45,34 @@ serve(async (req) => {
   const roleSet = new Set((roles ?? []).map((r: any) => r.role));
   if (!roleSet.has("admin") && !roleSet.has("manager")) return json({ error: "forbidden" }, 403);
 
-  // Optional period filter
+  // Parse body
   let periodStart: string | null = null;
   let periodEnd: string | null = null;
+  let mode: string = "process_sales";
+  let pendingIds: string[] | undefined;
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     if (body?.period_start) periodStart = String(body.period_start);
     if (body?.period_end) periodEnd = String(body.period_end);
+    if (body?.mode) mode = String(body.mode);
+    if (Array.isArray(body?.pending_ids)) pendingIds = body.pending_ids.map(String);
   } catch { /* ignore */ }
 
+  if (mode === "reprocess_pending") {
+    return await runReprocess(supabase, userId, pendingIds);
+  }
+  return await runProcessSales(supabase, userId, periodStart, periodEnd);
+});
+
+// ============================================================
+// PROCESS SALES
+// ============================================================
+async function runProcessSales(
+  supabase: any,
+  userId: string,
+  periodStart: string | null,
+  periodEnd: string | null,
+) {
   const summary: any = {
     orders_checked: 0,
     items_checked: 0,
@@ -63,12 +82,12 @@ serve(async (req) => {
     errors_count: 0,
     skipped_existing: 0,
     by_fund: { general: 0, non_restockable: 0, pending: 0 },
+    by_reason: {} as Record<string, number>,
     errors: [] as any[],
   };
 
   let runId: string | null = null;
   try {
-    // Pre-load reference data
     const [
       { data: funds },
       { data: coreProducts },
@@ -87,20 +106,25 @@ serve(async (req) => {
 
     const generalFundUSD = (funds ?? []).find((f: any) => f.fund_type === "general" && f.currency === "USD" && !f.core_product_id);
     const nonRestockFundUSD = (funds ?? []).find((f: any) => f.fund_type === "non_restockable" && f.currency === "USD" && !f.core_product_id);
-    if (!generalFundUSD || !nonRestockFundUSD) {
-      return json({ error: "missing_base_funds" }, 500);
-    }
+    if (!generalFundUSD || !nonRestockFundUSD) return json({ error: "missing_base_funds" }, 500);
 
-    // Index helpers
     const skuToVariant = new Map<string, any>();
     for (const v of coreVariants ?? []) {
       if (v.variant_sku) skuToVariant.set(String(v.variant_sku).trim().toLowerCase(), v);
       if (v.woo_sku) skuToVariant.set(String(v.woo_sku).trim().toLowerCase(), v);
     }
+    const variationIdToVariant = new Map<number, any>();
+    for (const v of coreVariants ?? []) {
+      if (v.woo_variation_id) variationIdToVariant.set(Number(v.woo_variation_id), v);
+    }
     const skuToProduct = new Map<string, any>();
     for (const p of coreProducts ?? []) {
       if (p.core_sku) skuToProduct.set(String(p.core_sku).trim().toLowerCase(), p);
       if (p.woo_sku) skuToProduct.set(String(p.woo_sku).trim().toLowerCase(), p);
+    }
+    const wooProductIdToProduct = new Map<number, any>();
+    for (const p of coreProducts ?? []) {
+      if (p.woo_product_id) wooProductIdToProduct.set(Number(p.woo_product_id), p);
     }
     const productById = new Map<string, any>();
     for (const p of coreProducts ?? []) productById.set(p.id, p);
@@ -109,6 +133,8 @@ serve(async (req) => {
     const restockSkuSet = new Set(
       activeRestock.filter((r: any) => r.sku).map((r: any) => String(r.sku).trim().toLowerCase())
     );
+    const restockWooProdSet = new Set(activeRestock.filter((r: any) => r.woo_product_id).map((r: any) => Number(r.woo_product_id)));
+    const restockWooVarSet = new Set(activeRestock.filter((r: any) => r.woo_variation_id).map((r: any) => Number(r.woo_variation_id)));
     const restockCoreProdSet = new Set(activeRestock.filter((r: any) => r.core_product_id).map((r: any) => r.core_product_id));
     const restockCoreVarSet = new Set(activeRestock.filter((r: any) => r.core_variant_id).map((r: any) => r.core_variant_id));
 
@@ -120,7 +146,6 @@ serve(async (req) => {
     const pendByKey = new Map<string, any>();
     for (const p of existingPend ?? []) pendByKey.set(pendKey(p.source_order_id, p.source_order_item_id), p);
 
-    // Create run row FIRST so every record can reference it
     const { data: runRow } = await supabase.from("core_fabrication_fund_runs").insert({
       run_type: "process_sales",
       status: "completed",
@@ -131,13 +156,13 @@ serve(async (req) => {
     }).select().single();
     runId = runRow?.id ?? null;
 
-
-    // ---- Pass 1: confirmed orders → generate movements / pendings (BATCHED) ----
-    const fundDeltas = new Map<string, number>();  // fund_id -> delta
+    const fundDeltas = new Map<string, number>();
     const pendingInserts: any[] = [];
     const pendingUpdates: { id: string; reason: string; suggested: string; order_status: string | null }[] = [];
     const movementInserts: any[] = [];
     const resolvedPendingIds: string[] = [];
+
+    const incReason = (r: string) => { summary.by_reason[r] = (summary.by_reason[r] ?? 0) + 1; };
 
     const pageSize = 1000;
     let from = 0;
@@ -148,9 +173,7 @@ serve(async (req) => {
         .in("order_status", Array.from(CONFIRMED_STATUSES));
       if (periodStart) q = q.gte("order_datetime", periodStart);
       if (periodEnd) q = q.lte("order_datetime", periodEnd);
-      const { data: orders, error: ordErr } = await q
-        .order("order_id", { ascending: true })
-        .range(from, from + pageSize - 1);
+      const { data: orders, error: ordErr } = await q.order("order_id", { ascending: true }).range(from, from + pageSize - 1);
       if (ordErr) throw ordErr;
       if (!orders || orders.length === 0) break;
       summary.orders_checked += orders.length;
@@ -159,7 +182,7 @@ serve(async (req) => {
       const orderById = new Map(orders.map((o: any) => [o.order_id, o]));
       const { data: items } = await supabase
         .from("order_items")
-        .select("order_id, line_item_id, sku, parent_sku, product_name, quantity, line_total, unit_price")
+        .select("order_id, line_item_id, sku, parent_sku, product_id, variation_id, product_name, quantity, line_total, unit_price")
         .in("order_id", orderIds);
 
       for (const it of items ?? []) {
@@ -169,29 +192,31 @@ serve(async (req) => {
         const order = orderById.get(oid);
         if (!order) continue;
 
-        if (
-          movByKey.has(movKey(oid, iid, "sale_generated")) ||
-          movByKey.has(movKey(oid, iid, "sale_generated_non_restockable"))
-        ) {
+        if (movByKey.has(movKey(oid, iid, "sale_generated")) || movByKey.has(movKey(oid, iid, "sale_generated_non_restockable"))) {
           summary.skipped_existing += 1;
           continue;
         }
 
         const skuLower = (it.sku || it.parent_sku || "").toString().trim().toLowerCase();
-        const variant = skuLower ? skuToVariant.get(skuLower) : null;
-        const product = variant
-          ? productById.get(variant.core_product_id)
-          : (skuLower ? skuToProduct.get(skuLower) : null);
+        const wooProdId = it.product_id ? Number(it.product_id) : null;
+        const wooVarId = it.variation_id ? Number(it.variation_id) : null;
+
+        // Resolve product/variant by SKU, then by Woo IDs
+        let variant: any = skuLower ? skuToVariant.get(skuLower) : null;
+        if (!variant && wooVarId) variant = variationIdToVariant.get(wooVarId);
+        let product: any = variant ? productById.get(variant.core_product_id) : (skuLower ? skuToProduct.get(skuLower) : null);
+        if (!product && wooProdId) product = wooProductIdToProduct.get(wooProdId);
 
         const queuePending = (reason: string, suggested: string) => {
           const key = pendKey(oid, iid);
           const existing = pendByKey.get(key);
           if (existing) {
-            if (existing.status === "ignored" || existing.status === "resolved") return;
+            if (existing.status === "ignored" || existing.status === "resolved" || existing.status === "processed") return;
             pendingUpdates.push({ id: existing.id, reason, suggested, order_status: order?.order_status ?? null });
           } else {
             pendingInserts.push({
               source_order_id: oid, source_order_item_id: iid,
+              woo_product_id: wooProdId, woo_variation_id: wooVarId,
               woo_sku: it.sku ?? it.parent_sku ?? null,
               product_name: it.product_name ?? null,
               quantity: it.quantity ?? null, revenue: it.line_total ?? null,
@@ -199,19 +224,29 @@ serve(async (req) => {
               reason, suggested_action: suggested, status: "pending",
               fabrication_fund_run_id: runId,
             });
-            // Mark so we don't double-insert within same run
             pendByKey.set(key, { id: "queued", status: "pending" });
           }
           summary.pending_items_created += 1;
+          incReason(reason);
         };
 
-        if (!skuLower) { queuePending("missing_sku", "Asignar SKU al producto Woo"); continue; }
-        if (!product) { queuePending("product_not_in_core", "Crear Producto Core o asociar"); continue; }
+        if (!skuLower && !wooProdId) { queuePending("missing_sku", "Asignar SKU al producto Woo"); continue; }
+        if (!product) {
+          // Has variation_id but no Core mapping for that variation
+          if (wooVarId && !variant) {
+            queuePending("variation_not_mapped", "Asociar la variante Woo a una variante Core");
+          } else {
+            queuePending("product_not_in_core", "Crear Producto Core o asociar al SKU/Woo ID");
+          }
+          continue;
+        }
         const unitCost = Number(product.unit_cost ?? 0);
-        if (!unitCost || unitCost <= 0) { queuePending("missing_cost", "Asignar estructura de costos / snapshot"); continue; }
+        if (!unitCost || unitCost <= 0) { queuePending("unit_cost_missing", "Asignar estructura de costos o snapshot al Producto Core"); continue; }
 
         const isNonRestock =
-          restockSkuSet.has(skuLower) ||
+          (skuLower && restockSkuSet.has(skuLower)) ||
+          (wooProdId && restockWooProdSet.has(wooProdId)) ||
+          (wooVarId && restockWooVarSet.has(wooVarId)) ||
           restockCoreProdSet.has(product.id) ||
           (variant && restockCoreVarSet.has(variant.id)) ||
           product.is_restockable === false ||
@@ -231,6 +266,8 @@ serve(async (req) => {
           source: "woocommerce",
           source_order_id: oid,
           source_order_item_id: iid,
+          woo_product_id: wooProdId,
+          woo_variation_id: wooVarId,
           core_product_id: product.id,
           core_variant_id: variant?.id ?? null,
           sku: it.sku ?? it.parent_sku ?? null,
@@ -258,12 +295,10 @@ serve(async (req) => {
       from += pageSize;
     }
 
-    // BULK INSERT movements in chunks
     const chunk = <T,>(arr: T[], n: number) => { const out: T[][] = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
     for (const batch of chunk(movementInserts, 500)) {
       const { error, count } = await supabase.from("core_fabrication_fund_movements").insert(batch, { count: "exact" });
       if (error) {
-        // Fallback: insert one-by-one to skip duplicates
         for (const row of batch) {
           const { error: e1 } = await supabase.from("core_fabrication_fund_movements").insert(row);
           if (!e1) summary.movements_created += 1;
@@ -274,48 +309,37 @@ serve(async (req) => {
         summary.movements_created += count ?? batch.length;
       }
     }
-    // BULK INSERT pendings
     for (const batch of chunk(pendingInserts, 500)) {
       const { error } = await supabase.from("core_fabrication_fund_pending_items").insert(batch);
       if (error) { summary.errors_count += 1; summary.errors.push({ error: error.message }); }
     }
-    // BULK UPDATE existing pendings (reason changed)
     for (const u of pendingUpdates) {
       await supabase.from("core_fabrication_fund_pending_items")
         .update({ reason: u.reason, suggested_action: u.suggested, order_status: u.order_status, fabrication_fund_run_id: runId })
         .eq("id", u.id);
     }
-    // BULK resolve pendings that now have a movement
     if (resolvedPendingIds.length > 0) {
       for (const batch of chunk(resolvedPendingIds, 500)) {
         await supabase.from("core_fabrication_fund_pending_items")
-          .update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: userId })
+          .update({ status: "processed", resolved_at: new Date().toISOString(), resolved_by: userId })
           .in("id", batch);
       }
     }
-    // Apply fund deltas in a single update per fund
     for (const [fundId, delta] of fundDeltas) {
       const cur = await currentFund(supabase, fundId);
-      await supabase.from("core_fabrication_funds")
-        .update({ available_amount: roundAmt(cur + delta) })
-        .eq("id", fundId);
+      await supabase.from("core_fabrication_funds").update({ available_amount: roundAmt(cur + delta) }).eq("id", fundId);
     }
 
-
-
-    // ---- Pass 2: reverting orders → generate reversals (BATCHED) ----
+    // Reversals
     const revInserts: any[] = [];
     const revOriginalIds: string[] = [];
     const revFundDeltas = new Map<string, number>();
-
     let from2 = 0;
     while (true) {
       const { data: orders2 } = await supabase
-        .from("orders")
-        .select("order_id, order_status")
+        .from("orders").select("order_id, order_status")
         .in("order_status", Array.from(REVERTING_STATUSES))
-        .order("order_id", { ascending: true })
-        .range(from2, from2 + pageSize - 1);
+        .order("order_id", { ascending: true }).range(from2, from2 + pageSize - 1);
       if (!orders2 || orders2.length === 0) break;
       const orderIds2 = orders2.map((o: any) => o.order_id);
       const orderStatusMap = new Map(orders2.map((o: any) => [o.order_id, o.order_status]));
@@ -330,35 +354,22 @@ serve(async (req) => {
         if (movByKey.has(movKey(m.source_order_id, m.source_order_item_id, "reversal"))) continue;
         const status = orderStatusMap.get(m.source_order_id);
         revInserts.push({
-          fund_id: m.fund_id,
-          fabrication_fund_run_id: runId,
-          movement_type: "reversal",
-          source: "system",
-          source_order_id: m.source_order_id,
-          source_order_item_id: m.source_order_item_id,
-          core_product_id: m.core_product_id,
-          core_variant_id: m.core_variant_id,
-          sku: m.sku,
-          product_name: m.product_name,
-          quantity: null,
-          amount: -Number(m.amount),
-          currency: m.currency,
-          related_movement_id: m.id,
-          reason: `Reverso por estado ${status}`,
-          status: "posted",
-          created_by: userId,
+          fund_id: m.fund_id, fabrication_fund_run_id: runId, movement_type: "reversal", source: "system",
+          source_order_id: m.source_order_id, source_order_item_id: m.source_order_item_id,
+          core_product_id: m.core_product_id, core_variant_id: m.core_variant_id,
+          sku: m.sku, product_name: m.product_name, quantity: null,
+          amount: -Number(m.amount), currency: m.currency,
+          related_movement_id: m.id, reason: `Reverso por estado ${status}`,
+          status: "posted", created_by: userId,
         });
         revOriginalIds.push(m.id);
         revFundDeltas.set(m.fund_id, (revFundDeltas.get(m.fund_id) ?? 0) - Number(m.amount));
         movByKey.set(movKey(m.source_order_id, m.source_order_item_id, "reversal"), { id: "queued" });
       }
-
       if (orders2.length < pageSize) break;
       from2 += pageSize;
     }
-
-    const chunkR = <T,>(arr: T[], n: number) => { const out: T[][] = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
-    for (const batch of chunkR(revInserts, 500)) {
+    for (const batch of chunk(revInserts, 500)) {
       const { error, count } = await supabase.from("core_fabrication_fund_movements").insert(batch, { count: "exact" });
       if (error) {
         for (const row of batch) {
@@ -371,32 +382,25 @@ serve(async (req) => {
       }
     }
     if (revOriginalIds.length > 0) {
-      for (const batch of chunkR(revOriginalIds, 500)) {
+      for (const batch of chunk(revOriginalIds, 500)) {
         await supabase.from("core_fabrication_fund_movements").update({ status: "reversed" }).in("id", batch);
       }
     }
     for (const [fundId, delta] of revFundDeltas) {
       const cur = await currentFund(supabase, fundId);
-      await supabase.from("core_fabrication_funds")
-        .update({ available_amount: roundAmt(cur + delta) })
-        .eq("id", fundId);
+      await supabase.from("core_fabrication_funds").update({ available_amount: roundAmt(cur + delta) }).eq("id", fundId);
     }
-
 
     const finalStatus = summary.errors_count > 0 ? "completed_warnings" : "completed";
     if (runId) {
       await supabase.from("core_fabrication_fund_runs").update({
         status: finalStatus,
-        orders_checked: summary.orders_checked,
-        items_checked: summary.items_checked,
-        movements_created: summary.movements_created,
-        pending_items_created: summary.pending_items_created,
-        reversals_created: summary.reversals_created,
-        errors_count: summary.errors_count,
+        orders_checked: summary.orders_checked, items_checked: summary.items_checked,
+        movements_created: summary.movements_created, pending_items_created: summary.pending_items_created,
+        reversals_created: summary.reversals_created, errors_count: summary.errors_count,
         summary,
       }).eq("id", runId);
     }
-
     return json({ ok: true, run_id: runId, summary });
   } catch (e) {
     console.error("process-fabrication-funds error:", e);
@@ -408,47 +412,155 @@ serve(async (req) => {
     }
     return json({ error: String((e as Error).message) }, 500);
   }
-});
+}
+
+// ============================================================
+// REPROCESS PENDING
+// ============================================================
+async function runReprocess(supabase: any, userId: string, pendingIds?: string[]) {
+  const summary: any = {
+    pending_processed: 0, movements_created: 0, pending_skipped: 0,
+    errors_count: 0, errors: [] as any[], by_fund: { general: 0, non_restockable: 0 },
+  };
+
+  let runId: string | null = null;
+  try {
+    const { data: runRow } = await supabase.from("core_fabrication_fund_runs").insert({
+      run_type: "reprocess_pending", status: "completed", summary: {}, created_by: userId,
+    }).select().single();
+    runId = runRow?.id ?? null;
+
+    // Build pending query
+    let pq = supabase.from("core_fabrication_fund_pending_items").select("*").neq("status", "processed").neq("status", "ignored");
+    if (pendingIds && pendingIds.length > 0) {
+      pq = pq.in("id", pendingIds);
+    } else {
+      // Only auto-process resolved/linked/non_restockable
+      pq = pq.in("status", ["linked", "non_restockable", "resolved"]);
+    }
+    const { data: pendings, error: pErr } = await pq;
+    if (pErr) throw pErr;
+
+    const [{ data: funds }, { data: coreProducts }] = await Promise.all([
+      supabase.from("core_fabrication_funds").select("id, fund_type, currency, core_product_id, available_amount"),
+      supabase.from("core_products").select("id, name, unit_cost, currency, cost_snapshot, is_restockable"),
+    ]);
+    const generalFund = (funds ?? []).find((f: any) => f.fund_type === "general" && f.currency === "USD" && !f.core_product_id);
+    const nonRestockFund = (funds ?? []).find((f: any) => f.fund_type === "non_restockable" && f.currency === "USD" && !f.core_product_id);
+    if (!generalFund || !nonRestockFund) return json({ error: "missing_base_funds" }, 500);
+    const productById = new Map<string, any>();
+    for (const p of coreProducts ?? []) productById.set(p.id, p);
+
+    const fundDeltas = new Map<string, number>();
+    const movementInserts: any[] = [];
+    const resolvedIds: string[] = [];
+    const skippedUpdates: { id: string; reason: string }[] = [];
+
+    for (const p of pendings ?? []) {
+      // Decide path
+      const isNonRestock = !!p.marked_non_restockable;
+      let product: any = null;
+      if (p.linked_core_product_id) product = productById.get(p.linked_core_product_id);
+
+      // Non-restockable can have no linked product → bill at line revenue divided? No, must have product.
+      if (!product) {
+        skippedUpdates.push({ id: p.id, reason: "unit_cost_missing" });
+        summary.pending_skipped += 1;
+        continue;
+      }
+      const unitCost = Number(product.unit_cost ?? 0);
+      if (!unitCost || unitCost <= 0) {
+        skippedUpdates.push({ id: p.id, reason: "unit_cost_missing" });
+        summary.pending_skipped += 1;
+        continue;
+      }
+      const qty = Number(p.quantity ?? 0) || 0;
+      if (qty <= 0) {
+        skippedUpdates.push({ id: p.id, reason: "sync_error" });
+        summary.pending_skipped += 1;
+        continue;
+      }
+      const fund = isNonRestock ? nonRestockFund : generalFund;
+      const movementType = isNonRestock ? "sale_generated_non_restockable" : "sale_generated";
+      const amount = +(qty * unitCost).toFixed(4);
+
+      movementInserts.push({
+        fund_id: fund.id, fabrication_fund_run_id: runId,
+        movement_type: movementType, source: "reprocess_pending",
+        source_order_id: p.source_order_id, source_order_item_id: p.source_order_item_id,
+        woo_product_id: p.woo_product_id, woo_variation_id: p.woo_variation_id,
+        core_product_id: product.id, core_variant_id: p.linked_core_variant_id ?? null,
+        sku: p.woo_sku, product_name: p.product_name ?? product.name,
+        quantity: qty, unit_cost_snapshot: unitCost, cost_snapshot_data: product.cost_snapshot ?? null,
+        amount, currency: product.currency || "USD",
+        reason: isNonRestock ? "Reprocesado (no restockeable)" : "Reprocesado tras resolver pendiente",
+        status: "posted", created_by: userId,
+      });
+      fundDeltas.set(fund.id, (fundDeltas.get(fund.id) ?? 0) + amount);
+      resolvedIds.push(p.id);
+      if (isNonRestock) summary.by_fund.non_restockable += 1; else summary.by_fund.general += 1;
+    }
+
+    const chunk = <T,>(arr: T[], n: number) => { const o: T[][] = []; for (let i = 0; i < arr.length; i += n) o.push(arr.slice(i, i + n)); return o; };
+    for (const batch of chunk(movementInserts, 500)) {
+      const { error, count } = await supabase.from("core_fabrication_fund_movements").insert(batch, { count: "exact" });
+      if (error) {
+        for (const row of batch) {
+          const { error: e1 } = await supabase.from("core_fabrication_fund_movements").insert(row);
+          if (!e1) summary.movements_created += 1;
+          else if ((e1 as any).code === "23505") {
+            // Duplicate movement; still mark pending resolved
+          } else { summary.errors_count += 1; summary.errors.push({ error: e1.message }); }
+        }
+      } else {
+        summary.movements_created += count ?? batch.length;
+      }
+    }
+    if (resolvedIds.length > 0) {
+      for (const batch of chunk(resolvedIds, 500)) {
+        await supabase.from("core_fabrication_fund_pending_items")
+          .update({ status: "processed", resolved_at: new Date().toISOString(), resolved_by: userId, last_action_at: new Date().toISOString(), last_action_by: userId })
+          .in("id", batch);
+      }
+      summary.pending_processed = resolvedIds.length;
+    }
+    for (const u of skippedUpdates) {
+      await supabase.from("core_fabrication_fund_pending_items")
+        .update({ reason: u.reason, last_action_at: new Date().toISOString(), last_action_by: userId })
+        .eq("id", u.id);
+    }
+    for (const [fundId, delta] of fundDeltas) {
+      const cur = await currentFund(supabase, fundId);
+      await supabase.from("core_fabrication_funds").update({ available_amount: roundAmt(cur + delta) }).eq("id", fundId);
+    }
+
+    if (runId) {
+      await supabase.from("core_fabrication_fund_runs").update({
+        status: summary.errors_count > 0 ? "completed_warnings" : "completed",
+        movements_created: summary.movements_created,
+        pending_items_created: 0,
+        reversals_created: 0,
+        errors_count: summary.errors_count,
+        summary,
+      }).eq("id", runId);
+    }
+    return json({ ok: true, run_id: runId, summary });
+  } catch (e) {
+    console.error("reprocess-pending error:", e);
+    if (runId) {
+      await supabase.from("core_fabrication_fund_runs").update({
+        status: "failed", summary: { ...summary, error: String((e as Error).message) },
+      }).eq("id", runId);
+    }
+    return json({ error: String((e as Error).message) }, 500);
+  }
+}
 
 function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 function roundAmt(n: number) { return Math.round(n * 10000) / 10000; }
 async function currentFund(supabase: any, id: string) {
   const { data } = await supabase.from("core_fabrication_funds").select("available_amount").eq("id", id).single();
   return Number(data?.available_amount ?? 0);
 }
-async function upsertPending(opts: {
-  supabase: any; pendByKey: Map<string, any>; oid: number; iid: number | null; it: any; order: any;
-  reason: string; suggested: string; runId?: string | null;
-}) {
-  const { supabase, pendByKey, oid, iid, it, order, reason, suggested, runId } = opts;
-  const key = `${oid}|${iid}`;
-  const existing = pendByKey.get(key);
-  const payload = {
-    source_order_id: oid,
-    source_order_item_id: iid,
-    woo_sku: it.sku ?? it.parent_sku ?? null,
-    product_name: it.product_name ?? null,
-    quantity: it.quantity ?? null,
-    revenue: it.line_total ?? null,
-    order_status: order?.order_status ?? null,
-    reason,
-    suggested_action: suggested,
-    status: "pending",
-    fabrication_fund_run_id: runId ?? null,
-  };
-  if (existing) {
-    if (existing.status === "ignored" || existing.status === "resolved") return;
-    await supabase.from("core_fabrication_fund_pending_items")
-      .update({ reason, suggested_action: suggested, order_status: order?.order_status ?? null, fabrication_fund_run_id: runId ?? null })
-      .eq("id", existing.id);
-  } else {
-    const { data } = await supabase.from("core_fabrication_fund_pending_items").insert(payload).select().single();
-    if (data) pendByKey.set(key, data);
-  }
-}
-
