@@ -267,6 +267,8 @@ export default function CoreRestockControl() {
       start_date: form.start_date,
       end_date: form.end_date || null,
       replacement_core_product_id: form.replacement_core_product_id || null,
+      replacement_core_variant_id: form.replacement_core_variant_id || null,
+      replacement_variant_label: form.replacement_variant_label || null,
       replacement_sku: form.replacement_sku || null,
       notes: form.notes || null,
       updated_by: user?.id ?? null,
