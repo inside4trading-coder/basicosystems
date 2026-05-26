@@ -35,6 +35,8 @@ type Product = {
   color: string | null;
   commercial_status: string;
   is_restockable: boolean;
+  product_priority: string | null;
+  replenishment_mode: string | null;
   unit_cost: number;
   currency: string;
   estimated_sale_price: number | null;
@@ -51,6 +53,15 @@ const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secon
   inactive: { label: "Inactivo", variant: "secondary" },
   discontinued: { label: "Descontinuado", variant: "destructive" },
   stock_only: { label: "Solo venta stock", variant: "secondary" },
+};
+
+const PRIORITY_LABELS: Record<string, { label: string; cls: string }> = {
+  core_essential: { label: "Core / Esencial", cls: "bg-red-600 text-white border-transparent" },
+  regular: { label: "Regular", cls: "bg-muted text-foreground" },
+  seasonal: { label: "Temporada", cls: "bg-amber-500 text-black border-transparent" },
+  limited_drop: { label: "Drop limitado", cls: "bg-purple-600 text-white border-transparent" },
+  test: { label: "Prueba", cls: "bg-blue-500 text-white border-transparent" },
+  low: { label: "Baja prioridad", cls: "bg-muted text-muted-foreground" },
 };
 
 const PRODUCT_TYPES = ["Franela", "Hoodie", "Jogger", "Cargo", "Short", "Gorra", "Accesorio", "Producto terminado", "Otro"];
