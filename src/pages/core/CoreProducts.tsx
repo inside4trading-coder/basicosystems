@@ -268,7 +268,14 @@ export default function CoreProducts() {
                 const st = STATUS_LABELS[p.commercial_status] ?? { label: p.commercial_status, variant: "outline" as const };
                 return (
                   <TableRow key={p.id}>
-                    <TableCell className="font-mono font-semibold">{p.core_sku}</TableCell>
+                    <TableCell className="font-mono font-semibold">
+                      <div>{p.core_sku}</div>
+                      <div className="flex gap-1 mt-1">
+                        {p.sku_source === "woocommerce" && <Badge variant="outline" className="text-[10px] py-0 px-1">Woo</Badge>}
+                        {p.sync_status === "draft_from_woo" && <Badge variant="secondary" className="text-[10px] py-0 px-1">borrador Woo</Badge>}
+                        {p.sync_status === "conflict" && <Badge variant="destructive" className="text-[10px] py-0 px-1">conflicto</Badge>}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="font-medium">{p.name}</div>
                       {p.color && <div className="text-xs text-muted-foreground">{p.color}</div>}
