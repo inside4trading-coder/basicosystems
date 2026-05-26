@@ -428,10 +428,10 @@ export default function CoreRestockControl() {
             const isCoreV = t === "core_variant";
             const isManual = t === "manual_sku";
             const wooParents = wooCandidates.filter(c => !c.woo_variation_id);
-            const wooVariations = wooCandidates.filter(c => c.woo_variation_id && (!form.woo_product_id || c.woo_product_id === form.woo_product_id));
-            const variantsForProd = coreVariants.filter(v => !form.core_product_id || v.core_product_id === form.core_product_id);
             const selectedWooParent = wooParents.find(c => c.woo_product_id === form.woo_product_id);
-            const selectedWooVar = wooCandidates.find(c => c.woo_variation_id === form.woo_variation_id);
+            const parentVariations: any[] = Array.isArray(selectedWooParent?.woo_variations) ? (selectedWooParent!.woo_variations as any[]) : [];
+            const variantsForProd = coreVariants.filter(v => !form.core_product_id || v.core_product_id === form.core_product_id);
+            const selectedWooVar = parentVariations.find((v: any) => (v?.id ?? v?.variation_id) === form.woo_variation_id);
             const selectedCoreP = coreProducts.find(p => p.id === form.core_product_id);
             const selectedCoreV = coreVariants.find(v => v.id === form.core_variant_id);
 
