@@ -177,6 +177,8 @@ export default function CoreRestockControl() {
       start_date: r.start_date,
       end_date: r.end_date,
       replacement_core_product_id: r.replacement_core_product_id ?? undefined,
+      replacement_core_variant_id: r.replacement_core_variant_id ?? undefined,
+      replacement_variant_label: r.replacement_variant_label ?? "",
       replacement_sku: r.replacement_sku ?? "",
       notes: r.notes ?? "",
     });
