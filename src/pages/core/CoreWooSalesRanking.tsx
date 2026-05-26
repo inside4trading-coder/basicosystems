@@ -507,7 +507,7 @@ export default function CoreWooSalesRanking() {
                       ? { label: "En Core", cls: "bg-green-600 text-white" }
                       : vStatus === "sin_padre"
                         ? { label: "Sin padre", cls: "bg-muted text-muted-foreground" }
-                        : { label: "Falta en Core", cls: "bg-red-600 text-white" };
+                        : { label: "Falta en Catálogo", cls: "bg-red-600 text-white" };
                     const rowCls = vStatus === "en_core"
                       ? "bg-green-50/40 dark:bg-green-950/10"
                       : vStatus === "sin_padre"
