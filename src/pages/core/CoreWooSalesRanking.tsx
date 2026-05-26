@@ -412,8 +412,8 @@ export default function CoreWooSalesRanking() {
           <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="ya_en_core">Ya en Core</SelectItem>
-            <SelectItem value="no_en_core">No en Core</SelectItem>
+            <SelectItem value="ya_en_core">En Catálogo</SelectItem>
+            <SelectItem value="no_en_core">Faltan en Catálogo</SelectItem>
             <SelectItem value="conflicto">Conflictos</SelectItem>
           </SelectContent>
         </Select>
