@@ -182,7 +182,7 @@ async function runProcessSales(
       const orderById = new Map(orders.map((o: any) => [o.order_id, o]));
       const { data: items } = await supabase
         .from("order_items")
-        .select("order_id, line_item_id, sku, parent_sku, product_id, variation_id, product_name, quantity, line_total, unit_price")
+        .select("order_id, line_item_id, sku, parent_sku, product_id, variation_id, product_name, quantity, line_total, line_total_usd, unit_price")
         .in("order_id", orderIds);
 
       for (const it of items ?? []) {
