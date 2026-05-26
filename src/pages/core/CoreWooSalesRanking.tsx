@@ -89,8 +89,8 @@ const STATUS_COLORS: Record<ProductAgg["coreStatus"], string> = {
 };
 
 const STATUS_BADGE: Record<ProductAgg["coreStatus"], { label: string; cls: string }> = {
-  ya_en_core: { label: "Ya está en Core", cls: "bg-green-600 text-white" },
-  no_en_core: { label: "No está en Core", cls: "bg-red-600 text-white" },
+  ya_en_core: { label: "En Catálogo de Fabricación", cls: "bg-green-600 text-white" },
+  no_en_core: { label: "Falta en Catálogo", cls: "bg-red-600 text-white" },
   conflicto: { label: "Conflicto SKU", cls: "bg-yellow-500 text-black" },
   ignorado: { label: "Ignorado", cls: "bg-muted text-muted-foreground" },
   no_fabricable: { label: "No fabricable", cls: "bg-muted text-muted-foreground" },
