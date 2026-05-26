@@ -548,6 +548,10 @@ export type Database = {
           total_variable_costs: number
           updated_at: string
           updated_by: string | null
+          woo_permalink: string | null
+          woo_product_id: number | null
+          woo_product_name: string | null
+          woo_variation_id: number | null
         }
         Insert: {
           base_currency?: string
@@ -574,6 +578,10 @@ export type Database = {
           total_variable_costs?: number
           updated_at?: string
           updated_by?: string | null
+          woo_permalink?: string | null
+          woo_product_id?: number | null
+          woo_product_name?: string | null
+          woo_variation_id?: number | null
         }
         Update: {
           base_currency?: string
@@ -600,6 +608,10 @@ export type Database = {
           total_variable_costs?: number
           updated_at?: string
           updated_by?: string | null
+          woo_permalink?: string | null
+          woo_product_id?: number | null
+          woo_product_name?: string | null
+          woo_variation_id?: number | null
         }
         Relationships: []
       }
