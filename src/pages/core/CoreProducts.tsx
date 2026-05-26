@@ -294,6 +294,7 @@ export default function CoreProducts() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8"></TableHead>
                 <TableHead>SKU Core</TableHead>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Tipo</TableHead>
@@ -307,49 +308,95 @@ export default function CoreProducts() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Cargando…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Cargando…</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Sin productos</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Sin productos</TableCell></TableRow>
               ) : filtered.map(p => {
                 const st = STATUS_LABELS[p.commercial_status] ?? { label: p.commercial_status, variant: "outline" as const };
+                const isOpen = expanded.has(p.id);
+                const vars = variantsByProduct.get(p.id) ?? [];
+                const activeCount = vars.filter(v => v.status === "active").length;
                 return (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-mono font-semibold">
-                      <div>{p.core_sku}</div>
-                      <div className="flex gap-1 mt-1">
-                        {p.sku_source === "woocommerce" && <Badge variant="outline" className="text-[10px] py-0 px-1">Woo</Badge>}
-                        {p.sync_status === "draft_from_woo" && <Badge variant="secondary" className="text-[10px] py-0 px-1">borrador Woo</Badge>}
-                        {p.sync_status === "conflict" && <Badge variant="destructive" className="text-[10px] py-0 px-1">conflicto</Badge>}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{p.name}</div>
-                      {p.color && <div className="text-xs text-muted-foreground">{p.color}</div>}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{p.product_type || "—"}</TableCell>
-                    <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
-                    <TableCell className="text-center">
-                      <Switch checked={p.is_restockable} onCheckedChange={() => toggleRestock(p)} />
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{Number(p.unit_cost).toFixed(2)} {p.currency}</TableCell>
-                    <TableCell className="text-xs">
-                      {p.woo_product_id ? (
-                        <span className="text-muted-foreground">#{p.woo_product_id}{p.woo_product_name ? ` · ${p.woo_product_name}` : ""}</span>
-                      ) : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{new Date(p.updated_at).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => navigate(`/core/productos/${p.id}`)} title="Ver/Editar"><Eye className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => navigate(`/core/productos/${p.id}`)} title="Editar"><Pencil className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => duplicate(p)} title="Duplicar"><Copy className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => toggleStatus(p)} title={p.commercial_status === "active" ? "Desactivar" : "Activar"}>
-                          {p.commercial_status === "active" ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                  <Fragment key={p.id}>
+                    <TableRow className="cursor-pointer" onClick={() => toggleExpand(p)}>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleExpand(p)} title="Ver tallas">
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setToDelete(p)} title="Eliminar"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                      </TableCell>
+                      <TableCell className="font-mono font-semibold">
+                        <div>{p.core_sku}</div>
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          {p.sku_source === "woocommerce" && <Badge variant="outline" className="text-[10px] py-0 px-1">Woo</Badge>}
+                          {p.sync_status === "draft_from_woo" && <Badge variant="secondary" className="text-[10px] py-0 px-1">borrador Woo</Badge>}
+                          {p.sync_status === "conflict" && <Badge variant="destructive" className="text-[10px] py-0 px-1">conflicto</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{p.name}</div>
+                        {p.color && <div className="text-xs text-muted-foreground">{p.color}</div>}
+                        {isOpen && vars.length > 0 && (
+                          <div className="text-xs text-muted-foreground mt-1">{activeCount} de {vars.length} tallas activas</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{p.product_type || "—"}</TableCell>
+                      <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
+                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                        <Switch checked={p.is_restockable} onCheckedChange={() => toggleRestock(p)} />
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{Number(p.unit_cost).toFixed(2)} {p.currency}</TableCell>
+                      <TableCell className="text-xs">
+                        {p.woo_product_id ? (
+                          <span className="text-muted-foreground">#{p.woo_product_id}{p.woo_product_name ? ` · ${p.woo_product_name}` : ""}</span>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{new Date(p.updated_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => navigate(`/core/productos/${p.id}`)} title="Ver/Editar"><Eye className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => navigate(`/core/productos/${p.id}`)} title="Editar"><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => duplicate(p)} title="Duplicar"><Copy className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => toggleStatus(p)} title={p.commercial_status === "active" ? "Desactivar" : "Activar"}>
+                            {p.commercial_status === "active" ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setToDelete(p)} title="Eliminar"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {isOpen && (
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableCell></TableCell>
+                        <TableCell colSpan={9} className="py-3">
+                          {vars.length === 0 ? (
+                            <div className="text-xs text-muted-foreground italic">Este producto no tiene tallas/variaciones configuradas. <Button variant="link" size="sm" className="h-auto p-0 ml-1" onClick={() => navigate(`/core/productos/${p.id}`)}>Configurar</Button></div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tallas / variaciones en Core</div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {vars.map(v => (
+                                  <div key={v.id} className={cn(
+                                    "flex items-center justify-between gap-3 rounded-md border px-3 py-2 bg-background",
+                                    v.status !== "active" && "opacity-60"
+                                  )}>
+                                    <div className="min-w-0">
+                                      <div className="font-semibold text-sm">Talla {v.size}</div>
+                                      <div className="text-[11px] font-mono text-muted-foreground truncate">{v.variant_sku || v.woo_sku || "—"}</div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <span className={cn("text-[10px] font-medium", v.status === "active" ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
+                                        {v.status === "active" ? "ON" : "OFF"}
+                                      </span>
+                                      <Switch checked={v.status === "active"} onCheckedChange={() => toggleVariantStatus(v)} />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
                 );
               })}
             </TableBody>
