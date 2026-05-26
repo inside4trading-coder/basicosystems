@@ -51,6 +51,7 @@ export default function CoreCostStructures() {
   const [fStatus, setFStatus] = useState("all");
   const [fType, setFType] = useState("all");
   const [fCurrency, setFCurrency] = useState("all");
+  const [fWoo, setFWoo] = useState<"all" | "connected" | "missing">("all");
 
   const [toDelete, setToDelete] = useState<CostStructure | null>(null);
   const [viewing, setViewing] = useState<CostStructure | null>(null);
