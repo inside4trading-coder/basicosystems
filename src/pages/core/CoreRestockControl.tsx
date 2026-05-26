@@ -200,12 +200,18 @@ export default function CoreRestockControl() {
   function pickWooParent(c: WooCand) {
     setForm(f => ({ ...f, woo_product_id: c.woo_product_id, woo_variation_id: undefined, sku: c.woo_sku ?? "", product_name: c.woo_product_name ?? "", variant_label: "" }));
   }
-  function pickWooVariation(c: WooCand) {
-    const parent = wooCandidates.find(x => x.woo_product_id === c.woo_product_id && !x.woo_variation_id);
-    const variantLabel = Array.isArray(c.woo_variations)
-      ? c.woo_variations.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ")
-      : "";
-    setForm(f => ({ ...f, woo_product_id: c.woo_product_id, woo_variation_id: c.woo_variation_id ?? undefined, sku: c.woo_sku ?? "", product_name: parent?.woo_product_name ?? c.woo_product_name ?? "", variant_label: variantLabel }));
+  function pickWooVariation(parentCand: WooCand, v: any) {
+    const attrs = Array.isArray(v?.attributes) ? v.attributes : [];
+    const variantLabel = attrs.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ")
+      || v?.name || v?.title || "";
+    setForm(f => ({
+      ...f,
+      woo_product_id: parentCand.woo_product_id,
+      woo_variation_id: v?.id ?? v?.variation_id ?? undefined,
+      sku: v?.sku ?? parentCand.woo_sku ?? "",
+      product_name: parentCand.woo_product_name ?? "",
+      variant_label: variantLabel,
+    }));
   }
   function pickCoreProduct(p: { id: string; core_sku: string; name: string }) {
     setForm(f => ({ ...f, core_product_id: p.id, core_variant_id: undefined, sku: p.core_sku, product_name: p.name, variant_label: "" }));
@@ -422,10 +428,10 @@ export default function CoreRestockControl() {
             const isCoreV = t === "core_variant";
             const isManual = t === "manual_sku";
             const wooParents = wooCandidates.filter(c => !c.woo_variation_id);
-            const wooVariations = wooCandidates.filter(c => c.woo_variation_id && (!form.woo_product_id || c.woo_product_id === form.woo_product_id));
-            const variantsForProd = coreVariants.filter(v => !form.core_product_id || v.core_product_id === form.core_product_id);
             const selectedWooParent = wooParents.find(c => c.woo_product_id === form.woo_product_id);
-            const selectedWooVar = wooCandidates.find(c => c.woo_variation_id === form.woo_variation_id);
+            const parentVariations: any[] = Array.isArray(selectedWooParent?.woo_variations) ? (selectedWooParent!.woo_variations as any[]) : [];
+            const variantsForProd = coreVariants.filter(v => !form.core_product_id || v.core_product_id === form.core_product_id);
+            const selectedWooVar = parentVariations.find((v: any) => (v?.id ?? v?.variation_id) === form.woo_variation_id);
             const selectedCoreP = coreProducts.find(p => p.id === form.core_product_id);
             const selectedCoreV = coreVariants.find(v => v.id === form.core_variant_id);
 
@@ -472,7 +478,7 @@ export default function CoreRestockControl() {
                   </div>
                 )}
 
-                {isWooV && form.woo_product_id && wooVariations.length === 0 && (
+                {isWooV && form.woo_product_id && parentVariations.length === 0 && (
                   <div className="col-span-2">
                     <Alert variant="destructive">
                       <AlertTriangle className="h-4 w-4" />
@@ -485,13 +491,13 @@ export default function CoreRestockControl() {
                     </Alert>
                   </div>
                 )}
-                {isWooV && wooVariations.length > 0 && (
+                {isWooV && parentVariations.length > 0 && (
                   <div className="col-span-2">
                     <Label>Variación WooCommerce *</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full justify-between font-normal" disabled={!form.woo_product_id}>
-                          {selectedWooVar ? `${selectedWooVar.woo_sku ?? "—"} · ${form.variant_label ?? ""}` : "Selecciona una variación…"}
+                          {selectedWooVar ? `${selectedWooVar.sku ?? "—"} · ${form.variant_label ?? ""}` : "Selecciona una variación…"}
                           <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
                         </Button>
                       </PopoverTrigger>
@@ -501,13 +507,15 @@ export default function CoreRestockControl() {
                           <CommandList>
                             <CommandEmpty>Sin coincidencias.</CommandEmpty>
                             <CommandGroup>
-                              {wooVariations.slice(0, 300).map(c => {
-                                const label = Array.isArray(c.woo_variations) ? c.woo_variations.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ") : "";
+                              {parentVariations.slice(0, 300).map((v: any, idx: number) => {
+                                const attrs = Array.isArray(v?.attributes) ? v.attributes : [];
+                                const label = attrs.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ") || v?.name || `#${v?.id ?? idx}`;
+                                const vid = v?.id ?? v?.variation_id;
                                 return (
-                                  <CommandItem key={c.id} value={`${c.woo_sku ?? ""} ${label}`} onSelect={() => pickWooVariation(c)}>
-                                    <Check className={`mr-2 h-3.5 w-3.5 ${form.woo_variation_id === c.woo_variation_id ? "opacity-100" : "opacity-0"}`} />
-                                    <span className="font-mono text-xs mr-2">{c.woo_sku ?? "—"}</span>
-                                    <span>{label || `#${c.woo_variation_id}`}</span>
+                                  <CommandItem key={`${vid}-${idx}`} value={`${v?.sku ?? ""} ${label}`} onSelect={() => pickWooVariation(selectedWooParent!, v)}>
+                                    <Check className={`mr-2 h-3.5 w-3.5 ${form.woo_variation_id === vid ? "opacity-100" : "opacity-0"}`} />
+                                    <span className="font-mono text-xs mr-2">{v?.sku ?? "—"}</span>
+                                    <span>{label}</span>
                                   </CommandItem>
                                 );
                               })}
