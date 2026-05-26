@@ -251,6 +251,7 @@ export default function CoreWooCandidates() {
             <TabsTrigger value="ranking">Vendidos últimos 60 días</TabsTrigger>
             <TabsTrigger value="catalog">Catálogo Woo {countCatalog > 0 && <Badge variant="secondary" className="ml-2">{countCatalog}</Badge>}</TabsTrigger>
             <TabsTrigger value="conflicts">Conflictos {countConflicts > 0 && <Badge variant="destructive" className="ml-2">{countConflicts}</Badge>}</TabsTrigger>
+            <TabsTrigger value="requires_sku">Requiere SKU {countRequiresSku > 0 && <Badge variant="destructive" className="ml-2">{countRequiresSku}</Badge>}</TabsTrigger>
             <TabsTrigger value="ignored">No fabricables / Ignorados {countIgnored > 0 && <Badge variant="outline" className="ml-2">{countIgnored}</Badge>}</TabsTrigger>
           </TabsList>
 
