@@ -674,7 +674,7 @@ export default function CoreRestockControl() {
           })()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save}>{editing ? "Guardar cambios" : "Crear regla"}</Button>
+            <Button onClick={save} disabled={!isFormValid(form)}>{editing ? "Guardar cambios" : "Crear regla"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
