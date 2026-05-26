@@ -299,9 +299,9 @@ export default function CoreProductionOrders() {
       .eq("id", o.id);
     if (error) { toast.error(error.message); return; }
     await logCoreAudit({
-      table_name: "core_production_orders", record_id: o.id,
-      action: "change_status", field_changed: "status",
-      old_value: o.status, new_value: newStatus,
+      table: "core_production_orders", recordId: o.id,
+      action: "change_status", field: "status",
+      oldValue: o.status, newValue: newStatus,
     });
     toast.success("Estado actualizado");
     await load();
@@ -325,9 +325,9 @@ export default function CoreProductionOrders() {
       .eq("id", closeOpen.id);
     if (error) { toast.error(error.message); return; }
     await logCoreAudit({
-      table_name: "core_production_orders", record_id: closeOpen.id,
-      action: "manual_close", field_changed: "status",
-      old_value: closeOpen.status, new_value: "manually_closed",
+      table: "core_production_orders", recordId: closeOpen.id,
+      action: "manual_close", field: "status",
+      oldValue: closeOpen.status, newValue: "manually_closed",
     });
     toast.success("Orden cerrada manualmente");
     setCloseOpen(null); setCloseReason(""); setCloseNotes("");
@@ -347,9 +347,9 @@ export default function CoreProductionOrders() {
       .eq("id", cancelOpen.id);
     if (error) { toast.error(error.message); return; }
     await logCoreAudit({
-      table_name: "core_production_orders", record_id: cancelOpen.id,
-      action: "cancel", field_changed: "status",
-      old_value: cancelOpen.status, new_value: "cancelled",
+      table: "core_production_orders", recordId: cancelOpen.id,
+      action: "cancel", field: "status",
+      oldValue: cancelOpen.status, newValue: "cancelled",
     });
     toast.success("Orden cancelada");
     setCancelOpen(null); setCancelReason("");
