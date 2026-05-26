@@ -247,7 +247,6 @@ serve(async (req) => {
         }
 
         // Update fund balance
-        await supabase.rpc; // noop
         await supabase
           .from("core_fabrication_funds")
           .update({ available_amount: roundAmt((await currentFund(supabase, fund.id)) + amount) })
