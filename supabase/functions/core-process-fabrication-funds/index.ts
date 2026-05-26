@@ -166,7 +166,7 @@ serve(async (req) => {
         // Missing SKU
         if (!skuLower) {
           await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, reason: "missing_sku",
+            supabase, pendByKey, oid, iid, it, order, runId, reason: "missing_sku",
             suggested: "Asignar SKU al producto Woo",
           });
           summary.pending_items_created += 1;
@@ -176,7 +176,7 @@ serve(async (req) => {
         // No core product mapped
         if (!product) {
           await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, reason: "product_not_in_core",
+            supabase, pendByKey, oid, iid, it, order, runId, reason: "product_not_in_core",
             suggested: "Crear Producto Core o asociar",
           });
           summary.pending_items_created += 1;
@@ -187,7 +187,7 @@ serve(async (req) => {
         const unitCost = Number(product.unit_cost ?? 0);
         if (!unitCost || unitCost <= 0) {
           await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, reason: "missing_cost",
+            supabase, pendByKey, oid, iid, it, order, runId, reason: "missing_cost",
             suggested: "Asignar estructura de costos / snapshot",
           });
           summary.pending_items_created += 1;
@@ -205,7 +205,7 @@ serve(async (req) => {
         const qty = Number(it.quantity ?? 0) || 0;
         if (qty <= 0) {
           await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, reason: "sync_error",
+            supabase, pendByKey, oid, iid, it, order, runId, reason: "sync_error",
             suggested: "Cantidad inválida en la línea de pedido",
           });
           summary.pending_items_created += 1;
