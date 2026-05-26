@@ -78,6 +78,41 @@ export default function CoreProducts() {
     setNextSku(`${prefix}${String(last + 1).padStart(digits, "0")}`);
   }
 
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [variantsByProduct, setVariantsByProduct] = useState<Map<string, Variant[]>>(new Map());
+
+  async function loadVariants(productId: string) {
+    const { data, error } = await supabase
+      .from("core_product_variants")
+      .select("id, core_product_id, size, variant_sku, woo_sku, status, sort_order")
+      .eq("core_product_id", productId)
+      .order("sort_order", { nullsFirst: false })
+      .order("size");
+    if (error) { toast.error(error.message); return; }
+    setVariantsByProduct(prev => {
+      const m = new Map(prev);
+      m.set(productId, (data as any) ?? []);
+      return m;
+    });
+  }
+
+  async function toggleExpand(p: Product) {
+    const n = new Set(expanded);
+    if (n.has(p.id)) { n.delete(p.id); setExpanded(n); return; }
+    n.add(p.id);
+    setExpanded(n);
+    if (!variantsByProduct.has(p.id)) await loadVariants(p.id);
+  }
+
+  async function toggleVariantStatus(v: Variant) {
+    const newStatus = v.status === "active" ? "inactive" : "active";
+    const { error } = await supabase.from("core_product_variants").update({ status: newStatus }).eq("id", v.id);
+    if (error) return toast.error(error.message);
+    await logCoreAudit({ table: "core_product_variants", recordId: v.id, action: "update", field: "status", oldValue: v.status, newValue: newStatus });
+    toast.success(`Talla ${v.size}: ${newStatus === "active" ? "activada" : "desactivada"}`);
+    loadVariants(v.core_product_id);
+  }
+
   async function load() {
     setLoading(true);
     const { data, error } = await supabase
