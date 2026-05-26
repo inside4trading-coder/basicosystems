@@ -219,7 +219,7 @@ async function runProcessSales(
               woo_product_id: wooProdId, woo_variation_id: wooVarId,
               woo_sku: it.sku ?? it.parent_sku ?? null,
               product_name: it.product_name ?? null,
-              quantity: it.quantity ?? null, revenue: it.line_total ?? null,
+              quantity: it.quantity ?? null, revenue: it.line_total_usd ?? null,
               order_status: order?.order_status ?? null,
               reason, suggested_action: suggested, status: "pending",
               fabrication_fund_run_id: runId,
