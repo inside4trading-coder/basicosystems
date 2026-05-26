@@ -272,7 +272,12 @@ export default function CoreWooCandidates() {
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Buscar" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
             </div>
-            <CandidatesTable filter={(c) => c.status === "conflicto" || c.status === "requiere_sku"} />
+            <CandidatesTable filter={(c) => c.status === "conflicto"} />
+          </TabsContent>
+
+          <TabsContent value="requires_sku" className="mt-4 space-y-3">
+            <div className="text-xs text-muted-foreground">Productos WooCommerce sin SKU — asigna uno en Woo antes de crear el borrador Core.</div>
+            <CandidatesTable filter={(c) => c.status === "requiere_sku"} />
           </TabsContent>
 
           <TabsContent value="ignored" className="mt-4 space-y-3">
