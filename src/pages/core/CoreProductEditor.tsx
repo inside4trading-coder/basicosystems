@@ -54,6 +54,19 @@ const STATUS_OPTIONS = [
   { value: "discontinued", label: "Descontinuado" },
   { value: "stock_only", label: "Solo venta de stock existente" },
 ];
+const PRIORITY_OPTIONS = [
+  { value: "core_essential", label: "Core / Esencial" },
+  { value: "regular", label: "Regular" },
+  { value: "seasonal", label: "Temporada" },
+  { value: "limited_drop", label: "Drop limitado" },
+  { value: "test", label: "Prueba" },
+  { value: "low", label: "Baja prioridad" },
+];
+const REPLENISHMENT_OPTIONS = [
+  { value: "automatic", label: "Automático" },
+  { value: "manual_review", label: "Revisión manual" },
+  { value: "do_not_replenish", label: "No reponer" },
+];
 const SIZE_PRESETS = {
   prendas: ["S", "M", "L", "XL", "XXL"],
   pantalones: ["28", "30", "32", "34", "36", "38"],
