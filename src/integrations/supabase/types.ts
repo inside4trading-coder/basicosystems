@@ -2280,10 +2280,14 @@ export type Database = {
         Row: {
           analytic_category: string | null
           color: string | null
+          exchange_rate: number | null
           id: string
           item_cost: number | null
           line_item_id: number | null
           line_total: number | null
+          line_total_currency: string | null
+          line_total_original: number | null
+          line_total_usd: number | null
           order_id: number
           parent_category: string | null
           parent_sku: string | null
@@ -2299,10 +2303,14 @@ export type Database = {
         Insert: {
           analytic_category?: string | null
           color?: string | null
+          exchange_rate?: number | null
           id?: string
           item_cost?: number | null
           line_item_id?: number | null
           line_total?: number | null
+          line_total_currency?: string | null
+          line_total_original?: number | null
+          line_total_usd?: number | null
           order_id: number
           parent_category?: string | null
           parent_sku?: string | null
@@ -2318,10 +2326,14 @@ export type Database = {
         Update: {
           analytic_category?: string | null
           color?: string | null
+          exchange_rate?: number | null
           id?: string
           item_cost?: number | null
           line_item_id?: number | null
           line_total?: number | null
+          line_total_currency?: string | null
+          line_total_original?: number | null
+          line_total_usd?: number | null
           order_id?: number
           parent_category?: string | null
           parent_sku?: string | null
