@@ -78,8 +78,8 @@ const MOV_BADGE: Record<string, string> = {
   correction: "bg-yellow-100 text-yellow-800 border-yellow-300",
 };
 const PENDING_REASON_LABEL: Record<string, string> = {
-  product_not_in_core: "Producto no existe en Core",
-  missing_cost: "Producto Core sin costo",
+  product_not_in_core: "Producto no existe en Catálogo de Fabricación",
+  missing_cost: "Producto sin costo en Catálogo",
   missing_sku: "SKU faltante",
   sku_conflict: "Conflicto de SKU",
   not_fabricable: "No fabricable",
