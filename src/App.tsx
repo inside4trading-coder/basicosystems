@@ -109,6 +109,7 @@ const App = () => (
                 <Route path="templates-costos/nuevo" element={<CoreCostTemplateEditor />} />
                 <Route path="templates-costos/:id" element={<CoreCostTemplateEditor />} />
                 <Route path="productos" element={<CoreProducts />} />
+                <Route path="productos/pendientes" element={<CoreWooCandidates />} />
                 <Route path="productos/nuevo" element={<CoreProductEditor />} />
                 <Route path="productos/:id" element={<CoreProductEditor />} />
                 <Route path="partidas-fabricacion" element={<CorePlaceholder title="Partidas de Fabricación" />} />
