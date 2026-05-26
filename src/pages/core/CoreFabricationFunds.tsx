@@ -494,6 +494,112 @@ export default function CoreFabricationFunds() {
         </TabsContent>
       </Tabs>
 
+      {/* RUN DETAIL DIALOG */}
+      <Dialog open={!!runDetail} onOpenChange={(o) => !o && setRunDetail(null)}>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Procesamiento {runDetail ? new Date(runDetail.created_at).toLocaleString() : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {runDetail && (() => {
+            const runMovs = movements.filter(m => m.fabrication_fund_run_id === runDetail.id);
+            const runPends = pendings.filter(p => p.fabrication_fund_run_id === runDetail.id);
+            const reversals = runMovs.filter(m => m.movement_type === "reversal");
+            const sales = runMovs.filter(m => m.movement_type.startsWith("sale_generated"));
+            const errors: any[] = (runDetail.summary?.errors ?? []) as any[];
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                  <Card className="p-2"><div className="text-muted-foreground">Estado</div><div className="font-semibold">{runDetail.status}</div></Card>
+                  <Card className="p-2"><div className="text-muted-foreground">Movs creados</div><div className="font-semibold">{runDetail.movements_created}</div></Card>
+                  <Card className="p-2"><div className="text-muted-foreground">Pendientes</div><div className="font-semibold">{runDetail.pending_items_created}</div></Card>
+                  <Card className="p-2"><div className="text-muted-foreground">Reversos</div><div className="font-semibold">{runDetail.reversals_created}</div></Card>
+                  <Card className="p-2"><div className="text-muted-foreground">Errores</div><div className="font-semibold">{runDetail.errors_count}</div></Card>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Ventas / movimientos ({sales.length})</h3>
+                  <div className="rounded-lg border overflow-x-auto">
+                    <Table>
+                      <TableHeader><TableRow><TableHead>Tipo</TableHead><TableHead>SKU</TableHead><TableHead>Producto</TableHead><TableHead>Pedido</TableHead><TableHead className="text-right">Monto</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {sales.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center py-3 text-xs text-muted-foreground">Sin movimientos</TableCell></TableRow> :
+                          sales.map(m => (
+                            <TableRow key={m.id}>
+                              <TableCell><Badge variant="outline" className={MOV_BADGE[m.movement_type] ?? ""}>{MOV_LABEL[m.movement_type] ?? m.movement_type}</Badge></TableCell>
+                              <TableCell className="font-mono text-xs">{m.sku ?? "—"}</TableCell>
+                              <TableCell className="text-xs">{m.product_name ?? "—"}</TableCell>
+                              <TableCell className="font-mono text-xs">#{m.source_order_id}</TableCell>
+                              <TableCell className="text-right font-mono text-xs">{usd(m.amount)}</TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Reversos ({reversals.length})</h3>
+                  <div className="rounded-lg border overflow-x-auto">
+                    <Table>
+                      <TableHeader><TableRow><TableHead>SKU</TableHead><TableHead>Producto</TableHead><TableHead>Pedido</TableHead><TableHead>Motivo</TableHead><TableHead className="text-right">Monto</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {reversals.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center py-3 text-xs text-muted-foreground">Sin reversos</TableCell></TableRow> :
+                          reversals.map(m => (
+                            <TableRow key={m.id}>
+                              <TableCell className="font-mono text-xs">{m.sku ?? "—"}</TableCell>
+                              <TableCell className="text-xs">{m.product_name ?? "—"}</TableCell>
+                              <TableCell className="font-mono text-xs">#{m.source_order_id}</TableCell>
+                              <TableCell className="text-xs">{m.reason ?? "—"}</TableCell>
+                              <TableCell className="text-right font-mono text-xs text-destructive">{usd(m.amount)}</TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Pendientes ({runPends.length})</h3>
+                  <div className="rounded-lg border overflow-x-auto">
+                    <Table>
+                      <TableHeader><TableRow><TableHead>Pedido</TableHead><TableHead>SKU</TableHead><TableHead>Producto</TableHead><TableHead>Motivo</TableHead><TableHead>Estado</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {runPends.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center py-3 text-xs text-muted-foreground">Sin pendientes</TableCell></TableRow> :
+                          runPends.map(p => (
+                            <TableRow key={p.id}>
+                              <TableCell className="font-mono text-xs">#{p.source_order_id}</TableCell>
+                              <TableCell className="font-mono text-xs">{p.woo_sku ?? "—"}</TableCell>
+                              <TableCell className="text-xs">{p.product_name ?? "—"}</TableCell>
+                              <TableCell className="text-xs">{PENDING_REASON_LABEL[p.reason] ?? p.reason}</TableCell>
+                              <TableCell><Badge variant="outline">{p.status}</Badge></TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Errores ({errors.length})</h3>
+                  {errors.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sin errores.</p>
+                  ) : (
+                    <pre className="text-[11px] bg-muted/40 p-2 rounded overflow-x-auto max-h-48">{JSON.stringify(errors, null, 2)}</pre>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRunDetail(null)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
+
       {/* MANUAL ADJUST DIALOG */}
       <Dialog open={manualOpen} onOpenChange={setManualOpen}>
         <DialogContent className="max-w-lg">
