@@ -1047,6 +1047,7 @@ export type Database = {
           status: string
           updated_at: string
           variant_label: string | null
+          variant_sku: string | null
           woo_last_sync_at: string | null
           woo_regular_price: number | null
           woo_sale_price: number | null
@@ -1064,6 +1065,7 @@ export type Database = {
           status?: string
           updated_at?: string
           variant_label?: string | null
+          variant_sku?: string | null
           woo_last_sync_at?: string | null
           woo_regular_price?: number | null
           woo_sale_price?: number | null
@@ -1081,6 +1083,7 @@ export type Database = {
           status?: string
           updated_at?: string
           variant_label?: string | null
+          variant_sku?: string | null
           woo_last_sync_at?: string | null
           woo_regular_price?: number | null
           woo_sale_price?: number | null
@@ -1119,7 +1122,9 @@ export type Database = {
           name: string
           notes: string | null
           product_type: string | null
+          sku_source: string
           suggested_fabrication_fund: number
+          sync_status: string
           unit_cost: number
           updated_at: string
           updated_by: string | null
@@ -1153,7 +1158,9 @@ export type Database = {
           name: string
           notes?: string | null
           product_type?: string | null
+          sku_source?: string
           suggested_fabrication_fund?: number
+          sync_status?: string
           unit_cost?: number
           updated_at?: string
           updated_by?: string | null
@@ -1187,7 +1194,9 @@ export type Database = {
           name?: string
           notes?: string | null
           product_type?: string | null
+          sku_source?: string
           suggested_fabrication_fund?: number
+          sync_status?: string
           unit_cost?: number
           updated_at?: string
           updated_by?: string | null
@@ -1454,6 +1463,75 @@ export type Database = {
           status?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      core_woo_product_candidates: {
+        Row: {
+          created_at: string
+          detected_from: string
+          id: string
+          matched_core_product_id: string | null
+          matched_core_variant_id: string | null
+          notes: string | null
+          source_order_id: number | null
+          source_order_item_id: number | null
+          status: string
+          updated_at: string
+          woo_permalink: string | null
+          woo_product_id: number
+          woo_product_name: string | null
+          woo_regular_price: number | null
+          woo_sale_price: number | null
+          woo_sku: string | null
+          woo_status: string | null
+          woo_stock_quantity: number | null
+          woo_variation_id: number | null
+          woo_variations: Json | null
+        }
+        Insert: {
+          created_at?: string
+          detected_from?: string
+          id?: string
+          matched_core_product_id?: string | null
+          matched_core_variant_id?: string | null
+          notes?: string | null
+          source_order_id?: number | null
+          source_order_item_id?: number | null
+          status?: string
+          updated_at?: string
+          woo_permalink?: string | null
+          woo_product_id: number
+          woo_product_name?: string | null
+          woo_regular_price?: number | null
+          woo_sale_price?: number | null
+          woo_sku?: string | null
+          woo_status?: string | null
+          woo_stock_quantity?: number | null
+          woo_variation_id?: number | null
+          woo_variations?: Json | null
+        }
+        Update: {
+          created_at?: string
+          detected_from?: string
+          id?: string
+          matched_core_product_id?: string | null
+          matched_core_variant_id?: string | null
+          notes?: string | null
+          source_order_id?: number | null
+          source_order_item_id?: number | null
+          status?: string
+          updated_at?: string
+          woo_permalink?: string | null
+          woo_product_id?: number
+          woo_product_name?: string | null
+          woo_regular_price?: number | null
+          woo_sale_price?: number | null
+          woo_sku?: string | null
+          woo_status?: string | null
+          woo_stock_quantity?: number | null
+          woo_variation_id?: number | null
+          woo_variations?: Json | null
         }
         Relationships: []
       }

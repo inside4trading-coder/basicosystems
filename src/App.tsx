@@ -41,6 +41,7 @@ import CoreCostTemplates from "./pages/core/CoreCostTemplates";
 import CoreCostTemplateEditor from "./pages/core/CoreCostTemplateEditor";
 import CoreProducts from "./pages/core/CoreProducts";
 import CoreProductEditor from "./pages/core/CoreProductEditor";
+import CoreWooCandidates from "./pages/core/CoreWooCandidates";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -108,6 +109,7 @@ const App = () => (
                 <Route path="templates-costos/nuevo" element={<CoreCostTemplateEditor />} />
                 <Route path="templates-costos/:id" element={<CoreCostTemplateEditor />} />
                 <Route path="productos" element={<CoreProducts />} />
+                <Route path="productos/pendientes" element={<CoreWooCandidates />} />
                 <Route path="productos/nuevo" element={<CoreProductEditor />} />
                 <Route path="productos/:id" element={<CoreProductEditor />} />
                 <Route path="partidas-fabricacion" element={<CorePlaceholder title="Partidas de Fabricación" />} />
