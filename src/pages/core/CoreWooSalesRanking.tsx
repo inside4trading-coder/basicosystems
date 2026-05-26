@@ -481,13 +481,13 @@ export default function CoreWooSalesRanking() {
                       <div className="flex justify-end gap-1 flex-wrap">
                         {g.coreStatus === "ya_en_core" && g.coreProduct && (
                           <Button size="sm" variant="outline" onClick={() => navigate(`/core/productos/${g.coreProduct!.id}`)}>
-                            <ExternalLink className="h-3 w-3 mr-1" />Ver Core
+                            <ExternalLink className="h-3 w-3 mr-1" />Ver en Catálogo
                           </Button>
                         )}
                         {(g.coreStatus === "no_en_core") && (
                           <>
                             <Button size="sm" variant="default" onClick={() => createDraftFromGroup(g)} disabled={!g.parentSku}>
-                              <Plus className="h-3 w-3 mr-1" />Crear borrador Core
+                              <Plus className="h-3 w-3 mr-1" />Crear borrador de fabricación
                             </Button>
                             <Button size="sm" variant="ghost" onClick={() => markCandidate(g, "ignorado")} title="Ignorar"><EyeOff className="h-3 w-3" /></Button>
                             <Button size="sm" variant="ghost" onClick={() => markCandidate(g, "no_fabricable")} title="No fabricable"><Ban className="h-3 w-3" /></Button>
