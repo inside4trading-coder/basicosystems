@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ChevronsUpDown, Check } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Plus, Pencil, Power, PowerOff, Trash2, Search, Ban } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
@@ -94,6 +96,18 @@ const emptyForm = (): FormState => ({
 
 type WooCand = { id: string; woo_product_id: number; woo_variation_id: number | null; woo_product_name: string | null; woo_sku: string | null; woo_variations: any };
 type CoreVariant = { id: string; core_product_id: string; size: string; variant_label: string | null; variant_sku: string | null; woo_variation_id: number | null };
+
+function isFormValid(f: FormState): boolean {
+  if (!f.reference_type || !f.reason || !f.status || !f.start_date) return false;
+  switch (f.reference_type) {
+    case "woocommerce_product": return !!f.woo_product_id && !!f.sku;
+    case "woocommerce_variation": return !!f.woo_product_id && !!f.woo_variation_id && !!f.sku;
+    case "core_product": return !!f.core_product_id && !!f.sku;
+    case "core_variant": return !!f.core_product_id && !!f.core_variant_id && !!f.variant_label;
+    case "manual_sku": return !!f.sku;
+    default: return false;
+  }
+}
 
 export default function CoreRestockControl() {
   const [items, setItems] = useState<Rule[]>([]);
@@ -458,13 +472,26 @@ export default function CoreRestockControl() {
                   </div>
                 )}
 
-                {isWooV && (
+                {isWooV && form.woo_product_id && wooVariations.length === 0 && (
+                  <div className="col-span-2">
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="flex items-center justify-between gap-3">
+                        <span>Este producto no tiene variaciones. Usa "Producto WooCommerce" en lugar de "Variación WooCommerce".</span>
+                        <Button size="sm" variant="outline" onClick={() => changeRefType("woocommerce_product")}>
+                          Cambiar a producto simple
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                )}
+                {isWooV && wooVariations.length > 0 && (
                   <div className="col-span-2">
                     <Label>Variación WooCommerce *</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full justify-between font-normal" disabled={!form.woo_product_id}>
-                          {selectedWooVar ? `${selectedWooVar.woo_sku ?? "—"} · ${form.variant_label ?? ""}` : (form.woo_product_id ? "Selecciona una variación…" : "Selecciona primero el producto")}
+                          {selectedWooVar ? `${selectedWooVar.woo_sku ?? "—"} · ${form.variant_label ?? ""}` : "Selecciona una variación…"}
                           <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
                         </Button>
                       </PopoverTrigger>
@@ -472,7 +499,7 @@ export default function CoreRestockControl() {
                         <Command>
                           <CommandInput placeholder="Buscar variación…" />
                           <CommandList>
-                            <CommandEmpty>Sin variaciones.</CommandEmpty>
+                            <CommandEmpty>Sin coincidencias.</CommandEmpty>
                             <CommandGroup>
                               {wooVariations.slice(0, 300).map(c => {
                                 const label = Array.isArray(c.woo_variations) ? c.woo_variations.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ") : "";
@@ -571,35 +598,14 @@ export default function CoreRestockControl() {
                   </div>
                 )}
 
-                {/* IDs informativos */}
-                {(isWooP || isWooV) && (
-                  <div>
-                    <Label>Woo product_id</Label>
-                    <Input value={form.woo_product_id ?? ""} readOnly />
-                  </div>
-                )}
-                {isWooV && (
-                  <div>
-                    <Label>Woo variation_id</Label>
-                    <Input value={form.woo_variation_id ?? ""} readOnly />
-                  </div>
-                )}
-                {(isCoreP || isCoreV) && (
-                  <div>
-                    <Label>Core product_id</Label>
-                    <Input value={form.core_product_id ?? ""} readOnly className="font-mono text-xs" />
-                  </div>
-                )}
-                {isCoreV && (
-                  <div>
-                    <Label>Core variant_id</Label>
-                    <Input value={form.core_variant_id ?? ""} readOnly className="font-mono text-xs" />
-                  </div>
-                )}
-                {isCoreV && form.woo_variation_id && (
-                  <div>
-                    <Label>Woo variation_id (info)</Label>
-                    <Input value={form.woo_variation_id} readOnly />
+                {/* Datos técnicos (solo lectura, discretos) */}
+                {(form.woo_product_id || form.woo_variation_id || form.core_product_id || form.core_variant_id) && (
+                  <div className="col-span-2 text-xs text-muted-foreground border rounded-md p-2 bg-muted/30">
+                    <span className="font-semibold mr-2">Datos técnicos:</span>
+                    {form.woo_product_id ? <span className="mr-3">Woo product_id: <span className="font-mono">{form.woo_product_id}</span></span> : null}
+                    {form.woo_variation_id ? <span className="mr-3">Woo variation_id: <span className="font-mono">{form.woo_variation_id}</span></span> : null}
+                    {form.core_product_id ? <span className="mr-3">Core product_id: <span className="font-mono">{String(form.core_product_id).slice(0, 8)}…</span></span> : null}
+                    {form.core_variant_id ? <span className="mr-3">Core variant_id: <span className="font-mono">{String(form.core_variant_id).slice(0, 8)}…</span></span> : null}
                   </div>
                 )}
 
@@ -644,7 +650,17 @@ export default function CoreRestockControl() {
 
                 <div>
                   <Label>Producto reemplazo (Core)</Label>
-                  <Select value={form.replacement_core_product_id ?? "none"} onValueChange={v => setForm({ ...form, replacement_core_product_id: v === "none" ? undefined : v })}>
+                  <Select
+                    value={form.replacement_core_product_id ?? "none"}
+                    onValueChange={v => {
+                      if (v === "none") {
+                        setForm(f => ({ ...f, replacement_core_product_id: undefined, replacement_sku: "" }));
+                      } else {
+                        const rp = coreProducts.find(p => p.id === v);
+                        setForm(f => ({ ...f, replacement_core_product_id: v, replacement_sku: rp?.core_sku ?? "" }));
+                      }
+                    }}
+                  >
                     <SelectTrigger><SelectValue placeholder="Ninguno" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">— Ninguno —</SelectItem>
@@ -654,7 +670,11 @@ export default function CoreRestockControl() {
                 </div>
                 <div>
                   <Label>SKU reemplazo</Label>
-                  <Input value={form.replacement_sku ?? ""} onChange={e => setForm({ ...form, replacement_sku: e.target.value })} />
+                  <Input
+                    value={form.replacement_sku ?? ""}
+                    readOnly={!!form.replacement_core_product_id}
+                    onChange={e => setForm({ ...form, replacement_sku: e.target.value })}
+                  />
                 </div>
 
                 <div className="col-span-2">
@@ -666,7 +686,7 @@ export default function CoreRestockControl() {
           })()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save}>{editing ? "Guardar cambios" : "Crear regla"}</Button>
+            <Button onClick={save} disabled={!isFormValid(form)}>{editing ? "Guardar cambios" : "Crear regla"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
