@@ -1416,6 +1416,188 @@ export type Database = {
           },
         ]
       }
+      core_production_need_runs: {
+        Row: {
+          blocked_count: number
+          created_at: string
+          created_by: string | null
+          id: string
+          movements_checked: number
+          movements_linked: number
+          needs_created: number
+          needs_updated: number
+          non_restockable_skipped: number
+          reversals_detected: number
+          run_type: string
+          skipped_existing: number
+          status: string
+          summary: Json
+        }
+        Insert: {
+          blocked_count?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movements_checked?: number
+          movements_linked?: number
+          needs_created?: number
+          needs_updated?: number
+          non_restockable_skipped?: number
+          reversals_detected?: number
+          run_type?: string
+          skipped_existing?: number
+          status?: string
+          summary?: Json
+        }
+        Update: {
+          blocked_count?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movements_checked?: number
+          movements_linked?: number
+          needs_created?: number
+          needs_updated?: number
+          non_restockable_skipped?: number
+          reversals_detected?: number
+          run_type?: string
+          skipped_existing?: number
+          status?: string
+          summary?: Json
+        }
+        Relationships: []
+      }
+      core_production_need_sources: {
+        Row: {
+          amount: number | null
+          created_at: string
+          currency: string | null
+          fabrication_fund_movement_id: string | null
+          id: string
+          production_need_id: string
+          quantity: number
+          source_order_id: number | null
+          source_order_item_id: number | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          currency?: string | null
+          fabrication_fund_movement_id?: string | null
+          id?: string
+          production_need_id: string
+          quantity?: number
+          source_order_id?: number | null
+          source_order_item_id?: number | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          currency?: string | null
+          fabrication_fund_movement_id?: string | null
+          id?: string
+          production_need_id?: string
+          quantity?: number
+          source_order_id?: number | null
+          source_order_item_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_production_need_sources_production_need_id_fkey"
+            columns: ["production_need_id"]
+            isOneToOne: false
+            referencedRelation: "core_production_needs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_production_needs: {
+        Row: {
+          core_product_id: string | null
+          core_variant_id: string | null
+          created_at: string
+          created_by: string | null
+          desired_date: string | null
+          generation_run_id: string | null
+          id: string
+          is_overproduction: boolean
+          last_sale_at: string | null
+          need_type: string
+          notes: string | null
+          priority: string
+          product_name: string | null
+          quantity_approved: number
+          quantity_converted_to_order: number
+          quantity_needed: number
+          quantity_pending: number
+          reason: string | null
+          size: string | null
+          sku: string | null
+          source: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          variant_label: string | null
+          variant_sku: string | null
+        }
+        Insert: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          desired_date?: string | null
+          generation_run_id?: string | null
+          id?: string
+          is_overproduction?: boolean
+          last_sale_at?: string | null
+          need_type?: string
+          notes?: string | null
+          priority?: string
+          product_name?: string | null
+          quantity_approved?: number
+          quantity_converted_to_order?: number
+          quantity_needed?: number
+          quantity_pending?: number
+          reason?: string | null
+          size?: string | null
+          sku?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Update: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          desired_date?: string | null
+          generation_run_id?: string | null
+          id?: string
+          is_overproduction?: boolean
+          last_sale_at?: string | null
+          need_type?: string
+          notes?: string | null
+          priority?: string
+          product_name?: string | null
+          quantity_approved?: number
+          quantity_converted_to_order?: number
+          quantity_needed?: number
+          quantity_pending?: number
+          reason?: string | null
+          size?: string | null
+          sku?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Relationships: []
+      }
       core_products: {
         Row: {
           color: string | null

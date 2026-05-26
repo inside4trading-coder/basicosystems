@@ -44,6 +44,7 @@ import CoreProductEditor from "./pages/core/CoreProductEditor";
 import CoreWooCandidates from "./pages/core/CoreWooCandidates";
 import CoreRestockControl from "./pages/core/CoreRestockControl";
 import CoreFabricationFunds from "./pages/core/CoreFabricationFunds";
+import CoreProductionNeeds from "./pages/core/CoreProductionNeeds";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -116,7 +117,7 @@ const App = () => (
                 <Route path="productos/:id" element={<CoreProductEditor />} />
                 <Route path="control-reposicion" element={<CoreRestockControl />} />
                 <Route path="partidas-fabricacion" element={<CoreFabricationFunds />} />
-                <Route path="necesidades" element={<CorePlaceholder title="Necesidades de Producción" />} />
+                <Route path="necesidades" element={<CoreProductionNeeds />} />
                 <Route path="ordenes-produccion" element={<CorePlaceholder title="Órdenes de Producción" />} />
                 <Route path="qr" element={<CorePlaceholder title="QR / Ficha Viajera" description="Generación e impresión 57×40 mm." />} />
                 <Route path="escaneo" element={<CorePlaceholder title="Escaneo" description="Escaneo móvil con cámara." />} />
