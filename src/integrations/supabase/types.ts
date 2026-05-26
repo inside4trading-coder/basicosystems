@@ -2288,11 +2288,13 @@ export type Database = {
           parent_category: string | null
           parent_sku: string | null
           product_category: string | null
+          product_id: number | null
           product_name: string | null
           quantity: number | null
           size: string | null
           sku: string | null
           unit_price: number | null
+          variation_id: number | null
         }
         Insert: {
           analytic_category?: string | null
@@ -2305,11 +2307,13 @@ export type Database = {
           parent_category?: string | null
           parent_sku?: string | null
           product_category?: string | null
+          product_id?: number | null
           product_name?: string | null
           quantity?: number | null
           size?: string | null
           sku?: string | null
           unit_price?: number | null
+          variation_id?: number | null
         }
         Update: {
           analytic_category?: string | null
@@ -2322,11 +2326,13 @@ export type Database = {
           parent_category?: string | null
           parent_sku?: string | null
           product_category?: string | null
+          product_id?: number | null
           product_name?: string | null
           quantity?: number | null
           size?: string | null
           sku?: string | null
           unit_price?: number | null
+          variation_id?: number | null
         }
         Relationships: [
           {
