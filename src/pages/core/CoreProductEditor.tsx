@@ -444,7 +444,23 @@ export default function CoreProductEditor() {
                   <SelectContent>{STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-3 pt-6">
+              <div>
+                <Label>Prioridad del producto</Label>
+                <Select value={productPriority} onValueChange={setProductPriority}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{PRIORITY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Importancia estratégica. Independiente de si es restockeable.</p>
+              </div>
+              <div>
+                <Label>Modo de reposición</Label>
+                <Select value={replenishmentMode} onValueChange={setReplenishmentMode}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{REPLENISHMENT_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Cómo se genera la reposición cuando el producto es restockeable.</p>
+              </div>
+              <div className="flex items-center gap-3 pt-6 md:col-span-2 border-t pt-4">
                 <Switch checked={isRestockable} onCheckedChange={setIsRestockable} id="restock" />
                 <div>
                   <Label htmlFor="restock" className="cursor-pointer">Restockeable</Label>
