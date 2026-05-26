@@ -370,7 +370,7 @@ export default function CoreWooSalesRanking() {
     if (variants.length > 0) await supabase.from("core_product_variants").insert(variants);
 
     await logCoreAudit({ table: "core_products", recordId: newProd.id, action: "create_from_sales_ranking", newValue: g.parentSku });
-    toast.success(`Producto Core creado: ${g.parentSku}`);
+    toast.success(`Producto de fabricación creado: ${g.parentSku}`);
     load();
   }
 
