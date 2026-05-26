@@ -12,7 +12,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet, AlertTriangle } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 
 type CostStructure = {
@@ -28,6 +28,10 @@ type CostStructure = {
   estimated_gross_margin: number | null;
   estimated_gross_margin_percent: number | null;
   updated_at: string;
+  woo_product_id: number | null;
+  woo_variation_id: number | null;
+  woo_product_name: string | null;
+  woo_permalink: string | null;
 };
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
@@ -47,6 +51,7 @@ export default function CoreCostStructures() {
   const [fStatus, setFStatus] = useState("all");
   const [fType, setFType] = useState("all");
   const [fCurrency, setFCurrency] = useState("all");
+  const [fWoo, setFWoo] = useState<"all" | "connected" | "missing">("all");
 
   const [toDelete, setToDelete] = useState<CostStructure | null>(null);
   const [viewing, setViewing] = useState<CostStructure | null>(null);
@@ -69,9 +74,13 @@ export default function CoreCostStructures() {
       if (fStatus !== "all" && i.status !== fStatus) return false;
       if (fType !== "all" && i.product_type !== fType) return false;
       if (fCurrency !== "all" && i.base_currency !== fCurrency) return false;
+      if (fWoo === "connected" && !i.woo_product_id) return false;
+      if (fWoo === "missing" && i.woo_product_id) return false;
       return true;
     });
-  }, [items, search, fStatus, fType, fCurrency]);
+  }, [items, search, fStatus, fType, fCurrency, fWoo]);
+
+  const missingWooCount = useMemo(() => items.filter(i => !i.woo_product_id).length, [items]);
 
   async function toggleStatus(s: CostStructure) {
     const newStatus = s.status === "active" ? "inactive" : "active";
@@ -175,6 +184,23 @@ export default function CoreCostStructures() {
         </div>
       </div>
 
+      {missingWooCount > 0 && (
+        <Card className="p-4 border-destructive/40 bg-destructive/5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-destructive">
+                {missingWooCount} {missingWooCount === 1 ? "estructura sin conectar" : "estructuras sin conectar"} a WooCommerce
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Las ventas de productos sin Woo Product ID caerán en "Pendientes" en Partidas de Fabricación y no generarán movimientos hasta resolverse.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setFWoo("missing")}>Ver sin conectar</Button>
+          </div>
+        </Card>
+      )}
+
       <Card className="p-4 space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[220px] flex-1 max-w-sm">
@@ -206,7 +232,16 @@ export default function CoreCostStructures() {
               <SelectItem value="EUR">EUR</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={fWoo} onValueChange={(v) => setFWoo(v as any)}>
+            <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Woo: todas</SelectItem>
+              <SelectItem value="connected">Woo: conectadas</SelectItem>
+              <SelectItem value="missing">Woo: sin conectar</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+
 
         <div className="rounded-lg border overflow-x-auto">
           <Table>
@@ -214,6 +249,7 @@ export default function CoreCostStructures() {
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Tipo</TableHead>
+                <TableHead>Woo</TableHead>
                 <TableHead className="text-right">Costo total unitario</TableHead>
                 <TableHead>Moneda</TableHead>
                 <TableHead className="text-right">Margen</TableHead>
@@ -224,15 +260,27 @@ export default function CoreCostStructures() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Cargando…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Cargando…</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Sin estructuras de costos</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Sin estructuras de costos</TableCell></TableRow>
               ) : filtered.map(s => {
                 const st = STATUS_LABELS[s.status] ?? { label: s.status, variant: "outline" as const };
+                const wooConnected = !!s.woo_product_id;
                 return (
-                  <TableRow key={s.id}>
+                  <TableRow key={s.id} className={!wooConnected ? "bg-destructive/5" : ""}>
                     <TableCell className="font-medium">{s.name}</TableCell>
                     <TableCell className="text-muted-foreground">{s.product_type || "—"}</TableCell>
+                    <TableCell>
+                      {wooConnected ? (
+                        <Badge variant="outline" className="font-mono text-[11px]">
+                          #{s.woo_product_id}{s.woo_variation_id ? `·${s.woo_variation_id}` : ""}
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="gap-1">
+                          <AlertTriangle className="h-3 w-3" />Sin conectar
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right tabular-nums">{Number(s.total_unit_cost).toFixed(2)}</TableCell>
                     <TableCell>{s.base_currency}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">

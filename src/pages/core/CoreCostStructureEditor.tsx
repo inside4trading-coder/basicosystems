@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Loader2, AlertTriangle } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 
 const PRODUCT_TYPES = ["Franela", "Hoodie", "Jogger", "Cargo", "Short", "Gorra", "Accesorio", "Producto terminado", "Otro"];
@@ -90,6 +90,10 @@ export default function CoreCostStructureEditor() {
   const [estimatedSalePrice, setEstimatedSalePrice] = useState<string>("");
   const [status, setStatus] = useState("draft");
   const [notes, setNotes] = useState("");
+  const [wooProductId, setWooProductId] = useState<string>("");
+  const [wooVariationId, setWooVariationId] = useState<string>("");
+  const [wooProductName, setWooProductName] = useState<string>("");
+  const [wooPermalink, setWooPermalink] = useState<string>("");
 
   // Items
   const [items, setItems] = useState<Item[]>([]);
@@ -142,6 +146,10 @@ export default function CoreCostStructureEditor() {
         setOriginalSalePrice(head.estimated_sale_price != null ? Number(head.estimated_sale_price) : null);
         setStatus(head.status);
         setNotes(head.notes ?? "");
+        setWooProductId((head as any).woo_product_id != null ? String((head as any).woo_product_id) : "");
+        setWooVariationId((head as any).woo_variation_id != null ? String((head as any).woo_variation_id) : "");
+        setWooProductName((head as any).woo_product_name ?? "");
+        setWooPermalink((head as any).woo_permalink ?? "");
 
         const { data: rows } = await supabase
           .from("core_cost_structure_items")
@@ -325,6 +333,10 @@ export default function CoreCostStructureEditor() {
         estimated_sale_price: salePrice,
         status,
         notes: notes.trim() || null,
+        woo_product_id: wooProductId.trim() ? Number(wooProductId.trim()) : null,
+        woo_variation_id: wooVariationId.trim() ? Number(wooVariationId.trim()) : null,
+        woo_product_name: wooProductName.trim() || null,
+        woo_permalink: wooPermalink.trim() || null,
         total_raw_materials: totals.by.raw_material,
         total_labor: totals.by.labor,
         total_technical_processes: totals.by.technical_process,
@@ -507,6 +519,61 @@ export default function CoreCostStructureEditor() {
               </div>
             </div>
           </Card>
+
+          <Card className="p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Conexión con WooCommerce</h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Vincula esta estructura con el producto real en WooCommerce. Sin esta conexión, las ventas de este producto caerán en "Pendientes" en Partidas de Fabricación.
+                </p>
+              </div>
+              {!wooProductId.trim() && (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" />Sin conectar
+                </Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Woo Product ID *</Label>
+                <Input
+                  type="number"
+                  value={wooProductId}
+                  onChange={(e) => setWooProductId(e.target.value)}
+                  placeholder="Ej: 12345"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">ID del producto padre en WooCommerce.</p>
+              </div>
+              <div>
+                <Label>Woo Variation ID</Label>
+                <Input
+                  type="number"
+                  value={wooVariationId}
+                  onChange={(e) => setWooVariationId(e.target.value)}
+                  placeholder="Opcional · Ej: 67890"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Solo si esta estructura corresponde a una variación específica (talla/color).</p>
+              </div>
+              <div>
+                <Label>Nombre en WooCommerce</Label>
+                <Input
+                  value={wooProductName}
+                  onChange={(e) => setWooProductName(e.target.value)}
+                  placeholder="Como aparece en la tienda"
+                />
+              </div>
+              <div>
+                <Label>URL del producto</Label>
+                <Input
+                  value={wooPermalink}
+                  onChange={(e) => setWooPermalink(e.target.value)}
+                  placeholder="https://basicoclothes.com/producto/..."
+                />
+              </div>
+            </div>
+          </Card>
+
 
           <Card className="p-5">
             <Tabs defaultValue="raw_material">
