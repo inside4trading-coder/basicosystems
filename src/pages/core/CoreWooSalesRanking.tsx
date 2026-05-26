@@ -405,8 +405,8 @@ export default function CoreWooSalesRanking() {
               const isOpen = expanded.has(g.key);
               const badge = STATUS_BADGE[g.coreStatus];
               return (
-                <>
-                  <TableRow key={g.key} className={STATUS_COLORS[g.coreStatus]}>
+                <FragmentRow key={g.key}>
+                  <TableRow className={STATUS_COLORS[g.coreStatus]}>
                     <TableCell>
                       {g.variants.size > 1 && (
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleExpand(g.key)}>
