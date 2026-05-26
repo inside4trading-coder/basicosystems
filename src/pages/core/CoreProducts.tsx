@@ -204,7 +204,7 @@ export default function CoreProducts() {
     load();
   }
 
-  const placeholder = () => toast.info("La importación/exportación de Productos Core se conectará al sistema de Templates de Carga en un siguiente ajuste.");
+  const placeholder = () => toast.info("La importación/exportación del Catálogo de Fabricación se conectará al sistema de Templates de Carga en un siguiente ajuste.");
 
   async function runSync(mode: "catalog" | "sales") {
     setSyncing(true);
