@@ -323,12 +323,20 @@ serve(async (req) => {
       // Order items
       const itemRows: any[] = [];
       for (const o of batch) {
+        const oCurrency = getOrderCurrency(o);
+        const oRateRaw = getOrderExchangeRate(o);
+        const oRate = oCurrency === "USD" ? 1 : (oRateRaw > 1 ? oRateRaw : 0);
         for (const li of (o.line_items || [])) {
           const sku = li.sku || null;
           const costInfo = sku ? costMap.get(sku) : null;
           const wcCatInfo = productCategoryMap.get(li.product_id) || null;
           const wcCategory = wcCatInfo?.category || null;
           const parentCategory = wcCatInfo?.parentCategory || null;
+          const lineTotalOriginal = parseFloat(li.total || "0");
+          let lineTotalUsd: number | null;
+          if (oCurrency === "USD") lineTotalUsd = lineTotalOriginal;
+          else if (oRate > 1) lineTotalUsd = lineTotalOriginal / oRate;
+          else lineTotalUsd = null;
           itemRows.push({
             order_id: o.id,
             line_item_id: li.id,
@@ -339,7 +347,11 @@ serve(async (req) => {
             product_name: li.name,
             quantity: li.quantity || 0,
             unit_price: parseFloat(li.price || "0"),
-            line_total: parseFloat(li.total || "0"),
+            line_total: lineTotalOriginal,
+            line_total_original: lineTotalOriginal,
+            line_total_currency: oCurrency,
+            exchange_rate: oRate > 0 ? oRate : null,
+            line_total_usd: lineTotalUsd,
             item_cost: costInfo?.cost || null,
             size: extractVariation(li.meta_data, "talla") || extractVariation(li.meta_data, "size") || extractVariation(li.meta_data, "pa_talla"),
             color: extractVariation(li.meta_data, "color") || extractVariation(li.meta_data, "pa_color"),
@@ -349,6 +361,7 @@ serve(async (req) => {
           });
         }
       }
+
 
       if (itemRows.length > 0) {
         // Delete existing items for these orders then insert
