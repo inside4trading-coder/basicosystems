@@ -62,6 +62,7 @@ type VariantAgg = {
   lastAt: string | null;
   matchedVariantId?: string | null;
   matchedProductId?: string | null;
+  coreStatus?: "en_core" | "no_en_core" | "sin_padre";
 };
 
 type ProductAgg = {
