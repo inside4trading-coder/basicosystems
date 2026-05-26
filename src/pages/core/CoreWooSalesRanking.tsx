@@ -210,7 +210,7 @@ export default function CoreWooSalesRanking() {
         const slice = skuArr.slice(i, i + 300);
         const [{ data: p }, { data: v }] = await Promise.all([
           supabase.from("core_products").select("id, core_sku, name, commercial_status, is_restockable, woo_sku, woo_product_id").or(`core_sku.in.(${slice.map(s => `"${s}"`).join(",")}),woo_sku.in.(${slice.map(s => `"${s}"`).join(",")})`),
-          supabase.from("core_product_variants").select("id, core_product_id, variant_sku, woo_sku").or(`variant_sku.in.(${slice.map(s => `"${s}"`).join(",")}),woo_sku.in.(${slice.map(s => `"${s}"`).join(",")})`),
+          supabase.from("core_product_variants").select("id, core_product_id, variant_sku, woo_sku, size").or(`variant_sku.in.(${slice.map(s => `"${s}"`).join(",")}),woo_sku.in.(${slice.map(s => `"${s}"`).join(",")})`),
         ]);
         if (p) products.push(...p);
         if (v) variants.push(...v);
@@ -232,6 +232,14 @@ export default function CoreWooSalesRanking() {
           arr.push(v);
           variantBySku.set(s, arr);
         });
+      });
+
+      // Also fetch ALL variants of matched parent products (to match by size when SKU mapping is missing)
+      const variantsByProduct = new Map<string, any[]>();
+      variants.forEach(v => {
+        const arr = variantsByProduct.get(v.core_product_id) ?? [];
+        arr.push(v);
+        variantsByProduct.set(v.core_product_id, arr);
       });
 
       groups.forEach(g => {
@@ -260,14 +268,26 @@ export default function CoreWooSalesRanking() {
           g.matchedCount = unique.length;
           g.coreProduct = unique[0];
         }
-        // attach variant matches
+        // attach variant matches + per-variant core status
+        const parentCoreId = g.coreProduct?.id;
+        const parentVariants = parentCoreId ? (variantsByProduct.get(parentCoreId) ?? []) : [];
+        const sizesInCore = new Set(parentVariants.map(pv => (pv.size || "").toUpperCase()));
         g.variants.forEach(v => {
-          if (!v.sku) return;
-          const vrs = variantBySku.get(v.sku) ?? [];
-          if (vrs.length > 0) {
-            v.matchedVariantId = vrs[0].id;
-            v.matchedProductId = vrs[0].core_product_id;
+          let inCore = false;
+          if (v.sku) {
+            const vrs = variantBySku.get(v.sku) ?? [];
+            if (vrs.length > 0) {
+              v.matchedVariantId = vrs[0].id;
+              v.matchedProductId = vrs[0].core_product_id;
+              inCore = true;
+            }
           }
+          if (!inCore && parentCoreId && v.size && sizesInCore.has(v.size.toUpperCase())) {
+            inCore = true;
+            v.matchedProductId = parentCoreId;
+          }
+          if (!parentCoreId) v.coreStatus = "sin_padre";
+          else v.coreStatus = inCore ? "en_core" : "no_en_core";
         });
       });
 
