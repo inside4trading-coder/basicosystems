@@ -200,12 +200,18 @@ export default function CoreRestockControl() {
   function pickWooParent(c: WooCand) {
     setForm(f => ({ ...f, woo_product_id: c.woo_product_id, woo_variation_id: undefined, sku: c.woo_sku ?? "", product_name: c.woo_product_name ?? "", variant_label: "" }));
   }
-  function pickWooVariation(c: WooCand) {
-    const parent = wooCandidates.find(x => x.woo_product_id === c.woo_product_id && !x.woo_variation_id);
-    const variantLabel = Array.isArray(c.woo_variations)
-      ? c.woo_variations.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ")
-      : "";
-    setForm(f => ({ ...f, woo_product_id: c.woo_product_id, woo_variation_id: c.woo_variation_id ?? undefined, sku: c.woo_sku ?? "", product_name: parent?.woo_product_name ?? c.woo_product_name ?? "", variant_label: variantLabel }));
+  function pickWooVariation(parentCand: WooCand, v: any) {
+    const attrs = Array.isArray(v?.attributes) ? v.attributes : [];
+    const variantLabel = attrs.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ")
+      || v?.name || v?.title || "";
+    setForm(f => ({
+      ...f,
+      woo_product_id: parentCand.woo_product_id,
+      woo_variation_id: v?.id ?? v?.variation_id ?? undefined,
+      sku: v?.sku ?? parentCand.woo_sku ?? "",
+      product_name: parentCand.woo_product_name ?? "",
+      variant_label: variantLabel,
+    }));
   }
   function pickCoreProduct(p: { id: string; core_sku: string; name: string }) {
     setForm(f => ({ ...f, core_product_id: p.id, core_variant_id: undefined, sku: p.core_sku, product_name: p.name, variant_label: "" }));
