@@ -155,9 +155,13 @@ export default function CoreWooSalesRanking() {
         const stripped = sku.replace(SIZE_RE, "").trim();
         return stripped || sku;
       };
+      const deriveSize = (sku: string): string | null => {
+        if (!sku) return null;
+        const m = sku.match(SIZE_RE);
+        return m ? m[1].toUpperCase() : null;
+      };
       const deriveParentName = (name: string) => {
         if (!name) return "";
-        // Strip trailing " - Talla X, Color" or " - Talla X"
         return name.replace(/\s*[-–]\s*Talla\s+[^,]+(,.*)?$/i, "").trim() || name;
       };
       const groups = new Map<string, ProductAgg>();
@@ -181,9 +185,10 @@ export default function CoreWooSalesRanking() {
         g.revenue += Number(it.line_total) || 0;
         if (lastAt && (!g.lastAt || lastAt > g.lastAt)) g.lastAt = lastAt;
 
-        const vkey = sku || `${it.size || ""}|${it.color || ""}`;
+        const size = (it.size || deriveSize(sku) || "").toString().toUpperCase() || null;
+        const vkey = sku || `${size || ""}|${it.color || ""}`;
         if (!g.variants.has(vkey)) {
-          g.variants.set(vkey, { sku: sku || null, size: it.size || null, color: it.color || null, units: 0, orders: new Set(), revenue: 0, lastAt: null });
+          g.variants.set(vkey, { sku: sku || null, size, color: it.color || null, units: 0, orders: new Set(), revenue: 0, lastAt: null });
         }
         const v = g.variants.get(vkey)!;
         v.units += qty;
