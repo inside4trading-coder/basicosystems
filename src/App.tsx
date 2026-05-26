@@ -42,6 +42,7 @@ import CoreCostTemplateEditor from "./pages/core/CoreCostTemplateEditor";
 import CoreProducts from "./pages/core/CoreProducts";
 import CoreProductEditor from "./pages/core/CoreProductEditor";
 import CoreWooCandidates from "./pages/core/CoreWooCandidates";
+import CoreRestockControl from "./pages/core/CoreRestockControl";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -112,6 +113,7 @@ const App = () => (
                 <Route path="productos/pendientes" element={<CoreWooCandidates />} />
                 <Route path="productos/nuevo" element={<CoreProductEditor />} />
                 <Route path="productos/:id" element={<CoreProductEditor />} />
+                <Route path="control-reposicion" element={<CoreRestockControl />} />
                 <Route path="partidas-fabricacion" element={<CorePlaceholder title="Partidas de Fabricación" />} />
                 <Route path="necesidades" element={<CorePlaceholder title="Necesidades de Producción" />} />
                 <Route path="ordenes-produccion" element={<CorePlaceholder title="Órdenes de Producción" />} />
