@@ -97,6 +97,18 @@ const emptyForm = (): FormState => ({
 type WooCand = { id: string; woo_product_id: number; woo_variation_id: number | null; woo_product_name: string | null; woo_sku: string | null; woo_variations: any };
 type CoreVariant = { id: string; core_product_id: string; size: string; variant_label: string | null; variant_sku: string | null; woo_variation_id: number | null };
 
+function isFormValid(f: FormState): boolean {
+  if (!f.reference_type || !f.reason || !f.status || !f.start_date) return false;
+  switch (f.reference_type) {
+    case "woocommerce_product": return !!f.woo_product_id && !!f.sku;
+    case "woocommerce_variation": return !!f.woo_product_id && !!f.woo_variation_id && !!f.sku;
+    case "core_product": return !!f.core_product_id && !!f.sku;
+    case "core_variant": return !!f.core_product_id && !!f.core_variant_id && !!f.variant_label;
+    case "manual_sku": return !!f.sku;
+    default: return false;
+  }
+}
+
 export default function CoreRestockControl() {
   const [items, setItems] = useState<Rule[]>([]);
   const [coreProducts, setCoreProducts] = useState<{ id: string; core_sku: string; name: string }[]>([]);
