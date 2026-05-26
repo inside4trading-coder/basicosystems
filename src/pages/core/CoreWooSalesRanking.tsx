@@ -148,16 +148,27 @@ export default function CoreWooSalesRanking() {
       }
 
       // Aggregate
+      const SIZE_RE = /[\s\-_]+(XXXS|XXS|XS|S|M|L|XL|XXL|XXXL|\d{2,3})$/i;
+      const deriveParent = (sku: string) => {
+        if (!sku) return "";
+        const stripped = sku.replace(SIZE_RE, "").trim();
+        return stripped || sku;
+      };
+      const deriveParentName = (name: string) => {
+        if (!name) return "";
+        // Strip trailing " - Talla X, Color" or " - Talla X"
+        return name.replace(/\s*[-–]\s*Talla\s+[^,]+(,.*)?$/i, "").trim() || name;
+      };
       const groups = new Map<string, ProductAgg>();
       for (const it of all) {
         const sku = (it.sku || "").trim();
-        const psku = (it.parent_sku || "").trim();
-        const key = psku || sku || `__unknown_${it.order_id}_${it.product_name}`;
+        const psku = (it.parent_sku || "").trim() || deriveParent(sku);
+        const key = psku || sku || `__unknown_${it.product_name}`;
         const ord = orderMap.get(Number(it.order_id));
         const lastAt = ord?.dt ?? null;
         if (!groups.has(key)) {
           groups.set(key, {
-            key, parentSku: psku || null, name: it.product_name || sku || "(sin nombre)",
+            key, parentSku: psku || null, name: deriveParentName(it.product_name || "") || sku || "(sin nombre)",
             units: 0, orders: new Set(), revenue: 0, lastAt: null, variants: new Map(),
             coreStatus: "no_en_core",
           });
