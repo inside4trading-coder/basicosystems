@@ -262,6 +262,8 @@ export default function CoreProductEditor() {
         image_url: imageUrl || null,
         commercial_status: commercialStatus,
         is_restockable: isRestockable,
+        product_priority: productPriority,
+        replenishment_mode: replenishmentMode,
         cost_structure_id: costStructureId || null,
         cost_snapshot: costSnapshot,
         unit_cost: unitCost,
