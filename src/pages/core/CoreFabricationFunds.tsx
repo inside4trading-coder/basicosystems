@@ -143,11 +143,13 @@ export default function CoreFabricationFunds() {
     setProcessing(true);
     try {
       const body: any = {};
-      if (periodStart) body.period_start = new Date(periodStart).toISOString();
-      if (periodEnd) {
-        const d = new Date(periodEnd); d.setHours(23, 59, 59, 999);
-        body.period_end = d.toISOString();
-      }
+      const toLocalISO = (dStr: string, end = false) => {
+        const [y, m, d] = dStr.split("-").map(Number);
+        const dt = new Date(y, (m ?? 1) - 1, d ?? 1, end ? 23 : 0, end ? 59 : 0, end ? 59 : 0, end ? 999 : 0);
+        return dt.toISOString();
+      };
+      if (periodStart) body.period_start = toLocalISO(periodStart, false);
+      if (periodEnd) body.period_end = toLocalISO(periodEnd, true);
       const { data, error } = await supabase.functions.invoke("core-process-fabrication-funds", { body });
       if (error) throw error;
       const s = (data as any)?.summary ?? {};
