@@ -491,24 +491,48 @@ export default function CoreWooSalesRanking() {
                       </div>
                     </TableCell>
                   </TableRow>
-                  {isOpen && Array.from(g.variants.values()).sort((a, b) => b.units - a.units).map((v, i) => (
-                    <TableRow key={g.key + "_v_" + i} className="bg-muted/20">
-                      <TableCell></TableCell>
-                      <TableCell colSpan={2} className="pl-8 text-xs">
-                        <span className="font-mono">{v.sku || "—"}</span>
-                        {v.matchedVariantId && <Badge variant="outline" className="ml-2 text-[10px]">mapeada</Badge>}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {v.size && <span>Talla <strong>{v.size}</strong></span>}
-                        {v.color && <span className="ml-2 text-muted-foreground">{v.color}</span>}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{v.units}</TableCell>
-                      <TableCell className="text-right tabular-nums">{v.orders.size}</TableCell>
-                      <TableCell className="text-right tabular-nums">{v.revenue.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{v.lastAt ? new Date(v.lastAt).toLocaleDateString() : "—"}</TableCell>
-                      <TableCell></TableCell>
-                    </TableRow>
-                  ))}
+                  {isOpen && Array.from(g.variants.values()).sort((a, b) => b.units - a.units).map((v, i) => {
+                    const vStatus = v.coreStatus ?? "no_en_core";
+                    const vBadge = vStatus === "en_core"
+                      ? { label: "En Core", cls: "bg-green-600 text-white" }
+                      : vStatus === "sin_padre"
+                        ? { label: "Sin padre", cls: "bg-muted text-muted-foreground" }
+                        : { label: "Falta en Core", cls: "bg-red-600 text-white" };
+                    const rowCls = vStatus === "en_core"
+                      ? "bg-green-50/40 dark:bg-green-950/10"
+                      : vStatus === "sin_padre"
+                        ? "bg-muted/20"
+                        : "bg-red-50/40 dark:bg-red-950/10";
+                    return (
+                      <TableRow key={g.key + "_v_" + i} className={rowCls}>
+                        <TableCell></TableCell>
+                        <TableCell>
+                          <Badge className={cn("text-[10px]", vBadge.cls)}>{vBadge.label}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{v.sku || <span className="text-muted-foreground">—</span>}</TableCell>
+                        <TableCell className="text-xs">
+                          {v.size ? <span>Talla <strong>{v.size}</strong></span> : <span className="text-muted-foreground">sin talla</span>}
+                          {v.color && <span className="ml-2 text-muted-foreground">· {v.color}</span>}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums font-semibold">{v.units}</TableCell>
+                        <TableCell className="text-right tabular-nums">{v.orders.size}</TableCell>
+                        <TableCell className="text-right tabular-nums">{v.revenue.toFixed(2)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{v.lastAt ? new Date(v.lastAt).toLocaleDateString() : "—"}</TableCell>
+                        <TableCell className="text-right">
+                          {vStatus === "en_core" && v.matchedProductId && (
+                            <Button size="sm" variant="ghost" onClick={() => navigate(`/core/productos/${v.matchedProductId}`)}>
+                              <ExternalLink className="h-3 w-3 mr-1" />Ver
+                            </Button>
+                          )}
+                          {vStatus === "no_en_core" && v.matchedProductId && (
+                            <Button size="sm" variant="outline" onClick={() => navigate(`/core/productos/${v.matchedProductId}`)}>
+                              <Plus className="h-3 w-3 mr-1" />Agregar talla
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </Fragment>
               );
             })}
