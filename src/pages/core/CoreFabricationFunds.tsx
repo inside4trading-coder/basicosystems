@@ -142,7 +142,13 @@ export default function CoreFabricationFunds() {
   async function processSales() {
     setProcessing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("core-process-fabrication-funds", { body: {} });
+      const body: any = {};
+      if (periodStart) body.period_start = new Date(periodStart).toISOString();
+      if (periodEnd) {
+        const d = new Date(periodEnd); d.setHours(23, 59, 59, 999);
+        body.period_end = d.toISOString();
+      }
+      const { data, error } = await supabase.functions.invoke("core-process-fabrication-funds", { body });
       if (error) throw error;
       const s = (data as any)?.summary ?? {};
       toast.success(`Procesado: ${s.movements_created ?? 0} movs, ${s.pending_items_created ?? 0} pendientes, ${s.reversals_created ?? 0} reversos`);
@@ -153,6 +159,7 @@ export default function CoreFabricationFunds() {
       setProcessing(false);
     }
   }
+
 
   function openManual() {
     const general = funds.find(f => f.fund_type === "general");
