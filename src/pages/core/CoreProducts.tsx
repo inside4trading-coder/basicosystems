@@ -229,9 +229,9 @@ export default function CoreProducts() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight">Productos Core</h1>
+          <h1 className="text-3xl font-black tracking-tight">Catálogo de Fabricación</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Catálogo maestro de productos de fabricación conectados a costos, WooCommerce y restock.
+            Todos los productos fabricables conectados a costos, WooCommerce y restock. La prioridad estratégica (Core / Esencial, Regular, etc.) se define dentro de cada producto.
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Próximo SKU estimado (fallback): <span className="font-mono font-semibold text-foreground">{nextSku}</span>
