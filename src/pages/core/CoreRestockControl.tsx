@@ -460,13 +460,26 @@ export default function CoreRestockControl() {
                   </div>
                 )}
 
-                {isWooV && (
+                {isWooV && form.woo_product_id && wooVariations.length === 0 && (
+                  <div className="col-span-2">
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="flex items-center justify-between gap-3">
+                        <span>Este producto no tiene variaciones. Usa "Producto WooCommerce" en lugar de "Variación WooCommerce".</span>
+                        <Button size="sm" variant="outline" onClick={() => changeRefType("woocommerce_product")}>
+                          Cambiar a producto simple
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                )}
+                {isWooV && wooVariations.length > 0 && (
                   <div className="col-span-2">
                     <Label>Variación WooCommerce *</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full justify-between font-normal" disabled={!form.woo_product_id}>
-                          {selectedWooVar ? `${selectedWooVar.woo_sku ?? "—"} · ${form.variant_label ?? ""}` : (form.woo_product_id ? "Selecciona una variación…" : "Selecciona primero el producto")}
+                          {selectedWooVar ? `${selectedWooVar.woo_sku ?? "—"} · ${form.variant_label ?? ""}` : "Selecciona una variación…"}
                           <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
                         </Button>
                       </PopoverTrigger>
@@ -474,7 +487,7 @@ export default function CoreRestockControl() {
                         <Command>
                           <CommandInput placeholder="Buscar variación…" />
                           <CommandList>
-                            <CommandEmpty>Sin variaciones.</CommandEmpty>
+                            <CommandEmpty>Sin coincidencias.</CommandEmpty>
                             <CommandGroup>
                               {wooVariations.slice(0, 300).map(c => {
                                 const label = Array.isArray(c.woo_variations) ? c.woo_variations.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ") : "";
