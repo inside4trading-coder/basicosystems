@@ -39,6 +39,8 @@ import CoreCostStructures from "./pages/core/CoreCostStructures";
 import CoreCostStructureEditor from "./pages/core/CoreCostStructureEditor";
 import CoreCostTemplates from "./pages/core/CoreCostTemplates";
 import CoreCostTemplateEditor from "./pages/core/CoreCostTemplateEditor";
+import CoreProducts from "./pages/core/CoreProducts";
+import CoreProductEditor from "./pages/core/CoreProductEditor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
