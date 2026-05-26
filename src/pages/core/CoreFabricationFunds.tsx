@@ -132,13 +132,24 @@ export default function CoreFabricationFunds() {
   const totals = useMemo(() => {
     const general = funds.filter(f => f.fund_type === "general").reduce((s, f) => s + Number(f.available_amount), 0);
     const nonR = funds.filter(f => f.fund_type === "non_restockable").reduce((s, f) => s + Number(f.available_amount), 0);
-    const pendingTotal = pendings.filter(p => p.status === "pending").reduce((s, p) => s + Number(p.revenue ?? 0), 0);
-    const pendingCount = pendings.filter(p => p.status === "pending").length;
+    const pendingHist = pendings.filter(p => p.status === "pending").length;
+    const lastRun = runs[0];
+    const lastRunPend = lastRun?.pending_items_created ?? 0;
+    const inRange = (iso: string) => {
+      if (!periodStart && !periodEnd) return true;
+      const t = new Date(iso).getTime();
+      if (periodStart && t < new Date(periodStart).getTime()) return false;
+      if (periodEnd) { const end = new Date(periodEnd); end.setHours(23,59,59,999); if (t > end.getTime()) return false; }
+      return true;
+    };
+    const inRangePend = pendings.filter(p => p.status === "pending" && inRange(p.created_at));
+    const rangeCount = inRangePend.length;
+    const rangeRevenue = inRangePend.reduce((s, p) => s + Number(p.revenue ?? 0), 0);
     const sales = movements.filter(m => m.movement_type.startsWith("sale_generated")).length;
     const reversals = movements.filter(m => m.movement_type === "reversal").length;
     const manuals = movements.filter(m => m.movement_type.startsWith("manual_") || m.movement_type === "correction" || m.movement_type === "transfer").length;
-    return { general, nonR, pendingTotal, pendingCount, sales, reversals, manuals, lastRun: runs[0] };
-  }, [funds, pendings, movements, runs]);
+    return { general, nonR, pendingHist, lastRunPend, rangeCount, rangeRevenue, sales, reversals, manuals, lastRun };
+  }, [funds, pendings, movements, runs, periodStart, periodEnd]);
 
   async function processSales() {
     setProcessing(true);
