@@ -472,7 +472,7 @@ export default function CoreWooSalesRanking() {
                       <TableCell></TableCell>
                     </TableRow>
                   ))}
-                </>
+                </FragmentRow>
               );
             })}
           </TableBody>
