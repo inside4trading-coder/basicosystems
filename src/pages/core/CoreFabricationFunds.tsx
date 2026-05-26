@@ -293,13 +293,22 @@ export default function CoreFabricationFunds() {
             Control del fondo reservado para fabricar productos vendidos, reponer stock o reemplazar productos no restockeables.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-end">
+          <div className="flex flex-col">
+            <Label className="text-[10px] uppercase text-muted-foreground">Desde</Label>
+            <Input type="date" className="h-9 w-[150px]" value={periodStart} onChange={e => setPeriodStart(e.target.value)} />
+          </div>
+          <div className="flex flex-col">
+            <Label className="text-[10px] uppercase text-muted-foreground">Hasta</Label>
+            <Input type="date" className="h-9 w-[150px]" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} />
+          </div>
           <Button onClick={processSales} disabled={processing}>
             <Play className="h-4 w-4 mr-1" />{processing ? "Procesando…" : "Procesar ventas confirmadas"}
           </Button>
           <Button variant="outline" onClick={openManual}><Plus className="h-4 w-4 mr-1" />Nuevo ajuste manual</Button>
           <Button variant="outline" onClick={downloadReport}><Download className="h-4 w-4 mr-1" />Generar reporte</Button>
         </div>
+
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
