@@ -160,6 +160,25 @@ export default function CoreProducts() {
 
   const placeholder = () => toast.info("La importación/exportación de Productos Core se conectará al sistema de Templates de Carga en un siguiente ajuste.");
 
+  async function runSync(mode: "catalog" | "sales") {
+    setSyncing(true);
+    try {
+      const params = new URLSearchParams({ mode });
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/core-woo-sync?${params}`;
+      const { data: sess } = await supabase.auth.getSession();
+      const res = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${sess.session?.access_token}`, "Content-Type": "application/json" } });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "Error de sincronización");
+      const s = json.summary;
+      toast.success(`${mode === "catalog" ? "Catálogo" : "Ventas"}: ${s.scanned} escaneados · ${s.auto_linked} auto-enlazados · ${s.candidates_added} pendientes${s.conflicts ? ` · ${s.conflicts} conflictos` : ""}`);
+      load();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Error sincronizando");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -169,11 +188,21 @@ export default function CoreProducts() {
             Catálogo maestro de productos de fabricación conectados a costos, WooCommerce y restock.
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Próximo SKU estimado: <span className="font-mono font-semibold text-foreground">{nextSku}</span>
+            Próximo SKU estimado (fallback): <span className="font-mono font-semibold text-foreground">{nextSku}</span>
             <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" onClick={loadNextSku} title="Refrescar"><RefreshCw className="h-3 w-3" /></Button>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => runSync("catalog")} disabled={syncing}>
+            <Cloud className="h-4 w-4 mr-1" />{syncing ? "Sincronizando…" : "Sincronizar catálogo Woo"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => runSync("sales")} disabled={syncing}>
+            <RefreshCw className="h-4 w-4 mr-1" />Sincronizar ventas
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/core/productos/pendientes")}>
+            <Inbox className="h-4 w-4 mr-1" />Pendientes Woo
+            {pendingCount > 0 && <Badge variant="destructive" className="ml-2 px-1.5 h-5">{pendingCount}</Badge>}
+          </Button>
           <Button variant="outline" size="sm" onClick={placeholder}><FileSpreadsheet className="h-4 w-4 mr-1" />Formato base</Button>
           <Button variant="outline" size="sm" onClick={placeholder}><Upload className="h-4 w-4 mr-1" />Importar</Button>
           <Button variant="outline" size="sm" onClick={placeholder}><Download className="h-4 w-4 mr-1" />Exportar</Button>
