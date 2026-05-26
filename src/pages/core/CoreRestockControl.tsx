@@ -89,24 +89,35 @@ const emptyForm = (): FormState => ({
   notes: "",
 });
 
+type WooCand = { id: string; woo_product_id: number; woo_variation_id: number | null; woo_product_name: string | null; woo_sku: string | null; woo_variations: any };
+type CoreVariant = { id: string; core_product_id: string; size: string; variant_label: string | null; variant_sku: string | null; woo_variation_id: number | null };
+
 export default function CoreRestockControl() {
   const [items, setItems] = useState<Rule[]>([]);
   const [coreProducts, setCoreProducts] = useState<{ id: string; core_sku: string; name: string }[]>([]);
+  const [coreVariants, setCoreVariants] = useState<CoreVariant[]>([]);
+  const [wooCandidates, setWooCandidates] = useState<WooCand[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("non_restockable");
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Rule | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
+  const [wooSearch, setWooSearch] = useState("");
+  const [coreSearch, setCoreSearch] = useState("");
 
   async function load() {
     setLoading(true);
-    const [{ data: rules }, { data: prods }] = await Promise.all([
+    const [{ data: rules }, { data: prods }, { data: variants }, { data: cands }] = await Promise.all([
       supabase.from("core_restock_control").select("*").order("updated_at", { ascending: false }).limit(2000),
       supabase.from("core_products").select("id, core_sku, name").order("core_sku"),
+      supabase.from("core_product_variants").select("id, core_product_id, size, variant_label, variant_sku, woo_variation_id").order("sort_order"),
+      supabase.from("core_woo_product_candidates").select("id, woo_product_id, woo_variation_id, woo_product_name, woo_sku, woo_variations").limit(3000),
     ]);
     setItems((rules as any) ?? []);
     setCoreProducts((prods as any) ?? []);
+    setCoreVariants((variants as any) ?? []);
+    setWooCandidates((cands as any) ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
