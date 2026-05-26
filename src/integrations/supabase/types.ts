@@ -857,6 +857,14 @@ export type Database = {
           created_at: string
           fabrication_fund_run_id: string | null
           id: string
+          ignored_at: string | null
+          ignored_by: string | null
+          ignored_reason: string | null
+          last_action_at: string | null
+          last_action_by: string | null
+          linked_core_product_id: string | null
+          linked_core_variant_id: string | null
+          marked_non_restockable: boolean
           notes: string | null
           order_status: string | null
           product_name: string | null
@@ -878,6 +886,14 @@ export type Database = {
           created_at?: string
           fabrication_fund_run_id?: string | null
           id?: string
+          ignored_at?: string | null
+          ignored_by?: string | null
+          ignored_reason?: string | null
+          last_action_at?: string | null
+          last_action_by?: string | null
+          linked_core_product_id?: string | null
+          linked_core_variant_id?: string | null
+          marked_non_restockable?: boolean
           notes?: string | null
           order_status?: string | null
           product_name?: string | null
@@ -899,6 +915,14 @@ export type Database = {
           created_at?: string
           fabrication_fund_run_id?: string | null
           id?: string
+          ignored_at?: string | null
+          ignored_by?: string | null
+          ignored_reason?: string | null
+          last_action_at?: string | null
+          last_action_by?: string | null
+          linked_core_product_id?: string | null
+          linked_core_variant_id?: string | null
+          marked_non_restockable?: boolean
           notes?: string | null
           order_status?: string | null
           product_name?: string | null
