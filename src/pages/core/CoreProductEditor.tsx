@@ -387,7 +387,7 @@ export default function CoreProductEditor() {
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/core/productos")}><ArrowLeft className="h-4 w-4" /></Button>
           <div>
-            <h1 className="text-2xl font-black tracking-tight">{isNew ? "Nuevo producto Core" : `${coreSku} — ${name || "Producto"}`}</h1>
+            <h1 className="text-2xl font-black tracking-tight">{isNew ? "Nuevo producto de fabricación" : `${coreSku} — ${name || "Producto"}`}</h1>
             <p className="text-xs text-muted-foreground">{isNew ? `SKU asignado al guardar: ${coreSku}` : `SKU: ${coreSku}`}</p>
           </div>
         </div>
