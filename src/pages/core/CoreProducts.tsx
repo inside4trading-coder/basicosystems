@@ -345,7 +345,13 @@ export default function CoreProducts() {
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">{p.name}</div>
-                        {p.color && <div className="text-xs text-muted-foreground">{p.color}</div>}
+                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                          {(() => {
+                            const pr = PRIORITY_LABELS[p.product_priority ?? "regular"] ?? PRIORITY_LABELS.regular;
+                            return <Badge variant="outline" className={cn("text-[10px] py-0 px-1.5", pr.cls)}>{pr.label}</Badge>;
+                          })()}
+                          {p.color && <span className="text-xs text-muted-foreground">{p.color}</span>}
+                        </div>
                         {isOpen && vars.length > 0 && (
                           <div className="text-xs text-muted-foreground mt-1">{activeCount} de {vars.length} tallas activas</div>
                         )}
