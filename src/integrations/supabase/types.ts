@@ -1598,6 +1598,225 @@ export type Database = {
         }
         Relationships: []
       }
+      core_production_order_lines: {
+        Row: {
+          core_product_id: string | null
+          core_variant_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          production_order_id: string
+          quantity_completed: number
+          quantity_ordered: number
+          quantity_pending: number
+          size: string | null
+          sku: string | null
+          status: string
+          updated_at: string
+          variant_label: string | null
+          variant_sku: string | null
+        }
+        Insert: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          production_order_id: string
+          quantity_completed?: number
+          quantity_ordered?: number
+          quantity_pending?: number
+          size?: string | null
+          sku?: string | null
+          status?: string
+          updated_at?: string
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Update: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          production_order_id?: string
+          quantity_completed?: number
+          quantity_ordered?: number
+          quantity_pending?: number
+          size?: string | null
+          sku?: string | null
+          status?: string
+          updated_at?: string
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Relationships: []
+      }
+      core_production_order_need_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          production_need_id: string
+          production_order_id: string
+          quantity_taken: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          production_need_id: string
+          production_order_id: string
+          quantity_taken?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          production_need_id?: string
+          production_order_id?: string
+          quantity_taken?: number
+        }
+        Relationships: []
+      }
+      core_production_order_processes: {
+        Row: {
+          adds_to_payroll: boolean
+          created_at: string
+          id: string
+          notes: string | null
+          process_name: string
+          process_order: number
+          process_type: string | null
+          production_order_id: string
+          rate_snapshot: Json | null
+          status: string
+          suggested_role: string | null
+          updated_at: string
+        }
+        Insert: {
+          adds_to_payroll?: boolean
+          created_at?: string
+          id?: string
+          notes?: string | null
+          process_name: string
+          process_order?: number
+          process_type?: string | null
+          production_order_id: string
+          rate_snapshot?: Json | null
+          status?: string
+          suggested_role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          adds_to_payroll?: boolean
+          created_at?: string
+          id?: string
+          notes?: string | null
+          process_name?: string
+          process_order?: number
+          process_type?: string | null
+          production_order_id?: string
+          rate_snapshot?: Json | null
+          status?: string
+          suggested_role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      core_production_orders: {
+        Row: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cancelled_reason: string | null
+          completed_quantity: number
+          core_product_id: string | null
+          created_at: string
+          created_by: string | null
+          expected_date: string | null
+          id: string
+          is_overproduction: boolean
+          manual_close_notes: string | null
+          manual_close_reason: string | null
+          manually_closed_at: string | null
+          manually_closed_by: string | null
+          notes: string | null
+          order_code: string
+          order_type: string
+          pending_quantity: number
+          priority: string
+          product_name: string | null
+          reason: string | null
+          responsible_user_id: string | null
+          sku: string | null
+          source: string
+          status: string
+          total_quantity: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
+          completed_quantity?: number
+          core_product_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          expected_date?: string | null
+          id?: string
+          is_overproduction?: boolean
+          manual_close_notes?: string | null
+          manual_close_reason?: string | null
+          manually_closed_at?: string | null
+          manually_closed_by?: string | null
+          notes?: string | null
+          order_code: string
+          order_type?: string
+          pending_quantity?: number
+          priority?: string
+          product_name?: string | null
+          reason?: string | null
+          responsible_user_id?: string | null
+          sku?: string | null
+          source?: string
+          status?: string
+          total_quantity?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
+          completed_quantity?: number
+          core_product_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          expected_date?: string | null
+          id?: string
+          is_overproduction?: boolean
+          manual_close_notes?: string | null
+          manual_close_reason?: string | null
+          manually_closed_at?: string | null
+          manually_closed_by?: string | null
+          notes?: string | null
+          order_code?: string
+          order_type?: string
+          pending_quantity?: number
+          priority?: string
+          product_name?: string | null
+          reason?: string | null
+          responsible_user_id?: string | null
+          sku?: string | null
+          source?: string
+          status?: string
+          total_quantity?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       core_products: {
         Row: {
           color: string | null
