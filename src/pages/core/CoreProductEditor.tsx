@@ -138,6 +138,8 @@ export default function CoreProductEditor() {
         setImageUrl(p.image_url ?? "");
         setCommercialStatus(p.commercial_status);
         setIsRestockable(!!p.is_restockable);
+        setProductPriority((p as any).product_priority ?? "regular");
+        setReplenishmentMode((p as any).replenishment_mode ?? "manual_review");
         setCostStructureId(p.cost_structure_id ?? "");
         setCostSnapshot(p.cost_snapshot);
         setUnitCost(Number(p.unit_cost) || 0);
