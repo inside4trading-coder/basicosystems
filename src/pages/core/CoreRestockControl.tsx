@@ -10,6 +10,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { ChevronsUpDown, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Plus, Pencil, Power, PowerOff, Trash2, Search, Ban } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
@@ -89,24 +92,35 @@ const emptyForm = (): FormState => ({
   notes: "",
 });
 
+type WooCand = { id: string; woo_product_id: number; woo_variation_id: number | null; woo_product_name: string | null; woo_sku: string | null; woo_variations: any };
+type CoreVariant = { id: string; core_product_id: string; size: string; variant_label: string | null; variant_sku: string | null; woo_variation_id: number | null };
+
 export default function CoreRestockControl() {
   const [items, setItems] = useState<Rule[]>([]);
   const [coreProducts, setCoreProducts] = useState<{ id: string; core_sku: string; name: string }[]>([]);
+  const [coreVariants, setCoreVariants] = useState<CoreVariant[]>([]);
+  const [wooCandidates, setWooCandidates] = useState<WooCand[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("non_restockable");
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Rule | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
+  const [wooSearch, setWooSearch] = useState("");
+  const [coreSearch, setCoreSearch] = useState("");
 
   async function load() {
     setLoading(true);
-    const [{ data: rules }, { data: prods }] = await Promise.all([
+    const [{ data: rules }, { data: prods }, { data: variants }, { data: cands }] = await Promise.all([
       supabase.from("core_restock_control").select("*").order("updated_at", { ascending: false }).limit(2000),
       supabase.from("core_products").select("id, core_sku, name").order("core_sku"),
+      supabase.from("core_product_variants").select("id, core_product_id, size, variant_label, variant_sku, woo_variation_id").order("sort_order"),
+      supabase.from("core_woo_product_candidates").select("id, woo_product_id, woo_variation_id, woo_product_name, woo_sku, woo_variations").limit(3000),
     ]);
     setItems((rules as any) ?? []);
     setCoreProducts((prods as any) ?? []);
+    setCoreVariants((variants as any) ?? []);
+    setWooCandidates((cands as any) ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
@@ -153,13 +167,65 @@ export default function CoreRestockControl() {
     setOpen(true);
   }
 
+  function changeRefType(v: string) {
+    setForm(f => ({
+      ...f,
+      reference_type: v,
+      sku: "",
+      product_name: "",
+      variant_label: "",
+      woo_product_id: undefined,
+      woo_variation_id: undefined,
+      core_product_id: undefined,
+      core_variant_id: undefined,
+    }));
+    setWooSearch("");
+    setCoreSearch("");
+  }
+
+  function pickWooParent(c: WooCand) {
+    setForm(f => ({ ...f, woo_product_id: c.woo_product_id, woo_variation_id: undefined, sku: c.woo_sku ?? "", product_name: c.woo_product_name ?? "", variant_label: "" }));
+  }
+  function pickWooVariation(c: WooCand) {
+    const parent = wooCandidates.find(x => x.woo_product_id === c.woo_product_id && !x.woo_variation_id);
+    const variantLabel = Array.isArray(c.woo_variations)
+      ? c.woo_variations.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ")
+      : "";
+    setForm(f => ({ ...f, woo_product_id: c.woo_product_id, woo_variation_id: c.woo_variation_id ?? undefined, sku: c.woo_sku ?? "", product_name: parent?.woo_product_name ?? c.woo_product_name ?? "", variant_label: variantLabel }));
+  }
+  function pickCoreProduct(p: { id: string; core_sku: string; name: string }) {
+    setForm(f => ({ ...f, core_product_id: p.id, core_variant_id: undefined, sku: p.core_sku, product_name: p.name, variant_label: "" }));
+  }
+  function pickCoreVariant(v: CoreVariant) {
+    const parent = coreProducts.find(p => p.id === v.core_product_id);
+    setForm(f => ({ ...f, core_product_id: v.core_product_id, core_variant_id: v.id, sku: parent?.core_sku ?? "", product_name: parent?.name ?? "", variant_label: v.variant_label || v.size, woo_variation_id: v.woo_variation_id ?? undefined }));
+  }
+
   async function save() {
     if (!form.reference_type) return toast.error("Tipo de referencia obligatorio");
     if (!form.reason) return toast.error("Motivo obligatorio");
     if (!form.status) return toast.error("Estado obligatorio");
     if (!form.start_date) return toast.error("Fecha de inicio obligatoria");
-    if (!form.sku && !form.woo_product_id && !form.woo_variation_id && !form.core_product_id && !form.core_variant_id) {
-      return toast.error("Debes indicar al menos un SKU o ID de referencia");
+    switch (form.reference_type) {
+      case "woocommerce_product":
+        if (!form.woo_product_id) return toast.error("Selecciona el producto WooCommerce");
+        if (!form.sku) return toast.error("SKU WooCommerce obligatorio");
+        break;
+      case "woocommerce_variation":
+        if (!form.woo_product_id || !form.woo_variation_id) return toast.error("Selecciona la variación WooCommerce");
+        if (!form.sku) return toast.error("SKU de variación obligatorio");
+        break;
+      case "core_product":
+        if (!form.core_product_id) return toast.error("Selecciona el Producto Core");
+        if (!form.sku) return toast.error("SKU Core obligatorio");
+        break;
+      case "core_variant":
+        if (!form.core_product_id || !form.core_variant_id) return toast.error("Selecciona la variante Core");
+        if (!form.variant_label) return toast.error("Talla / variante obligatoria");
+        break;
+      case "manual_sku":
+        if (!form.sku) return toast.error("SKU obligatorio");
+        break;
     }
     const { data: { user } } = await supabase.auth.getUser();
     const payload: any = {
@@ -334,93 +400,270 @@ export default function CoreRestockControl() {
           <DialogHeader>
             <DialogTitle>{editing ? "Editar regla" : "Nueva regla de no reposición"}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <Label>Tipo de referencia *</Label>
-              <Select value={form.reference_type} onValueChange={v => setForm({ ...form, reference_type: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {REF_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>SKU</Label>
-              <Input value={form.sku ?? ""} onChange={e => setForm({ ...form, sku: e.target.value })} />
-            </div>
-            <div>
-              <Label>Nombre del producto</Label>
-              <Input value={form.product_name ?? ""} onChange={e => setForm({ ...form, product_name: e.target.value })} />
-            </div>
-            <div>
-              <Label>Talla / Variación</Label>
-              <Input value={form.variant_label ?? ""} onChange={e => setForm({ ...form, variant_label: e.target.value })} />
-            </div>
-            <div>
-              <Label>Producto Core asociado</Label>
-              <Select value={form.core_product_id ?? "none"} onValueChange={v => setForm({ ...form, core_product_id: v === "none" ? undefined : v })}>
-                <SelectTrigger><SelectValue placeholder="Ninguno" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Ninguno —</SelectItem>
-                  {coreProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.core_sku} — {p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Motivo *</Label>
-              <Select value={form.reason} onValueChange={v => setForm({ ...form, reason: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {REASONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Estado *</Label>
-              <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Activo</SelectItem>
-                  <SelectItem value="temporary">Temporal</SelectItem>
-                  <SelectItem value="replaced">Reemplazado</SelectItem>
-                  <SelectItem value="review">Revisar</SelectItem>
-                  <SelectItem value="inactive">Inactivo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {form.reason === "Otro" && (
-              <div className="col-span-2">
-                <Label>Motivo personalizado</Label>
-                <Input value={form.custom_reason ?? ""} onChange={e => setForm({ ...form, custom_reason: e.target.value })} />
+          {(() => {
+            const t = form.reference_type;
+            const isWooP = t === "woocommerce_product";
+            const isWooV = t === "woocommerce_variation";
+            const isCoreP = t === "core_product";
+            const isCoreV = t === "core_variant";
+            const isManual = t === "manual_sku";
+            const wooParents = wooCandidates.filter(c => !c.woo_variation_id);
+            const wooVariations = wooCandidates.filter(c => c.woo_variation_id && (!form.woo_product_id || c.woo_product_id === form.woo_product_id));
+            const variantsForProd = coreVariants.filter(v => !form.core_product_id || v.core_product_id === form.core_product_id);
+            const selectedWooParent = wooParents.find(c => c.woo_product_id === form.woo_product_id);
+            const selectedWooVar = wooCandidates.find(c => c.woo_variation_id === form.woo_variation_id);
+            const selectedCoreP = coreProducts.find(p => p.id === form.core_product_id);
+            const selectedCoreV = coreVariants.find(v => v.id === form.core_variant_id);
+
+            return (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label>Tipo de referencia *</Label>
+                  <Select value={form.reference_type} onValueChange={changeRefType}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {REF_TYPES.map(rt => <SelectItem key={rt.value} value={rt.value}>{rt.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(isWooP || isWooV) && (
+                  <div className="col-span-2">
+                    <Label>Producto WooCommerce *</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between font-normal">
+                          {selectedWooParent ? `${selectedWooParent.woo_sku ?? "—"} · ${selectedWooParent.woo_product_name ?? ""}` : "Selecciona un producto…"}
+                          <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[480px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar por SKU o nombre…" value={wooSearch} onValueChange={setWooSearch} />
+                          <CommandList>
+                            <CommandEmpty>Sin resultados.</CommandEmpty>
+                            <CommandGroup>
+                              {wooParents.slice(0, 200).map(c => (
+                                <CommandItem key={c.id} value={`${c.woo_sku ?? ""} ${c.woo_product_name ?? ""}`} onSelect={() => pickWooParent(c)}>
+                                  <Check className={`mr-2 h-3.5 w-3.5 ${form.woo_product_id === c.woo_product_id ? "opacity-100" : "opacity-0"}`} />
+                                  <span className="font-mono text-xs mr-2">{c.woo_sku ?? "—"}</span>
+                                  <span className="truncate">{c.woo_product_name}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+
+                {isWooV && (
+                  <div className="col-span-2">
+                    <Label>Variación WooCommerce *</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between font-normal" disabled={!form.woo_product_id}>
+                          {selectedWooVar ? `${selectedWooVar.woo_sku ?? "—"} · ${form.variant_label ?? ""}` : (form.woo_product_id ? "Selecciona una variación…" : "Selecciona primero el producto")}
+                          <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[480px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar variación…" />
+                          <CommandList>
+                            <CommandEmpty>Sin variaciones.</CommandEmpty>
+                            <CommandGroup>
+                              {wooVariations.slice(0, 300).map(c => {
+                                const label = Array.isArray(c.woo_variations) ? c.woo_variations.map((a: any) => a?.option ?? a?.value ?? "").filter(Boolean).join(" / ") : "";
+                                return (
+                                  <CommandItem key={c.id} value={`${c.woo_sku ?? ""} ${label}`} onSelect={() => pickWooVariation(c)}>
+                                    <Check className={`mr-2 h-3.5 w-3.5 ${form.woo_variation_id === c.woo_variation_id ? "opacity-100" : "opacity-0"}`} />
+                                    <span className="font-mono text-xs mr-2">{c.woo_sku ?? "—"}</span>
+                                    <span>{label || `#${c.woo_variation_id}`}</span>
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+
+                {(isCoreP || isCoreV) && (
+                  <div className="col-span-2">
+                    <Label>Producto Core *</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between font-normal">
+                          {selectedCoreP ? `${selectedCoreP.core_sku} · ${selectedCoreP.name}` : "Selecciona un producto Core…"}
+                          <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[480px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar SKU o nombre…" value={coreSearch} onValueChange={setCoreSearch} />
+                          <CommandList>
+                            <CommandEmpty>Sin resultados.</CommandEmpty>
+                            <CommandGroup>
+                              {coreProducts.slice(0, 300).map(p => (
+                                <CommandItem key={p.id} value={`${p.core_sku} ${p.name}`} onSelect={() => pickCoreProduct(p)}>
+                                  <Check className={`mr-2 h-3.5 w-3.5 ${form.core_product_id === p.id ? "opacity-100" : "opacity-0"}`} />
+                                  <span className="font-mono text-xs mr-2">{p.core_sku}</span>
+                                  <span className="truncate">{p.name}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+
+                {isCoreV && (
+                  <div className="col-span-2">
+                    <Label>Variante / Talla Core *</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between font-normal" disabled={!form.core_product_id}>
+                          {selectedCoreV ? `${selectedCoreV.variant_label || selectedCoreV.size}${selectedCoreV.variant_sku ? ` · ${selectedCoreV.variant_sku}` : ""}` : (form.core_product_id ? "Selecciona variante…" : "Selecciona primero el producto Core")}
+                          <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[480px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar talla…" />
+                          <CommandList>
+                            <CommandEmpty>Sin variantes.</CommandEmpty>
+                            <CommandGroup>
+                              {variantsForProd.map(v => (
+                                <CommandItem key={v.id} value={`${v.size} ${v.variant_label ?? ""} ${v.variant_sku ?? ""}`} onSelect={() => pickCoreVariant(v)}>
+                                  <Check className={`mr-2 h-3.5 w-3.5 ${form.core_variant_id === v.id ? "opacity-100" : "opacity-0"}`} />
+                                  <span className="mr-2">{v.variant_label || v.size}</span>
+                                  {v.variant_sku && <span className="font-mono text-xs text-muted-foreground">{v.variant_sku}</span>}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+
+                {/* SKU field — editable in manual, read-only display elsewhere */}
+                <div>
+                  <Label>SKU{(isWooP || isWooV || isCoreP || isManual) ? " *" : ""}</Label>
+                  <Input value={form.sku ?? ""} readOnly={!isManual} onChange={e => setForm({ ...form, sku: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Nombre del producto{isManual ? "" : ""}</Label>
+                  <Input value={form.product_name ?? ""} readOnly={!isManual} onChange={e => setForm({ ...form, product_name: e.target.value })} />
+                </div>
+
+                {(isWooV || isCoreV || isManual) && (
+                  <div className="col-span-2">
+                    <Label>Talla / Variación{isCoreV ? " *" : ""}</Label>
+                    <Input value={form.variant_label ?? ""} readOnly={!isManual && !isCoreV ? true : false} onChange={e => setForm({ ...form, variant_label: e.target.value })} />
+                  </div>
+                )}
+
+                {/* IDs informativos */}
+                {(isWooP || isWooV) && (
+                  <div>
+                    <Label>Woo product_id</Label>
+                    <Input value={form.woo_product_id ?? ""} readOnly />
+                  </div>
+                )}
+                {isWooV && (
+                  <div>
+                    <Label>Woo variation_id</Label>
+                    <Input value={form.woo_variation_id ?? ""} readOnly />
+                  </div>
+                )}
+                {(isCoreP || isCoreV) && (
+                  <div>
+                    <Label>Core product_id</Label>
+                    <Input value={form.core_product_id ?? ""} readOnly className="font-mono text-xs" />
+                  </div>
+                )}
+                {isCoreV && (
+                  <div>
+                    <Label>Core variant_id</Label>
+                    <Input value={form.core_variant_id ?? ""} readOnly className="font-mono text-xs" />
+                  </div>
+                )}
+                {isCoreV && form.woo_variation_id && (
+                  <div>
+                    <Label>Woo variation_id (info)</Label>
+                    <Input value={form.woo_variation_id} readOnly />
+                  </div>
+                )}
+
+                <div>
+                  <Label>Motivo *</Label>
+                  <Select value={form.reason} onValueChange={v => setForm({ ...form, reason: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {REASONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Estado *</Label>
+                  <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Activo</SelectItem>
+                      <SelectItem value="temporary">Temporal</SelectItem>
+                      <SelectItem value="replaced">Reemplazado</SelectItem>
+                      <SelectItem value="review">Revisar</SelectItem>
+                      <SelectItem value="inactive">Inactivo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {form.reason === "Otro" && (
+                  <div className="col-span-2">
+                    <Label>Motivo personalizado</Label>
+                    <Input value={form.custom_reason ?? ""} onChange={e => setForm({ ...form, custom_reason: e.target.value })} />
+                  </div>
+                )}
+
+                <div>
+                  <Label>Fecha de inicio *</Label>
+                  <Input type="date" value={form.start_date ?? ""} onChange={e => setForm({ ...form, start_date: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Fecha de fin</Label>
+                  <Input type="date" value={form.end_date ?? ""} onChange={e => setForm({ ...form, end_date: e.target.value || null })} />
+                </div>
+
+                <div>
+                  <Label>Producto reemplazo (Core)</Label>
+                  <Select value={form.replacement_core_product_id ?? "none"} onValueChange={v => setForm({ ...form, replacement_core_product_id: v === "none" ? undefined : v })}>
+                    <SelectTrigger><SelectValue placeholder="Ninguno" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Ninguno —</SelectItem>
+                      {coreProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.core_sku} — {p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>SKU reemplazo</Label>
+                  <Input value={form.replacement_sku ?? ""} onChange={e => setForm({ ...form, replacement_sku: e.target.value })} />
+                </div>
+
+                <div className="col-span-2">
+                  <Label>Observaciones</Label>
+                  <Textarea value={form.notes ?? ""} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
+                </div>
               </div>
-            )}
-            <div>
-              <Label>Fecha de inicio *</Label>
-              <Input type="date" value={form.start_date ?? ""} onChange={e => setForm({ ...form, start_date: e.target.value })} />
-            </div>
-            <div>
-              <Label>Fecha de fin</Label>
-              <Input type="date" value={form.end_date ?? ""} onChange={e => setForm({ ...form, end_date: e.target.value || null })} />
-            </div>
-            <div>
-              <Label>Producto reemplazo (Core)</Label>
-              <Select value={form.replacement_core_product_id ?? "none"} onValueChange={v => setForm({ ...form, replacement_core_product_id: v === "none" ? undefined : v })}>
-                <SelectTrigger><SelectValue placeholder="Ninguno" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Ninguno —</SelectItem>
-                  {coreProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.core_sku} — {p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>SKU reemplazo</Label>
-              <Input value={form.replacement_sku ?? ""} onChange={e => setForm({ ...form, replacement_sku: e.target.value })} />
-            </div>
-            <div className="col-span-2">
-              <Label>Observaciones</Label>
-              <Textarea value={form.notes ?? ""} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
-            </div>
-          </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={save}>{editing ? "Guardar cambios" : "Crear regla"}</Button>
