@@ -107,6 +107,13 @@ export default function CoreWooSalesRanking() {
   const [items, setItems] = useState<ProductAgg[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [ignoredMap, setIgnoredMap] = useState<Map<string, string>>(new Map()); // sku -> status
+  const [nonRestockSkus, setNonRestockSkus] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    supabase.from("core_restock_control").select("sku").in("status", ["active", "temporary"]).then(({ data }) => {
+      setNonRestockSkus(new Set(((data as any[]) ?? []).map(r => (r.sku || "").toUpperCase()).filter(Boolean)));
+    });
+  }, []);
 
   const bounds = useMemo(() => rangeBounds(range, customFrom, customTo), [range, customFrom, customTo]);
 
@@ -453,6 +460,9 @@ export default function CoreWooSalesRanking() {
                     </TableCell>
                     <TableCell>
                       <Badge className={cn("font-semibold", badge.cls)}>{badge.label}</Badge>
+                      {g.parentSku && nonRestockSkus.has(g.parentSku.toUpperCase()) && (
+                        <Badge variant="outline" className="ml-1 bg-muted text-muted-foreground border-border">No restockeable</Badge>
+                      )}
                       {g.coreStatus === "conflicto" && <div className="text-xs text-muted-foreground mt-1">{g.matchedCount} coincidencias</div>}
                       {g.coreProduct && (
                         <div className="text-xs text-muted-foreground mt-1 font-mono">{g.coreProduct.core_sku}</div>
