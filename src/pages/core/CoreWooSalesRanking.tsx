@@ -467,7 +467,7 @@ export default function CoreWooSalesRanking() {
                     <TableCell className="text-right tabular-nums">{g.orders.size}</TableCell>
                     <TableCell className="text-right tabular-nums">{g.revenue.toFixed(2)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{g.lastAt ? new Date(g.lastAt).toLocaleDateString() : "—"}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1 flex-wrap">
                         {g.coreStatus === "ya_en_core" && g.coreProduct && (
                           <Button size="sm" variant="outline" onClick={() => navigate(`/core/productos/${g.coreProduct!.id}`)}>
