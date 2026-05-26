@@ -758,6 +758,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string
+          fabrication_fund_run_id: string | null
           fund_id: string
           id: string
           movement_type: string
@@ -783,6 +784,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          fabrication_fund_run_id?: string | null
           fund_id: string
           id?: string
           movement_type: string
@@ -808,6 +810,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          fabrication_fund_run_id?: string | null
           fund_id?: string
           id?: string
           movement_type?: string
@@ -827,6 +830,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "core_fabrication_fund_movements_fabrication_fund_run_id_fkey"
+            columns: ["fabrication_fund_run_id"]
+            isOneToOne: false
+            referencedRelation: "core_fabrication_fund_runs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "core_fabrication_fund_movements_fund_id_fkey"
             columns: ["fund_id"]
             isOneToOne: false
@@ -845,6 +855,7 @@ export type Database = {
       core_fabrication_fund_pending_items: {
         Row: {
           created_at: string
+          fabrication_fund_run_id: string | null
           id: string
           notes: string | null
           order_status: string | null
@@ -865,6 +876,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          fabrication_fund_run_id?: string | null
           id?: string
           notes?: string | null
           order_status?: string | null
@@ -885,6 +897,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          fabrication_fund_run_id?: string | null
           id?: string
           notes?: string | null
           order_status?: string | null
@@ -903,7 +916,15 @@ export type Database = {
           woo_sku?: string | null
           woo_variation_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "core_fabrication_fund_pending_item_fabrication_fund_run_id_fkey"
+            columns: ["fabrication_fund_run_id"]
+            isOneToOne: false
+            referencedRelation: "core_fabrication_fund_runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       core_fabrication_fund_runs: {
         Row: {

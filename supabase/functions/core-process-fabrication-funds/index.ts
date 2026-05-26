@@ -166,7 +166,7 @@ serve(async (req) => {
         // Missing SKU
         if (!skuLower) {
           await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, reason: "missing_sku",
+            supabase, pendByKey, oid, iid, it, order, runId, reason: "missing_sku",
             suggested: "Asignar SKU al producto Woo",
           });
           summary.pending_items_created += 1;
@@ -176,7 +176,7 @@ serve(async (req) => {
         // No core product mapped
         if (!product) {
           await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, reason: "product_not_in_core",
+            supabase, pendByKey, oid, iid, it, order, runId, reason: "product_not_in_core",
             suggested: "Crear Producto Core o asociar",
           });
           summary.pending_items_created += 1;
@@ -187,7 +187,7 @@ serve(async (req) => {
         const unitCost = Number(product.unit_cost ?? 0);
         if (!unitCost || unitCost <= 0) {
           await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, reason: "missing_cost",
+            supabase, pendByKey, oid, iid, it, order, runId, reason: "missing_cost",
             suggested: "Asignar estructura de costos / snapshot",
           });
           summary.pending_items_created += 1;
@@ -205,7 +205,7 @@ serve(async (req) => {
         const qty = Number(it.quantity ?? 0) || 0;
         if (qty <= 0) {
           await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, reason: "sync_error",
+            supabase, pendByKey, oid, iid, it, order, runId, reason: "sync_error",
             suggested: "Cantidad inválida en la línea de pedido",
           });
           summary.pending_items_created += 1;
@@ -218,6 +218,7 @@ serve(async (req) => {
 
         const { error: insErr } = await supabase.from("core_fabrication_fund_movements").insert({
           fund_id: fund.id,
+          fabrication_fund_run_id: runId,
           movement_type: movementType,
           source: "woocommerce",
           source_order_id: oid,
@@ -294,6 +295,7 @@ serve(async (req) => {
         const status = orderStatusMap.get(m.source_order_id);
         const { data: rev, error: revErr } = await supabase.from("core_fabrication_fund_movements").insert({
           fund_id: m.fund_id,
+          fabrication_fund_run_id: runId,
           movement_type: "reversal",
           source: "system",
           source_order_id: m.source_order_id,
@@ -369,9 +371,9 @@ async function currentFund(supabase: any, id: string) {
 }
 async function upsertPending(opts: {
   supabase: any; pendByKey: Map<string, any>; oid: number; iid: number | null; it: any; order: any;
-  reason: string; suggested: string;
+  reason: string; suggested: string; runId?: string | null;
 }) {
-  const { supabase, pendByKey, oid, iid, it, order, reason, suggested } = opts;
+  const { supabase, pendByKey, oid, iid, it, order, reason, suggested, runId } = opts;
   const key = `${oid}|${iid}`;
   const existing = pendByKey.get(key);
   const payload = {
@@ -385,14 +387,16 @@ async function upsertPending(opts: {
     reason,
     suggested_action: suggested,
     status: "pending",
+    fabrication_fund_run_id: runId ?? null,
   };
   if (existing) {
     if (existing.status === "ignored" || existing.status === "resolved") return;
     await supabase.from("core_fabrication_fund_pending_items")
-      .update({ reason, suggested_action: suggested, order_status: order?.order_status ?? null })
+      .update({ reason, suggested_action: suggested, order_status: order?.order_status ?? null, fabrication_fund_run_id: runId ?? null })
       .eq("id", existing.id);
   } else {
     const { data } = await supabase.from("core_fabrication_fund_pending_items").insert(payload).select().single();
     if (data) pendByKey.set(key, data);
   }
 }
+
