@@ -338,9 +338,9 @@ export default function CoreWooSalesRanking() {
   }
 
   async function createDraftFromGroup(g: ProductAgg) {
-    if (!g.parentSku) return toast.error("Este producto no tiene SKU padre en WooCommerce. Asigna un SKU antes de crear el Core.");
+    if (!g.parentSku) return toast.error("Este producto no tiene SKU padre en WooCommerce. Asigna un SKU antes de crear el producto de fabricación.");
     const { data: dup } = await supabase.from("core_products").select("id, core_sku").eq("core_sku", g.parentSku).maybeSingle();
-    if (dup) return toast.error(`Ya existe un Producto Core con SKU ${g.parentSku}`);
+    if (dup) return toast.error(`Ya existe un producto de fabricación con SKU ${g.parentSku}`);
 
     const { data: { user } } = await supabase.auth.getUser();
     const { data: newProd, error } = await supabase.from("core_products").insert({
