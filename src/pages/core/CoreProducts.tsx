@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -13,8 +13,19 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet, RefreshCw, Inbox, Cloud } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet, RefreshCw, Inbox, Cloud, ChevronDown, ChevronRight } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
+import { cn } from "@/lib/utils";
+
+type Variant = {
+  id: string;
+  core_product_id: string;
+  size: string;
+  variant_sku: string | null;
+  woo_sku: string | null;
+  status: string;
+  sort_order: number | null;
+};
 
 type Product = {
   id: string;
