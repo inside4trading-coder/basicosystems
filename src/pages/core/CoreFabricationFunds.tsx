@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Layers, Play, Plus, Download, RotateCcw, Wallet, AlertCircle, History, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
+import PendingResolutionPanel from "@/components/core/PendingResolutionPanel";
 
 type Fund = {
   id: string; fund_type: string; core_product_id: string | null; sku: string | null;
