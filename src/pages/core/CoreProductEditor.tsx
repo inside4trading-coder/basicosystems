@@ -520,7 +520,7 @@ export default function CoreProductEditor() {
                 </TableBody>
               </Table>
             </div>
-            <p className="text-xs text-muted-foreground">Cada Producto Core puede tener varias tallas. No se permiten tallas duplicadas dentro del mismo producto.</p>
+            <p className="text-xs text-muted-foreground">Cada producto de fabricación puede tener varias tallas. No se permiten tallas duplicadas dentro del mismo producto.</p>
           </Card>
         </TabsContent>
 
