@@ -98,6 +98,7 @@ export default function CoreFabricationFunds() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [runDetail, setRunDetail] = useState<Run | null>(null);
   const [form, setForm] = useState({
     movement_type: "manual_increase",
     fund_id: "",
@@ -106,6 +107,7 @@ export default function CoreFabricationFunds() {
     reason: "",
     notes: "",
   });
+
 
   async function load() {
     setLoading(true);
