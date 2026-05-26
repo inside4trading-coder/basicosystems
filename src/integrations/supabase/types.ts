@@ -749,6 +749,264 @@ export type Database = {
         }
         Relationships: []
       }
+      core_fabrication_fund_movements: {
+        Row: {
+          amount: number
+          core_product_id: string | null
+          core_variant_id: string | null
+          cost_snapshot_data: Json | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          fund_id: string
+          id: string
+          movement_type: string
+          notes: string | null
+          product_name: string | null
+          quantity: number | null
+          reason: string | null
+          related_movement_id: string | null
+          sku: string | null
+          source: string
+          source_order_id: number | null
+          source_order_item_id: number | null
+          status: string
+          unit_cost_snapshot: number | null
+          woo_product_id: number | null
+          woo_variation_id: number | null
+        }
+        Insert: {
+          amount: number
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          cost_snapshot_data?: Json | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          fund_id: string
+          id?: string
+          movement_type: string
+          notes?: string | null
+          product_name?: string | null
+          quantity?: number | null
+          reason?: string | null
+          related_movement_id?: string | null
+          sku?: string | null
+          source?: string
+          source_order_id?: number | null
+          source_order_item_id?: number | null
+          status?: string
+          unit_cost_snapshot?: number | null
+          woo_product_id?: number | null
+          woo_variation_id?: number | null
+        }
+        Update: {
+          amount?: number
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          cost_snapshot_data?: Json | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          fund_id?: string
+          id?: string
+          movement_type?: string
+          notes?: string | null
+          product_name?: string | null
+          quantity?: number | null
+          reason?: string | null
+          related_movement_id?: string | null
+          sku?: string | null
+          source?: string
+          source_order_id?: number | null
+          source_order_item_id?: number | null
+          status?: string
+          unit_cost_snapshot?: number | null
+          woo_product_id?: number | null
+          woo_variation_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_fabrication_fund_movements_fund_id_fkey"
+            columns: ["fund_id"]
+            isOneToOne: false
+            referencedRelation: "core_fabrication_funds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_fabrication_fund_movements_related_movement_id_fkey"
+            columns: ["related_movement_id"]
+            isOneToOne: false
+            referencedRelation: "core_fabrication_fund_movements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_fabrication_fund_pending_items: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          order_status: string | null
+          product_name: string | null
+          quantity: number | null
+          reason: string
+          resolved_at: string | null
+          resolved_by: string | null
+          revenue: number | null
+          source_order_id: number
+          source_order_item_id: number | null
+          status: string
+          suggested_action: string | null
+          updated_at: string
+          woo_product_id: number | null
+          woo_sku: string | null
+          woo_variation_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_status?: string | null
+          product_name?: string | null
+          quantity?: number | null
+          reason: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          revenue?: number | null
+          source_order_id: number
+          source_order_item_id?: number | null
+          status?: string
+          suggested_action?: string | null
+          updated_at?: string
+          woo_product_id?: number | null
+          woo_sku?: string | null
+          woo_variation_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_status?: string | null
+          product_name?: string | null
+          quantity?: number | null
+          reason?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          revenue?: number | null
+          source_order_id?: number
+          source_order_item_id?: number | null
+          status?: string
+          suggested_action?: string | null
+          updated_at?: string
+          woo_product_id?: number | null
+          woo_sku?: string | null
+          woo_variation_id?: number | null
+        }
+        Relationships: []
+      }
+      core_fabrication_fund_runs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          errors_count: number
+          id: string
+          items_checked: number
+          movements_created: number
+          orders_checked: number
+          pending_items_created: number
+          period_end: string | null
+          period_start: string | null
+          reversals_created: number
+          run_type: string
+          status: string
+          summary: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          errors_count?: number
+          id?: string
+          items_checked?: number
+          movements_created?: number
+          orders_checked?: number
+          pending_items_created?: number
+          period_end?: string | null
+          period_start?: string | null
+          reversals_created?: number
+          run_type?: string
+          status?: string
+          summary?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          errors_count?: number
+          id?: string
+          items_checked?: number
+          movements_created?: number
+          orders_checked?: number
+          pending_items_created?: number
+          period_end?: string | null
+          period_start?: string | null
+          reversals_created?: number
+          run_type?: string
+          status?: string
+          summary?: Json
+        }
+        Relationships: []
+      }
+      core_fabrication_funds: {
+        Row: {
+          available_amount: number
+          core_product_id: string | null
+          core_variant_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          fund_type: string
+          id: string
+          name: string
+          notes: string | null
+          sku: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          available_amount?: number
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          fund_type: string
+          id?: string
+          name: string
+          notes?: string | null
+          sku?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          available_amount?: number
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          fund_type?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          sku?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       core_import_batch_rows: {
         Row: {
           action: string | null
