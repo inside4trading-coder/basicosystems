@@ -134,6 +134,14 @@ export default function CoreWooCandidates() {
 
   async function setCandidateStatus(c: Candidate, status: string, msg: string) {
     await supabase.from("core_woo_product_candidates").update({ status }).eq("id", c.id);
+    await logCoreAudit({
+      table: "core_woo_product_candidates",
+      recordId: c.id,
+      action: `candidate_${status}`,
+      field: "status",
+      oldValue: c.status,
+      newValue: status,
+    });
     toast.success(msg);
     load();
   }
