@@ -430,7 +430,7 @@ export default function CoreWooSalesRanking() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-8"></TableHead>
-              <TableHead>Estado Core</TableHead>
+              <TableHead>Estado Catálogo</TableHead>
               <TableHead>SKU Woo</TableHead>
               <TableHead>Producto</TableHead>
               <TableHead className="text-right">Unidades</TableHead>
