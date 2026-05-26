@@ -596,6 +596,9 @@ export default function CoreRestockControl() {
                     {form.core_variant_id ? <span className="mr-3">Core variant_id: <span className="font-mono">{String(form.core_variant_id).slice(0, 8)}…</span></span> : null}
                   </div>
                 )}
+
+                <div>
+                  <Label>Motivo *</Label>
                   <Select value={form.reason} onValueChange={v => setForm({ ...form, reason: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
