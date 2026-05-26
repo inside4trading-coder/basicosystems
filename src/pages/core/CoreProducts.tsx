@@ -35,6 +35,8 @@ type Product = {
   color: string | null;
   commercial_status: string;
   is_restockable: boolean;
+  product_priority: string | null;
+  replenishment_mode: string | null;
   unit_cost: number;
   currency: string;
   estimated_sale_price: number | null;
@@ -51,6 +53,15 @@ const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secon
   inactive: { label: "Inactivo", variant: "secondary" },
   discontinued: { label: "Descontinuado", variant: "destructive" },
   stock_only: { label: "Solo venta stock", variant: "secondary" },
+};
+
+const PRIORITY_LABELS: Record<string, { label: string; cls: string }> = {
+  core_essential: { label: "Core / Esencial", cls: "bg-red-600 text-white border-transparent" },
+  regular: { label: "Regular", cls: "bg-muted text-foreground" },
+  seasonal: { label: "Temporada", cls: "bg-amber-500 text-black border-transparent" },
+  limited_drop: { label: "Drop limitado", cls: "bg-purple-600 text-white border-transparent" },
+  test: { label: "Prueba", cls: "bg-blue-500 text-white border-transparent" },
+  low: { label: "Baja prioridad", cls: "bg-muted text-muted-foreground" },
 };
 
 const PRODUCT_TYPES = ["Franela", "Hoodie", "Jogger", "Cargo", "Short", "Gorra", "Accesorio", "Producto terminado", "Otro"];
@@ -117,7 +128,7 @@ export default function CoreProducts() {
     setLoading(true);
     const { data, error } = await supabase
       .from("core_products")
-      .select("id, core_sku, name, product_type, color, commercial_status, is_restockable, unit_cost, currency, estimated_sale_price, woo_product_id, woo_product_name, sku_source, sync_status, updated_at")
+      .select("id, core_sku, name, product_type, color, commercial_status, is_restockable, product_priority, replenishment_mode, unit_cost, currency, estimated_sale_price, woo_product_id, woo_product_name, sku_source, sync_status, updated_at")
       .order("updated_at", { ascending: false });
     if (error) toast.error("Error cargando productos: " + error.message);
     setItems((data as any) ?? []);
@@ -204,7 +215,7 @@ export default function CoreProducts() {
     load();
   }
 
-  const placeholder = () => toast.info("La importación/exportación de Productos Core se conectará al sistema de Templates de Carga en un siguiente ajuste.");
+  const placeholder = () => toast.info("La importación/exportación del Catálogo de Fabricación se conectará al sistema de Templates de Carga en un siguiente ajuste.");
 
   async function runSync(mode: "catalog" | "sales") {
     setSyncing(true);
@@ -229,9 +240,9 @@ export default function CoreProducts() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight">Productos Core</h1>
+          <h1 className="text-3xl font-black tracking-tight">Catálogo de Fabricación</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Catálogo maestro de productos de fabricación conectados a costos, WooCommerce y restock.
+            Todos los productos fabricables conectados a costos, WooCommerce y restock. La prioridad estratégica (Core / Esencial, Regular, etc.) se define dentro de cada producto.
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Próximo SKU estimado (fallback): <span className="font-mono font-semibold text-foreground">{nextSku}</span>
@@ -252,7 +263,7 @@ export default function CoreProducts() {
           <Button variant="outline" size="sm" onClick={placeholder}><FileSpreadsheet className="h-4 w-4 mr-1" />Formato base</Button>
           <Button variant="outline" size="sm" onClick={placeholder}><Upload className="h-4 w-4 mr-1" />Importar</Button>
           <Button variant="outline" size="sm" onClick={placeholder}><Download className="h-4 w-4 mr-1" />Exportar</Button>
-          <Button size="sm" onClick={() => navigate("/core/productos/nuevo")}><Plus className="h-4 w-4 mr-1" />Nuevo producto Core</Button>
+          <Button size="sm" onClick={() => navigate("/core/productos/nuevo")}><Plus className="h-4 w-4 mr-1" />Nuevo producto de fabricación</Button>
         </div>
       </div>
 
@@ -334,7 +345,13 @@ export default function CoreProducts() {
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">{p.name}</div>
-                        {p.color && <div className="text-xs text-muted-foreground">{p.color}</div>}
+                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                          {(() => {
+                            const pr = PRIORITY_LABELS[p.product_priority ?? "regular"] ?? PRIORITY_LABELS.regular;
+                            return <Badge variant="outline" className={cn("text-[10px] py-0 px-1.5", pr.cls)}>{pr.label}</Badge>;
+                          })()}
+                          {p.color && <span className="text-xs text-muted-foreground">{p.color}</span>}
+                        </div>
                         {isOpen && vars.length > 0 && (
                           <div className="text-xs text-muted-foreground mt-1">{activeCount} de {vars.length} tallas activas</div>
                         )}
@@ -371,7 +388,7 @@ export default function CoreProducts() {
                             <div className="text-xs text-muted-foreground italic">Este producto no tiene tallas/variaciones configuradas. <Button variant="link" size="sm" className="h-auto p-0 ml-1" onClick={() => navigate(`/core/productos/${p.id}`)}>Configurar</Button></div>
                           ) : (
                             <div className="space-y-2">
-                              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tallas / variaciones en Core</div>
+                              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tallas / variaciones</div>
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                 {vars.map(v => (
                                   <div key={v.id} className={cn(

@@ -38,7 +38,7 @@ export type PendingItem = {
 
 const REASON_LABEL: Record<string, string> = {
   missing_sku: "Sin SKU",
-  product_not_in_core: "No está en Core",
+  product_not_in_core: "Falta en Catálogo de Fabricación",
   variation_not_mapped: "Variante no mapeada",
   unit_cost_missing: "Sin costo",
   non_restockable_not_classified: "Sin clasificar restock",

@@ -54,6 +54,19 @@ const STATUS_OPTIONS = [
   { value: "discontinued", label: "Descontinuado" },
   { value: "stock_only", label: "Solo venta de stock existente" },
 ];
+const PRIORITY_OPTIONS = [
+  { value: "core_essential", label: "Core / Esencial" },
+  { value: "regular", label: "Regular" },
+  { value: "seasonal", label: "Temporada" },
+  { value: "limited_drop", label: "Drop limitado" },
+  { value: "test", label: "Prueba" },
+  { value: "low", label: "Baja prioridad" },
+];
+const REPLENISHMENT_OPTIONS = [
+  { value: "automatic", label: "Automático" },
+  { value: "manual_review", label: "Revisión manual" },
+  { value: "do_not_replenish", label: "No reponer" },
+];
 const SIZE_PRESETS = {
   prendas: ["S", "M", "L", "XL", "XXL"],
   pantalones: ["28", "30", "32", "34", "36", "38"],
@@ -77,6 +90,8 @@ export default function CoreProductEditor() {
   const [imageUrl, setImageUrl] = useState("");
   const [commercialStatus, setCommercialStatus] = useState("draft");
   const [isRestockable, setIsRestockable] = useState(true);
+  const [productPriority, setProductPriority] = useState("regular");
+  const [replenishmentMode, setReplenishmentMode] = useState("manual_review");
   const [costStructureId, setCostStructureId] = useState<string>("");
   const [costSnapshot, setCostSnapshot] = useState<any>(null);
   const [unitCost, setUnitCost] = useState(0);
@@ -123,6 +138,8 @@ export default function CoreProductEditor() {
         setImageUrl(p.image_url ?? "");
         setCommercialStatus(p.commercial_status);
         setIsRestockable(!!p.is_restockable);
+        setProductPriority((p as any).product_priority ?? "regular");
+        setReplenishmentMode((p as any).replenishment_mode ?? "manual_review");
         setCostStructureId(p.cost_structure_id ?? "");
         setCostSnapshot(p.cost_snapshot);
         setUnitCost(Number(p.unit_cost) || 0);
@@ -245,6 +262,8 @@ export default function CoreProductEditor() {
         image_url: imageUrl || null,
         commercial_status: commercialStatus,
         is_restockable: isRestockable,
+        product_priority: productPriority,
+        replenishment_mode: replenishmentMode,
         cost_structure_id: costStructureId || null,
         cost_snapshot: costSnapshot,
         unit_cost: unitCost,
@@ -368,7 +387,7 @@ export default function CoreProductEditor() {
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/core/productos")}><ArrowLeft className="h-4 w-4" /></Button>
           <div>
-            <h1 className="text-2xl font-black tracking-tight">{isNew ? "Nuevo producto Core" : `${coreSku} — ${name || "Producto"}`}</h1>
+            <h1 className="text-2xl font-black tracking-tight">{isNew ? "Nuevo producto de fabricación" : `${coreSku} — ${name || "Producto"}`}</h1>
             <p className="text-xs text-muted-foreground">{isNew ? `SKU asignado al guardar: ${coreSku}` : `SKU: ${coreSku}`}</p>
           </div>
         </div>
@@ -425,7 +444,23 @@ export default function CoreProductEditor() {
                   <SelectContent>{STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-3 pt-6">
+              <div>
+                <Label>Prioridad del producto</Label>
+                <Select value={productPriority} onValueChange={setProductPriority}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{PRIORITY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Importancia estratégica. Independiente de si es restockeable.</p>
+              </div>
+              <div>
+                <Label>Modo de reposición</Label>
+                <Select value={replenishmentMode} onValueChange={setReplenishmentMode}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{REPLENISHMENT_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Cómo se genera la reposición cuando el producto es restockeable.</p>
+              </div>
+              <div className="flex items-center gap-3 pt-6 md:col-span-2 border-t pt-4">
                 <Switch checked={isRestockable} onCheckedChange={setIsRestockable} id="restock" />
                 <div>
                   <Label htmlFor="restock" className="cursor-pointer">Restockeable</Label>
@@ -501,7 +536,7 @@ export default function CoreProductEditor() {
                 </TableBody>
               </Table>
             </div>
-            <p className="text-xs text-muted-foreground">Cada Producto Core puede tener varias tallas. No se permiten tallas duplicadas dentro del mismo producto.</p>
+            <p className="text-xs text-muted-foreground">Cada producto de fabricación puede tener varias tallas. No se permiten tallas duplicadas dentro del mismo producto.</p>
           </Card>
         </TabsContent>
 

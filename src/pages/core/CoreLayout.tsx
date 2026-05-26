@@ -19,7 +19,7 @@ const groups: { label: string; items: Section[] }[] = [
       { to: "/core/templates-carga", label: "Template de Carga materia prima", icon: FileSpreadsheet },
       { to: "/core/estructuras-costos", label: "Estructuras de Costos", icon: Calculator },
       { to: "/core/templates-costos", label: "Templates Costos / Prod.", icon: FileStack },
-      { to: "/core/productos", label: "Productos Core", icon: Boxes },
+      { to: "/core/productos", label: "Catálogo de Fabricación", icon: Boxes },
       { to: "/core/control-reposicion", label: "Control de Reposición", icon: Ban },
     ],
   },

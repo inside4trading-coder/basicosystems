@@ -89,8 +89,8 @@ const STATUS_COLORS: Record<ProductAgg["coreStatus"], string> = {
 };
 
 const STATUS_BADGE: Record<ProductAgg["coreStatus"], { label: string; cls: string }> = {
-  ya_en_core: { label: "Ya está en Core", cls: "bg-green-600 text-white" },
-  no_en_core: { label: "No está en Core", cls: "bg-red-600 text-white" },
+  ya_en_core: { label: "En Catálogo de Fabricación", cls: "bg-green-600 text-white" },
+  no_en_core: { label: "Falta en Catálogo", cls: "bg-red-600 text-white" },
   conflicto: { label: "Conflicto SKU", cls: "bg-yellow-500 text-black" },
   ignorado: { label: "Ignorado", cls: "bg-muted text-muted-foreground" },
   no_fabricable: { label: "No fabricable", cls: "bg-muted text-muted-foreground" },
@@ -338,9 +338,9 @@ export default function CoreWooSalesRanking() {
   }
 
   async function createDraftFromGroup(g: ProductAgg) {
-    if (!g.parentSku) return toast.error("Este producto no tiene SKU padre en WooCommerce. Asigna un SKU antes de crear el Core.");
+    if (!g.parentSku) return toast.error("Este producto no tiene SKU padre en WooCommerce. Asigna un SKU antes de crear el producto de fabricación.");
     const { data: dup } = await supabase.from("core_products").select("id, core_sku").eq("core_sku", g.parentSku).maybeSingle();
-    if (dup) return toast.error(`Ya existe un Producto Core con SKU ${g.parentSku}`);
+    if (dup) return toast.error(`Ya existe un producto de fabricación con SKU ${g.parentSku}`);
 
     const { data: { user } } = await supabase.auth.getUser();
     const { data: newProd, error } = await supabase.from("core_products").insert({
@@ -370,7 +370,7 @@ export default function CoreWooSalesRanking() {
     if (variants.length > 0) await supabase.from("core_product_variants").insert(variants);
 
     await logCoreAudit({ table: "core_products", recordId: newProd.id, action: "create_from_sales_ranking", newValue: g.parentSku });
-    toast.success(`Producto Core creado: ${g.parentSku}`);
+    toast.success(`Producto de fabricación creado: ${g.parentSku}`);
     load();
   }
 
@@ -412,8 +412,8 @@ export default function CoreWooSalesRanking() {
           <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="ya_en_core">Ya en Core</SelectItem>
-            <SelectItem value="no_en_core">No en Core</SelectItem>
+            <SelectItem value="ya_en_core">En Catálogo</SelectItem>
+            <SelectItem value="no_en_core">Faltan en Catálogo</SelectItem>
             <SelectItem value="conflicto">Conflictos</SelectItem>
           </SelectContent>
         </Select>
@@ -430,7 +430,7 @@ export default function CoreWooSalesRanking() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-8"></TableHead>
-              <TableHead>Estado Core</TableHead>
+              <TableHead>Estado Catálogo</TableHead>
               <TableHead>SKU Woo</TableHead>
               <TableHead>Producto</TableHead>
               <TableHead className="text-right">Unidades</TableHead>
@@ -481,13 +481,13 @@ export default function CoreWooSalesRanking() {
                       <div className="flex justify-end gap-1 flex-wrap">
                         {g.coreStatus === "ya_en_core" && g.coreProduct && (
                           <Button size="sm" variant="outline" onClick={() => navigate(`/core/productos/${g.coreProduct!.id}`)}>
-                            <ExternalLink className="h-3 w-3 mr-1" />Ver Core
+                            <ExternalLink className="h-3 w-3 mr-1" />Ver en Catálogo
                           </Button>
                         )}
                         {(g.coreStatus === "no_en_core") && (
                           <>
                             <Button size="sm" variant="default" onClick={() => createDraftFromGroup(g)} disabled={!g.parentSku}>
-                              <Plus className="h-3 w-3 mr-1" />Crear borrador Core
+                              <Plus className="h-3 w-3 mr-1" />Crear borrador de fabricación
                             </Button>
                             <Button size="sm" variant="ghost" onClick={() => markCandidate(g, "ignorado")} title="Ignorar"><EyeOff className="h-3 w-3" /></Button>
                             <Button size="sm" variant="ghost" onClick={() => markCandidate(g, "no_fabricable")} title="No fabricable"><Ban className="h-3 w-3" /></Button>
@@ -507,7 +507,7 @@ export default function CoreWooSalesRanking() {
                       ? { label: "En Core", cls: "bg-green-600 text-white" }
                       : vStatus === "sin_padre"
                         ? { label: "Sin padre", cls: "bg-muted text-muted-foreground" }
-                        : { label: "Falta en Core", cls: "bg-red-600 text-white" };
+                        : { label: "Falta en Catálogo", cls: "bg-red-600 text-white" };
                     const rowCls = vStatus === "en_core"
                       ? "bg-green-50/40 dark:bg-green-950/10"
                       : vStatus === "sin_padre"

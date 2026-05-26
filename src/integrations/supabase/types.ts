@@ -1436,7 +1436,9 @@ export type Database = {
           is_restockable: boolean
           name: string
           notes: string | null
+          product_priority: string
           product_type: string | null
+          replenishment_mode: string
           sku_source: string
           suggested_fabrication_fund: number
           sync_status: string
@@ -1472,7 +1474,9 @@ export type Database = {
           is_restockable?: boolean
           name: string
           notes?: string | null
+          product_priority?: string
           product_type?: string | null
+          replenishment_mode?: string
           sku_source?: string
           suggested_fabrication_fund?: number
           sync_status?: string
@@ -1508,7 +1512,9 @@ export type Database = {
           is_restockable?: boolean
           name?: string
           notes?: string | null
+          product_priority?: string
           product_type?: string | null
+          replenishment_mode?: string
           sku_source?: string
           suggested_fabrication_fund?: number
           sync_status?: string
