@@ -1308,6 +1308,81 @@ export type Database = {
           },
         ]
       }
+      core_restock_control: {
+        Row: {
+          core_product_id: string | null
+          core_variant_id: string | null
+          created_at: string
+          created_by: string | null
+          custom_reason: string | null
+          end_date: string | null
+          id: string
+          notes: string | null
+          product_name: string | null
+          reason: string
+          reference_type: string
+          replacement_core_product_id: string | null
+          replacement_sku: string | null
+          responsible_user_id: string | null
+          sku: string | null
+          start_date: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          variant_label: string | null
+          woo_product_id: number | null
+          woo_variation_id: number | null
+        }
+        Insert: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_reason?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          product_name?: string | null
+          reason: string
+          reference_type: string
+          replacement_core_product_id?: string | null
+          replacement_sku?: string | null
+          responsible_user_id?: string | null
+          sku?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_label?: string | null
+          woo_product_id?: number | null
+          woo_variation_id?: number | null
+        }
+        Update: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_reason?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          product_name?: string | null
+          reason?: string
+          reference_type?: string
+          replacement_core_product_id?: string | null
+          replacement_sku?: string | null
+          responsible_user_id?: string | null
+          sku?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_label?: string | null
+          woo_product_id?: number | null
+          woo_variation_id?: number | null
+        }
+        Relationships: []
+      }
       core_role_definitions: {
         Row: {
           created_at: string
