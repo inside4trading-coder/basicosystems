@@ -134,6 +134,14 @@ export default function CoreWooCandidates() {
 
   async function setCandidateStatus(c: Candidate, status: string, msg: string) {
     await supabase.from("core_woo_product_candidates").update({ status }).eq("id", c.id);
+    await logCoreAudit({
+      table: "core_woo_product_candidates",
+      recordId: c.id,
+      action: `candidate_${status}`,
+      field: "status",
+      oldValue: c.status,
+      newValue: status,
+    });
     toast.success(msg);
     load();
   }
@@ -213,7 +221,8 @@ export default function CoreWooCandidates() {
   }
 
   const countCatalog = items.filter(c => c.detected_from === "catalog" && !["ignorado", "no_fabricable"].includes(c.status)).length;
-  const countConflicts = items.filter(c => c.status === "conflicto" || c.status === "requiere_sku").length;
+  const countConflicts = items.filter(c => c.status === "conflicto").length;
+  const countRequiresSku = items.filter(c => c.status === "requiere_sku").length;
   const countIgnored = items.filter(c => ["ignorado", "no_fabricable"].includes(c.status)).length;
 
   return (
@@ -242,6 +251,7 @@ export default function CoreWooCandidates() {
             <TabsTrigger value="ranking">Vendidos últimos 60 días</TabsTrigger>
             <TabsTrigger value="catalog">Catálogo Woo {countCatalog > 0 && <Badge variant="secondary" className="ml-2">{countCatalog}</Badge>}</TabsTrigger>
             <TabsTrigger value="conflicts">Conflictos {countConflicts > 0 && <Badge variant="destructive" className="ml-2">{countConflicts}</Badge>}</TabsTrigger>
+            <TabsTrigger value="requires_sku">Requiere SKU {countRequiresSku > 0 && <Badge variant="destructive" className="ml-2">{countRequiresSku}</Badge>}</TabsTrigger>
             <TabsTrigger value="ignored">No fabricables / Ignorados {countIgnored > 0 && <Badge variant="outline" className="ml-2">{countIgnored}</Badge>}</TabsTrigger>
           </TabsList>
 
@@ -262,7 +272,12 @@ export default function CoreWooCandidates() {
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Buscar" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
             </div>
-            <CandidatesTable filter={(c) => c.status === "conflicto" || c.status === "requiere_sku"} />
+            <CandidatesTable filter={(c) => c.status === "conflicto"} />
+          </TabsContent>
+
+          <TabsContent value="requires_sku" className="mt-4 space-y-3">
+            <div className="text-xs text-muted-foreground">Productos WooCommerce sin SKU — asigna uno en Woo antes de crear el borrador Core.</div>
+            <CandidatesTable filter={(c) => c.status === "requiere_sku"} />
           </TabsContent>
 
           <TabsContent value="ignored" className="mt-4 space-y-3">
