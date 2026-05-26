@@ -90,6 +90,8 @@ export default function CoreProductEditor() {
   const [imageUrl, setImageUrl] = useState("");
   const [commercialStatus, setCommercialStatus] = useState("draft");
   const [isRestockable, setIsRestockable] = useState(true);
+  const [productPriority, setProductPriority] = useState("regular");
+  const [replenishmentMode, setReplenishmentMode] = useState("manual_review");
   const [costStructureId, setCostStructureId] = useState<string>("");
   const [costSnapshot, setCostSnapshot] = useState<any>(null);
   const [unitCost, setUnitCost] = useState(0);
