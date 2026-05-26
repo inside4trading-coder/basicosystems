@@ -90,6 +90,10 @@ export default function CoreCostStructureEditor() {
   const [estimatedSalePrice, setEstimatedSalePrice] = useState<string>("");
   const [status, setStatus] = useState("draft");
   const [notes, setNotes] = useState("");
+  const [wooProductId, setWooProductId] = useState<string>("");
+  const [wooVariationId, setWooVariationId] = useState<string>("");
+  const [wooProductName, setWooProductName] = useState<string>("");
+  const [wooPermalink, setWooPermalink] = useState<string>("");
 
   // Items
   const [items, setItems] = useState<Item[]>([]);
