@@ -128,7 +128,7 @@ export default function CoreProducts() {
     setLoading(true);
     const { data, error } = await supabase
       .from("core_products")
-      .select("id, core_sku, name, product_type, color, commercial_status, is_restockable, unit_cost, currency, estimated_sale_price, woo_product_id, woo_product_name, sku_source, sync_status, updated_at")
+      .select("id, core_sku, name, product_type, color, commercial_status, is_restockable, product_priority, replenishment_mode, unit_cost, currency, estimated_sale_price, woo_product_id, woo_product_name, sku_source, sync_status, updated_at")
       .order("updated_at", { ascending: false });
     if (error) toast.error("Error cargando productos: " + error.message);
     setItems((data as any) ?? []);
