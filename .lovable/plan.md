@@ -1,97 +1,51 @@
-# Plan — Pendientes como Centro de Resolución (Partidas de Fabricación)
+# Plan — Corrida real de Partidas de Fabricación (25/05/2026)
 
-## Alcance
-Convertir la pestaña Pendientes en un sistema resolutivo, separar pendientes globales vs del último run vs del rango, agregar acciones individuales y en lote, reprocesamiento idempotente y auditoría completa. No tocar QR/Ficha Viajera.
+## Objetivo
+Ejecutar el procesamiento real de la edge function `core-process-fabrication-funds` sobre las ventas confirmadas del **25/05/2026** y validar el resultado con datos reales, sin crear estructuras de costo previamente. Esperamos que los 9 ítems caigan en Pendientes (no hay estructuras todavía) y usar eso para validar todo el flujo de resolución.
 
-## 1. Migración DB
+No se modifica código en este paso. Solo ejecutar + diagnosticar.
 
-Tabla `core_fabrication_fund_pending_items`:
-- Agregar columnas: `ignored_reason text`, `ignored_at timestamptz`, `ignored_by uuid`, `linked_core_product_id uuid`, `linked_core_variant_id uuid`, `marked_non_restockable boolean default false`, `last_action_at timestamptz`, `last_action_by uuid`.
-- Ampliar valores válidos de `status` documentados: `pending | resolved | ignored | linked | non_restockable | processed`.
-- Ampliar `reason` para incluir: `missing_sku`, `product_not_in_core`, `variation_not_mapped`, `unit_cost_missing`, `non_restockable_not_classified`, `product_deleted_or_unavailable`, `sync_error`.
-- Índice por `status`, `reason`, `woo_sku`, `linked_core_product_id`.
+## Pasos
 
-(El resto de tablas ya cubren el flujo; no se crean tablas nuevas.)
+1. **Verificar estado pre-corrida**
+   - Confirmar en BD que no hay movimientos previos para órdenes del 25/05 en `core_fabrication_fund_movements` (idempotencia).
+   - Contar pendientes existentes (`core_fabrication_fund_pending_items` con `status='pending'`) como baseline.
+   - Confirmar que las 9 órdenes/ítems del 25/05 están sincronizadas en `orders` + `order_items`.
 
-## 2. Edge function `core-process-fabrication-funds`
+2. **Ejecutar la edge function en modo real**
+   - Invocar `core-process-fabrication-funds` con rango `from=2026-05-25` / `to=2026-05-25` (modo normal, no `reprocess_pending`).
+   - Capturar el response: `orders_checked`, `items_checked`, `movements_created`, `pending_items_created`, `reversals_created`, `by_reason`, `fabrication_fund_run_id`.
 
-- Detectar mejor el motivo: distinguir `variation_not_mapped` (variation_id existe en order pero no en Core) vs `product_not_in_core`. Renombrar `missing_cost` → `unit_cost_missing`.
-- Aceptar un nuevo modo `mode: "reprocess_pending"` con `pending_ids?: string[]`. En ese modo:
-  - Recorre solo los pendientes seleccionados (o todos los `resolved`/`linked`/`non_restockable` aún sin movimiento).
-  - Para cada uno: si tiene `linked_core_product_id` con costo > 0, genera movimiento en Partida General; si `marked_non_restockable`, genera en Partida No Restockeable.
-  - Idempotencia por `(source_order_id, source_order_item_id, movement_type)` y por unique index existente.
-  - Marca el pendiente con `status='processed'`, `resolved_at`, `resolved_by`.
-- Reusar batching y `fabrication_fund_run_id` ya implementados.
-- Resumen enriquecido: `orders_checked`, `items_checked`, `movements_created`, `pending_items_created`, `pending_items_resolved`, `reversals_created`, `by_reason`.
+3. **Diagnóstico del run**
+   - Leer el run desde `core_fabrication_fund_runs` por `id` devuelto.
+   - Verificar que `movements_created = 0` (no hay estructuras) y `pending_items_created = 9`.
+   - Validar que el `by_reason` desglose sea coherente (esperado: 9 × `product_not_in_core` o `variation_not_mapped`).
 
-## 3. UI — `CoreFabricationFunds.tsx`
+4. **Validación de pendientes generados**
+   - Query a `core_fabrication_fund_pending_items` filtrado por el `fabrication_fund_run_id`.
+   - Para cada uno de los 9 ítems verificar:
+     - `woo_sku`, `woo_product_id`, `woo_variation_id`, `product_name`, `quantity`, `revenue` (USD) correctos.
+     - `reason` coherente con el ítem (todos sin Producto Core asociado).
+     - `status='pending'`, sin `linked_core_product_id`.
+   - Verificar logs de la edge function por errores silenciosos.
 
-### 3.1 Resumen (tab Resumen)
-Reemplazar la tarjeta única "Pendiente por resolver" con cuatro métricas:
-- Pendientes históricos (todos status=pending)
-- Último procesamiento (de `runs[0].pending_items_created`)
-- Pendientes del rango Desde/Hasta (por `created_at` o por order date)
-- Revenue pendiente del rango (suma de `revenue`)
+5. **Validación de reversos**
+   - Confirmar que `reversals_created = 0` (no había movimientos previos que revertir).
 
-### 3.2 Pestaña Pendientes
-Nueva tabla rica con columnas:
-Fecha venta · Order ID · Line item · Woo Product ID · Variation ID · SKU · Producto · Cantidad · Revenue · Motivo (badge) · Estado (badge) · Core asociado · Acciones.
+6. **Verificación en UI**
+   - Confirmar que la pestaña Resumen muestra: 9 pendientes históricos / 9 del último run / 9 del rango / revenue pendiente del rango = suma esperada (~$162).
+   - Confirmar que la pestaña Pendientes muestra los 9 con badges de motivo correctos y acciones disponibles.
 
-Toolbar con filtros: motivo, estado, fecha (rango), Woo Product ID, SKU, asociado/no asociado, restockeable/no, búsqueda libre.
+7. **Entregable**
+   - Tabla resumen con: SKU vendido · Woo Product ID · Variation ID · cantidad · revenue · motivo detectado · ID del pending item.
+   - Diagnóstico final: ¿el sistema se comportó como debe? Confirmar antes de avanzar al siguiente bloque (resolución de pendientes vía UI).
 
-Selección múltiple con checkbox.
+## No se hace en este plan
+- No crear las 9 Estructuras de Costo (decisión: procesar en seco primero).
+- No resolver pendientes todavía (eso es el siguiente bloque).
+- No modificar edge function ni UI.
+- No agregar `variant_cost_override`.
 
-### 3.3 Acciones por fila (menú "Resolver")
-A. **Asociar a Producto Core** → Dialog con buscador (por SKU/nombre/ID) que consulta `core_products` y `core_product_variants`. Al confirmar: setea `linked_core_product_id` (+ variant si aplica), `status='linked'`. Audit.
-B. **Crear Producto Core** → Sheet con nombre, SKU (prefill), unit_cost, restockable. Crea fila en `core_products` y enlaza. Audit.
-C. **Marcar No Restockeable** → Dialog con motivo obligatorio. Inserta en `core_restock_control` (reference por woo_product_id/variation_id/sku, status=active) y setea `marked_non_restockable=true`, `status='non_restockable'`. Audit.
-D. **Ignorar** → Dialog con motivo obligatorio. `status='ignored'`, `ignored_reason`, `ignored_at`, `ignored_by`. Audit.
-E. **Completar costo** (si reason=`unit_cost_missing`) → Dialog para actualizar `unit_cost` del Producto Core ya asociado. Audit.
-
-### 3.4 Acciones en lote
-Barra contextual cuando hay selección:
-- Asociar todos a un Core
-- Marcar todos como no restockeables (motivo único)
-- Ignorar todos (motivo único)
-- Crear Producto Core por cada uno (solo si tienen SKU y nombre)
-
-### 3.5 Botón "Reprocesar pendientes resueltos"
-Junto a "Procesar ventas confirmadas". Invoca la edge function con `mode='reprocess_pending'`. Si hay selección, manda `pending_ids`; si no, procesa todos los pendientes con `status in ('linked','non_restockable','resolved')` y sin movimiento.
-
-### 3.6 Toast mejorado
-- 0 movs + N pendientes: "Procesamiento completado: X ventas revisadas. 0 movimientos generados porque N ítems requieren asociación o costo. Revisa la pestaña Pendientes."
-- Con movimientos: "Procesamiento completado: M movimientos, P pendientes, R reversos."
-- Reprocesamiento: "Reprocesados: M movimientos generados, P pendientes resueltos."
-
-## 4. Auditoría
-Cada acción llama `logCoreAudit` con table=`core_fabrication_fund_pending_items`, action y before/after en JSON. La edge function loguea reprocesamiento con table=`core_fabrication_fund_runs`.
-
-## 5. Detalles técnicos
-
-```text
-Frontend (CoreFabricationFunds.tsx)
-├── new state: filters{reason,status,from,to,wooProductId,sku,linked,restockable,search}
-├── new state: selectedPendingIds: Set<string>
-├── PendingResolveDialog (asociar / crear / no restock / ignorar / completar costo)
-├── BulkActionsBar
-└── reprocessPending() → supabase.functions.invoke(..., {mode:'reprocess_pending'})
-
-Edge function
-├── if (body.mode === 'reprocess_pending') runReprocess(...)
-└── helpers: detectReason(it, product, variant) → typed reason string
-```
-
-Idempotencia: índice único `(source_order_id, source_order_item_id, movement_type)` ya existe.
-
-Performance: paginar lista de pendientes (cap 1000 actual rompe vista) — fetch en páginas de 500 con count exacto y filtros server-side.
-
-## 6. Validaciones
-- Motivo obligatorio para Ignorar y para No Restockeable (zod en cliente).
-- No permitir asociar si el Core no tiene costo y advertir que quedará en `unit_cost_missing`.
-- Asociación masiva solo si todos los seleccionados son del mismo Woo Product ID (para evitar errores).
-
-## 7. Entrega
-1. Migración (paso 1).
-2. Edge function (paso 2) + deploy.
-3. Refactor UI (pasos 3.1–3.6).
-4. Probar: ejecutar procesamiento del rango 24–25/05 → resolver 9 pendientes (asociar/crear/no restock/ignorar) → reprocesar → verificar movimientos en Partida General / No Restockeable.
+## Detalles técnicos
+- Herramientas a usar: `supabase--curl_edge_functions` para invocar, `supabase--read_query` para validar BD, `supabase--edge_function_logs` si algo falla.
+- La idempotencia está garantizada por el unique index `(source_order_id, source_order_item_id, movement_type)`, así que se puede re-ejecutar sin duplicar.
