@@ -25,13 +25,16 @@ type Movement = {
   quantity: number | null; unit_cost_snapshot: number | null;
   amount: number; currency: string; reason: string | null; status: string;
   created_at: string; related_movement_id: string | null;
+  fabrication_fund_run_id: string | null;
 };
 type Pending = {
   id: string; source_order_id: number; source_order_item_id: number | null;
   woo_sku: string | null; product_name: string | null; quantity: number | null; revenue: number | null;
   order_status: string | null; reason: string; suggested_action: string | null; status: string;
   created_at: string;
+  fabrication_fund_run_id: string | null;
 };
+
 type Run = {
   id: string; status: string; created_at: string;
   orders_checked: number; items_checked: number; movements_created: number;
