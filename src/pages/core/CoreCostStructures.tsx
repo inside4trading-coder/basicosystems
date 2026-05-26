@@ -28,6 +28,10 @@ type CostStructure = {
   estimated_gross_margin: number | null;
   estimated_gross_margin_percent: number | null;
   updated_at: string;
+  woo_product_id: number | null;
+  woo_variation_id: number | null;
+  woo_product_name: string | null;
+  woo_permalink: string | null;
 };
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
