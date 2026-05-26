@@ -45,6 +45,15 @@ serve(async (req) => {
   const roleSet = new Set((roles ?? []).map((r: any) => r.role));
   if (!roleSet.has("admin") && !roleSet.has("manager")) return json({ error: "forbidden" }, 403);
 
+  // Optional period filter
+  let periodStart: string | null = null;
+  let periodEnd: string | null = null;
+  try {
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    if (body?.period_start) periodStart = String(body.period_start);
+    if (body?.period_end) periodEnd = String(body.period_end);
+  } catch { /* ignore */ }
+
   const summary: any = {
     orders_checked: 0,
     items_checked: 0,
@@ -111,23 +120,35 @@ serve(async (req) => {
     const pendByKey = new Map<string, any>();
     for (const p of existingPend ?? []) pendByKey.set(pendKey(p.source_order_id, p.source_order_item_id), p);
 
-    // Create run row
+    // Create run row FIRST so every record can reference it
     const { data: runRow } = await supabase.from("core_fabrication_fund_runs").insert({
       run_type: "process_sales",
       status: "completed",
       summary: {},
+      period_start: periodStart,
+      period_end: periodEnd,
       created_by: userId,
     }).select().single();
     runId = runRow?.id ?? null;
 
-    // ---- Pass 1: confirmed orders → generate movements / pendings ----
+
+    // ---- Pass 1: confirmed orders → generate movements / pendings (BATCHED) ----
+    const fundDeltas = new Map<string, number>();  // fund_id -> delta
+    const pendingInserts: any[] = [];
+    const pendingUpdates: { id: string; reason: string; suggested: string; order_status: string | null }[] = [];
+    const movementInserts: any[] = [];
+    const resolvedPendingIds: string[] = [];
+
     const pageSize = 1000;
     let from = 0;
     while (true) {
-      const { data: orders, error: ordErr } = await supabase
+      let q = supabase
         .from("orders")
         .select("order_id, order_status, order_datetime")
-        .in("order_status", Array.from(CONFIRMED_STATUSES))
+        .in("order_status", Array.from(CONFIRMED_STATUSES));
+      if (periodStart) q = q.gte("order_datetime", periodStart);
+      if (periodEnd) q = q.lte("order_datetime", periodEnd);
+      const { data: orders, error: ordErr } = await q
         .order("order_id", { ascending: true })
         .range(from, from + pageSize - 1);
       if (ordErr) throw ordErr;
@@ -148,7 +169,6 @@ serve(async (req) => {
         const order = orderById.get(oid);
         if (!order) continue;
 
-        // Skip if any sale movement already exists for this item
         if (
           movByKey.has(movKey(oid, iid, "sale_generated")) ||
           movByKey.has(movKey(oid, iid, "sale_generated_non_restockable"))
@@ -163,38 +183,33 @@ serve(async (req) => {
           ? productById.get(variant.core_product_id)
           : (skuLower ? skuToProduct.get(skuLower) : null);
 
-        // Missing SKU
-        if (!skuLower) {
-          await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, runId, reason: "missing_sku",
-            suggested: "Asignar SKU al producto Woo",
-          });
+        const queuePending = (reason: string, suggested: string) => {
+          const key = pendKey(oid, iid);
+          const existing = pendByKey.get(key);
+          if (existing) {
+            if (existing.status === "ignored" || existing.status === "resolved") return;
+            pendingUpdates.push({ id: existing.id, reason, suggested, order_status: order?.order_status ?? null });
+          } else {
+            pendingInserts.push({
+              source_order_id: oid, source_order_item_id: iid,
+              woo_sku: it.sku ?? it.parent_sku ?? null,
+              product_name: it.product_name ?? null,
+              quantity: it.quantity ?? null, revenue: it.line_total ?? null,
+              order_status: order?.order_status ?? null,
+              reason, suggested_action: suggested, status: "pending",
+              fabrication_fund_run_id: runId,
+            });
+            // Mark so we don't double-insert within same run
+            pendByKey.set(key, { id: "queued", status: "pending" });
+          }
           summary.pending_items_created += 1;
-          continue;
-        }
+        };
 
-        // No core product mapped
-        if (!product) {
-          await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, runId, reason: "product_not_in_core",
-            suggested: "Crear Producto Core o asociar",
-          });
-          summary.pending_items_created += 1;
-          continue;
-        }
-
-        // Determine cost from snapshot or product
+        if (!skuLower) { queuePending("missing_sku", "Asignar SKU al producto Woo"); continue; }
+        if (!product) { queuePending("product_not_in_core", "Crear Producto Core o asociar"); continue; }
         const unitCost = Number(product.unit_cost ?? 0);
-        if (!unitCost || unitCost <= 0) {
-          await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, runId, reason: "missing_cost",
-            suggested: "Asignar estructura de costos / snapshot",
-          });
-          summary.pending_items_created += 1;
-          continue;
-        }
+        if (!unitCost || unitCost <= 0) { queuePending("missing_cost", "Asignar estructura de costos / snapshot"); continue; }
 
-        // Restock classification
         const isNonRestock =
           restockSkuSet.has(skuLower) ||
           restockCoreProdSet.has(product.id) ||
@@ -203,20 +218,13 @@ serve(async (req) => {
           (variant && variant.status === "inactive");
 
         const qty = Number(it.quantity ?? 0) || 0;
-        if (qty <= 0) {
-          await upsertPending({
-            supabase, pendByKey, oid, iid, it, order, runId, reason: "sync_error",
-            suggested: "Cantidad inválida en la línea de pedido",
-          });
-          summary.pending_items_created += 1;
-          continue;
-        }
+        if (qty <= 0) { queuePending("sync_error", "Cantidad inválida en la línea de pedido"); continue; }
 
         const amount = +(qty * unitCost).toFixed(4);
         const fund = isNonRestock ? nonRestockFundUSD : generalFundUSD;
         const movementType = isNonRestock ? "sale_generated_non_restockable" : "sale_generated";
 
-        const { error: insErr } = await supabase.from("core_fabrication_fund_movements").insert({
+        movementInserts.push({
           fund_id: fund.id,
           fabrication_fund_run_id: runId,
           movement_type: movementType,
@@ -236,33 +244,13 @@ serve(async (req) => {
           status: "posted",
           created_by: userId,
         });
-        if (insErr) {
-          // Likely unique conflict from a race — count as skipped
-          if ((insErr as any).code === "23505") {
-            summary.skipped_existing += 1;
-          } else {
-            summary.errors_count += 1;
-            summary.errors.push({ oid, iid, error: insErr.message });
-          }
-          continue;
-        }
-
-        // Update fund balance
-        await supabase
-          .from("core_fabrication_funds")
-          .update({ available_amount: roundAmt((await currentFund(supabase, fund.id)) + amount) })
-          .eq("id", fund.id);
-
-        summary.movements_created += 1;
-        if (isNonRestock) summary.by_fund.non_restockable += 1; else summary.by_fund.general += 1;
+        fundDeltas.set(fund.id, (fundDeltas.get(fund.id) ?? 0) + amount);
         movByKey.set(movKey(oid, iid, movementType), { source_order_id: oid, source_order_item_id: iid, movement_type: movementType });
+        if (isNonRestock) summary.by_fund.non_restockable += 1; else summary.by_fund.general += 1;
 
-        // If pending existed, mark resolved
         const existingPendRow = pendByKey.get(pendKey(oid, iid));
-        if (existingPendRow && existingPendRow.status === "pending") {
-          await supabase.from("core_fabrication_fund_pending_items")
-            .update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: userId })
-            .eq("id", existingPendRow.id);
+        if (existingPendRow && existingPendRow.id !== "queued" && existingPendRow.status === "pending") {
+          resolvedPendingIds.push(existingPendRow.id);
         }
       }
 
@@ -270,7 +258,56 @@ serve(async (req) => {
       from += pageSize;
     }
 
-    // ---- Pass 2: reverting orders → generate reversals ----
+    // BULK INSERT movements in chunks
+    const chunk = <T,>(arr: T[], n: number) => { const out: T[][] = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
+    for (const batch of chunk(movementInserts, 500)) {
+      const { error, count } = await supabase.from("core_fabrication_fund_movements").insert(batch, { count: "exact" });
+      if (error) {
+        // Fallback: insert one-by-one to skip duplicates
+        for (const row of batch) {
+          const { error: e1 } = await supabase.from("core_fabrication_fund_movements").insert(row);
+          if (!e1) summary.movements_created += 1;
+          else if ((e1 as any).code === "23505") summary.skipped_existing += 1;
+          else { summary.errors_count += 1; summary.errors.push({ error: e1.message }); }
+        }
+      } else {
+        summary.movements_created += count ?? batch.length;
+      }
+    }
+    // BULK INSERT pendings
+    for (const batch of chunk(pendingInserts, 500)) {
+      const { error } = await supabase.from("core_fabrication_fund_pending_items").insert(batch);
+      if (error) { summary.errors_count += 1; summary.errors.push({ error: error.message }); }
+    }
+    // BULK UPDATE existing pendings (reason changed)
+    for (const u of pendingUpdates) {
+      await supabase.from("core_fabrication_fund_pending_items")
+        .update({ reason: u.reason, suggested_action: u.suggested, order_status: u.order_status, fabrication_fund_run_id: runId })
+        .eq("id", u.id);
+    }
+    // BULK resolve pendings that now have a movement
+    if (resolvedPendingIds.length > 0) {
+      for (const batch of chunk(resolvedPendingIds, 500)) {
+        await supabase.from("core_fabrication_fund_pending_items")
+          .update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: userId })
+          .in("id", batch);
+      }
+    }
+    // Apply fund deltas in a single update per fund
+    for (const [fundId, delta] of fundDeltas) {
+      const cur = await currentFund(supabase, fundId);
+      await supabase.from("core_fabrication_funds")
+        .update({ available_amount: roundAmt(cur + delta) })
+        .eq("id", fundId);
+    }
+
+
+
+    // ---- Pass 2: reverting orders → generate reversals (BATCHED) ----
+    const revInserts: any[] = [];
+    const revOriginalIds: string[] = [];
+    const revFundDeltas = new Map<string, number>();
+
     let from2 = 0;
     while (true) {
       const { data: orders2 } = await supabase
@@ -284,16 +321,15 @@ serve(async (req) => {
       const orderStatusMap = new Map(orders2.map((o: any) => [o.order_id, o.order_status]));
       const { data: movs } = await supabase
         .from("core_fabrication_fund_movements")
-        .select("id, source_order_id, source_order_item_id, fund_id, amount, currency, sku, product_name, core_product_id, core_variant_id, woo_product_id, woo_variation_id, movement_type, status")
+        .select("id, source_order_id, source_order_item_id, fund_id, amount, currency, sku, product_name, core_product_id, core_variant_id, movement_type, status")
         .in("source_order_id", orderIds2)
         .in("movement_type", ["sale_generated", "sale_generated_non_restockable"])
         .neq("status", "reversed");
 
       for (const m of movs ?? []) {
-        // Skip if a reversal exists
         if (movByKey.has(movKey(m.source_order_id, m.source_order_item_id, "reversal"))) continue;
         const status = orderStatusMap.get(m.source_order_id);
-        const { data: rev, error: revErr } = await supabase.from("core_fabrication_fund_movements").insert({
+        revInserts.push({
           fund_id: m.fund_id,
           fabrication_fund_run_id: runId,
           movement_type: "reversal",
@@ -311,25 +347,41 @@ serve(async (req) => {
           reason: `Reverso por estado ${status}`,
           status: "posted",
           created_by: userId,
-        }).select().single();
-        if (revErr) {
-          if ((revErr as any).code === "23505") continue;
-          summary.errors_count += 1;
-          summary.errors.push({ order: m.source_order_id, error: revErr.message });
-          continue;
-        }
-        // mark original as reversed
-        await supabase.from("core_fabrication_fund_movements").update({ status: "reversed" }).eq("id", m.id);
-        // update fund balance
-        const newBal = roundAmt((await currentFund(supabase, m.fund_id)) - Number(m.amount));
-        await supabase.from("core_fabrication_funds").update({ available_amount: newBal }).eq("id", m.fund_id);
-        summary.reversals_created += 1;
-        movByKey.set(movKey(m.source_order_id, m.source_order_item_id, "reversal"), rev);
+        });
+        revOriginalIds.push(m.id);
+        revFundDeltas.set(m.fund_id, (revFundDeltas.get(m.fund_id) ?? 0) - Number(m.amount));
+        movByKey.set(movKey(m.source_order_id, m.source_order_item_id, "reversal"), { id: "queued" });
       }
 
       if (orders2.length < pageSize) break;
       from2 += pageSize;
     }
+
+    const chunkR = <T,>(arr: T[], n: number) => { const out: T[][] = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
+    for (const batch of chunkR(revInserts, 500)) {
+      const { error, count } = await supabase.from("core_fabrication_fund_movements").insert(batch, { count: "exact" });
+      if (error) {
+        for (const row of batch) {
+          const { error: e1 } = await supabase.from("core_fabrication_fund_movements").insert(row);
+          if (!e1) summary.reversals_created += 1;
+          else if ((e1 as any).code !== "23505") { summary.errors_count += 1; summary.errors.push({ error: e1.message }); }
+        }
+      } else {
+        summary.reversals_created += count ?? batch.length;
+      }
+    }
+    if (revOriginalIds.length > 0) {
+      for (const batch of chunkR(revOriginalIds, 500)) {
+        await supabase.from("core_fabrication_fund_movements").update({ status: "reversed" }).in("id", batch);
+      }
+    }
+    for (const [fundId, delta] of revFundDeltas) {
+      const cur = await currentFund(supabase, fundId);
+      await supabase.from("core_fabrication_funds")
+        .update({ available_amount: roundAmt(cur + delta) })
+        .eq("id", fundId);
+    }
+
 
     const finalStatus = summary.errors_count > 0 ? "completed_warnings" : "completed";
     if (runId) {

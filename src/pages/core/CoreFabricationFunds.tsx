@@ -99,6 +99,8 @@ export default function CoreFabricationFunds() {
   const [processing, setProcessing] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [runDetail, setRunDetail] = useState<Run | null>(null);
+  const [periodStart, setPeriodStart] = useState<string>("");
+  const [periodEnd, setPeriodEnd] = useState<string>("");
   const [form, setForm] = useState({
     movement_type: "manual_increase",
     fund_id: "",
@@ -107,6 +109,7 @@ export default function CoreFabricationFunds() {
     reason: "",
     notes: "",
   });
+
 
 
   async function load() {
@@ -139,7 +142,13 @@ export default function CoreFabricationFunds() {
   async function processSales() {
     setProcessing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("core-process-fabrication-funds", { body: {} });
+      const body: any = {};
+      if (periodStart) body.period_start = new Date(periodStart).toISOString();
+      if (periodEnd) {
+        const d = new Date(periodEnd); d.setHours(23, 59, 59, 999);
+        body.period_end = d.toISOString();
+      }
+      const { data, error } = await supabase.functions.invoke("core-process-fabrication-funds", { body });
       if (error) throw error;
       const s = (data as any)?.summary ?? {};
       toast.success(`Procesado: ${s.movements_created ?? 0} movs, ${s.pending_items_created ?? 0} pendientes, ${s.reversals_created ?? 0} reversos`);
@@ -150,6 +159,7 @@ export default function CoreFabricationFunds() {
       setProcessing(false);
     }
   }
+
 
   function openManual() {
     const general = funds.find(f => f.fund_type === "general");
@@ -283,13 +293,22 @@ export default function CoreFabricationFunds() {
             Control del fondo reservado para fabricar productos vendidos, reponer stock o reemplazar productos no restockeables.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-end">
+          <div className="flex flex-col">
+            <Label className="text-[10px] uppercase text-muted-foreground">Desde</Label>
+            <Input type="date" className="h-9 w-[150px]" value={periodStart} onChange={e => setPeriodStart(e.target.value)} />
+          </div>
+          <div className="flex flex-col">
+            <Label className="text-[10px] uppercase text-muted-foreground">Hasta</Label>
+            <Input type="date" className="h-9 w-[150px]" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} />
+          </div>
           <Button onClick={processSales} disabled={processing}>
             <Play className="h-4 w-4 mr-1" />{processing ? "Procesando…" : "Procesar ventas confirmadas"}
           </Button>
           <Button variant="outline" onClick={openManual}><Plus className="h-4 w-4 mr-1" />Nuevo ajuste manual</Button>
           <Button variant="outline" onClick={downloadReport}><Download className="h-4 w-4 mr-1" />Generar reporte</Button>
         </div>
+
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
