@@ -295,6 +295,7 @@ serve(async (req) => {
         const status = orderStatusMap.get(m.source_order_id);
         const { data: rev, error: revErr } = await supabase.from("core_fabrication_fund_movements").insert({
           fund_id: m.fund_id,
+          fabrication_fund_run_id: runId,
           movement_type: "reversal",
           source: "system",
           source_order_id: m.source_order_id,
