@@ -45,6 +45,15 @@ serve(async (req) => {
   const roleSet = new Set((roles ?? []).map((r: any) => r.role));
   if (!roleSet.has("admin") && !roleSet.has("manager")) return json({ error: "forbidden" }, 403);
 
+  // Optional period filter
+  let periodStart: string | null = null;
+  let periodEnd: string | null = null;
+  try {
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    if (body?.period_start) periodStart = String(body.period_start);
+    if (body?.period_end) periodEnd = String(body.period_end);
+  } catch { /* ignore */ }
+
   const summary: any = {
     orders_checked: 0,
     items_checked: 0,
