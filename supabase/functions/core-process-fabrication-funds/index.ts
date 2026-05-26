@@ -371,9 +371,9 @@ async function currentFund(supabase: any, id: string) {
 }
 async function upsertPending(opts: {
   supabase: any; pendByKey: Map<string, any>; oid: number; iid: number | null; it: any; order: any;
-  reason: string; suggested: string;
+  reason: string; suggested: string; runId?: string | null;
 }) {
-  const { supabase, pendByKey, oid, iid, it, order, reason, suggested } = opts;
+  const { supabase, pendByKey, oid, iid, it, order, reason, suggested, runId } = opts;
   const key = `${oid}|${iid}`;
   const existing = pendByKey.get(key);
   const payload = {
@@ -387,14 +387,16 @@ async function upsertPending(opts: {
     reason,
     suggested_action: suggested,
     status: "pending",
+    fabrication_fund_run_id: runId ?? null,
   };
   if (existing) {
     if (existing.status === "ignored" || existing.status === "resolved") return;
     await supabase.from("core_fabrication_fund_pending_items")
-      .update({ reason, suggested_action: suggested, order_status: order?.order_status ?? null })
+      .update({ reason, suggested_action: suggested, order_status: order?.order_status ?? null, fabrication_fund_run_id: runId ?? null })
       .eq("id", existing.id);
   } else {
     const { data } = await supabase.from("core_fabrication_fund_pending_items").insert(payload).select().single();
     if (data) pendByKey.set(key, data);
   }
 }
+
