@@ -221,7 +221,8 @@ export default function CoreWooCandidates() {
   }
 
   const countCatalog = items.filter(c => c.detected_from === "catalog" && !["ignorado", "no_fabricable"].includes(c.status)).length;
-  const countConflicts = items.filter(c => c.status === "conflicto" || c.status === "requiere_sku").length;
+  const countConflicts = items.filter(c => c.status === "conflicto").length;
+  const countRequiresSku = items.filter(c => c.status === "requiere_sku").length;
   const countIgnored = items.filter(c => ["ignorado", "no_fabricable"].includes(c.status)).length;
 
   return (
