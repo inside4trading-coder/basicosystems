@@ -146,6 +146,10 @@ export default function CoreCostStructureEditor() {
         setOriginalSalePrice(head.estimated_sale_price != null ? Number(head.estimated_sale_price) : null);
         setStatus(head.status);
         setNotes(head.notes ?? "");
+        setWooProductId((head as any).woo_product_id != null ? String((head as any).woo_product_id) : "");
+        setWooVariationId((head as any).woo_variation_id != null ? String((head as any).woo_variation_id) : "");
+        setWooProductName((head as any).woo_product_name ?? "");
+        setWooPermalink((head as any).woo_permalink ?? "");
 
         const { data: rows } = await supabase
           .from("core_cost_structure_items")
