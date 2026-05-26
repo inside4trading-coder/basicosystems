@@ -586,40 +586,16 @@ export default function CoreRestockControl() {
                   </div>
                 )}
 
-                {/* IDs informativos */}
-                {(isWooP || isWooV) && (
-                  <div>
-                    <Label>Woo product_id</Label>
-                    <Input value={form.woo_product_id ?? ""} readOnly />
+                {/* Datos técnicos (solo lectura, discretos) */}
+                {(form.woo_product_id || form.woo_variation_id || form.core_product_id || form.core_variant_id) && (
+                  <div className="col-span-2 text-xs text-muted-foreground border rounded-md p-2 bg-muted/30">
+                    <span className="font-semibold mr-2">Datos técnicos:</span>
+                    {form.woo_product_id ? <span className="mr-3">Woo product_id: <span className="font-mono">{form.woo_product_id}</span></span> : null}
+                    {form.woo_variation_id ? <span className="mr-3">Woo variation_id: <span className="font-mono">{form.woo_variation_id}</span></span> : null}
+                    {form.core_product_id ? <span className="mr-3">Core product_id: <span className="font-mono">{String(form.core_product_id).slice(0, 8)}…</span></span> : null}
+                    {form.core_variant_id ? <span className="mr-3">Core variant_id: <span className="font-mono">{String(form.core_variant_id).slice(0, 8)}…</span></span> : null}
                   </div>
                 )}
-                {isWooV && (
-                  <div>
-                    <Label>Woo variation_id</Label>
-                    <Input value={form.woo_variation_id ?? ""} readOnly />
-                  </div>
-                )}
-                {(isCoreP || isCoreV) && (
-                  <div>
-                    <Label>Core product_id</Label>
-                    <Input value={form.core_product_id ?? ""} readOnly className="font-mono text-xs" />
-                  </div>
-                )}
-                {isCoreV && (
-                  <div>
-                    <Label>Core variant_id</Label>
-                    <Input value={form.core_variant_id ?? ""} readOnly className="font-mono text-xs" />
-                  </div>
-                )}
-                {isCoreV && form.woo_variation_id && (
-                  <div>
-                    <Label>Woo variation_id (info)</Label>
-                    <Input value={form.woo_variation_id} readOnly />
-                  </div>
-                )}
-
-                <div>
-                  <Label>Motivo *</Label>
                   <Select value={form.reason} onValueChange={v => setForm({ ...form, reason: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
