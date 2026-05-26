@@ -638,7 +638,17 @@ export default function CoreRestockControl() {
 
                 <div>
                   <Label>Producto reemplazo (Core)</Label>
-                  <Select value={form.replacement_core_product_id ?? "none"} onValueChange={v => setForm({ ...form, replacement_core_product_id: v === "none" ? undefined : v })}>
+                  <Select
+                    value={form.replacement_core_product_id ?? "none"}
+                    onValueChange={v => {
+                      if (v === "none") {
+                        setForm(f => ({ ...f, replacement_core_product_id: undefined, replacement_sku: "" }));
+                      } else {
+                        const rp = coreProducts.find(p => p.id === v);
+                        setForm(f => ({ ...f, replacement_core_product_id: v, replacement_sku: rp?.core_sku ?? "" }));
+                      }
+                    }}
+                  >
                     <SelectTrigger><SelectValue placeholder="Ninguno" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">— Ninguno —</SelectItem>
@@ -648,7 +658,11 @@ export default function CoreRestockControl() {
                 </div>
                 <div>
                   <Label>SKU reemplazo</Label>
-                  <Input value={form.replacement_sku ?? ""} onChange={e => setForm({ ...form, replacement_sku: e.target.value })} />
+                  <Input
+                    value={form.replacement_sku ?? ""}
+                    readOnly={!!form.replacement_core_product_id}
+                    onChange={e => setForm({ ...form, replacement_sku: e.target.value })}
+                  />
                 </div>
 
                 <div className="col-span-2">
