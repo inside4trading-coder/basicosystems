@@ -49,6 +49,8 @@ export default function CoreProducts() {
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [nextSku, setNextSku] = useState<string>("CORE000001");
+  const [pendingCount, setPendingCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
 
   const [search, setSearch] = useState("");
   const [fStatus, setFStatus] = useState("all");
