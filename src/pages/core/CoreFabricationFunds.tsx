@@ -465,13 +465,14 @@ export default function CoreFabricationFunds() {
                     <TableHead className="text-right">Pendientes</TableHead>
                     <TableHead className="text-right">Reversos</TableHead>
                     <TableHead className="text-right">Errores</TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Cargando…</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Cargando…</TableCell></TableRow>
                   ) : runs.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Sin procesamientos.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Sin procesamientos.</TableCell></TableRow>
                   ) : runs.map(r => (
                     <TableRow key={r.id}>
                       <TableCell className="text-xs">{new Date(r.created_at).toLocaleString()}</TableCell>
@@ -482,9 +483,11 @@ export default function CoreFabricationFunds() {
                       <TableCell className="text-right text-xs font-mono">{r.pending_items_created}</TableCell>
                       <TableCell className="text-right text-xs font-mono">{r.reversals_created}</TableCell>
                       <TableCell className="text-right text-xs font-mono">{r.errors_count}</TableCell>
+                      <TableCell><Button size="sm" variant="ghost" onClick={() => setRunDetail(r)}>Ver detalle</Button></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
+
               </Table>
             </div>
           </Card>
