@@ -1322,7 +1322,9 @@ export type Database = {
           reason: string
           reference_type: string
           replacement_core_product_id: string | null
+          replacement_core_variant_id: string | null
           replacement_sku: string | null
+          replacement_variant_label: string | null
           responsible_user_id: string | null
           sku: string | null
           start_date: string
@@ -1346,7 +1348,9 @@ export type Database = {
           reason: string
           reference_type: string
           replacement_core_product_id?: string | null
+          replacement_core_variant_id?: string | null
           replacement_sku?: string | null
+          replacement_variant_label?: string | null
           responsible_user_id?: string | null
           sku?: string | null
           start_date?: string
@@ -1370,7 +1374,9 @@ export type Database = {
           reason?: string
           reference_type?: string
           replacement_core_product_id?: string | null
+          replacement_core_variant_id?: string | null
           replacement_sku?: string | null
+          replacement_variant_label?: string | null
           responsible_user_id?: string | null
           sku?: string | null
           start_date?: string

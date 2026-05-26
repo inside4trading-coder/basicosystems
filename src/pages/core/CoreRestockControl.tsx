@@ -35,6 +35,8 @@ type Rule = {
   start_date: string;
   end_date: string | null;
   replacement_core_product_id: string | null;
+  replacement_core_variant_id: string | null;
+  replacement_variant_label: string | null;
   replacement_sku: string | null;
   notes: string | null;
   created_at: string;
@@ -175,6 +177,8 @@ export default function CoreRestockControl() {
       start_date: r.start_date,
       end_date: r.end_date,
       replacement_core_product_id: r.replacement_core_product_id ?? undefined,
+      replacement_core_variant_id: r.replacement_core_variant_id ?? undefined,
+      replacement_variant_label: r.replacement_variant_label ?? "",
       replacement_sku: r.replacement_sku ?? "",
       notes: r.notes ?? "",
     });
@@ -263,6 +267,8 @@ export default function CoreRestockControl() {
       start_date: form.start_date,
       end_date: form.end_date || null,
       replacement_core_product_id: form.replacement_core_product_id || null,
+      replacement_core_variant_id: form.replacement_core_variant_id || null,
+      replacement_variant_label: form.replacement_variant_label || null,
       replacement_sku: form.replacement_sku || null,
       notes: form.notes || null,
       updated_by: user?.id ?? null,
@@ -656,34 +662,74 @@ export default function CoreRestockControl() {
                   <Input type="date" value={form.end_date ?? ""} onChange={e => setForm({ ...form, end_date: e.target.value || null })} />
                 </div>
 
-                <div>
-                  <Label>Producto reemplazo (Core)</Label>
-                  <Select
-                    value={form.replacement_core_product_id ?? "none"}
-                    onValueChange={v => {
-                      if (v === "none") {
-                        setForm(f => ({ ...f, replacement_core_product_id: undefined, replacement_sku: "" }));
-                      } else {
-                        const rp = coreProducts.find(p => p.id === v);
-                        setForm(f => ({ ...f, replacement_core_product_id: v, replacement_sku: rp?.core_sku ?? "" }));
-                      }
-                    }}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Ninguno" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— Ninguno —</SelectItem>
-                      {coreProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.core_sku} — {p.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>SKU reemplazo</Label>
-                  <Input
-                    value={form.replacement_sku ?? ""}
-                    readOnly={!!form.replacement_core_product_id}
-                    onChange={e => setForm({ ...form, replacement_sku: e.target.value })}
-                  />
-                </div>
+                {(() => {
+                  const replVariants = coreVariants.filter(v => v.core_product_id === form.replacement_core_product_id);
+                  const replParent = coreProducts.find(p => p.id === form.replacement_core_product_id);
+                  const replVar = coreVariants.find(v => v.id === form.replacement_core_variant_id);
+                  return (
+                    <>
+                      <div>
+                        <Label>Producto reemplazo (Core)</Label>
+                        <Select
+                          value={form.replacement_core_product_id ?? "none"}
+                          onValueChange={v => {
+                            if (v === "none") {
+                              setForm(f => ({ ...f, replacement_core_product_id: undefined, replacement_core_variant_id: undefined, replacement_variant_label: "", replacement_sku: "" }));
+                            } else {
+                              const rp = coreProducts.find(p => p.id === v);
+                              setForm(f => ({ ...f, replacement_core_product_id: v, replacement_core_variant_id: undefined, replacement_variant_label: "", replacement_sku: rp?.core_sku ?? "" }));
+                            }
+                          }}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Ninguno" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">— Ninguno —</SelectItem>
+                            {coreProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.core_sku} — {p.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Variante reemplazo (opcional)</Label>
+                        <Select
+                          value={form.replacement_core_variant_id ?? "none"}
+                          disabled={!form.replacement_core_product_id || replVariants.length === 0}
+                          onValueChange={v => {
+                            if (v === "none") {
+                              setForm(f => ({ ...f, replacement_core_variant_id: undefined, replacement_variant_label: "", replacement_sku: replParent?.core_sku ?? f.replacement_sku ?? "" }));
+                            } else {
+                              const rv = replVariants.find(x => x.id === v);
+                              const label = rv?.variant_label || rv?.size || "";
+                              setForm(f => ({ ...f, replacement_core_variant_id: v, replacement_variant_label: label, replacement_sku: rv?.variant_sku || replParent?.core_sku || f.replacement_sku || "" }));
+                            }
+                          }}
+                        >
+                          <SelectTrigger><SelectValue placeholder={form.replacement_core_product_id ? (replVariants.length === 0 ? "Sin variantes" : "Cualquier variante") : "Selecciona producto primero"} /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">— Cualquier variante —</SelectItem>
+                            {replVariants.map(v => (
+                              <SelectItem key={v.id} value={v.id}>
+                                {(v.variant_label || v.size)}{v.variant_sku ? ` · ${v.variant_sku}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2">
+                        <Label>SKU reemplazo</Label>
+                        <Input
+                          value={form.replacement_sku ?? ""}
+                          readOnly={!!form.replacement_core_product_id}
+                          onChange={e => setForm({ ...form, replacement_sku: e.target.value })}
+                        />
+                        {replVar && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Reemplazo: <span className="font-medium">{replParent?.name}</span> — talla/variante <span className="font-medium">{replVar.variant_label || replVar.size}</span>
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
 
                 <div className="col-span-2">
                   <Label>Observaciones</Label>
