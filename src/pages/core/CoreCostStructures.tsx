@@ -74,9 +74,13 @@ export default function CoreCostStructures() {
       if (fStatus !== "all" && i.status !== fStatus) return false;
       if (fType !== "all" && i.product_type !== fType) return false;
       if (fCurrency !== "all" && i.base_currency !== fCurrency) return false;
+      if (fWoo === "connected" && !i.woo_product_id) return false;
+      if (fWoo === "missing" && i.woo_product_id) return false;
       return true;
     });
-  }, [items, search, fStatus, fType, fCurrency]);
+  }, [items, search, fStatus, fType, fCurrency, fWoo]);
+
+  const missingWooCount = useMemo(() => items.filter(i => !i.woo_product_id).length, [items]);
 
   async function toggleStatus(s: CostStructure) {
     const newStatus = s.status === "active" ? "inactive" : "active";
