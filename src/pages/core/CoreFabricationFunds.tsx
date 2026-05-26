@@ -165,7 +165,15 @@ export default function CoreFabricationFunds() {
       const { data, error } = await supabase.functions.invoke("core-process-fabrication-funds", { body });
       if (error) throw error;
       const s = (data as any)?.summary ?? {};
-      toast.success(`Procesado: ${s.movements_created ?? 0} movs, ${s.pending_items_created ?? 0} pendientes, ${s.reversals_created ?? 0} reversos`);
+      const m = s.movements_created ?? 0;
+      const p = s.pending_items_created ?? 0;
+      const r = s.reversals_created ?? 0;
+      const items = s.items_checked ?? 0;
+      if (m === 0 && p > 0) {
+        toast.warning(`Procesamiento completado: ${items} ítems revisados. 0 movimientos generados porque ${p} requieren asociación o costo. Revisa la pestaña Pendientes.`);
+      } else {
+        toast.success(`Procesamiento completado: ${m} movimientos, ${p} pendientes, ${r} reversos.`);
+      }
       load();
     } catch (e: any) {
       toast.error(`Error: ${e.message ?? e}`);
@@ -339,11 +347,11 @@ export default function CoreFabricationFunds() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="Partida general disponible" value={usd(totals.general)} tone="emerald" />
             <KpiCard label="Partida no restockeable" value={usd(totals.nonR)} tone="orange" />
-            <KpiCard label="Pendiente por resolver" value={`${totals.pendingCount} ítems`} sub={usd(totals.pendingTotal) + " revenue"} tone="yellow" />
+            <KpiCard label="Pendientes históricos" value={`${totals.pendingHist} ítems`} tone="yellow" />
+            <KpiCard label="Pendientes último run" value={String(totals.lastRunPend)} tone="muted" />
+            <KpiCard label="Pendientes del rango" value={`${totals.rangeCount} ítems`} sub={usd(totals.rangeRevenue) + " revenue"} tone="yellow" />
             <KpiCard label="Movimientos totales" value={String(movements.length)} tone="muted" />
             <KpiCard label="Ventas procesadas" value={String(totals.sales)} tone="muted" />
-            <KpiCard label="Reversos" value={String(totals.reversals)} tone="muted" />
-            <KpiCard label="Ajustes manuales" value={String(totals.manuals)} tone="muted" />
             <KpiCard label="Último procesamiento" value={totals.lastRun ? new Date(totals.lastRun.created_at).toLocaleString() : "—"} tone="muted" />
           </div>
         </TabsContent>
@@ -434,53 +442,9 @@ export default function CoreFabricationFunds() {
           </Card>
         </TabsContent>
 
-        {/* PENDIENTES */}
+        {/* PENDIENTES - Centro de Resolución */}
         <TabsContent value="pendientes" className="mt-4">
-          <Card className="p-4">
-            <div className="rounded-lg border overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Pedido</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Producto</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
-                    <TableHead>Motivo</TableHead>
-                    <TableHead>Sugerencia</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Cargando…</TableCell></TableRow>
-                  ) : pendings.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Sin pendientes.</TableCell></TableRow>
-                  ) : pendings.map(p => (
-                    <TableRow key={p.id}>
-                      <TableCell><Badge variant="outline">{p.status}</Badge></TableCell>
-                      <TableCell className="text-xs font-mono">#{p.source_order_id} {p.source_order_item_id ? `/ ${p.source_order_item_id}` : ""}</TableCell>
-                      <TableCell className="font-mono text-xs">{p.woo_sku ?? "—"}</TableCell>
-                      <TableCell className="text-xs">{p.product_name ?? "—"}</TableCell>
-                      <TableCell className="text-right text-xs">{p.quantity ?? "—"}</TableCell>
-                      <TableCell className="text-right text-xs font-mono">{p.revenue ? usd(p.revenue) : "—"}</TableCell>
-                      <TableCell className="text-xs">{PENDING_REASON_LABEL[p.reason] ?? p.reason}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{p.suggested_action ?? "—"}</TableCell>
-                      <TableCell>
-                        {p.status === "pending" && (
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => resolvePending(p, "review")}>Revisar</Button>
-                            <Button size="sm" variant="ghost" onClick={() => resolvePending(p, "ignored")}>Ignorar</Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
+          <PendingResolutionPanel onChanged={load} />
         </TabsContent>
 
         {/* PROCESAMIENTOS */}
