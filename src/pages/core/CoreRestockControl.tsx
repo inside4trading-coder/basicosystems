@@ -35,6 +35,8 @@ type Rule = {
   start_date: string;
   end_date: string | null;
   replacement_core_product_id: string | null;
+  replacement_core_variant_id: string | null;
+  replacement_variant_label: string | null;
   replacement_sku: string | null;
   notes: string | null;
   created_at: string;
