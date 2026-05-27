@@ -139,7 +139,6 @@ export default function CoreFactoryOperators() {
 
   async function save() {
     if (!form.first_name.trim()) { toast({ title: "Nombre obligatorio", variant: "destructive" }); return; }
-    if (selectedRoles.length === 0) { toast({ title: "Selecciona al menos un rol productivo", variant: "destructive" }); return; }
     const { data: { user } } = await supabase.auth.getUser();
     const payload: any = {
       first_name: form.first_name.trim(),
