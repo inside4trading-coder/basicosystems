@@ -157,8 +157,45 @@ export default function CoreFabricationFunds() {
     const sales = movements.filter(m => m.movement_type.startsWith("sale_generated")).length;
     const reversals = movements.filter(m => m.movement_type === "reversal").length;
     const manuals = movements.filter(m => m.movement_type.startsWith("manual_") || m.movement_type === "correction" || m.movement_type === "transfer").length;
-    return { general, nonR, pendingHist, lastRunPend, rangeCount, rangeRevenue, sales, reversals, manuals, lastRun };
-  }, [funds, pendings, movements, runs, periodStart, periodEnd]);
+
+    // === Visual interpretation: generated vs executed vs available ===
+    // Group posted sale movements by normalized SKU, oldest first.
+    // For each SKU, mark the first N movements as "executed" where N = units in entered_inventory for that SKU.
+    // Remaining posted sale amounts are "available sin asignar".
+    const saleMovs = movements
+      .filter(m => m.status === "posted" && m.movement_type.startsWith("sale_generated") && Number(m.amount) > 0)
+      .slice()
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const generatedTotal = saleMovs.reduce((s, m) => s + Number(m.amount), 0);
+
+    const executedUnitsBySku: Record<string, number> = {};
+    for (const u of units) {
+      if (u.status !== "entered_inventory") continue;
+      const k = normSku(u.variant_sku || u.sku);
+      if (!k) continue;
+      executedUnitsBySku[k] = (executedUnitsBySku[k] ?? 0) + 1;
+    }
+
+    let executedTotal = 0;
+    const usedBySku: Record<string, number> = {};
+    for (const mv of saleMovs) {
+      const k = normSku(mv.sku);
+      const capacity = executedUnitsBySku[k] ?? 0;
+      const used = usedBySku[k] ?? 0;
+      const qty = Number(mv.quantity ?? 1) || 1;
+      const perUnit = Number(mv.amount) / qty;
+      const remaining = Math.max(0, capacity - used);
+      const cover = Math.min(qty, remaining);
+      if (cover > 0) {
+        executedTotal += perUnit * cover;
+        usedBySku[k] = used + cover;
+      }
+    }
+    const availableUnassigned = Math.max(0, generatedTotal - executedTotal);
+
+    return { general, nonR, pendingHist, lastRunPend, rangeCount, rangeRevenue, sales, reversals, manuals, lastRun, generatedTotal, executedTotal, availableUnassigned };
+  }, [funds, pendings, movements, runs, periodStart, periodEnd, units]);
+
 
   async function processSales() {
     setProcessing(true);
