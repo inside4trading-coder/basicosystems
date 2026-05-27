@@ -352,10 +352,10 @@ export default function CoreFactoryOperators() {
             {selectedRoles.length > 0 && (
               <div className="col-span-2">
                 <Label>Rol principal (opcional)</Label>
-                <Select value={primaryRole} onValueChange={setPrimaryRole}>
+                <Select value={primaryRole || "__none__"} onValueChange={(v) => setPrimaryRole(v === "__none__" ? "" : v)}>
                   <SelectTrigger><SelectValue placeholder="Sin rol principal" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">— Sin principal —</SelectItem>
+                    <SelectItem value="__none__">— Sin principal —</SelectItem>
                     {selectedRoles.map((rt) => {
                       const label = ROLE_OPTIONS.find((o) => o.value === rt)?.label || rt;
                       return <SelectItem key={rt} value={rt}>{label}</SelectItem>;
