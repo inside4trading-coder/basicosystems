@@ -265,7 +265,11 @@ export default function CoreScanning() {
   const pendingProcs = useMemo(() => processes.filter((p) => p.status === "pending"), [processes]);
   const completedProcs = useMemo(() => processes.filter((p) => p.status === "completed"), [processes]);
 
-  const operatorById = (id: string) => employees.find((e) => e.id === id);
+  const operatorById = (id: string) => operators.find((e) => e.id === id);
+
+  function operatorFullName(op: Operator) {
+    return `${op.first_name}${op.last_name ? " " + op.last_name : ""}${op.alias ? " (" + op.alias + ")" : ""}`;
+  }
 
   async function refreshOrderCounts(orderId: string) {
     // Recompute completed/pending qty from lines based on units status
