@@ -349,7 +349,7 @@ export default function CoreFactoryOperators() {
               <Input value={form.photo_url} onChange={(e) => setForm({ ...form, photo_url: e.target.value })} placeholder="https://..." />
             </div>
             <div className="col-span-2">
-              <Label>Roles productivos *</Label>
+              <Label>Roles productivos</Label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
                 {ROLE_OPTIONS.map((r) => (
                   <label key={r.value} className="flex items-center gap-2 border rounded p-2 cursor-pointer">
