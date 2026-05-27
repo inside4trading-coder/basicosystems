@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCoreSettings, useUpdateCoreSettings, type CoreSettings } from "@/hooks/useCoreSettings";
 import { useCoreLocations } from "@/hooks/useCoreLocations";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { AlertTriangle } from "lucide-react";
 
 export default function GeneralTab() {
   const { data: settings, isLoading } = useCoreSettings();
