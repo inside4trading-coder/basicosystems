@@ -1405,6 +1405,312 @@ export type Database = {
         }
         Relationships: []
       }
+      core_payroll_adjustments: {
+        Row: {
+          adjustment_type: string
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          notes: string | null
+          operator_id: string
+          payroll_operator_line_id: string
+          payroll_run_id: string
+          reason: string
+        }
+        Insert: {
+          adjustment_type: string
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          notes?: string | null
+          operator_id: string
+          payroll_operator_line_id: string
+          payroll_run_id: string
+          reason: string
+        }
+        Update: {
+          adjustment_type?: string
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          notes?: string | null
+          operator_id?: string
+          payroll_operator_line_id?: string
+          payroll_run_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_payroll_adjustments_payroll_operator_line_id_fkey"
+            columns: ["payroll_operator_line_id"]
+            isOneToOne: false
+            referencedRelation: "core_payroll_operator_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_payroll_adjustments_payroll_run_id_fkey"
+            columns: ["payroll_run_id"]
+            isOneToOne: false
+            referencedRelation: "core_payroll_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_payroll_operator_lines: {
+        Row: {
+          adjustments_amount: number
+          created_at: string
+          currency: string
+          id: string
+          notes: string | null
+          operator_id: string
+          operator_name_snapshot: string | null
+          payroll_run_id: string
+          status: string
+          subtotal_amount: number
+          total_amount: number
+          total_processes: number
+          updated_at: string
+        }
+        Insert: {
+          adjustments_amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          notes?: string | null
+          operator_id: string
+          operator_name_snapshot?: string | null
+          payroll_run_id: string
+          status?: string
+          subtotal_amount?: number
+          total_amount?: number
+          total_processes?: number
+          updated_at?: string
+        }
+        Update: {
+          adjustments_amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          notes?: string | null
+          operator_id?: string
+          operator_name_snapshot?: string | null
+          payroll_run_id?: string
+          status?: string
+          subtotal_amount?: number
+          total_amount?: number
+          total_processes?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_payroll_operator_lines_payroll_run_id_fkey"
+            columns: ["payroll_run_id"]
+            isOneToOne: false
+            referencedRelation: "core_payroll_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_payroll_payment_proofs: {
+        Row: {
+          amount_paid: number | null
+          bcv_rate: number | null
+          currency: string | null
+          file_name: string | null
+          file_url: string | null
+          id: string
+          notes: string | null
+          operator_id: string | null
+          payment_reference: string | null
+          payroll_operator_line_id: string | null
+          payroll_run_id: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          amount_paid?: number | null
+          bcv_rate?: number | null
+          currency?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          operator_id?: string | null
+          payment_reference?: string | null
+          payroll_operator_line_id?: string | null
+          payroll_run_id: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          amount_paid?: number | null
+          bcv_rate?: number | null
+          currency?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          operator_id?: string | null
+          payment_reference?: string | null
+          payroll_operator_line_id?: string | null
+          payroll_run_id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_payroll_payment_proofs_payroll_operator_line_id_fkey"
+            columns: ["payroll_operator_line_id"]
+            isOneToOne: false
+            referencedRelation: "core_payroll_operator_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_payroll_payment_proofs_payroll_run_id_fkey"
+            columns: ["payroll_run_id"]
+            isOneToOne: false
+            referencedRelation: "core_payroll_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_payroll_runs: {
+        Row: {
+          adjustments_total: number
+          approved_at: string | null
+          approved_by: string | null
+          bcv_rate: number | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          operators_count: number
+          paid_at: string | null
+          paid_by: string | null
+          payment_date: string | null
+          payment_notes: string | null
+          payroll_code: string | null
+          period_end: string
+          period_start: string
+          status: string
+          total_amount: number
+          total_paid_amount: number | null
+          updated_at: string
+          updated_by: string | null
+          work_entries_count: number
+        }
+        Insert: {
+          adjustments_total?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          bcv_rate?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          operators_count?: number
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_date?: string | null
+          payment_notes?: string | null
+          payroll_code?: string | null
+          period_end: string
+          period_start: string
+          status?: string
+          total_amount?: number
+          total_paid_amount?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          work_entries_count?: number
+        }
+        Update: {
+          adjustments_total?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          bcv_rate?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          operators_count?: number
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_date?: string | null
+          payment_notes?: string | null
+          payroll_code?: string | null
+          period_end?: string
+          period_start?: string
+          status?: string
+          total_amount?: number
+          total_paid_amount?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          work_entries_count?: number
+        }
+        Relationships: []
+      }
+      core_payroll_work_entry_links: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          operator_id: string
+          payroll_operator_line_id: string
+          payroll_run_id: string
+          work_entry_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          operator_id: string
+          payroll_operator_line_id: string
+          payroll_run_id: string
+          work_entry_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          operator_id?: string
+          payroll_operator_line_id?: string
+          payroll_run_id?: string
+          work_entry_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_payroll_work_entry_links_payroll_operator_line_id_fkey"
+            columns: ["payroll_operator_line_id"]
+            isOneToOne: false
+            referencedRelation: "core_payroll_operator_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_payroll_work_entry_links_payroll_run_id_fkey"
+            columns: ["payroll_run_id"]
+            isOneToOne: false
+            referencedRelation: "core_payroll_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_payroll_work_entry_links_work_entry_id_fkey"
+            columns: ["work_entry_id"]
+            isOneToOne: true
+            referencedRelation: "core_production_work_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       core_product_cost_snapshots: {
         Row: {
           core_product_id: string
