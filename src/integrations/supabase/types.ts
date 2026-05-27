@@ -1817,6 +1817,81 @@ export type Database = {
         }
         Relationships: []
       }
+      core_production_scan_events: {
+        Row: {
+          core_product_id: string | null
+          core_variant_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          notes: string | null
+          operator_id: string | null
+          operator_name_snapshot: string | null
+          process_name: string | null
+          process_order: number | null
+          process_type: string | null
+          production_order_id: string | null
+          production_order_line_id: string | null
+          production_unit_id: string
+          production_unit_process_id: string | null
+          scanned_by_user_id: string | null
+          size: string | null
+          sku: string | null
+          status: string
+          unit_code: string | null
+          variant_label: string | null
+          variant_sku: string | null
+        }
+        Insert: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          notes?: string | null
+          operator_id?: string | null
+          operator_name_snapshot?: string | null
+          process_name?: string | null
+          process_order?: number | null
+          process_type?: string | null
+          production_order_id?: string | null
+          production_order_line_id?: string | null
+          production_unit_id: string
+          production_unit_process_id?: string | null
+          scanned_by_user_id?: string | null
+          size?: string | null
+          sku?: string | null
+          status?: string
+          unit_code?: string | null
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Update: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          notes?: string | null
+          operator_id?: string | null
+          operator_name_snapshot?: string | null
+          process_name?: string | null
+          process_order?: number | null
+          process_type?: string | null
+          production_order_id?: string | null
+          production_order_line_id?: string | null
+          production_unit_id?: string
+          production_unit_process_id?: string | null
+          scanned_by_user_id?: string | null
+          size?: string | null
+          sku?: string | null
+          status?: string
+          unit_code?: string | null
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Relationships: []
+      }
       core_production_unit_print_logs: {
         Row: {
           id: string
@@ -1850,6 +1925,8 @@ export type Database = {
       core_production_unit_processes: {
         Row: {
           adds_to_payroll: boolean
+          completed_at: string | null
+          completed_by_operator_id: string | null
           created_at: string
           id: string
           notes: string | null
@@ -1859,12 +1936,15 @@ export type Database = {
           production_order_process_id: string | null
           production_unit_id: string
           rate_snapshot: Json | null
+          scanned_by_user_id: string | null
           status: string
           suggested_role: string | null
           updated_at: string
         }
         Insert: {
           adds_to_payroll?: boolean
+          completed_at?: string | null
+          completed_by_operator_id?: string | null
           created_at?: string
           id?: string
           notes?: string | null
@@ -1874,12 +1954,15 @@ export type Database = {
           production_order_process_id?: string | null
           production_unit_id: string
           rate_snapshot?: Json | null
+          scanned_by_user_id?: string | null
           status?: string
           suggested_role?: string | null
           updated_at?: string
         }
         Update: {
           adds_to_payroll?: boolean
+          completed_at?: string | null
+          completed_by_operator_id?: string | null
           created_at?: string
           id?: string
           notes?: string | null
@@ -1889,6 +1972,7 @@ export type Database = {
           production_order_process_id?: string | null
           production_unit_id?: string
           rate_snapshot?: Json | null
+          scanned_by_user_id?: string | null
           status?: string
           suggested_role?: string | null
           updated_at?: string
@@ -1979,6 +2063,81 @@ export type Database = {
           updated_by?: string | null
           variant_label?: string | null
           variant_sku?: string | null
+        }
+        Relationships: []
+      }
+      core_production_work_entries: {
+        Row: {
+          core_product_id: string | null
+          core_variant_id: string | null
+          created_at: string
+          currency: string | null
+          id: string
+          notes: string | null
+          operator_id: string | null
+          operator_name_snapshot: string | null
+          payroll_amount: number | null
+          payroll_status: string
+          payroll_week_end: string | null
+          payroll_week_start: string | null
+          process_name: string | null
+          process_type: string | null
+          production_order_id: string | null
+          production_unit_id: string
+          production_unit_process_id: string
+          rate_snapshot: number | null
+          scan_event_id: string | null
+          scanned_by_user_id: string | null
+          unit_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          operator_id?: string | null
+          operator_name_snapshot?: string | null
+          payroll_amount?: number | null
+          payroll_status?: string
+          payroll_week_end?: string | null
+          payroll_week_start?: string | null
+          process_name?: string | null
+          process_type?: string | null
+          production_order_id?: string | null
+          production_unit_id: string
+          production_unit_process_id: string
+          rate_snapshot?: number | null
+          scan_event_id?: string | null
+          scanned_by_user_id?: string | null
+          unit_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          operator_id?: string | null
+          operator_name_snapshot?: string | null
+          payroll_amount?: number | null
+          payroll_status?: string
+          payroll_week_end?: string | null
+          payroll_week_start?: string | null
+          process_name?: string | null
+          process_type?: string | null
+          production_order_id?: string | null
+          production_unit_id?: string
+          production_unit_process_id?: string
+          rate_snapshot?: number | null
+          scan_event_id?: string | null
+          scanned_by_user_id?: string | null
+          unit_code?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
