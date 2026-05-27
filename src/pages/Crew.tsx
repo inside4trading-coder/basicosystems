@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BirthdaysThisMonth } from "@/components/crew/BirthdaysThisMonth";
 import type { EmployeeStatus } from "@/types/crew";
+import { formatDMY } from "@/lib/dateUtils";
 
 const statusConfig: Record<EmployeeStatus, { label: string; className: string }> = {
   active: { label: "Activo", className: "status-badge-success" },
@@ -205,7 +206,7 @@ export default function Crew() {
 
                     <p className="text-xs text-muted-foreground flex items-center gap-1 pt-0.5">
                       <Calendar className="h-3 w-3 shrink-0" />
-                      {new Date(emp.start_date).toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" })}
+                      {formatDMY(emp.start_date)}
                     </p>
                   </div>
                 </div>

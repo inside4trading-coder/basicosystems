@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { CustomerOrdersDialog } from "@/components/crm/CustomerOrdersDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { formatDMY } from "@/lib/dateUtils";
 
 interface Customer {
   id: number;
@@ -246,7 +247,7 @@ export default function CRM() {
 
   const fmtDate = (d: string | null) => {
     if (!d) return "—";
-    return new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+    return formatDMY(d);
   };
 
   return (

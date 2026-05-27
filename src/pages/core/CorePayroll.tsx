@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/hooks/use-toast";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { Wallet, Plus, CheckCircle2, AlertTriangle, FileText, Printer, RefreshCw, DollarSign, Users, ListChecks } from "lucide-react";
+import { formatDMY } from "@/lib/dateUtils";
 
 type WorkEntry = {
   id: string;
@@ -421,7 +422,7 @@ function WorkEntryTable({ entries, showRateActions }: { entries: WorkEntry[]; sh
           <TableBody>
             {entries.map(e => (
               <TableRow key={e.id}>
-                <TableCell className="text-xs">{new Date(e.created_at).toLocaleDateString()}</TableCell>
+                <TableCell className="text-xs">{formatDMY(e.created_at)}</TableCell>
                 <TableCell className="font-mono text-xs">{e.unit_code}</TableCell>
                 <TableCell className="text-sm">{e.process_name}</TableCell>
                 <TableCell className="text-sm">{e.operator_name_snapshot ?? "—"}</TableCell>
@@ -802,7 +803,7 @@ function RunDetailDialog({ runId, onClose, onChange }: { runId: string; onClose:
                   <TableBody>
                     {printEntries.map((l: any) => (
                       <TableRow key={l.id}>
-                        <TableCell className="text-xs">{l.work_entry?.created_at ? new Date(l.work_entry.created_at).toLocaleDateString() : "—"}</TableCell>
+                        <TableCell className="text-xs">{l.work_entry?.created_at ? formatDMY(l.work_entry.created_at) : "—"}</TableCell>
                         <TableCell className="font-mono text-xs">{l.work_entry?.unit_code}</TableCell>
                         <TableCell>{l.work_entry?.process_name}</TableCell>
                         <TableCell>{fmt(l.work_entry?.rate_snapshot, l.currency)}</TableCell>

@@ -9,6 +9,7 @@ import { PedidosDashboard } from "@/components/pedidos/PedidosDashboard";
 import { PedidosChannels } from "@/components/pedidos/PedidosChannels";
 import { PedidosPaymentMethods } from "@/components/pedidos/PedidosPaymentMethods";
 import { toast } from "sonner";
+import { formatDMY } from "@/lib/dateUtils";
 
 const STATUS_OPTIONS_RAW = [
   { value: "any", label: "Todos" },
@@ -172,7 +173,7 @@ export default function Pedidos() {
     if (rate > 0) return value / rate;
     return value;
   };
-  const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" }) : "";
+  const fmtDate = (d: string) => d ? formatDMY(d) : "";
   const totalPages = Math.ceil(total / PER_PAGE);
 
   return (

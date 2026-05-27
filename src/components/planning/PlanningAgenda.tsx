@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { NotionTask } from "@/hooks/usePlanningData";
 import { deriveStatus, statusVisual, type DerivedStatus } from "@/lib/planningStatus";
-import { parseLocalDate } from "@/lib/dateUtils";
+import { parseLocalDate, formatDMY } from "@/lib/dateUtils";
 
 interface PlanningAgendaProps {
   tasks: NotionTask[];
@@ -32,7 +32,7 @@ function daysBetween(a: Date, b: Date) {
 }
 
 function fmtShort(d: string) {
-  return parseLocalDate(d).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "short" });
+  return formatDMY(parseLocalDate(d));
 }
 
 function StatusChip({ status }: { status: DerivedStatus }) {

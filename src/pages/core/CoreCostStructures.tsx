@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet, AlertTriangle } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
+import { formatDMY } from "@/lib/dateUtils";
 
 type CostStructure = {
   id: string;
@@ -289,7 +290,7 @@ export default function CoreCostStructures() {
                         : "—"}
                     </TableCell>
                     <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{new Date(s.updated_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{formatDMY(s.updated_at)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => setViewing(s)} title="Ver"><Eye className="h-4 w-4" /></Button>

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDMY } from "@/lib/dateUtils";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -110,7 +111,7 @@ export function CrewPrivateNotes({ employeeId }: { employeeId: string }) {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-muted-foreground">
-                    {new Date(note.created_at).toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" })}
+                    {formatDMY(note.created_at)}
                   </span>
                   {note.author && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1">

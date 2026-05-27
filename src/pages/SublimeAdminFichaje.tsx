@@ -25,6 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { formatDMY } from "@/lib/dateUtils";
 import {
   ExternalLink,
   Store,
@@ -334,7 +335,7 @@ export default function SublimeAdminFichaje() {
 
   const formatDay = (key: string) => {
     const [y, m, d] = key.split("-").map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+    return formatDMY(y, m - 1, d);
   };
 
   const showDateColumn = range !== "today" && range !== "yesterday";

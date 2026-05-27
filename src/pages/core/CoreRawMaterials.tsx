@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { RawMaterialImportButton, RawMaterialExportButton } from "./CoreRawMaterialImportFlow";
+import { formatDMY } from "@/lib/dateUtils";
 
 type Category = { id: string; name: string; status: string };
 type Unit = { id: string; name: string; abbreviation: string; status: string };
@@ -266,7 +267,7 @@ export default function CoreRawMaterials() {
                           {m.status === "active" ? "Activo" : "Inactivo"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{new Date(m.updated_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{formatDMY(m.updated_at)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => setViewing(m)}><Eye className="h-4 w-4" /></Button>

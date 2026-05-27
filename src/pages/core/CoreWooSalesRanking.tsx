@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Search, ChevronDown, ChevronRight, Plus, ExternalLink, Ban, EyeOff, RefreshCw, Link2 } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { cn } from "@/lib/utils";
+import { formatDMY } from "@/lib/dateUtils";
 
 const VALID_STATUSES = [
   "processing",
@@ -476,7 +477,7 @@ export default function CoreWooSalesRanking() {
                     <TableCell className="text-right tabular-nums font-bold">{g.units}</TableCell>
                     <TableCell className="text-right tabular-nums">{g.orders.size}</TableCell>
                     <TableCell className="text-right tabular-nums">{g.revenue.toFixed(2)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{g.lastAt ? new Date(g.lastAt).toLocaleDateString() : "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{g.lastAt ? formatDMY(g.lastAt) : "—"}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1 flex-wrap">
                         {g.coreStatus === "ya_en_core" && g.coreProduct && (
@@ -527,7 +528,7 @@ export default function CoreWooSalesRanking() {
                         <TableCell className="text-right tabular-nums font-semibold">{v.units}</TableCell>
                         <TableCell className="text-right tabular-nums">{v.orders.size}</TableCell>
                         <TableCell className="text-right tabular-nums">{v.revenue.toFixed(2)}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{v.lastAt ? new Date(v.lastAt).toLocaleDateString() : "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{v.lastAt ? formatDMY(v.lastAt) : "—"}</TableCell>
                         <TableCell className="text-right">
                           {vStatus === "en_core" && v.matchedProductId && (
                             <Button size="sm" variant="ghost" onClick={() => navigate(`/core/productos/${v.matchedProductId}`)}>

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { logCoreAudit } from "@/lib/coreAudit";
 import { toast } from "sonner";
 import { Search, Link2, Plus, Ban, EyeOff, DollarSign, RefreshCw, Loader2 } from "lucide-react";
+import { formatDMY } from "@/lib/dateUtils";
 
 export type PendingItem = {
   id: string;
@@ -249,7 +250,7 @@ export default function PendingResolutionPanel({ onChanged }: { onChanged: () =>
                       const s = new Set(selected); s.has(it.id) ? s.delete(it.id) : s.add(it.id); setSelected(s);
                     }} />
                   </TableCell>
-                  <TableCell className="text-xs whitespace-nowrap">{new Date(it.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-xs whitespace-nowrap">{formatDMY(it.created_at)}</TableCell>
                   <TableCell className="text-xs font-mono">#{it.source_order_id}{it.source_order_item_id ? ` / ${it.source_order_item_id}` : ""}</TableCell>
                   <TableCell className="text-[11px] font-mono text-muted-foreground">
                     {it.woo_product_id ? `P:${it.woo_product_id}` : "—"}

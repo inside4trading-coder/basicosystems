@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { ExternalLink, ClipboardList, Calendar as CalendarIcon, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { NotionTask } from "@/hooks/usePlanningData";
-import { parseLocalDate } from "@/lib/dateUtils";
+import { parseLocalDate, formatDMY } from "@/lib/dateUtils";
 
 interface PlanningTableProps {
   tasks: NotionTask[];
@@ -29,7 +29,7 @@ function badgeClass(color: string | undefined) {
 }
 
 function fmtDate(d: string) {
-  return parseLocalDate(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+  return formatDMY(parseLocalDate(d));
 }
 
 type SortKey = "name" | "assignee" | "status" | "date" | "priority" | "area" | "source";

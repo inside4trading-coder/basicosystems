@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import type { Employee, EmployeeStatus } from "@/types/crew";
-import { parseLocalDate } from "@/lib/dateUtils";
+import { parseLocalDate, formatDMY } from "@/lib/dateUtils";
 
 interface CrewGeneralDataProps {
   employee: Employee;
@@ -189,7 +189,7 @@ export function CrewGeneralData({ employee, editMode, onUpdate, canViewSalary = 
             </Popover>
           ) : (
             <p className="text-sm font-semibold">
-              {parsedDate ? parsedDate.toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }) : <Placeholder />}
+              {parsedDate ? formatDMY(parsedDate) : <Placeholder />}
             </p>
           )}
         </FieldCell>
@@ -203,7 +203,7 @@ export function CrewGeneralData({ employee, editMode, onUpdate, canViewSalary = 
             />
           ) : (
             <p className="text-sm font-semibold">
-              {parsedBirth ? parsedBirth.toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }) : <Placeholder />}
+              {parsedBirth ? formatDMY(parsedBirth) : <Placeholder />}
             </p>
           )}
         </FieldCell>

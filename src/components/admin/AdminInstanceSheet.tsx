@@ -7,7 +7,7 @@ import type { ObligationInstance } from "@/types/admin";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminScope } from "@/contexts/AdminScope";
-import { parseLocalDate } from "@/lib/dateUtils";
+import { parseLocalDate, formatDMY } from "@/lib/dateUtils";
 import { MarkPaidDialog } from "./MarkPaidDialog";
 
 interface Props {
@@ -78,7 +78,7 @@ export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit, onPai
                     {instance.paid_at && (
                       <div>
                         <div className="text-[10px] uppercase font-bold text-muted-foreground">Pagado el</div>
-                        <div>{parseLocalDate(instance.paid_at).toLocaleDateString("es-VE")}</div>
+                        <div>{formatDMY(parseLocalDate(instance.paid_at))}</div>
                       </div>
                     )}
                     {instance.paid_by && (
@@ -127,7 +127,7 @@ export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit, onPai
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <div className="text-xs uppercase font-bold text-muted-foreground">Vencimiento</div>
-                <div>{parseLocalDate(instance.due_date).toLocaleDateString("es-VE")}</div>
+                <div>{formatDMY(parseLocalDate(instance.due_date))}</div>
               </div>
               <div>
                 <div className="text-xs uppercase font-bold text-muted-foreground">Monto</div>

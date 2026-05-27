@@ -28,6 +28,7 @@ import { RRPPPrivateNotes } from "@/components/rrpp/RRPPPrivateNotes";
 import { useRRPPPermissions } from "@/components/rrpp/useRRPPPermissions";
 import { ProfileHeaderSkeleton, TabContentSkeleton } from "@/components/rrpp/RRPPSkeletons";
 import { AlertTriangle } from "lucide-react";
+import { formatDMY } from "@/lib/dateUtils";
 
 const ALL_TABS = [
   { value: "general", label: "Datos generales" },
@@ -160,7 +161,7 @@ export default function RRPPProfile() {
     );
   }
 
-  const created = new Date(contact.created_at).toLocaleDateString();
+  const created = formatDMY(contact.created_at);
 
   return (
     <div className="space-y-6">

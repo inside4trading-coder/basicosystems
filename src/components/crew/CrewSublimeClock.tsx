@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { AlertCircle, Copy, KeyRound, Lock, Plus, RefreshCw, Shield, ShieldOff, Store as StoreIcon } from "lucide-react";
 import type { Employee } from "@/types/crew";
 import { supabase } from "@/integrations/supabase/client";
+import { formatDMY } from "@/lib/dateUtils";
 
 interface Props {
   employee: Employee;
@@ -414,7 +415,7 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
                   </span>
                   {settings?.pin_set_at && settings.pin_status === "active" && (
                     <span className="text-[11px] text-muted-foreground">
-                      activo desde {new Date(settings.pin_set_at).toLocaleDateString("es-ES")}
+                      activo desde {formatDMY(settings.pin_set_at)}
                     </span>
                   )}
                   {settings?.temp_pin_expires_at && settings.pin_status === "temp_generated" && (

@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet, RefreshCw, Inbox, Cloud, ChevronDown, ChevronRight } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { cn } from "@/lib/utils";
+import { formatDMY } from "@/lib/dateUtils";
 
 type Variant = {
   id: string;
@@ -367,7 +368,7 @@ export default function CoreProducts() {
                           <span className="text-muted-foreground">#{p.woo_product_id}{p.woo_product_name ? ` · ${p.woo_product_name}` : ""}</span>
                         ) : <span className="text-muted-foreground">—</span>}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{new Date(p.updated_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{formatDMY(p.updated_at)}</TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => navigate(`/core/productos/${p.id}`)} title="Ver/Editar"><Eye className="h-4 w-4" /></Button>
