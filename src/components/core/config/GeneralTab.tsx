@@ -18,8 +18,18 @@ export default function GeneralTab() {
   const { data: locations = [] } = useCoreLocations();
   const update = useUpdateCoreSettings();
   const [form, setForm] = useState<CoreSettings | null>(null);
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+  const [wooMode, setWooMode] = useState<string>("dry_run");
+  const [savingMode, setSavingMode] = useState(false);
 
-  useEffect(() => { if (settings) setForm(settings); }, [settings]);
+  useEffect(() => {
+    if (settings) setForm(settings);
+    (async () => {
+      const { data } = await supabase.from("core_settings").select("woo_write_mode").limit(1).maybeSingle();
+      setWooMode((data as any)?.woo_write_mode ?? "dry_run");
+    })();
+  }, [settings]);
 
   if (isLoading || !form) return <p className="text-sm text-muted-foreground">Cargando…</p>;
 
