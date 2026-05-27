@@ -139,7 +139,6 @@ export default function CoreFactoryOperators() {
 
   async function save() {
     if (!form.first_name.trim()) { toast({ title: "Nombre obligatorio", variant: "destructive" }); return; }
-    if (selectedRoles.length === 0) { toast({ title: "Selecciona al menos un rol productivo", variant: "destructive" }); return; }
     const { data: { user } } = await supabase.auth.getUser();
     const payload: any = {
       first_name: form.first_name.trim(),
@@ -350,7 +349,7 @@ export default function CoreFactoryOperators() {
               <Input value={form.photo_url} onChange={(e) => setForm({ ...form, photo_url: e.target.value })} placeholder="https://..." />
             </div>
             <div className="col-span-2">
-              <Label>Roles productivos *</Label>
+              <Label>Roles productivos</Label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
                 {ROLE_OPTIONS.map((r) => (
                   <label key={r.value} className="flex items-center gap-2 border rounded p-2 cursor-pointer">
