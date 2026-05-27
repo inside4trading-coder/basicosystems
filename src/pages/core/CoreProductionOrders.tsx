@@ -113,7 +113,12 @@ const CLOSED_STATUSES = ["closed", "manually_closed"];
 
 export default function CoreProductionOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [allLines, setAllLines] = useState<Line[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState<null | "in_production" | "open" | "cancelled" | "manually_closed">(null);
+  const [bulkReason, setBulkReason] = useState("");
+  const [bulkRunning, setBulkRunning] = useState(false);
 
   const [fromNeedsOpen, setFromNeedsOpen] = useState(false);
   const [approvedNeeds, setApprovedNeeds] = useState<Need[]>([]);
@@ -150,11 +155,70 @@ export default function CoreProductionOrders() {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(500);
-    setOrders((data as any) ?? []);
+    const ords = ((data as any) ?? []) as Order[];
+    setOrders(ords);
+    const ids = ords.map((o) => o.id);
+    if (ids.length) {
+      const { data: lns } = await supabase
+        .from("core_production_order_lines")
+        .select("*")
+        .in("production_order_id", ids);
+      setAllLines((lns as any) ?? []);
+    } else {
+      setAllLines([]);
+    }
+    setSelectedOrders(new Set());
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
+
+  const linesByOrder = useMemo(() => {
+    const m: Record<string, Line[]> = {};
+    for (const l of allLines) (m[l.production_order_id] ||= []).push(l);
+    return m;
+  }, [allLines]);
+
+  const runBulk = async () => {
+    const ids = Array.from(selectedOrders);
+    if (!ids.length || !bulkOpen) return;
+    if ((bulkOpen === "cancelled" || bulkOpen === "manually_closed") && !bulkReason.trim()) {
+      toast.error("Motivo obligatorio");
+      return;
+    }
+    setBulkRunning(true);
+    try {
+      const patch: any = { status: bulkOpen };
+      if (bulkOpen === "cancelled") {
+        patch.cancelled_reason = bulkReason;
+        patch.cancelled_at = new Date().toISOString();
+      }
+      if (bulkOpen === "manually_closed") {
+        patch.manual_close_reason = bulkReason;
+        patch.manual_close_notes = bulkReason;
+        patch.manually_closed_at = new Date().toISOString();
+      }
+      const { error } = await supabase
+        .from("core_production_orders")
+        .update(patch)
+        .in("id", ids);
+      if (error) throw error;
+      for (const id of ids) {
+        await logCoreAudit({
+          table: "core_production_orders", recordId: id,
+          action: `bulk_${bulkOpen}`, field: "status",
+          oldValue: null, newValue: bulkOpen,
+        });
+      }
+      toast.success(`${ids.length} orden(es) actualizadas`);
+      setBulkOpen(null); setBulkReason("");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error en acción masiva");
+    } finally {
+      setBulkRunning(false);
+    }
+  };
 
   const kpis = useMemo(() => {
     const open = orders.filter((o) => OPEN_STATUSES.includes(o.status));
@@ -356,46 +420,97 @@ export default function CoreProductionOrders() {
     await load();
   };
 
-  const renderRow = (o: Order) => (
-    <TableRow key={o.id}>
-      <TableCell className="font-mono text-sm">{o.order_code}</TableCell>
-      <TableCell>
-        <Badge variant="outline" className={STATUS_BADGE[o.status]}>
-          {STATUS_LABEL[o.status] ?? o.status}
-        </Badge>
-        {o.is_overproduction && (
-          <Badge variant="outline" className="ml-1 bg-orange-100 text-orange-800 border-orange-300">
-            Sobreprod.
+  const renderRow = (o: Order) => {
+    const lines = linesByOrder[o.id] ?? [];
+    const checked = selectedOrders.has(o.id);
+    return (
+      <TableRow key={o.id} data-state={checked ? "selected" : undefined}>
+        <TableCell className="w-[36px]">
+          <Checkbox
+            checked={checked}
+            onCheckedChange={(c) => {
+              setSelectedOrders((prev) => {
+                const next = new Set(prev);
+                if (c) next.add(o.id); else next.delete(o.id);
+                return next;
+              });
+            }}
+            aria-label="Seleccionar orden"
+          />
+        </TableCell>
+        <TableCell className="font-mono text-sm">{o.order_code}</TableCell>
+        <TableCell>
+          <Badge variant="outline" className={STATUS_BADGE[o.status]}>
+            {STATUS_LABEL[o.status] ?? o.status}
           </Badge>
-        )}
-      </TableCell>
-      <TableCell>
-        <div className="font-medium">{o.product_name}</div>
-        <div className="text-xs text-muted-foreground font-mono">{o.sku}</div>
-      </TableCell>
-      <TableCell className="text-right">{o.total_quantity}</TableCell>
-      <TableCell className="text-right">{o.pending_quantity}</TableCell>
-      <TableCell className="text-right">{o.completed_quantity}</TableCell>
-      <TableCell className="text-xs text-muted-foreground">{o.source}</TableCell>
-      <TableCell className="text-xs">{new Date(o.created_at).toLocaleString()}</TableCell>
-      <TableCell className="text-right">
-        <Button size="sm" variant="outline" onClick={() => openDetail(o)}>
-          <Eye className="h-3 w-3 mr-1" /> Ver
-        </Button>
-      </TableCell>
-    </TableRow>
-  );
+          {o.is_overproduction && (
+            <Badge variant="outline" className="ml-1 bg-orange-100 text-orange-800 border-orange-300">
+              Sobreprod.
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell>
+          <div className="font-medium">{o.product_name}</div>
+          <div className="text-xs text-muted-foreground font-mono">{o.sku}</div>
+        </TableCell>
+        <TableCell>
+          <div className="flex flex-wrap gap-1 max-w-[260px]">
+            {lines.length === 0 ? (
+              <span className="text-xs text-muted-foreground">—</span>
+            ) : lines.map((l) => (
+              <Badge
+                key={l.id}
+                variant="outline"
+                className="bg-primary/10 text-primary border-primary/30 font-bold text-[11px] px-2 py-0.5"
+                title={l.variant_sku ?? ""}
+              >
+                {(l.size ?? l.variant_label ?? "?")}
+                <span className="ml-1 font-semibold text-foreground/80">×{l.quantity_ordered}</span>
+              </Badge>
+            ))}
+          </div>
+        </TableCell>
+        <TableCell className="text-right">{o.total_quantity}</TableCell>
+        <TableCell className="text-right">{o.pending_quantity}</TableCell>
+        <TableCell className="text-right">{o.completed_quantity}</TableCell>
+        <TableCell className="text-xs text-muted-foreground">{o.source}</TableCell>
+        <TableCell className="text-xs">{new Date(o.created_at).toLocaleString()}</TableCell>
+        <TableCell className="text-right">
+          <Button size="sm" variant="outline" onClick={() => openDetail(o)}>
+            <Eye className="h-3 w-3 mr-1" /> Ver
+          </Button>
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   const filterTable = (statuses: string[]) => {
     const rows = orders.filter((o) => statuses.includes(o.status));
+    const allChecked = rows.length > 0 && rows.every((r) => selectedOrders.has(r.id));
+    const someChecked = rows.some((r) => selectedOrders.has(r.id));
     return (
       <Card className="p-4 mt-3">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[36px]">
+                <Checkbox
+                  checked={allChecked}
+                  onCheckedChange={(c) => {
+                    setSelectedOrders((prev) => {
+                      const next = new Set(prev);
+                      if (c) rows.forEach((r) => next.add(r.id));
+                      else rows.forEach((r) => next.delete(r.id));
+                      return next;
+                    });
+                  }}
+                  aria-label="Seleccionar todo"
+                />
+              </TableHead>
               <TableHead>Código</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Producto</TableHead>
+              <TableHead>Tallas</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="text-right">Pend.</TableHead>
               <TableHead className="text-right">Compl.</TableHead>
@@ -407,7 +522,7 @@ export default function CoreProductionOrders() {
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                   Sin órdenes en esta vista.
                 </TableCell>
               </TableRow>
@@ -450,7 +565,27 @@ export default function CoreProductionOrders() {
         <Card className="p-3"><div className="text-xs text-muted-foreground">Última</div><div className="text-xs">{kpis.last ? new Date(kpis.last).toLocaleString() : "—"}</div></Card>
       </div>
 
+      {selectedOrders.size > 0 && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border border-primary/30 bg-primary/5 animate-fade-in">
+          <div className="text-sm font-semibold">
+            {selectedOrders.size} orden{selectedOrders.size === 1 ? "" : "es"} seleccionada{selectedOrders.size === 1 ? "" : "s"}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" variant="ghost" onClick={() => setSelectedOrders(new Set())}>Cancelar</Button>
+            <Button size="sm" variant="outline" onClick={() => setBulkOpen("in_production")}>Marcar en producción</Button>
+            <Button size="sm" variant="outline" onClick={() => setBulkOpen("open")}>Volver a abierta</Button>
+            <Button size="sm" variant="outline" onClick={() => setBulkOpen("manually_closed")}>
+              <Lock className="h-3 w-3 mr-1" /> Cerrar manualmente
+            </Button>
+            <Button size="sm" variant="destructive" onClick={() => setBulkOpen("cancelled")}>
+              <Ban className="h-3 w-3 mr-1" /> Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Tabs defaultValue="open">
+
         <TabsList>
           <TabsTrigger value="open">Abiertas</TabsTrigger>
           <TabsTrigger value="prod">En producción</TabsTrigger>
@@ -504,9 +639,14 @@ export default function CoreProductionOrders() {
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{n.product_name}</div>
-                        <div className="text-xs text-muted-foreground font-mono">
-                          {n.variant_sku} · talla {n.size ?? "—"}
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-primary text-primary-foreground font-bold text-sm px-2.5 py-0.5">
+                            {n.size ?? "—"}
+                          </Badge>
+                          <div className="font-medium">{n.product_name}</div>
+                        </div>
+                        <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                          {n.variant_sku}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">{n.quantity_approved}</TableCell>
@@ -573,9 +713,11 @@ export default function CoreProductionOrders() {
                 <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-auto">
                   {manualVariants.map((v) => (
                     <div key={v.id} className="flex items-center justify-between gap-3">
-                      <div className="text-sm">
-                        <span className="font-mono">{v.variant_sku}</span>
-                        <span className="text-muted-foreground ml-2">{v.size}</span>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Badge className="bg-primary text-primary-foreground font-bold text-sm px-2.5 py-0.5 min-w-[2.5rem] justify-center">
+                          {v.size ?? "—"}
+                        </Badge>
+                        <span className="font-mono text-xs text-muted-foreground">{v.variant_sku}</span>
                       </div>
                       <Input
                         type="number"
@@ -823,6 +965,39 @@ export default function CoreProductionOrders() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCancelOpen(null)}>Volver</Button>
             <Button variant="destructive" onClick={submitCancel}>Confirmar cancelación</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk action confirm */}
+      <Dialog open={!!bulkOpen} onOpenChange={(o) => { if (!o) { setBulkOpen(null); setBulkReason(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {bulkOpen === "in_production" && "Marcar en producción"}
+              {bulkOpen === "open" && "Volver a abierta"}
+              {bulkOpen === "manually_closed" && "Cerrar manualmente (masivo)"}
+              {bulkOpen === "cancelled" && "Cancelar órdenes (masivo)"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div>Se aplicará a <b>{selectedOrders.size}</b> orden(es) seleccionada(s).</div>
+            {(bulkOpen === "cancelled" || bulkOpen === "manually_closed") && (
+              <div>
+                <Label>Motivo *</Label>
+                <Textarea value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setBulkOpen(null); setBulkReason(""); }}>Volver</Button>
+            <Button
+              variant={bulkOpen === "cancelled" ? "destructive" : "default"}
+              onClick={runBulk}
+              disabled={bulkRunning}
+            >
+              {bulkRunning ? "Aplicando..." : "Confirmar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
