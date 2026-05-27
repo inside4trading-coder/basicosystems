@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Factory, LayoutDashboard, Settings, Package, FileSpreadsheet, Calculator, ClipboardList, Boxes, Layers, ListChecks, QrCode, ScanLine, Wallet, Warehouse, BarChart3, FileStack, Ban } from "lucide-react";
+import { Factory, LayoutDashboard, Settings, Package, FileSpreadsheet, Calculator, ClipboardList, Boxes, Layers, ListChecks, QrCode, ScanLine, Wallet, Warehouse, BarChart3, FileStack, Ban, HardHat } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Section = { to: string; label: string; icon: typeof LayoutDashboard; end?: boolean };
@@ -36,6 +36,7 @@ const groups: { label: string; items: Section[] }[] = [
   {
     label: "Operación",
     items: [
+      { to: "/core/operarios", label: "Basico Crew (Operarios)", icon: HardHat },
       { to: "/core/nomina", label: "Nómina", icon: Wallet },
       { to: "/core/inventario", label: "Inventario", icon: Warehouse },
       { to: "/core/reportes", label: "Reportes", icon: BarChart3 },

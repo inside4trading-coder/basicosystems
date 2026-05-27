@@ -49,13 +49,31 @@ type UnitProcess = {
   notes: string | null;
 };
 
-type Employee = {
+type Operator = {
   id: string;
   first_name: string;
-  last_name: string;
-  position: string;
+  last_name: string | null;
+  alias: string | null;
   status: string;
+  role_types: string[];
+  primary_role: string | null;
 };
+
+// Map process_type / suggested_role to factory role_type
+const PROCESS_TO_ROLE: Record<string, string> = {
+  corte: "cutter", cutter: "cutter", cortador: "cutter", cortadora: "cutter",
+  costura: "sewer", sewer: "sewer", costurera: "sewer", costurero: "sewer",
+  estampado: "printer", printer: "printer", estampador: "printer",
+  bordado: "embroiderer", embroiderer: "embroiderer", bordador: "embroiderer",
+  empaque: "packing", packing: "packing",
+  logistica: "logistics", "logística": "logistics", logistics: "logistics",
+  calidad: "quality", quality: "quality",
+};
+function mapToRoleType(s?: string | null): string | null {
+  if (!s) return null;
+  const k = s.toLowerCase().trim();
+  return PROCESS_TO_ROLE[k] || null;
+}
 
 type ScanEvent = {
   id: string;
@@ -84,7 +102,7 @@ export default function CoreScanning() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [unit, setUnit] = useState<Unit | null>(null);
   const [processes, setProcesses] = useState<UnitProcess[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [operators, setOperators] = useState<Operator[]>([]);
   const [history, setHistory] = useState<ScanEvent[]>([]);
   const [recent, setRecent] = useState<ScanEvent[]>([]);
   const [manualCode, setManualCode] = useState("");
@@ -95,6 +113,8 @@ export default function CoreScanning() {
   const [operatorId, setOperatorId] = useState<string>("");
   const [noteText, setNoteText] = useState("");
   const [forceMissingRate, setForceMissingRate] = useState(false);
+  const [showAllOperators, setShowAllOperators] = useState(false);
+  const [confirmMismatch, setConfirmMismatch] = useState(false);
 
   // dialog: correction
   const [correctionProc, setCorrectionProc] = useState<UnitProcess | null>(null);
@@ -106,15 +126,24 @@ export default function CoreScanning() {
   const cameraDivRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<any>(null);
 
-  // Load active employees + recent scans
+  // Load active factory operators + recent scans
   useEffect(() => {
     (async () => {
-      const { data: emps } = await supabase
-        .from("employees")
-        .select("id,first_name,last_name,position,status")
-        .eq("status", "active")
-        .order("first_name");
-      setEmployees((emps as Employee[]) || []);
+      const [{ data: ops }, { data: opRoles }] = await Promise.all([
+        supabase.from("core_factory_operators").select("id,first_name,last_name,alias,status").eq("status", "active").order("first_name"),
+        supabase.from("core_factory_operator_roles").select("operator_id,role_type,is_primary,status").eq("status", "active"),
+      ]);
+      const byOp: Record<string, { types: string[]; primary: string | null }> = {};
+      for (const r of (opRoles as any[]) || []) {
+        if (!byOp[r.operator_id]) byOp[r.operator_id] = { types: [], primary: null };
+        byOp[r.operator_id].types.push(r.role_type);
+        if (r.is_primary) byOp[r.operator_id].primary = r.role_type;
+      }
+      const list: Operator[] = ((ops as any[]) || []).map((o) => ({
+        id: o.id, first_name: o.first_name, last_name: o.last_name, alias: o.alias, status: o.status,
+        role_types: byOp[o.id]?.types || [], primary_role: byOp[o.id]?.primary || null,
+      }));
+      setOperators(list);
 
       const { data: r } = await supabase
         .from("core_production_scan_events")
@@ -236,7 +265,11 @@ export default function CoreScanning() {
   const pendingProcs = useMemo(() => processes.filter((p) => p.status === "pending"), [processes]);
   const completedProcs = useMemo(() => processes.filter((p) => p.status === "completed"), [processes]);
 
-  const operatorById = (id: string) => employees.find((e) => e.id === id);
+  const operatorById = (id: string) => operators.find((e) => e.id === id);
+
+  function operatorFullName(op: Operator) {
+    return `${op.first_name}${op.last_name ? " " + op.last_name : ""}${op.alias ? " (" + op.alias + ")" : ""}`;
+  }
 
   async function refreshOrderCounts(orderId: string) {
     // Recompute completed/pending qty from lines based on units status
@@ -312,6 +345,18 @@ export default function CoreScanning() {
       toast({ title: "Operario obligatorio para procesos que suman a nómina.", variant: "destructive" });
       return;
     }
+    // Soft warning: role mismatch
+    if (operatorId) {
+      const opCheck = operatorById(operatorId);
+      if (opCheck && !operatorMatchesProc(opCheck, proc) && !confirmMismatch) {
+        toast({
+          title: "Operario sin rol sugerido",
+          description: "Marca la casilla de confirmación para continuar.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     if (missingRate && !forceMissingRate) {
       toast({
         title: "Tarifa faltante",
@@ -323,7 +368,8 @@ export default function CoreScanning() {
     }
 
     const op = operatorId ? operatorById(operatorId) : null;
-    const opName = op ? `${op.first_name} ${op.last_name}` : null;
+    const opName = op ? operatorFullName(op) : null;
+    const opRoles = op?.role_types || null;
     const { data: { user } } = await supabase.auth.getUser();
 
     // Insert scan event
@@ -485,12 +531,20 @@ export default function CoreScanning() {
     await loadHistory(unit.id);
   }
 
-  // suggested employees for process
-  const suggestedFor = (proc: UnitProcess) => {
-    if (!proc.suggested_role) return employees;
-    const role = proc.suggested_role.toLowerCase();
-    const matches = employees.filter((e) => e.position?.toLowerCase().includes(role));
-    return matches.length ? matches : employees;
+  // suggested operators for process — match role_type but never block
+  function targetRoleFor(proc: UnitProcess): string | null {
+    return mapToRoleType(proc.suggested_role) || mapToRoleType(proc.process_type) || mapToRoleType(proc.process_name);
+  }
+  const suggestedFor = (proc: UnitProcess): Operator[] => {
+    const target = targetRoleFor(proc);
+    if (!target) return operators;
+    const matches = operators.filter((o) => o.role_types.includes(target));
+    return matches.length ? matches : operators;
+  };
+  const operatorMatchesProc = (op: Operator, proc: UnitProcess) => {
+    const target = targetRoleFor(proc);
+    if (!target) return true;
+    return op.role_types.includes(target);
   };
 
   return (
@@ -654,17 +708,40 @@ export default function CoreScanning() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Operario {registerProc?.adds_to_payroll && <span className="text-destructive">*</span>}</Label>
-              <Select value={operatorId} onValueChange={setOperatorId}>
+              <Label className="flex items-center justify-between">
+                <span>Operario {registerProc?.adds_to_payroll && <span className="text-destructive">*</span>}</span>
+                {registerProc && targetRoleFor(registerProc) && (
+                  <button
+                    type="button"
+                    className="text-xs underline text-muted-foreground"
+                    onClick={() => setShowAllOperators((v) => !v)}
+                  >
+                    {showAllOperators ? "Mostrar sugeridos" : "Ver todos"}
+                  </button>
+                )}
+              </Label>
+              <Select value={operatorId} onValueChange={(v) => { setOperatorId(v); setConfirmMismatch(false); }}>
                 <SelectTrigger><SelectValue placeholder="Selecciona operario" /></SelectTrigger>
                 <SelectContent>
-                  {registerProc && suggestedFor(registerProc).map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.first_name} {e.last_name} — {e.position}
-                    </SelectItem>
-                  ))}
+                  {registerProc && (showAllOperators ? operators : suggestedFor(registerProc)).map((e) => {
+                    const matches = operatorMatchesProc(e, registerProc);
+                    return (
+                      <SelectItem key={e.id} value={e.id}>
+                        {operatorFullName(e)}{e.role_types.length > 0 && ` — ${e.role_types.join(", ")}`}{!matches && " ⚠"}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              {registerProc && operatorId && !operatorMatchesProc(operatorById(operatorId)!, registerProc) && (
+                <div className="mt-2 rounded border border-amber-400/50 bg-amber-100/40 p-2 text-xs">
+                  <p className="font-medium">Este operario no tiene el rol sugerido para este proceso.</p>
+                  <label className="flex items-center gap-2 mt-1">
+                    <input type="checkbox" checked={confirmMismatch} onChange={(e) => setConfirmMismatch(e.target.checked)} />
+                    Confirmo continuar igualmente
+                  </label>
+                </div>
+              )}
             </div>
             <div>
               <Label>Observación</Label>

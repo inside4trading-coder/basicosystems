@@ -1064,6 +1064,101 @@ export type Database = {
         }
         Relationships: []
       }
+      core_factory_operator_roles: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean
+          operator_id: string
+          role_label: string | null
+          role_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          operator_id: string
+          role_label?: string | null
+          role_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          operator_id?: string
+          role_label?: string | null
+          role_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_factory_operator_roles_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "core_factory_operators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_factory_operators: {
+        Row: {
+          alias: string | null
+          base_rate: number | null
+          created_at: string
+          created_by: string | null
+          document_id: string | null
+          first_name: string
+          id: string
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          photo_url: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          alias?: string | null
+          base_rate?: number | null
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          first_name: string
+          id?: string
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          alias?: string | null
+          base_rate?: number | null
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       core_import_batch_rows: {
         Row: {
           action: string | null
