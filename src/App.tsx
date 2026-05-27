@@ -47,6 +47,7 @@ import CoreFabricationFunds from "./pages/core/CoreFabricationFunds";
 import CoreProductionNeeds from "./pages/core/CoreProductionNeeds";
 import CoreProductionOrders from "./pages/core/CoreProductionOrders";
 import CoreQRTravelSheets from "./pages/core/CoreQRTravelSheets";
+import CoreScanning from "./pages/core/CoreScanning";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -122,7 +123,7 @@ const App = () => (
                 <Route path="necesidades" element={<CoreProductionNeeds />} />
                 <Route path="ordenes-produccion" element={<CoreProductionOrders />} />
                 <Route path="qr" element={<CoreQRTravelSheets />} />
-                <Route path="escaneo" element={<CorePlaceholder title="Escaneo" description="Escaneo móvil con cámara." />} />
+                <Route path="escaneo" element={<CoreScanning />} />
                 <Route path="nomina" element={<CorePlaceholder title="Nómina" description="Cierre semanal y pagos." />} />
                 <Route path="inventario" element={<CorePlaceholder title="Inventario" description="Movimientos y sincronización con WooCommerce." />} />
                 <Route path="reportes" element={<CorePlaceholder title="Reportes" />} />
