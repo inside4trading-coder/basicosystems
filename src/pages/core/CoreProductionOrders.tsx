@@ -543,6 +543,7 @@ export default function CoreProductionOrders() {
         <TableCell className="text-right">{o.total_quantity}</TableCell>
         <TableCell className="text-right">{o.pending_quantity}</TableCell>
         <TableCell className="text-right">{o.completed_quantity}</TableCell>
+        <TableCell>{renderInventoryBadge(invByOrder[o.id])}</TableCell>
         <TableCell className="text-xs text-muted-foreground">{o.source}</TableCell>
         <TableCell className="text-xs">{new Date(o.created_at).toLocaleString()}</TableCell>
         <TableCell className="text-right">
