@@ -124,6 +124,62 @@ export default function GeneralTab() {
         </div>
       </div>
 
+      <div className="space-y-2 p-4 rounded-lg border border-border/60">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <Label className="text-base">Modo de escritura WooCommerce (stock)</Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Controla cómo BASICO CORE actualiza stock en WooCommerce. Solo admin.
+            </p>
+          </div>
+          <Select
+            value={wooMode}
+            onValueChange={async (v) => {
+              if (!isAdmin || !settings) return;
+              if (v === "enabled") {
+                toast({ title: "No permitido", description: "enabled aún no está habilitado.", variant: "destructive" });
+                return;
+              }
+              setSavingMode(true);
+              const { error } = await supabase
+                .from("core_settings")
+                .update({ woo_write_mode: v })
+                .eq("id", settings.id);
+              setSavingMode(false);
+              if (error) {
+                toast({ title: "Error", description: error.message, variant: "destructive" });
+              } else {
+                setWooMode(v);
+                toast({ title: "Modo actualizado", description: `woo_write_mode = ${v}` });
+              }
+            }}
+            disabled={!isAdmin || savingMode}
+          >
+            <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="off">off — no escribir</SelectItem>
+              <SelectItem value="dry_run">dry_run — solo preview</SelectItem>
+              <SelectItem value="manual_confirm">manual_confirm — confirmación manual</SelectItem>
+              <SelectItem value="enabled" disabled>enabled — (no disponible)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {wooMode === "manual_confirm" && (
+          <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-500/10 border border-amber-300/40 rounded p-2">
+            <AlertTriangle className="h-4 w-4 mt-0.5" />
+            <span>
+              <strong>manual_confirm</strong> permite escribir stock real en WooCommerce solo después de
+              confirmación manual. No activa escritura automática.
+            </span>
+          </div>
+        )}
+        {!isAdmin && (
+          <p className="text-xs text-muted-foreground">Solo un admin puede cambiar este valor.</p>
+        )}
+      </div>
+
+
+
       <div className="flex justify-end">
         <Button onClick={onSave} disabled={update.isPending} variant="brand">
           {update.isPending ? "Guardando…" : "Guardar cambios"}
