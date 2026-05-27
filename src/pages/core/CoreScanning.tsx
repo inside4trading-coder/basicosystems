@@ -1,0 +1,728 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ScanLine, Camera, Search, X, CheckCircle2, AlertTriangle, History, User } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { logCoreAudit } from "@/lib/coreAudit";
+
+type Unit = {
+  id: string;
+  unit_code: string;
+  status: string;
+  qr_token: string | null;
+  production_order_id: string;
+  production_order_line_id: string | null;
+  core_product_id: string | null;
+  core_variant_id: string | null;
+  sku: string | null;
+  variant_sku: string | null;
+  variant_label: string | null;
+  size: string | null;
+};
+
+type UnitProcess = {
+  id: string;
+  production_unit_id: string;
+  process_name: string;
+  process_type: string | null;
+  process_order: number;
+  adds_to_payroll: boolean;
+  suggested_role: string | null;
+  rate_snapshot: any;
+  status: string;
+  completed_at: string | null;
+  completed_by_operator_id: string | null;
+  scanned_by_user_id: string | null;
+  notes: string | null;
+};
+
+type Employee = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  position: string;
+  status: string;
+};
+
+type ScanEvent = {
+  id: string;
+  unit_code: string | null;
+  process_name: string | null;
+  operator_name_snapshot: string | null;
+  event_type: string;
+  status: string;
+  notes: string | null;
+  created_at: string;
+};
+
+function extractRate(snap: any): number | null {
+  if (!snap) return null;
+  if (typeof snap === "number") return snap;
+  if (typeof snap === "object") {
+    const candidates = ["rate", "amount", "value", "price", "payroll_amount"];
+    for (const k of candidates) if (typeof snap[k] === "number") return snap[k];
+    for (const k of candidates) if (typeof snap[k] === "string" && !isNaN(Number(snap[k]))) return Number(snap[k]);
+  }
+  if (typeof snap === "string" && !isNaN(Number(snap))) return Number(snap);
+  return null;
+}
+
+export default function CoreScanning() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [unit, setUnit] = useState<Unit | null>(null);
+  const [processes, setProcesses] = useState<UnitProcess[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [history, setHistory] = useState<ScanEvent[]>([]);
+  const [recent, setRecent] = useState<ScanEvent[]>([]);
+  const [manualCode, setManualCode] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // dialog: register process
+  const [registerProc, setRegisterProc] = useState<UnitProcess | null>(null);
+  const [operatorId, setOperatorId] = useState<string>("");
+  const [noteText, setNoteText] = useState("");
+  const [forceMissingRate, setForceMissingRate] = useState(false);
+
+  // dialog: correction
+  const [correctionProc, setCorrectionProc] = useState<UnitProcess | null>(null);
+  const [correctionReason, setCorrectionReason] = useState("");
+  const [correctionNote, setCorrectionNote] = useState("");
+
+  // camera
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const cameraDivRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<any>(null);
+
+  // Load active employees + recent scans
+  useEffect(() => {
+    (async () => {
+      const { data: emps } = await supabase
+        .from("employees")
+        .select("id,first_name,last_name,position,status")
+        .eq("status", "active")
+        .order("first_name");
+      setEmployees((emps as Employee[]) || []);
+
+      const { data: r } = await supabase
+        .from("core_production_scan_events")
+        .select("id,unit_code,process_name,operator_name_snapshot,event_type,status,notes,created_at")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      setRecent((r as ScanEvent[]) || []);
+    })();
+  }, []);
+
+  // Load unit from URL ?unit=token
+  useEffect(() => {
+    const token = searchParams.get("unit");
+    if (token) loadByToken(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  async function loadByToken(token: string) {
+    setLoading(true);
+    const trimmed = token.trim();
+    // Try qr_token first, then unit_code
+    let { data: u } = await supabase
+      .from("core_production_units")
+      .select("*")
+      .eq("qr_token", trimmed)
+      .maybeSingle();
+    if (!u) {
+      const { data: byCode } = await supabase
+        .from("core_production_units")
+        .select("*")
+        .eq("unit_code", trimmed)
+        .maybeSingle();
+      u = byCode;
+    }
+    if (!u) {
+      toast({ title: "Unidad no encontrada", description: trimmed, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+    setUnit(u as Unit);
+    await loadProcesses((u as Unit).id);
+    await loadHistory((u as Unit).id);
+    setLoading(false);
+  }
+
+  async function loadProcesses(unitId: string) {
+    const { data } = await supabase
+      .from("core_production_unit_processes")
+      .select("*")
+      .eq("production_unit_id", unitId)
+      .order("process_order", { ascending: true });
+    setProcesses((data as UnitProcess[]) || []);
+  }
+
+  async function loadHistory(unitId: string) {
+    const { data } = await supabase
+      .from("core_production_scan_events")
+      .select("id,unit_code,process_name,operator_name_snapshot,event_type,status,notes,created_at")
+      .eq("production_unit_id", unitId)
+      .order("created_at", { ascending: false });
+    setHistory((data as ScanEvent[]) || []);
+  }
+
+  function openManual() {
+    const v = manualCode.trim();
+    if (!v) return;
+    setSearchParams({ unit: v });
+  }
+
+  // Camera
+  useEffect(() => {
+    if (!cameraOpen) return;
+    let cancelled = false;
+    (async () => {
+      const { Html5Qrcode } = await import("html5-qrcode");
+      if (cancelled || !cameraDivRef.current) return;
+      const scanner = new Html5Qrcode(cameraDivRef.current.id);
+      scannerRef.current = scanner;
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 240, height: 240 } },
+          (decoded: string) => {
+            try {
+              // Accept full URL or raw token
+              let token = decoded;
+              try {
+                const url = new URL(decoded);
+                token = url.searchParams.get("unit") || decoded;
+              } catch { /* not a URL */ }
+              setCameraOpen(false);
+              setSearchParams({ unit: token });
+            } catch { /* ignore */ }
+          },
+          () => { /* ignore decode errors */ },
+        );
+      } catch (e: any) {
+        toast({ title: "Error de cámara", description: e?.message || String(e), variant: "destructive" });
+        setCameraOpen(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      const s = scannerRef.current;
+      if (s) {
+        s.stop().catch(() => {}).finally(() => s.clear?.());
+        scannerRef.current = null;
+      }
+    };
+  }, [cameraOpen, setSearchParams]);
+
+  const pendingProcs = useMemo(() => processes.filter((p) => p.status === "pending"), [processes]);
+  const completedProcs = useMemo(() => processes.filter((p) => p.status === "completed"), [processes]);
+
+  const operatorById = (id: string) => employees.find((e) => e.id === id);
+
+  async function refreshOrderCounts(orderId: string) {
+    // Recompute completed/pending qty from lines based on units status
+    const { data: lines } = await supabase
+      .from("core_production_order_lines")
+      .select("id, quantity_ordered, core_variant_id")
+      .eq("production_order_id", orderId);
+    if (!lines) return;
+    let totalCompleted = 0;
+    let totalOrdered = 0;
+    for (const ln of lines as any[]) {
+      const { count: completedCount } = await supabase
+        .from("core_production_units")
+        .select("id", { count: "exact", head: true })
+        .eq("production_order_line_id", ln.id)
+        .eq("status", "completed");
+      const qc = completedCount || 0;
+      totalCompleted += qc;
+      totalOrdered += ln.quantity_ordered || 0;
+      await supabase
+        .from("core_production_order_lines")
+        .update({
+          quantity_completed: qc,
+          quantity_pending: Math.max(0, (ln.quantity_ordered || 0) - qc),
+        })
+        .eq("id", ln.id);
+    }
+    const { data: ord } = await supabase
+      .from("core_production_orders")
+      .select("status, total_quantity")
+      .eq("id", orderId)
+      .maybeSingle();
+    const total = ord?.total_quantity || totalOrdered;
+    let newStatus = (ord as any)?.status;
+    if (totalCompleted === 0) {
+      newStatus = newStatus === "open" ? "open" : newStatus;
+    } else if (totalCompleted >= total) {
+      newStatus = "completed";
+    } else {
+      newStatus = "partially_completed";
+    }
+    await supabase
+      .from("core_production_orders")
+      .update({
+        completed_quantity: totalCompleted,
+        pending_quantity: Math.max(0, total - totalCompleted),
+        status: newStatus,
+      })
+      .eq("id", orderId);
+  }
+
+  async function doRegister() {
+    if (!unit || !registerProc) return;
+    const proc = registerProc;
+
+    // Re-check status (idempotency)
+    const { data: fresh } = await supabase
+      .from("core_production_unit_processes")
+      .select("status")
+      .eq("id", proc.id)
+      .maybeSingle();
+    if (fresh?.status === "completed") {
+      toast({ title: "Este proceso ya fue registrado.", variant: "destructive" });
+      setRegisterProc(null);
+      await loadProcesses(unit.id);
+      return;
+    }
+
+    const rate = extractRate(proc.rate_snapshot);
+    const missingRate = proc.adds_to_payroll && (rate === null || rate === undefined);
+
+    if (proc.adds_to_payroll && !operatorId) {
+      toast({ title: "Operario obligatorio para procesos que suman a nómina.", variant: "destructive" });
+      return;
+    }
+    if (missingRate && !forceMissingRate) {
+      toast({
+        title: "Tarifa faltante",
+        description: "Confirma para registrar igualmente (se marcará missing_rate).",
+        variant: "destructive",
+      });
+      setForceMissingRate(true);
+      return;
+    }
+
+    const op = operatorId ? operatorById(operatorId) : null;
+    const opName = op ? `${op.first_name} ${op.last_name}` : null;
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Insert scan event
+    const { data: ev, error: evErr } = await supabase
+      .from("core_production_scan_events")
+      .insert({
+        production_unit_id: unit.id,
+        production_unit_process_id: proc.id,
+        production_order_id: unit.production_order_id,
+        production_order_line_id: unit.production_order_line_id,
+        core_product_id: unit.core_product_id,
+        core_variant_id: unit.core_variant_id,
+        unit_code: unit.unit_code,
+        sku: unit.sku,
+        variant_sku: unit.variant_sku,
+        variant_label: unit.variant_label,
+        size: unit.size,
+        process_name: proc.process_name,
+        process_type: proc.process_type,
+        process_order: proc.process_order,
+        operator_id: operatorId || null,
+        operator_name_snapshot: opName,
+        scanned_by_user_id: user?.id || null,
+        event_type: "process_completed",
+        status: "valid",
+        notes: noteText || null,
+      })
+      .select()
+      .single();
+    if (evErr) {
+      toast({ title: "Error al registrar evento", description: evErr.message, variant: "destructive" });
+      return;
+    }
+
+    // Mark process completed
+    await supabase
+      .from("core_production_unit_processes")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        completed_by_operator_id: operatorId || null,
+        scanned_by_user_id: user?.id || null,
+      })
+      .eq("id", proc.id);
+
+    // Work entry (if adds_to_payroll)
+    if (proc.adds_to_payroll) {
+      const payrollStatus = missingRate ? "missing_rate" : "pending";
+      const { error: weErr } = await supabase
+        .from("core_production_work_entries")
+        .insert({
+          scan_event_id: ev.id,
+          production_unit_id: unit.id,
+          production_unit_process_id: proc.id,
+          production_order_id: unit.production_order_id,
+          core_product_id: unit.core_product_id,
+          core_variant_id: unit.core_variant_id,
+          unit_code: unit.unit_code,
+          process_name: proc.process_name,
+          process_type: proc.process_type,
+          operator_id: operatorId || null,
+          operator_name_snapshot: opName,
+          rate_snapshot: rate,
+          currency: "USD",
+          payroll_amount: rate,
+          payroll_status: payrollStatus,
+          scanned_by_user_id: user?.id || null,
+          notes: noteText || null,
+        });
+      if (weErr && !weErr.message.includes("duplicate")) {
+        toast({ title: "Aviso work entry", description: weErr.message });
+      }
+    }
+
+    await logCoreAudit({
+      table: "core_production_scan_events",
+      recordId: ev.id,
+      action: "process_completed",
+      newValue: { unit: unit.unit_code, process: proc.process_name, operator: opName },
+    });
+
+    // Unit status: in_production / completed
+    const { data: allProcs } = await supabase
+      .from("core_production_unit_processes")
+      .select("status")
+      .eq("production_unit_id", unit.id);
+    const all = allProcs || [];
+    const anyDone = all.some((p: any) => p.status === "completed");
+    const allDone = all.length > 0 && all.every((p: any) => p.status === "completed" || p.status === "skipped");
+    const newUnitStatus = allDone ? "completed" : anyDone ? "in_production" : unit.status;
+    if (newUnitStatus !== unit.status) {
+      await supabase
+        .from("core_production_units")
+        .update({ status: newUnitStatus })
+        .eq("id", unit.id);
+      await logCoreAudit({
+        table: "core_production_units",
+        recordId: unit.id,
+        action: "status_change",
+        oldValue: unit.status,
+        newValue: newUnitStatus,
+      });
+      if (allDone) {
+        await refreshOrderCounts(unit.production_order_id);
+      }
+    }
+
+    toast({
+      title: proc.adds_to_payroll ? "Proceso registrado y enviado a nómina pendiente." : "Proceso registrado.",
+    });
+    setRegisterProc(null);
+    setOperatorId("");
+    setNoteText("");
+    setForceMissingRate(false);
+    await loadByToken(unit.qr_token || unit.unit_code);
+    // refresh recent
+    const { data: r } = await supabase
+      .from("core_production_scan_events")
+      .select("id,unit_code,process_name,operator_name_snapshot,event_type,status,notes,created_at")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    setRecent((r as ScanEvent[]) || []);
+  }
+
+  async function doCorrection() {
+    if (!unit || !correctionProc) return;
+    if (!correctionReason.trim()) {
+      toast({ title: "Motivo obligatorio", variant: "destructive" });
+      return;
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: ev } = await supabase
+      .from("core_production_scan_events")
+      .insert({
+        production_unit_id: unit.id,
+        production_unit_process_id: correctionProc.id,
+        production_order_id: unit.production_order_id,
+        unit_code: unit.unit_code,
+        process_name: correctionProc.process_name,
+        process_type: correctionProc.process_type,
+        process_order: correctionProc.process_order,
+        scanned_by_user_id: user?.id || null,
+        event_type: "correction",
+        status: "valid",
+        notes: `${correctionReason}${correctionNote ? " — " + correctionNote : ""}`,
+      })
+      .select()
+      .single();
+    await logCoreAudit({
+      table: "core_production_scan_events",
+      recordId: ev?.id,
+      action: "correction_logged",
+      newValue: { unit: unit.unit_code, process: correctionProc.process_name, reason: correctionReason },
+    });
+    toast({ title: "Corrección registrada." });
+    setCorrectionProc(null);
+    setCorrectionReason("");
+    setCorrectionNote("");
+    await loadHistory(unit.id);
+  }
+
+  // suggested employees for process
+  const suggestedFor = (proc: UnitProcess) => {
+    if (!proc.suggested_role) return employees;
+    const role = proc.suggested_role.toLowerCase();
+    const matches = employees.filter((e) => e.position?.toLowerCase().includes(role));
+    return matches.length ? matches : employees;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight">Escaneo</h1>
+          <p className="text-sm text-muted-foreground">
+            Escanea el QR de una unidad y registra procesos completados.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => setCameraOpen(true)} variant="brand">
+            <Camera className="h-4 w-4" /> Escanear con cámara
+          </Button>
+        </div>
+      </div>
+
+      <Card className="p-4">
+        <div className="flex gap-2 items-end flex-wrap">
+          <div className="flex-1 min-w-[220px]">
+            <Label htmlFor="manual">Código o token de unidad</Label>
+            <Input
+              id="manual"
+              placeholder="OP-000001-L-001"
+              value={manualCode}
+              onChange={(e) => setManualCode(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && openManual()}
+            />
+          </div>
+          <Button onClick={openManual}>
+            <Search className="h-4 w-4" /> Abrir
+          </Button>
+        </div>
+      </Card>
+
+      {loading && <Card className="p-6 text-center text-sm text-muted-foreground">Cargando...</Card>}
+
+      {unit && (
+        <Card className="p-5 space-y-4">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge className="text-base px-3 py-1">{unit.unit_code}</Badge>
+                <Badge variant="outline">{unit.status}</Badge>
+                {unit.size && <Badge variant="secondary" className="text-base">Talla {unit.size}</Badge>}
+              </div>
+              <p className="text-sm">
+                <span className="text-muted-foreground">Producto: </span>
+                <span className="font-medium">{unit.variant_label || unit.sku}</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                SKU: {unit.sku} · Variante: {unit.variant_sku}
+              </p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => { setUnit(null); setProcesses([]); setHistory([]); setSearchParams({}); }}>
+              <X className="h-4 w-4" /> Cerrar
+            </Button>
+          </div>
+
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Procesos pendientes</p>
+            {pendingProcs.length === 0 && <p className="text-sm text-muted-foreground">Todos los procesos completados.</p>}
+            <div className="grid gap-2">
+              {pendingProcs.map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-2 border rounded-lg p-3">
+                  <div>
+                    <p className="font-medium">
+                      {p.process_order + 1}. {p.process_name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {p.process_type || "—"}
+                      {p.adds_to_payroll && <Badge variant="secondary" className="ml-2">Nómina</Badge>}
+                      {p.suggested_role && <span className="ml-2">Sugerido: {p.suggested_role}</span>}
+                    </p>
+                  </div>
+                  <Button onClick={() => { setRegisterProc(p); setOperatorId(""); setNoteText(""); setForceMissingRate(false); }}>
+                    Registrar
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {completedProcs.length > 0 && (
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Procesos completados</p>
+              <div className="grid gap-2">
+                {completedProcs.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-2 border rounded-lg p-3 bg-muted/30">
+                    <div>
+                      <p className="font-medium flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        {p.process_order + 1}. {p.process_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {p.completed_at && new Date(p.completed_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => { setCorrectionProc(p); setCorrectionReason(""); setCorrectionNote(""); }}>
+                      <AlertTriangle className="h-4 w-4" /> Corrección
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Tabs defaultValue="history">
+            <TabsList>
+              <TabsTrigger value="history"><History className="h-4 w-4 mr-1" /> Historial</TabsTrigger>
+            </TabsList>
+            <TabsContent value="history">
+              <div className="space-y-1 text-sm">
+                {history.length === 0 && <p className="text-muted-foreground">Sin eventos.</p>}
+                {history.map((h) => (
+                  <div key={h.id} className="flex justify-between gap-2 border-b py-2">
+                    <div>
+                      <span className="font-medium">{h.process_name}</span>
+                      <Badge variant="outline" className="ml-2 text-[10px]">{h.event_type}</Badge>
+                      {h.operator_name_snapshot && <span className="ml-2 text-muted-foreground"><User className="h-3 w-3 inline" /> {h.operator_name_snapshot}</span>}
+                      {h.notes && <p className="text-xs text-muted-foreground">{h.notes}</p>}
+                    </div>
+                    <span className="text-xs text-muted-foreground">{new Date(h.created_at).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </Card>
+      )}
+
+      {!unit && (
+        <Card className="p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Últimos escaneos</p>
+          <div className="space-y-1 text-sm">
+            {recent.length === 0 && <p className="text-muted-foreground">Aún no hay escaneos.</p>}
+            {recent.map((h) => (
+              <div key={h.id} className="flex justify-between border-b py-2">
+                <div>
+                  <span className="font-medium">{h.unit_code}</span>
+                  <span className="ml-2">{h.process_name}</span>
+                  <Badge variant="outline" className="ml-2 text-[10px]">{h.event_type}</Badge>
+                  {h.operator_name_snapshot && <span className="ml-2 text-muted-foreground">{h.operator_name_snapshot}</span>}
+                </div>
+                <span className="text-xs text-muted-foreground">{new Date(h.created_at).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Register process dialog */}
+      <Dialog open={!!registerProc} onOpenChange={(o) => !o && setRegisterProc(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar proceso</DialogTitle>
+            <DialogDescription>
+              {registerProc?.process_name} — Unidad {unit?.unit_code}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Operario {registerProc?.adds_to_payroll && <span className="text-destructive">*</span>}</Label>
+              <Select value={operatorId} onValueChange={setOperatorId}>
+                <SelectTrigger><SelectValue placeholder="Selecciona operario" /></SelectTrigger>
+                <SelectContent>
+                  {registerProc && suggestedFor(registerProc).map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.first_name} {e.last_name} — {e.position}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Observación</Label>
+              <Textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Opcional" />
+            </div>
+            {registerProc?.adds_to_payroll && extractRate(registerProc.rate_snapshot) === null && (
+              <div className="rounded border border-destructive/40 bg-destructive/10 p-3 text-sm">
+                <p className="font-medium flex items-center gap-1"><AlertTriangle className="h-4 w-4" /> Tarifa faltante</p>
+                <p className="text-xs">Se marcará el registro de nómina como <code>missing_rate</code>.</p>
+              </div>
+            )}
+            {registerProc?.adds_to_payroll && extractRate(registerProc.rate_snapshot) !== null && (
+              <p className="text-xs text-muted-foreground">
+                Nómina pendiente: ${extractRate(registerProc.rate_snapshot)?.toFixed(2)}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRegisterProc(null)}>Cancelar</Button>
+            <Button onClick={doRegister}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Correction dialog */}
+      <Dialog open={!!correctionProc} onOpenChange={(o) => !o && setCorrectionProc(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar corrección</DialogTitle>
+            <DialogDescription>
+              No reabre el proceso ni genera pago. Queda en historial.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Motivo <span className="text-destructive">*</span></Label>
+              <Input value={correctionReason} onChange={(e) => setCorrectionReason(e.target.value)} />
+            </div>
+            <div>
+              <Label>Observación</Label>
+              <Textarea value={correctionNote} onChange={(e) => setCorrectionNote(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCorrectionProc(null)}>Cancelar</Button>
+            <Button onClick={doCorrection}>Guardar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Camera dialog */}
+      <Dialog open={cameraOpen} onOpenChange={setCameraOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Escanear QR</DialogTitle>
+            <DialogDescription>Apunta la cámara al código QR de la unidad.</DialogDescription>
+          </DialogHeader>
+          <div id="qr-camera-region" ref={cameraDivRef} className="w-full" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCameraOpen(false)}>
+              <ScanLine className="h-4 w-4" /> Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
