@@ -565,7 +565,27 @@ export default function CoreProductionOrders() {
         <Card className="p-3"><div className="text-xs text-muted-foreground">Última</div><div className="text-xs">{kpis.last ? new Date(kpis.last).toLocaleString() : "—"}</div></Card>
       </div>
 
+      {selectedOrders.size > 0 && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border border-primary/30 bg-primary/5 animate-fade-in">
+          <div className="text-sm font-semibold">
+            {selectedOrders.size} orden{selectedOrders.size === 1 ? "" : "es"} seleccionada{selectedOrders.size === 1 ? "" : "s"}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" variant="ghost" onClick={() => setSelectedOrders(new Set())}>Cancelar</Button>
+            <Button size="sm" variant="outline" onClick={() => setBulkOpen("in_production")}>Marcar en producción</Button>
+            <Button size="sm" variant="outline" onClick={() => setBulkOpen("open")}>Volver a abierta</Button>
+            <Button size="sm" variant="outline" onClick={() => setBulkOpen("manually_closed")}>
+              <Lock className="h-3 w-3 mr-1" /> Cerrar manualmente
+            </Button>
+            <Button size="sm" variant="destructive" onClick={() => setBulkOpen("cancelled")}>
+              <Ban className="h-3 w-3 mr-1" /> Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Tabs defaultValue="open">
+
         <TabsList>
           <TabsTrigger value="open">Abiertas</TabsTrigger>
           <TabsTrigger value="prod">En producción</TabsTrigger>
