@@ -161,7 +161,7 @@ export default function RRPPProfile() {
     );
   }
 
-  const created = new formatDMY(Date(contact.created_at));
+  const created = formatDMY(contact.created_at);
 
   return (
     <div className="space-y-6">

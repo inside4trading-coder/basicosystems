@@ -337,7 +337,7 @@ export default function CoreProductionNeeds() {
                     <TableCell className="text-right">{n.quantity_converted_to_order}</TableCell>
                     <TableCell><Badge variant="outline" className={PRIORITY_BADGE[n.priority]}>{n.priority}</Badge></TableCell>
                     <TableCell className="text-xs">{n.need_type === "sale_generated" ? "Venta" : "Manual"}</TableCell>
-                    <TableCell className="text-xs">{n.last_sale_at ? new formatDMY(Date(n.last_sale_at)) : "—"}</TableCell>
+                    <TableCell className="text-xs">{n.last_sale_at ? formatDMY(n.last_sale_at) : "—"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
                         <Button size="sm" variant="outline" onClick={() => approveAll(n)} title="Aprobar todo">

@@ -99,7 +99,7 @@ export function CrewSalaryHistory({ employeeId, currentSalary }: { employeeId: s
                 <div className="absolute -left-[31px] top-1 h-3 w-3 rounded-full bg-primary border-2 border-background" />
                 <div className="space-y-1">
                   <p className="font-semibold text-sm">
-                    {new formatDMY(Date(entry.effective_date))}
+                    {formatDMY(entry.effective_date)}
                   </p>
                   <p className="text-xl font-black tracking-tight">${entry.base_salary.toLocaleString("es-VE")}</p>
                   <div className="flex flex-wrap gap-2">

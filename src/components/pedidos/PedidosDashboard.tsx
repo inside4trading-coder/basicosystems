@@ -288,7 +288,7 @@ export function PedidosDashboard() {
   );
 
   const fmtDate = (d: string | null) =>
-    d ? new formatDMY(Date(d)) : "—";
+    d ? formatDMY(d) : "—";
 
   return (
     <div className="bg-card rounded-lg border border-border p-4 sm:p-5 space-y-5">

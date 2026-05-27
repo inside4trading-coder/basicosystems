@@ -206,7 +206,7 @@ export default function Crew() {
 
                     <p className="text-xs text-muted-foreground flex items-center gap-1 pt-0.5">
                       <Calendar className="h-3 w-3 shrink-0" />
-                      {new formatDMY(Date(emp.start_date))}
+                      {formatDMY(emp.start_date)}
                     </p>
                   </div>
                 </div>

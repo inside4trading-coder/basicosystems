@@ -104,7 +104,7 @@ export function AdminKPIs({ instances, monthDate }: Props) {
           <div className="space-y-0.5">
             <div className="text-sm font-bold truncate">{nextImportant.obligation_name ?? "—"}</div>
             <div className="text-xs text-muted-foreground">
-              {new formatDMY(Date(nextImportant.due_date))}
+              {formatDMY(nextImportant.due_date)}
             </div>
             <div className="text-base font-black">{!nextImportant.amount || nextImportant.amount <= 0 ? "Variable" : fmtMoney(nextImportant.amount, nextImportant.currency)}</div>
           </div>

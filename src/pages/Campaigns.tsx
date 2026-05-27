@@ -182,9 +182,9 @@ export default function Campaigns() {
                     </td>
                     <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
                       {c.sent_at
-                        ? new formatDMY(Date(c.sent_at))
+                        ? formatDMY(c.sent_at)
                         : c.scheduled_at
-                        ? new formatDMY(Date(c.scheduled_at))
+                        ? formatDMY(c.scheduled_at)
                         : "—"}
                     </td>
                     <td className="px-4 py-3">{c.recipient_count || 0}</td>

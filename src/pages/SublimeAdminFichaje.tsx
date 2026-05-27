@@ -335,7 +335,7 @@ export default function SublimeAdminFichaje() {
 
   const formatDay = (key: string) => {
     const [y, m, d] = key.split("-").map(Number);
-    return new formatDMY(Date(y, m - 1, d));
+    return formatDMY(y, m - 1, d);
   };
 
   const showDateColumn = range !== "today" && range !== "yesterday";

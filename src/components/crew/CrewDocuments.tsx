@@ -115,11 +115,11 @@ export function CrewDocuments({ employeeId }: { employeeId: string }) {
                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {new formatDMY(Date(doc.created_at))}
+                    {formatDMY(doc.created_at)}
                   </span>
                   {doc.expiry_date && (
                     <span className={`flex items-center gap-1 ${expiry === "expired" ? "text-destructive font-semibold" : expiry === "soon" ? "text-yellow-600 font-semibold" : ""}`}>
-                      Vence: {new formatDMY(Date(doc.expiry_date))}
+                      Vence: {formatDMY(doc.expiry_date)}
                     </span>
                   )}
                 </div>

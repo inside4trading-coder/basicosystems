@@ -192,7 +192,7 @@ export default function CoreWooCandidates() {
                   <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
                   <TableCell className="text-right tabular-nums text-xs">{c.woo_sale_price ?? c.woo_regular_price ?? "—"}</TableCell>
                   <TableCell className="text-right tabular-nums text-xs">{c.woo_stock_quantity ?? "—"}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{new formatDMY(Date(c.created_at))}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{formatDMY(c.created_at)}</TableCell>
                   <TableCell className="text-right">
                     {["pendiente", "conflicto", "requiere_sku"].includes(c.status) ? (
                       <div className="flex justify-end gap-1 flex-wrap">

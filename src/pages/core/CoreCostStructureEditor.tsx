@@ -781,7 +781,7 @@ function RawMaterialBlock({
           </div>
           {it.cost_snapshot && (
             <p className="text-[11px] text-muted-foreground">
-              Snapshot: {Number(it.cost_snapshot.unit_cost).toFixed(2)} {it.cost_snapshot.currency} — tomado {new formatDMY(Date(it.cost_snapshot.taken_at))}
+              Snapshot: {Number(it.cost_snapshot.unit_cost).toFixed(2)} {it.cost_snapshot.currency} — tomado {formatDMY(it.cost_snapshot.taken_at)}
             </p>
           )}
         </div>

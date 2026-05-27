@@ -539,7 +539,7 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                 <div className="flex items-start justify-between flex-wrap gap-3">
                   <div>
                     <p className="text-xs text-muted-foreground">Pedido</p>
-                    <p className="font-semibold">{c.send_date ? new formatDMY(Date(c.send_date)) : "—"}</p>
+                    <p className="font-semibold">{c.send_date ? formatDMY(c.send_date) : "—"}</p>
                   </div>
                   <div className="flex gap-2 flex-wrap items-center">
                     {c.has_coupon && (
@@ -621,7 +621,7 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Enviado</p>
-                      <p className="text-sm">{c.shipped_at ? new formatDMY(Date(c.shipped_at)) : "—"}</p>
+                      <p className="text-sm">{c.shipped_at ? formatDMY(c.shipped_at) : "—"}</p>
                     </div>
                   </div>
                 )}
@@ -649,7 +649,7 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Fecha del post</p>
-                      <p className="text-sm">{c.post_date ? new formatDMY(Date(c.post_date)) : "—"}</p>
+                      <p className="text-sm">{c.post_date ? formatDMY(c.post_date) : "—"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Post</p>

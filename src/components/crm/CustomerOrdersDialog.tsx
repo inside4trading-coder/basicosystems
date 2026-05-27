@@ -97,7 +97,7 @@ export function CustomerOrdersDialog({ customer, open, onOpenChange }: Props) {
     return rate > 0 ? val / rate : val;
   };
   const fmtDate = (d: string | null) =>
-    d ? new formatDMY(Date(d)) : "—";
+    d ? formatDMY(d) : "—";
 
   const totalUsd = orders.reduce((sum, o) => sum + toUsd(o), 0);
 

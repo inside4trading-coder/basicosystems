@@ -267,7 +267,7 @@ export default function CoreRawMaterials() {
                           {m.status === "active" ? "Activo" : "Inactivo"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{new formatDMY(Date(m.updated_at))}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{formatDMY(m.updated_at)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => setViewing(m)}><Eye className="h-4 w-4" /></Button>

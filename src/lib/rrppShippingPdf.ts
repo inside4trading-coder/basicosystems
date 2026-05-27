@@ -11,7 +11,7 @@ interface Params {
   contactAlias?: string;
 }
 
-const today = () => new formatDMY(Date());
+const today = () => formatDMY();
 
 export function generateShippingPdf({ collab, brand, contactName, contactAlias }: Params) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -72,7 +72,7 @@ export function generateShippingPdf({ collab, brand, contactName, contactAlias }
   doc.setTextColor(0);
   y += 6;
   doc.setFont("helvetica", "normal");
-  y = drawField(doc, "Fecha de pedido", collab.send_date ? new formatDMY(Date(collab.send_date)) : "—", M, y);
+  y = drawField(doc, "Fecha de pedido", collab.send_date ? formatDMY(collab.send_date) : "—", M, y);
   y = drawMulti(doc, "Productos", collab.products || "—", M, y, W - M * 2);
   y = drawMulti(doc, "Detalles del pedido", collab.order_details || "—", M, y, W - M * 2);
   y += 4;

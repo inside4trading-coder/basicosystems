@@ -274,7 +274,7 @@ export default function CoreImportTemplates() {
                             {t.status === "active" ? "Activo" : "Inactivo"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{new formatDMY(Date(t.updated_at))}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{formatDMY(t.updated_at)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1 flex-wrap">
                             <Button variant="ghost" size="icon" title="Editar campos" onClick={() => setFieldsFor(t)}><Settings2 className="h-4 w-4" /></Button>

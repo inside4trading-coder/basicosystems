@@ -98,7 +98,7 @@ const fmtUsd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
 
 const fmtDate = (d: string | null) =>
-  d ? new formatDMY(Date(d)) : "";
+  d ? formatDMY(d) : "";
 
 export function PedidosPaymentMethods() {
   const [period, setPeriod] = useState<PeriodKey>("this_month");

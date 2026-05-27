@@ -290,7 +290,7 @@ export default function CoreCostStructures() {
                         : "—"}
                     </TableCell>
                     <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{new formatDMY(Date(s.updated_at))}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{formatDMY(s.updated_at)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => setViewing(s)} title="Ver"><Eye className="h-4 w-4" /></Button>

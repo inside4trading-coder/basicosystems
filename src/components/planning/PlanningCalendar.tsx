@@ -53,7 +53,7 @@ const DAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
 function fmtDate(d: string) {
   // Tratar "YYYY-MM-DD" como fecha local para evitar desfases de timezone
   const [y, m, day] = d.slice(0, 10).split("-").map(Number);
-  return new formatDMY(Date(y, (m ?? 1) - 1, day ?? 1));
+  return formatDMY(y, (m ?? 1) - 1, day ?? 1);
 }
 
 function sameDay(a: Date, b: Date) {

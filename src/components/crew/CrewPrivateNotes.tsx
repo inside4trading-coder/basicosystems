@@ -111,7 +111,7 @@ export function CrewPrivateNotes({ employeeId }: { employeeId: string }) {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-muted-foreground">
-                    {new formatDMY(Date(note.created_at))}
+                    {formatDMY(note.created_at)}
                   </span>
                   {note.author && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1">

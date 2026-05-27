@@ -173,7 +173,7 @@ export default function Pedidos() {
     if (rate > 0) return value / rate;
     return value;
   };
-  const fmtDate = (d: string) => d ? new formatDMY(Date(d)) : "";
+  const fmtDate = (d: string) => d ? formatDMY(d) : "";
   const totalPages = Math.ceil(total / PER_PAGE);
 
   return (

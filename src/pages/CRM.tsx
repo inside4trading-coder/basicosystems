@@ -247,7 +247,7 @@ export default function CRM() {
 
   const fmtDate = (d: string | null) => {
     if (!d) return "—";
-    return new formatDMY(Date(d));
+    return formatDMY(d);
   };
 
   return (

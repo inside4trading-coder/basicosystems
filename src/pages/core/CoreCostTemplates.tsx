@@ -350,7 +350,7 @@ export default function CoreCostTemplates() {
                     <TableCell className="text-right tabular-nums">{Number(t.total_estimated_cost).toFixed(2)}</TableCell>
                     <TableCell>{t.base_currency}</TableCell>
                     <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{new formatDMY(Date(t.updated_at))}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{formatDMY(t.updated_at)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => setViewing(t)} title="Ver"><Eye className="h-4 w-4" /></Button>

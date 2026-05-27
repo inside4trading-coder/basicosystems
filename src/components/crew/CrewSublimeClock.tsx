@@ -415,7 +415,7 @@ export function CrewSublimeClock({ employee, canEdit }: Props) {
                   </span>
                   {settings?.pin_set_at && settings.pin_status === "active" && (
                     <span className="text-[11px] text-muted-foreground">
-                      activo desde {new formatDMY(Date(settings.pin_set_at))}
+                      activo desde {formatDMY(settings.pin_set_at)}
                     </span>
                   )}
                   {settings?.temp_pin_expires_at && settings.pin_status === "temp_generated" && (

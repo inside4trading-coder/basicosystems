@@ -264,7 +264,7 @@ export default function CrewProfile() {
               {employee.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{employee.location}</span>}
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {new formatDMY(Date(employee.start_date))}
+                {formatDMY(employee.start_date)}
               </span>
             </div>
           </div>

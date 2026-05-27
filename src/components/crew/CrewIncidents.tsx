@@ -98,7 +98,7 @@ export function CrewIncidents({ employeeId, employeeName }: { employeeId: string
                 </div>
                 <p className="font-semibold text-sm">{inc.reason}</p>
                 <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new formatDMY(Date(inc.incident_date))}</span>
+                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDMY(inc.incident_date)}</span>
                   {inc.registered_by && <span className="flex items-center gap-1"><User className="h-3 w-3" />{inc.registered_by}</span>}
                 </div>
                 {inc.observation && <p className="text-xs text-muted-foreground italic">{inc.observation}</p>}
