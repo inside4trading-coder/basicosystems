@@ -285,6 +285,42 @@ export default function CoreInventory() {
     }
   };
 
+  const confirmWrite = async (log: WooLog) => {
+    setConfirmBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("core-woo-stock-write", {
+        body: { action: "confirm", preview_log_id: log.id },
+      });
+      if (error) {
+        // edge function returned non-2xx — surface error message
+        const msg = (error as any)?.message ?? "Error en la escritura";
+        toast({ title: "No se pudo confirmar", description: msg, variant: "destructive" });
+      } else if ((data as any)?.stale_preview) {
+        toast({
+          title: "Preview obsoleto",
+          description: (data as any)?.message ?? "El stock cambió en Woo. Regenera el preview.",
+          variant: "destructive",
+        });
+      } else if ((data as any)?.skipped) {
+        toast({ title: "Bloqueado", description: (data as any)?.message ?? "Duplicado.", variant: "destructive" });
+      } else if ((data as any)?.error) {
+        toast({ title: "Error", description: (data as any).error, variant: "destructive" });
+      } else if ((data as any)?.ok) {
+        toast({
+          title: "Stock actualizado en WooCommerce",
+          description: `Stock confirmado: ${(data as any).stock_after_confirmed}`,
+        });
+        setConfirming(null);
+        setConfirmChecked(false);
+      }
+      await load();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setConfirmBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
