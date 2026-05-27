@@ -197,13 +197,20 @@ export default function CoreProductionOrders() {
     setOrders(ords);
     const ids = ords.map((o) => o.id);
     if (ids.length) {
-      const { data: lns } = await supabase
-        .from("core_production_order_lines")
-        .select("*")
-        .in("production_order_id", ids);
+      const [{ data: lns }, { data: uns }] = await Promise.all([
+        supabase.from("core_production_order_lines").select("*").in("production_order_id", ids),
+        supabase
+          .from("core_production_units")
+          .select(
+            "id, unit_code, production_order_id, core_variant_id, variant_sku, variant_label, size, status, entered_inventory_at, entered_inventory_by, inventory_entry_source, updated_at",
+          )
+          .in("production_order_id", ids),
+      ]);
       setAllLines((lns as any) ?? []);
+      setAllUnits((uns as any) ?? []);
     } else {
       setAllLines([]);
+      setAllUnits([]);
     }
     setSelectedOrders(new Set());
     setLoading(false);
