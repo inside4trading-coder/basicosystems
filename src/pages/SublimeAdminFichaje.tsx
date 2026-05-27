@@ -333,10 +333,7 @@ export default function SublimeAdminFichaje() {
     ? new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
     : "—";
 
-  const formatDay = (key: string) => {
-    const [y, m, d] = key.split("-").map(Number);
-    return formatDMY(y, m - 1, d);
-  };
+  const formatDay = (key: string) => formatDMY(key);
 
   const showDateColumn = range !== "today" && range !== "yesterday";
 
