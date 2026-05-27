@@ -518,12 +518,20 @@ export default function CoreScanning() {
     await loadHistory(unit.id);
   }
 
-  // suggested employees for process
-  const suggestedFor = (proc: UnitProcess) => {
-    if (!proc.suggested_role) return employees;
-    const role = proc.suggested_role.toLowerCase();
-    const matches = employees.filter((e) => e.position?.toLowerCase().includes(role));
-    return matches.length ? matches : employees;
+  // suggested operators for process — match role_type but never block
+  function targetRoleFor(proc: UnitProcess): string | null {
+    return mapToRoleType(proc.suggested_role) || mapToRoleType(proc.process_type) || mapToRoleType(proc.process_name);
+  }
+  const suggestedFor = (proc: UnitProcess): Operator[] => {
+    const target = targetRoleFor(proc);
+    if (!target) return operators;
+    const matches = operators.filter((o) => o.role_types.includes(target));
+    return matches.length ? matches : operators;
+  };
+  const operatorMatchesProc = (op: Operator, proc: UnitProcess) => {
+    const target = targetRoleFor(proc);
+    if (!target) return true;
+    return op.role_types.includes(target);
   };
 
   return (
