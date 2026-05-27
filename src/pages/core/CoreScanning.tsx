@@ -17,6 +17,7 @@ import { ScanLine, Camera, Search, X, CheckCircle2, AlertTriangle, History, User
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { logCoreAudit } from "@/lib/coreAudit";
+import { UnitInventorySection } from "@/components/core/UnitInventorySection";
 
 type Unit = {
   id: string;
@@ -657,6 +658,8 @@ export default function CoreScanning() {
               </div>
             </div>
           )}
+
+          <UnitInventorySection unit={unit} processes={processes} />
 
           <Tabs defaultValue="history">
             <TabsList>
