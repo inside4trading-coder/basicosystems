@@ -192,15 +192,15 @@ export default function CoreQRTravelSheets() {
 <style>
 @page { size: 57mm 40mm; margin: 0; }
 html, body { margin: 0; padding: 0; font-family: Inter, system-ui, sans-serif; }
-.label { width: 57mm; height: 40mm; padding: 2mm 2.5mm; box-sizing: border-box;
-  display: flex; gap: 2mm; align-items: center; page-break-after: always; }
+.label { width: 57mm; height: 40mm; padding: 1.5mm 2mm; box-sizing: border-box;
+  display: flex; gap: 1.5mm; align-items: center; page-break-after: always; overflow: hidden; }
 .label:last-child { page-break-after: auto; }
-.label img { width: 32mm; height: 32mm; }
-.meta { display: flex; flex-direction: column; gap: 0.5mm; font-size: 8pt; line-height: 1.1; flex: 1; min-width: 0; overflow: hidden; }
-.code { font-weight: 800; font-size: 9pt; word-break: break-all; }
-.sku { font-family: ui-monospace, Menlo, monospace; font-size: 7.5pt; }
-.size { font-weight: 800; font-size: 14pt; }
-.op { font-size: 7pt; opacity: 0.75; }
+.label img { width: 28mm; height: 28mm; flex-shrink: 0; }
+.meta { display: flex; flex-direction: column; gap: 0.4mm; line-height: 1.15; flex: 1; min-width: 0; overflow: hidden; }
+.code { font-weight: 800; font-size: 8pt; white-space: nowrap; letter-spacing: -0.2pt; font-family: ui-monospace, Menlo, monospace; }
+.sku { font-family: ui-monospace, Menlo, monospace; font-size: 7pt; white-space: nowrap; }
+.size { font-weight: 800; font-size: 13pt; line-height: 1; }
+.op { font-size: 6.5pt; opacity: 0.7; white-space: nowrap; }
 </style></head><body>
 ${units_.map((u, i) => `
   <div class="label">
