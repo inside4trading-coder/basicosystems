@@ -1817,6 +1817,171 @@ export type Database = {
         }
         Relationships: []
       }
+      core_production_unit_print_logs: {
+        Row: {
+          id: string
+          notes: string | null
+          print_type: string
+          printed_at: string
+          printed_by: string | null
+          production_order_id: string | null
+          production_unit_id: string | null
+        }
+        Insert: {
+          id?: string
+          notes?: string | null
+          print_type: string
+          printed_at?: string
+          printed_by?: string | null
+          production_order_id?: string | null
+          production_unit_id?: string | null
+        }
+        Update: {
+          id?: string
+          notes?: string | null
+          print_type?: string
+          printed_at?: string
+          printed_by?: string | null
+          production_order_id?: string | null
+          production_unit_id?: string | null
+        }
+        Relationships: []
+      }
+      core_production_unit_processes: {
+        Row: {
+          adds_to_payroll: boolean
+          created_at: string
+          id: string
+          notes: string | null
+          process_name: string
+          process_order: number
+          process_type: string | null
+          production_order_process_id: string | null
+          production_unit_id: string
+          rate_snapshot: Json | null
+          status: string
+          suggested_role: string | null
+          updated_at: string
+        }
+        Insert: {
+          adds_to_payroll?: boolean
+          created_at?: string
+          id?: string
+          notes?: string | null
+          process_name: string
+          process_order?: number
+          process_type?: string | null
+          production_order_process_id?: string | null
+          production_unit_id: string
+          rate_snapshot?: Json | null
+          status?: string
+          suggested_role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          adds_to_payroll?: boolean
+          created_at?: string
+          id?: string
+          notes?: string | null
+          process_name?: string
+          process_order?: number
+          process_type?: string | null
+          production_order_process_id?: string | null
+          production_unit_id?: string
+          rate_snapshot?: Json | null
+          status?: string
+          suggested_role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      core_production_units: {
+        Row: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cancelled_reason: string | null
+          core_product_id: string | null
+          core_variant_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          print_count: number
+          printed_at: string | null
+          printed_by: string | null
+          production_order_id: string
+          production_order_line_id: string | null
+          qr_generated_at: string | null
+          qr_generated_by: string | null
+          qr_payload: string | null
+          qr_token: string | null
+          size: string | null
+          sku: string | null
+          status: string
+          unit_code: string
+          updated_at: string
+          updated_by: string | null
+          variant_label: string | null
+          variant_sku: string | null
+        }
+        Insert: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          print_count?: number
+          printed_at?: string | null
+          printed_by?: string | null
+          production_order_id: string
+          production_order_line_id?: string | null
+          qr_generated_at?: string | null
+          qr_generated_by?: string | null
+          qr_payload?: string | null
+          qr_token?: string | null
+          size?: string | null
+          sku?: string | null
+          status?: string
+          unit_code: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Update: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          print_count?: number
+          printed_at?: string | null
+          printed_by?: string | null
+          production_order_id?: string
+          production_order_line_id?: string | null
+          qr_generated_at?: string | null
+          qr_generated_by?: string | null
+          qr_payload?: string | null
+          qr_token?: string | null
+          size?: string | null
+          sku?: string | null
+          status?: string
+          unit_code?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Relationships: []
+      }
       core_products: {
         Row: {
           color: string | null
