@@ -663,10 +663,22 @@ export default function CoreProductionOrders() {
         <Card className="p-3"><div className="text-xs text-muted-foreground">Abiertas</div><div className="text-2xl font-bold">{kpis.open}</div></Card>
         <Card className="p-3"><div className="text-xs text-muted-foreground">Unid. pendientes</div><div className="text-2xl font-bold">{kpis.open_units}</div></Card>
         <Card className="p-3"><div className="text-xs text-muted-foreground">En producción</div><div className="text-2xl font-bold">{kpis.prod_units}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Completadas</div><div className="text-2xl font-bold">{kpis.done_units}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Cerradas</div><div className="text-2xl font-bold">{kpis.closed}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Canceladas</div><div className="text-2xl font-bold">{kpis.cancelled}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Última</div><div className="text-xs">{kpis.last ? new Date(kpis.last).toLocaleString() : "—"}</div></Card>
+        <Card className="p-3"><div className="text-xs text-muted-foreground">Completadas prod.</div><div className="text-2xl font-bold">{kpis.done_units}</div></Card>
+        <Card className={`p-3 ${pendingInventoryUnits > 0 ? "border-red-300 bg-red-50" : ""}`}>
+          <div className="text-xs text-muted-foreground flex items-center gap-1">
+            <ShieldAlert className="h-3 w-3" /> Sin ingresar
+          </div>
+          <div className={`text-2xl font-bold ${pendingInventoryUnits > 0 ? "text-red-700" : ""}`}>{pendingInventoryUnits}</div>
+          <div className="text-[10px] text-muted-foreground">prendas listas sin inventario</div>
+        </Card>
+        <Card className="p-3">
+          <div className="text-xs text-muted-foreground flex items-center gap-1">
+            <PackageCheck className="h-3 w-3" /> Ingresadas
+          </div>
+          <div className="text-2xl font-bold text-emerald-700">{enteredInventoryUnits}</div>
+          <div className="text-[10px] text-muted-foreground">a inventario</div>
+        </Card>
+        <Card className="p-3"><div className="text-xs text-muted-foreground">Cerradas / Canc.</div><div className="text-xl font-bold">{kpis.closed} / {kpis.cancelled}</div></Card>
       </div>
 
       {selectedOrders.size > 0 && (
