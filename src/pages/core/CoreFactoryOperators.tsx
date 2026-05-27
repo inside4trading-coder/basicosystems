@@ -293,7 +293,7 @@ export default function CoreFactoryOperators() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar operario" : "Nuevo operario"}</DialogTitle>
             <DialogDescription>Datos básicos y roles productivos.</DialogDescription>
