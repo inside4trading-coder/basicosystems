@@ -655,25 +655,38 @@ export default function CoreReports() {
                 {wooLogs
                   .filter((l) => matchSearch(l.sku) || matchSearch(l.variant_sku) || matchSearch(l.idempotency_key))
                   .slice(0, 500)
-                  .map((l) => (
-                    <TableRow key={l.id}>
-                      <TableCell className="text-xs">{fmtDate(l.created_at)}</TableCell>
-                      <TableCell className="text-xs">{l.action_type}</TableCell>
-                      <TableCell><Badge variant="outline">{l.mode}</Badge></TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={l.status === "failed" ? "destructive" : "outline"}
-                          className={l.status === "success" ? "bg-green-600 text-white" : ""}
-                        >
-                          {l.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{l.sku ?? l.variant_sku ?? "—"}</TableCell>
-                      <TableCell>{l.quantity_delta ?? 0}</TableCell>
-                      <TableCell className="text-xs">{l.stock_after_confirmed ?? "—"} {l.confirmed_at ? `· ${fmtDate(l.confirmed_at)}` : ""}</TableCell>
-                      <TableCell className="text-xs text-destructive">{l.error_message ?? ""}</TableCell>
-                    </TableRow>
-                  ))}
+                  .map((l) => {
+                    const realWrite = l.status === "success" && l.confirmed_at;
+                    return (
+                      <TableRow key={l.id}>
+                        <TableCell className="text-xs">{fmtDate(l.created_at)}</TableCell>
+                        <TableCell className="text-xs">{l.action_type}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline" className="w-fit">preview: {l.mode}</Badge>
+                            {realWrite && (
+                              <Badge className="bg-blue-600 hover:bg-blue-600/80 text-white w-fit">
+                                Confirmado manualmente
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={l.status === "failed" ? "destructive" : "outline"}
+                            className={l.status === "success" ? "bg-green-600 text-white" : ""}
+                          >
+                            {l.status}
+                            {realWrite ? " · escritura real" : ""}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{l.sku ?? l.variant_sku ?? "—"}</TableCell>
+                        <TableCell>{l.quantity_delta ?? 0}</TableCell>
+                        <TableCell className="text-xs">{l.stock_after_confirmed ?? "—"} {l.confirmed_at ? `· ${fmtDate(l.confirmed_at)}` : ""}</TableCell>
+                        <TableCell className="text-xs text-destructive">{l.error_message ?? ""}</TableCell>
+                      </TableRow>
+                    );
+                  })}
               </TableBody>
             </Table>
           </Card>
