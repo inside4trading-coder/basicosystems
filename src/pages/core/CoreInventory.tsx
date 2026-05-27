@@ -493,6 +493,15 @@ export default function CoreInventory() {
                         <Button size="sm" variant="ghost" onClick={() => setDetail(l)}>
                           <Eye className="h-4 w-4" /> Ver
                         </Button>
+                        {writeMode === "manual_confirm" && l.status === "preview" && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => { setConfirming(l); setConfirmChecked(false); }}
+                          >
+                            <ShieldCheck className="h-4 w-4" /> Confirmar escritura Woo
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
