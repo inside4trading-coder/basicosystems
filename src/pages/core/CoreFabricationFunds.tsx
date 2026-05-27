@@ -90,12 +90,18 @@ const PENDING_REASON_LABEL: Record<string, string> = {
 const usd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(Number(n || 0));
 
+type ProdUnit = { id: string; sku: string | null; variant_sku: string | null; status: string };
+
+const normSku = (s: string | null | undefined) =>
+  (s ?? "").toString().trim().toUpperCase().replace(/\s+/g, "-").replace(/-+/g, "-");
+
 export default function CoreFabricationFunds() {
   const [tab, setTab] = useState("resumen");
   const [funds, setFunds] = useState<Fund[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [pendings, setPendings] = useState<Pending[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
+  const [units, setUnits] = useState<ProdUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -115,19 +121,22 @@ export default function CoreFabricationFunds() {
 
   async function load() {
     setLoading(true);
-    const [{ data: f }, { data: m }, { data: p }, { data: r }] = await Promise.all([
+    const [{ data: f }, { data: m }, { data: p }, { data: r }, { data: u }] = await Promise.all([
       supabase.from("core_fabrication_funds").select("*").order("fund_type"),
       supabase.from("core_fabrication_fund_movements").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("core_fabrication_fund_pending_items").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("core_fabrication_fund_runs").select("*").order("created_at", { ascending: false }).limit(50),
+      supabase.from("core_production_units").select("id, sku, variant_sku, status").limit(5000),
     ]);
     setFunds((f as any) ?? []);
     setMovements((m as any) ?? []);
     setPendings((p as any) ?? []);
     setRuns((r as any) ?? []);
+    setUnits((u as any) ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+
 
   const totals = useMemo(() => {
     const general = funds.filter(f => f.fund_type === "general").reduce((s, f) => s + Number(f.available_amount), 0);
