@@ -163,8 +163,7 @@ export default function CoreInventory() {
           product_name: p?.name ?? null,
           woo_product_id: p?.woo_product_id ?? null,
           woo_variation_id: v?.woo_variation_id ?? null,
-          woo_stock_quantity:
-            (v?.woo_stock_quantity ?? null) ?? (p?.woo_stock_quantity ?? null),
+          woo_stock_quantity: v?.woo_stock_quantity ?? p?.woo_stock_quantity ?? null,
         };
       });
       setUnits(enriched);
