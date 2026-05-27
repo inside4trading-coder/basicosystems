@@ -50,6 +50,7 @@ import CoreQRTravelSheets from "./pages/core/CoreQRTravelSheets";
 import CoreScanning from "./pages/core/CoreScanning";
 import CoreFactoryOperators from "./pages/core/CoreFactoryOperators";
 import CorePayroll from "./pages/core/CorePayroll";
+import CoreInventory from "./pages/core/CoreInventory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -128,7 +129,7 @@ const App = () => (
                 <Route path="escaneo" element={<CoreScanning />} />
                 <Route path="operarios" element={<CoreFactoryOperators />} />
                 <Route path="nomina" element={<CorePayroll />} />
-                <Route path="inventario" element={<CorePlaceholder title="Inventario" description="Movimientos y sincronización con WooCommerce." />} />
+                <Route path="inventario" element={<CoreInventory />} />
                 <Route path="reportes" element={<CorePlaceholder title="Reportes" />} />
               </Route>
             </Route>
