@@ -21,10 +21,47 @@ import {
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  ClipboardList, Plus, Layers, QrCode, X, Ban, Lock, Eye,
+  ClipboardList, Plus, Layers, QrCode, X, Ban, Lock, Eye, ShieldAlert, PackageCheck, PackageOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
+
+type Unit = {
+  id: string;
+  unit_code: string;
+  production_order_id: string;
+  core_variant_id: string | null;
+  variant_sku: string | null;
+  variant_label: string | null;
+  size: string | null;
+  status: string;
+  entered_inventory_at: string | null;
+  entered_inventory_by: string | null;
+  inventory_entry_source: string | null;
+  updated_at: string | null;
+};
+
+type OrderInvStats = {
+  total: number;
+  completed: number;          // status completed OR entered_inventory
+  entered: number;            // status entered_inventory
+  pending_inventory: number;  // completed but not entered
+  status: "not_ready" | "pending_inventory" | "partially_entered" | "fully_entered";
+};
+
+function computeInvStats(units: Unit[], totalQuantityFallback: number): OrderInvStats {
+  const total = units.length || totalQuantityFallback;
+  const entered = units.filter((u) => u.status === "entered_inventory").length;
+  const completed = units.filter(
+    (u) => u.status === "completed" || u.status === "entered_inventory",
+  ).length;
+  const pending_inventory = Math.max(0, completed - entered);
+  let status: OrderInvStats["status"] = "not_ready";
+  if (total > 0 && entered === total) status = "fully_entered";
+  else if (entered > 0) status = "partially_entered";
+  else if (completed > 0) status = "pending_inventory";
+  return { total, completed, entered, pending_inventory, status };
+}
 
 type Order = {
   id: string;
