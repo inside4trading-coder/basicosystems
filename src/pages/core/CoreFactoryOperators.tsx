@@ -210,6 +210,8 @@ export default function CoreFactoryOperators() {
         <Button onClick={openNew} variant="brand"><Plus className="h-4 w-4" /> Nuevo operario</Button>
       </div>
 
+      <CombinedBirthdays people={birthdayPeople} />
+
       <Card className="p-4">
         <div className="flex gap-2 flex-wrap items-end">
           <div className="flex-1 min-w-[220px]">
@@ -322,6 +324,10 @@ export default function CoreFactoryOperators() {
               <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
             </div>
             <div>
+              <Label>Fecha de nacimiento</Label>
+              <Input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} />
+            </div>
+            <div>
               <Label>Tarifa base</Label>
               <Input type="number" step="0.01" value={form.base_rate} onChange={(e) => setForm({ ...form, base_rate: e.target.value })} />
             </div>
@@ -382,6 +388,11 @@ export default function CoreFactoryOperators() {
               <Label>Notas</Label>
               <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
+            {editing && (
+              <div className="col-span-2 border-t pt-4">
+                <OperatorDocuments operatorId={editing.id} />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
