@@ -483,6 +483,108 @@ function WorkEntryTable({ entries, showRateActions }: { entries: WorkEntry[]; sh
   );
 }
 
+function OperatorsPendingPanel({
+  summaries,
+  totalAll,
+}: {
+  summaries: Array<{
+    operatorId: string;
+    name: string;
+    entries: WorkEntry[];
+    total: number;
+    byProcess: Map<string, { count: number; total: number }>;
+    byUnit: Set<string>;
+  }>;
+  totalAll: number;
+}) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  if (summaries.length === 0) {
+    return <Card><CardContent className="p-6 text-sm text-muted-foreground">Sin trabajos pendientes por operario.</CardContent></Card>;
+  }
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base">Pendientes por operario (aún sin nómina)</CardTitle>
+        <span className="text-sm font-bold">Total: {fmt(totalAll)}</span>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Operario</TableHead>
+              <TableHead className="text-right">Trabajos</TableHead>
+              <TableHead className="text-right">Unidades</TableHead>
+              <TableHead>Procesos</TableHead>
+              <TableHead className="text-right">Total USD</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {summaries.map(op => {
+              const procs = Array.from(op.byProcess.entries())
+                .map(([n, v]) => `${n} ×${v.count}`)
+                .join(" · ");
+              const expanded = openId === op.operatorId;
+              return [
+                <TableRow key={op.operatorId}>
+                  <TableCell className="font-medium">{op.name}</TableCell>
+                  <TableCell className="text-right">{op.entries.length}</TableCell>
+                  <TableCell className="text-right">{op.byUnit.size}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{procs}</TableCell>
+                  <TableCell className="text-right font-bold">{fmt(op.total)}</TableCell>
+                  <TableCell>
+                    <Button variant="outline" size="sm" onClick={() => setOpenId(expanded ? null : op.operatorId)}>
+                      {expanded ? "Ocultar" : "Detalle"}
+                    </Button>
+                  </TableCell>
+                </TableRow>,
+                expanded ? (
+                  <TableRow key={op.operatorId + "-d"}>
+                    <TableCell colSpan={6} className="bg-muted/30 p-0">
+                      <div className="p-3 space-y-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {Array.from(op.byProcess.entries()).map(([n, v]) => (
+                            <div key={n} className="rounded border bg-background px-3 py-2">
+                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{n}</div>
+                              <div className="text-sm font-bold">{v.count} trabajos · {fmt(v.total)}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Fecha</TableHead>
+                              <TableHead>Unidad</TableHead>
+                              <TableHead>Proceso</TableHead>
+                              <TableHead className="text-right">Tarifa</TableHead>
+                              <TableHead className="text-right">Monto</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {op.entries.map(e => (
+                              <TableRow key={e.id}>
+                                <TableCell className="text-xs">{formatDMY(e.created_at)}</TableCell>
+                                <TableCell className="font-mono text-xs">{e.unit_code}</TableCell>
+                                <TableCell className="text-sm">{e.process_name}</TableCell>
+                                <TableCell className="text-right">{fmt(e.rate_snapshot, e.currency ?? "USD")}</TableCell>
+                                <TableCell className="text-right">{fmt(e.payroll_amount, e.currency ?? "USD")}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : null,
+              ];
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
 function RunDetailDialog({ runId, onClose, onChange }: { runId: string; onClose: () => void; onChange: () => void }) {
   const [run, setRun] = useState<PayrollRun | null>(null);
   const [lines, setLines] = useState<OperatorLine[]>([]);
