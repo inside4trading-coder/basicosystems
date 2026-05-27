@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Factory, LayoutDashboard, Settings, Package, FileSpreadsheet, Calculator, ClipboardList, Boxes, Layers, ListChecks, QrCode, ScanLine, Wallet, Warehouse, BarChart3, FileStack, Ban } from "lucide-react";
+import { Factory, LayoutDashboard, Settings, Package, FileSpreadsheet, Calculator, ClipboardList, Boxes, Layers, ListChecks, QrCode, ScanLine, Wallet, Warehouse, BarChart3, FileStack, Ban, HardHat } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Section = { to: string; label: string; icon: typeof LayoutDashboard; end?: boolean };
