@@ -2392,7 +2392,10 @@ export type Database = {
           core_variant_id: string | null
           created_at: string
           created_by: string | null
+          entered_inventory_at: string | null
+          entered_inventory_by: string | null
           id: string
+          inventory_entry_source: string | null
           notes: string | null
           print_count: number
           printed_at: string | null
@@ -2420,7 +2423,10 @@ export type Database = {
           core_variant_id?: string | null
           created_at?: string
           created_by?: string | null
+          entered_inventory_at?: string | null
+          entered_inventory_by?: string | null
           id?: string
+          inventory_entry_source?: string | null
           notes?: string | null
           print_count?: number
           printed_at?: string | null
@@ -2448,7 +2454,10 @@ export type Database = {
           core_variant_id?: string | null
           created_at?: string
           created_by?: string | null
+          entered_inventory_at?: string | null
+          entered_inventory_by?: string | null
           id?: string
+          inventory_entry_source?: string | null
           notes?: string | null
           print_count?: number
           printed_at?: string | null
