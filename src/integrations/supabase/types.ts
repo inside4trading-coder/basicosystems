@@ -1116,6 +1116,7 @@ export type Database = {
           id: string
           last_name: string | null
           notes: string | null
+          payroll_multiplier: number
           phone: string | null
           photo_url: string | null
           start_date: string | null
@@ -1133,6 +1134,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           notes?: string | null
+          payroll_multiplier?: number
           phone?: string | null
           photo_url?: string | null
           start_date?: string | null
@@ -1150,6 +1152,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           notes?: string | null
+          payroll_multiplier?: number
           phone?: string | null
           photo_url?: string | null
           start_date?: string | null
@@ -2172,6 +2175,7 @@ export type Database = {
           operator_id: string | null
           operator_name_snapshot: string | null
           payroll_amount: number | null
+          payroll_multiplier_snapshot: number | null
           payroll_status: string
           payroll_week_end: string | null
           payroll_week_start: string | null
@@ -2196,6 +2200,7 @@ export type Database = {
           operator_id?: string | null
           operator_name_snapshot?: string | null
           payroll_amount?: number | null
+          payroll_multiplier_snapshot?: number | null
           payroll_status?: string
           payroll_week_end?: string | null
           payroll_week_start?: string | null
@@ -2220,6 +2225,7 @@ export type Database = {
           operator_id?: string | null
           operator_name_snapshot?: string | null
           payroll_amount?: number | null
+          payroll_multiplier_snapshot?: number | null
           payroll_status?: string
           payroll_week_end?: string | null
           payroll_week_start?: string | null

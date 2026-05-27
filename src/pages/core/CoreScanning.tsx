@@ -57,6 +57,7 @@ type Operator = {
   status: string;
   role_types: string[];
   primary_role: string | null;
+  payroll_multiplier: number;
 };
 
 // Map process_type / suggested_role to factory role_type
@@ -130,7 +131,7 @@ export default function CoreScanning() {
   useEffect(() => {
     (async () => {
       const [{ data: ops }, { data: opRoles }] = await Promise.all([
-        supabase.from("core_factory_operators").select("id,first_name,last_name,alias,status").eq("status", "active").order("first_name"),
+        supabase.from("core_factory_operators").select("id,first_name,last_name,alias,status,payroll_multiplier").eq("status", "active").order("first_name"),
         supabase.from("core_factory_operator_roles").select("operator_id,role_type,is_primary,status").eq("status", "active"),
       ]);
       const byOp: Record<string, { types: string[]; primary: string | null }> = {};
@@ -142,6 +143,7 @@ export default function CoreScanning() {
       const list: Operator[] = ((ops as any[]) || []).map((o) => ({
         id: o.id, first_name: o.first_name, last_name: o.last_name, alias: o.alias, status: o.status,
         role_types: byOp[o.id]?.types || [], primary_role: byOp[o.id]?.primary || null,
+        payroll_multiplier: Number(o.payroll_multiplier ?? 1.00),
       }));
       setOperators(list);
 
@@ -418,6 +420,8 @@ export default function CoreScanning() {
     // Work entry (if adds_to_payroll)
     if (proc.adds_to_payroll) {
       const payrollStatus = missingRate ? "missing_rate" : "pending";
+      const multiplier = op?.payroll_multiplier ?? 1.00;
+      const payrollAmount = rate != null ? Number((rate * multiplier).toFixed(2)) : null;
       const { error: weErr } = await supabase
         .from("core_production_work_entries")
         .insert({
@@ -433,8 +437,9 @@ export default function CoreScanning() {
           operator_id: operatorId || null,
           operator_name_snapshot: opName,
           rate_snapshot: rate,
+          payroll_multiplier_snapshot: multiplier,
           currency: "USD",
-          payroll_amount: rate,
+          payroll_amount: payrollAmount,
           payroll_status: payrollStatus,
           scanned_by_user_id: user?.id || null,
           notes: noteText || null,
