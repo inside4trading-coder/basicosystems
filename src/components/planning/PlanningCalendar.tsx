@@ -51,9 +51,7 @@ const NOTION_BADGE_CLASS: Record<string, string> = {
 const DAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
 
 function fmtDate(d: string) {
-  // Tratar "YYYY-MM-DD" como fecha local para evitar desfases de timezone
-  const [y, m, day] = d.slice(0, 10).split("-").map(Number);
-  return formatDMY(y, (m ?? 1) - 1, day ?? 1);
+  return formatDMY(d);
 }
 
 function sameDay(a: Date, b: Date) {
