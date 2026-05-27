@@ -51,6 +51,7 @@ import CoreScanning from "./pages/core/CoreScanning";
 import CoreFactoryOperators from "./pages/core/CoreFactoryOperators";
 import CorePayroll from "./pages/core/CorePayroll";
 import CoreInventory from "./pages/core/CoreInventory";
+import CoreReports from "./pages/core/CoreReports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
