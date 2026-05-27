@@ -151,6 +151,7 @@ const CLOSED_STATUSES = ["closed", "manually_closed"];
 export default function CoreProductionOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [allLines, setAllLines] = useState<Line[]>([]);
+  const [allUnits, setAllUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState<null | "in_production" | "open" | "cancelled" | "manually_closed">(null);
