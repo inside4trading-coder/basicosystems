@@ -1,4 +1,3 @@
-import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Landing from "./pages/Landing";
@@ -47,9 +46,8 @@ import CoreRestockControl from "./pages/core/CoreRestockControl";
 import CoreFabricationFunds from "./pages/core/CoreFabricationFunds";
 import CoreProductionNeeds from "./pages/core/CoreProductionNeeds";
 import CoreProductionOrders from "./pages/core/CoreProductionOrders";
+import CoreQRTravelSheets from "./pages/core/CoreQRTravelSheets";
 import NotFound from "./pages/NotFound";
-
-const CoreQRTravelSheets = lazy(() => import("./pages/core/CoreQRTravelSheets"));
 
 const queryClient = new QueryClient();
 
@@ -123,7 +121,7 @@ const App = () => (
                 <Route path="partidas-fabricacion" element={<CoreFabricationFunds />} />
                 <Route path="necesidades" element={<CoreProductionNeeds />} />
                 <Route path="ordenes-produccion" element={<CoreProductionOrders />} />
-                <Route path="qr" element={<Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Cargando QR / Ficha Viajera...</div>}><CoreQRTravelSheets /></Suspense>} />
+                <Route path="qr" element={<CoreQRTravelSheets />} />
                 <Route path="escaneo" element={<CorePlaceholder title="Escaneo" description="Escaneo móvil con cámara." />} />
                 <Route path="nomina" element={<CorePlaceholder title="Nómina" description="Cierre semanal y pagos." />} />
                 <Route path="inventario" element={<CorePlaceholder title="Inventario" description="Movimientos y sincronización con WooCommerce." />} />

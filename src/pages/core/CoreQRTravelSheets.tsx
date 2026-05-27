@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { QrCode, Printer, FileText, Ban, RefreshCw, Eye } from "lucide-react";
 import { toast } from "sonner";
+import QRCode from "qrcode";
 
 type Order = {
   id: string;
@@ -180,10 +181,8 @@ export default function CoreQRTravelSheets() {
     }
   };
 
-  const buildQrDataUrl = async (payload: string) => {
-    const QRCode = await import("qrcode");
-    return QRCode.toDataURL(payload, { width: 256, margin: 1 });
-  };
+  const buildQrDataUrl = async (payload: string) =>
+    QRCode.toDataURL(payload, { width: 256, margin: 1 });
 
   const printLabels = async (units_: Unit[]) => {
     if (!units_.length) { toast.error("Sin unidades para imprimir"); return; }
@@ -570,12 +569,8 @@ ${units_.map((u, i) => {
 function UnitPreview({ unit, processes, order }: { unit: Unit; processes: UnitProcess[]; order: Order | null }) {
   const [qrUrl, setQrUrl] = useState<string>("");
   useEffect(() => {
-    let mounted = true;
-    import("qrcode")
-      .then((QRCode) => QRCode.toDataURL(unit.qr_payload ?? unit.unit_code, { width: 220, margin: 1 }))
-      .then((url) => { if (mounted) setQrUrl(url); })
-      .catch(() => { if (mounted) setQrUrl(""); });
-    return () => { mounted = false; };
+    QRCode.toDataURL(unit.qr_payload ?? unit.unit_code, { width: 220, margin: 1 })
+      .then(setQrUrl).catch(() => setQrUrl(""));
   }, [unit]);
   return (
     <div className="space-y-3">
