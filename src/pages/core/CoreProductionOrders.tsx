@@ -224,6 +224,31 @@ export default function CoreProductionOrders() {
     return m;
   }, [allLines]);
 
+  const unitsByOrder = useMemo(() => {
+    const m: Record<string, Unit[]> = {};
+    for (const u of allUnits) (m[u.production_order_id] ||= []).push(u);
+    return m;
+  }, [allUnits]);
+
+  const invByOrder = useMemo(() => {
+    const m: Record<string, OrderInvStats> = {};
+    for (const o of orders) {
+      m[o.id] = computeInvStats(unitsByOrder[o.id] ?? [], Number(o.total_quantity || 0));
+    }
+    return m;
+  }, [orders, unitsByOrder]);
+
+  // Total de prendas terminadas en producción pero NO ingresadas a inventario.
+  // Es la alerta antirrobo / custodia: existen físicamente pero no están en sistema.
+  const pendingInventoryUnits = useMemo(
+    () => allUnits.filter((u) => u.status === "completed").length,
+    [allUnits],
+  );
+  const enteredInventoryUnits = useMemo(
+    () => allUnits.filter((u) => u.status === "entered_inventory").length,
+    [allUnits],
+  );
+
   const runBulk = async () => {
     const ids = Array.from(selectedOrders);
     if (!ids.length || !bulkOpen) return;
