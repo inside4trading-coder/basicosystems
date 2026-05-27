@@ -617,6 +617,7 @@ export default function CoreProductionOrders() {
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="text-right">Pend.</TableHead>
               <TableHead className="text-right">Compl.</TableHead>
+              <TableHead>Inventario</TableHead>
               <TableHead>Origen</TableHead>
               <TableHead>Creada</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -625,7 +626,7 @@ export default function CoreProductionOrders() {
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                   Sin órdenes en esta vista.
                 </TableCell>
               </TableRow>
