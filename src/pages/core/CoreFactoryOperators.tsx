@@ -41,6 +41,7 @@ type Operator = {
   status: string;
   start_date: string | null;
   base_rate: number | null;
+  payroll_multiplier: number | null;
   notes: string | null;
   updated_at: string;
 };
@@ -63,7 +64,7 @@ export default function CoreFactoryOperators() {
   function emptyForm() {
     return {
       first_name: "", last_name: "", alias: "", phone: "", document_id: "",
-      status: "active", start_date: "", base_rate: "", notes: "", photo_url: "",
+      status: "active", start_date: "", base_rate: "", payroll_multiplier: "1.00", notes: "", photo_url: "",
     };
   }
 
@@ -120,6 +121,7 @@ export default function CoreFactoryOperators() {
       status: op.status,
       start_date: op.start_date || "",
       base_rate: op.base_rate ?? "",
+      payroll_multiplier: op.payroll_multiplier == null ? "1.00" : String(op.payroll_multiplier),
       notes: op.notes || "",
       photo_url: op.photo_url || "",
     });
@@ -143,6 +145,7 @@ export default function CoreFactoryOperators() {
       status: form.status,
       start_date: form.start_date || null,
       base_rate: form.base_rate === "" ? null : Number(form.base_rate),
+      payroll_multiplier: form.payroll_multiplier === "" ? 1.00 : Number(form.payroll_multiplier),
       notes: form.notes?.trim() || null,
       updated_by: user?.id || null,
     };
@@ -240,9 +243,9 @@ export default function CoreFactoryOperators() {
               <TableHead>Nombre</TableHead>
               <TableHead>Alias</TableHead>
               <TableHead>Roles</TableHead>
-              <TableHead>Teléfono</TableHead>
+              <TableHead>Tarifa base</TableHead>
+              <TableHead>Multiplicador</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead>Actualizado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -266,9 +269,9 @@ export default function CoreFactoryOperators() {
                       {opRoles.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
                     </div>
                   </TableCell>
-                  <TableCell>{o.phone || "—"}</TableCell>
+                  <TableCell>{o.base_rate != null ? `$${Number(o.base_rate).toFixed(2)}` : "—"}</TableCell>
+                  <TableCell>{o.payroll_multiplier != null && o.payroll_multiplier !== 1 ? `×${Number(o.payroll_multiplier).toFixed(2)}` : "—"}</TableCell>
                   <TableCell><Badge variant={o.status === "active" ? "default" : "outline"}>{o.status}</Badge></TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{new Date(o.updated_at).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" onClick={() => openEdit(o)}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => toggleStatus(o)}><Power className="h-4 w-4" /></Button>
@@ -314,6 +317,10 @@ export default function CoreFactoryOperators() {
             <div>
               <Label>Tarifa base</Label>
               <Input type="number" step="0.01" value={form.base_rate} onChange={(e) => setForm({ ...form, base_rate: e.target.value })} />
+            </div>
+            <div>
+              <Label>Multiplicador nómina</Label>
+              <Input type="number" step="0.01" min="0.01" value={form.payroll_multiplier} onChange={(e) => setForm({ ...form, payroll_multiplier: e.target.value })} placeholder="1.00 = 100%" />
             </div>
             <div>
               <Label>Estado *</Label>
