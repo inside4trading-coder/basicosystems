@@ -167,13 +167,16 @@ export default function CoreQRTravelSheets() {
       const nowIso = new Date().toISOString();
       // Increment print_count and set printed_at; do per-row update since we lack RPC
       for (const u of units_) {
+        // Solo promovemos created→printed. Nunca degradamos un status posterior
+        // (in_production, completed, entered_inventory…) al reimprimir con estado local stale.
+        const patch: Record<string, any> = {
+          printed_at: nowIso,
+          print_count: (u.print_count ?? 0) + 1,
+        };
+        if (u.status === "created") patch.status = "printed";
         await supabase
           .from("core_production_units")
-          .update({
-            printed_at: nowIso,
-            print_count: (u.print_count ?? 0) + 1,
-            status: u.status === "created" ? "printed" : u.status,
-          })
+          .update(patch)
           .eq("id", u.id);
       }
       void ids;

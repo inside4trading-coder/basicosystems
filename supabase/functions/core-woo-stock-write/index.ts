@@ -121,6 +121,23 @@ Deno.serve(async (req) => {
       if (unit.status === "entered_inventory") {
         return json({ ok: false, skipped: true, message: "Unidad ya marcada como entered_inventory." }, 409);
       }
+
+      // Recalcular status real desde procesos antes de validar.
+      // Esto corrige unidades que quedaron en 'in_production' por una reimpresión
+      // u otro update con estado local stale, pero cuyos procesos están todos completed/skipped.
+      if (unit.status !== "completed") {
+        const { data: procs } = await admin
+          .from("core_production_unit_processes")
+          .select("status")
+          .eq("production_unit_id", unit.id);
+        const list = procs || [];
+        const allDone = list.length > 0 && list.every((p: any) => p.status === "completed" || p.status === "skipped");
+        if (allDone) {
+          await admin.from("core_production_units").update({ status: "completed" }).eq("id", unit.id);
+          unit.status = "completed";
+        }
+      }
+
       if (unit.status !== "completed") {
         return json({ error: `Unidad debe estar en completed. Estado actual: ${unit.status}` }, 409);
       }
