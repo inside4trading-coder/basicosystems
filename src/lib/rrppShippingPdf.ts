@@ -11,7 +11,7 @@ interface Params {
   contactAlias?: string;
 }
 
-const today = () => formatDMY();
+const today = () => formatDMY(new Date());
 
 export function generateShippingPdf({ collab, brand, contactName, contactAlias }: Params) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
