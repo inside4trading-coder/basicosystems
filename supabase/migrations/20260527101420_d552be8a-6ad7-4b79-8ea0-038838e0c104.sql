@@ -1,0 +1,2 @@
+ALTER TABLE public.core_factory_operators ADD COLUMN payroll_multiplier numeric(5,2) DEFAULT 1.00 NOT NULL;
+ALTER TABLE public.core_production_work_entries ADD COLUMN payroll_multiplier_snapshot numeric(5,2);
