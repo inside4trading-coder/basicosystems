@@ -47,6 +47,7 @@ import CoreFabricationFunds from "./pages/core/CoreFabricationFunds";
 import CoreProductionNeeds from "./pages/core/CoreProductionNeeds";
 import CoreProductionOrders from "./pages/core/CoreProductionOrders";
 import CoreQRTravelSheets from "./pages/core/CoreQRTravelSheets";
+import CoreScanning from "./pages/core/CoreScanning";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
