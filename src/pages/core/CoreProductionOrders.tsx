@@ -21,10 +21,47 @@ import {
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  ClipboardList, Plus, Layers, QrCode, X, Ban, Lock, Eye,
+  ClipboardList, Plus, Layers, QrCode, X, Ban, Lock, Eye, ShieldAlert, PackageCheck, PackageOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
+
+type Unit = {
+  id: string;
+  unit_code: string;
+  production_order_id: string;
+  core_variant_id: string | null;
+  variant_sku: string | null;
+  variant_label: string | null;
+  size: string | null;
+  status: string;
+  entered_inventory_at: string | null;
+  entered_inventory_by: string | null;
+  inventory_entry_source: string | null;
+  updated_at: string | null;
+};
+
+type OrderInvStats = {
+  total: number;
+  completed: number;          // status completed OR entered_inventory
+  entered: number;            // status entered_inventory
+  pending_inventory: number;  // completed but not entered
+  status: "not_ready" | "pending_inventory" | "partially_entered" | "fully_entered";
+};
+
+function computeInvStats(units: Unit[], totalQuantityFallback: number): OrderInvStats {
+  const total = units.length || totalQuantityFallback;
+  const entered = units.filter((u) => u.status === "entered_inventory").length;
+  const completed = units.filter(
+    (u) => u.status === "completed" || u.status === "entered_inventory",
+  ).length;
+  const pending_inventory = Math.max(0, completed - entered);
+  let status: OrderInvStats["status"] = "not_ready";
+  if (total > 0 && entered === total) status = "fully_entered";
+  else if (entered > 0) status = "partially_entered";
+  else if (completed > 0) status = "pending_inventory";
+  return { total, completed, entered, pending_inventory, status };
+}
 
 type Order = {
   id: string;
@@ -114,6 +151,7 @@ const CLOSED_STATUSES = ["closed", "manually_closed"];
 export default function CoreProductionOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [allLines, setAllLines] = useState<Line[]>([]);
+  const [allUnits, setAllUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState<null | "in_production" | "open" | "cancelled" | "manually_closed">(null);
@@ -140,6 +178,8 @@ export default function CoreProductionOrders() {
   const [detailLines, setDetailLines] = useState<Line[]>([]);
   const [detailProcesses, setDetailProcesses] = useState<Process[]>([]);
   const [detailLinks, setDetailLinks] = useState<any[]>([]);
+  const [detailUnits, setDetailUnits] = useState<Unit[]>([]);
+  const [detailUserMap, setDetailUserMap] = useState<Record<string, string>>({});
 
   const [closeOpen, setCloseOpen] = useState<Order | null>(null);
   const [closeReason, setCloseReason] = useState("");
@@ -159,13 +199,20 @@ export default function CoreProductionOrders() {
     setOrders(ords);
     const ids = ords.map((o) => o.id);
     if (ids.length) {
-      const { data: lns } = await supabase
-        .from("core_production_order_lines")
-        .select("*")
-        .in("production_order_id", ids);
+      const [{ data: lns }, { data: uns }] = await Promise.all([
+        supabase.from("core_production_order_lines").select("*").in("production_order_id", ids),
+        supabase
+          .from("core_production_units")
+          .select(
+            "id, unit_code, production_order_id, core_variant_id, variant_sku, variant_label, size, status, entered_inventory_at, entered_inventory_by, inventory_entry_source, updated_at",
+          )
+          .in("production_order_id", ids),
+      ]);
       setAllLines((lns as any) ?? []);
+      setAllUnits((uns as any) ?? []);
     } else {
       setAllLines([]);
+      setAllUnits([]);
     }
     setSelectedOrders(new Set());
     setLoading(false);
@@ -178,6 +225,31 @@ export default function CoreProductionOrders() {
     for (const l of allLines) (m[l.production_order_id] ||= []).push(l);
     return m;
   }, [allLines]);
+
+  const unitsByOrder = useMemo(() => {
+    const m: Record<string, Unit[]> = {};
+    for (const u of allUnits) (m[u.production_order_id] ||= []).push(u);
+    return m;
+  }, [allUnits]);
+
+  const invByOrder = useMemo(() => {
+    const m: Record<string, OrderInvStats> = {};
+    for (const o of orders) {
+      m[o.id] = computeInvStats(unitsByOrder[o.id] ?? [], Number(o.total_quantity || 0));
+    }
+    return m;
+  }, [orders, unitsByOrder]);
+
+  // Total de prendas terminadas en producción pero NO ingresadas a inventario.
+  // Es la alerta antirrobo / custodia: existen físicamente pero no están en sistema.
+  const pendingInventoryUnits = useMemo(
+    () => allUnits.filter((u) => u.status === "completed").length,
+    [allUnits],
+  );
+  const enteredInventoryUnits = useMemo(
+    () => allUnits.filter((u) => u.status === "entered_inventory").length,
+    [allUnits],
+  );
 
   const runBulk = async () => {
     const ids = Array.from(selectedOrders);
@@ -346,15 +418,41 @@ export default function CoreProductionOrders() {
 
   const openDetail = async (o: Order) => {
     setDetailOrder(o);
-    const [{ data: lines }, { data: procs }, { data: links }] = await Promise.all([
+    const [{ data: lines }, { data: procs }, { data: links }, { data: uns }] = await Promise.all([
       supabase.from("core_production_order_lines").select("*").eq("production_order_id", o.id),
       supabase.from("core_production_order_processes").select("*").eq("production_order_id", o.id).order("process_order"),
       supabase.from("core_production_order_need_links").select("*, core_production_needs(variant_sku, product_name, size)").eq("production_order_id", o.id),
+      supabase
+        .from("core_production_units")
+        .select(
+          "id, unit_code, production_order_id, core_variant_id, variant_sku, variant_label, size, status, entered_inventory_at, entered_inventory_by, inventory_entry_source, updated_at",
+        )
+        .eq("production_order_id", o.id)
+        .order("unit_code"),
     ]);
     setDetailLines((lines as any) ?? []);
     setDetailProcesses((procs as any) ?? []);
     setDetailLinks((links as any) ?? []);
+    const unitsArr = ((uns as any) ?? []) as Unit[];
+    setDetailUnits(unitsArr);
+    const userIds = Array.from(
+      new Set(unitsArr.map((u) => u.entered_inventory_by).filter(Boolean) as string[]),
+    );
+    if (userIds.length) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, email, full_name")
+        .in("id", userIds);
+      const map: Record<string, string> = {};
+      for (const p of (profiles as any[]) ?? []) {
+        map[p.id] = p.full_name || p.email || p.id;
+      }
+      setDetailUserMap(map);
+    } else {
+      setDetailUserMap({});
+    }
   };
+
 
   const changeStatus = async (o: Order, newStatus: string) => {
     const { error } = await supabase
@@ -420,6 +518,38 @@ export default function CoreProductionOrders() {
     await load();
   };
 
+  const renderInventoryBadge = (inv: OrderInvStats | undefined) => {
+    if (!inv || inv.total === 0) {
+      return <span className="text-xs text-muted-foreground">—</span>;
+    }
+    if (inv.status === "fully_entered") {
+      return (
+        <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300">
+          <PackageCheck className="h-3 w-3 mr-1" /> {inv.entered}/{inv.total} ingresadas
+        </Badge>
+      );
+    }
+    if (inv.status === "pending_inventory") {
+      return (
+        <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300" title="Prendas listas sin ingresar">
+          <ShieldAlert className="h-3 w-3 mr-1" /> {inv.pending_inventory} sin ingresar
+        </Badge>
+      );
+    }
+    if (inv.status === "partially_entered") {
+      return (
+        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300" title="Parcialmente ingresadas a inventario">
+          <PackageOpen className="h-3 w-3 mr-1" /> {inv.entered}/{inv.total} · {inv.pending_inventory} pend.
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="bg-muted text-muted-foreground border-border">
+        Sin producir
+      </Badge>
+    );
+  };
+
   const renderRow = (o: Order) => {
     const lines = linesByOrder[o.id] ?? [];
     const checked = selectedOrders.has(o.id);
@@ -473,6 +603,7 @@ export default function CoreProductionOrders() {
         <TableCell className="text-right">{o.total_quantity}</TableCell>
         <TableCell className="text-right">{o.pending_quantity}</TableCell>
         <TableCell className="text-right">{o.completed_quantity}</TableCell>
+        <TableCell>{renderInventoryBadge(invByOrder[o.id])}</TableCell>
         <TableCell className="text-xs text-muted-foreground">{o.source}</TableCell>
         <TableCell className="text-xs">{new Date(o.created_at).toLocaleString()}</TableCell>
         <TableCell className="text-right">
@@ -514,6 +645,7 @@ export default function CoreProductionOrders() {
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="text-right">Pend.</TableHead>
               <TableHead className="text-right">Compl.</TableHead>
+              <TableHead>Inventario</TableHead>
               <TableHead>Origen</TableHead>
               <TableHead>Creada</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -522,7 +654,7 @@ export default function CoreProductionOrders() {
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                   Sin órdenes en esta vista.
                 </TableCell>
               </TableRow>
@@ -559,10 +691,22 @@ export default function CoreProductionOrders() {
         <Card className="p-3"><div className="text-xs text-muted-foreground">Abiertas</div><div className="text-2xl font-bold">{kpis.open}</div></Card>
         <Card className="p-3"><div className="text-xs text-muted-foreground">Unid. pendientes</div><div className="text-2xl font-bold">{kpis.open_units}</div></Card>
         <Card className="p-3"><div className="text-xs text-muted-foreground">En producción</div><div className="text-2xl font-bold">{kpis.prod_units}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Completadas</div><div className="text-2xl font-bold">{kpis.done_units}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Cerradas</div><div className="text-2xl font-bold">{kpis.closed}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Canceladas</div><div className="text-2xl font-bold">{kpis.cancelled}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Última</div><div className="text-xs">{kpis.last ? new Date(kpis.last).toLocaleString() : "—"}</div></Card>
+        <Card className="p-3"><div className="text-xs text-muted-foreground">Completadas prod.</div><div className="text-2xl font-bold">{kpis.done_units}</div></Card>
+        <Card className={`p-3 ${pendingInventoryUnits > 0 ? "border-red-300 bg-red-50" : ""}`}>
+          <div className="text-xs text-muted-foreground flex items-center gap-1">
+            <ShieldAlert className="h-3 w-3" /> Sin ingresar
+          </div>
+          <div className={`text-2xl font-bold ${pendingInventoryUnits > 0 ? "text-red-700" : ""}`}>{pendingInventoryUnits}</div>
+          <div className="text-[10px] text-muted-foreground">prendas listas sin inventario</div>
+        </Card>
+        <Card className="p-3">
+          <div className="text-xs text-muted-foreground flex items-center gap-1">
+            <PackageCheck className="h-3 w-3" /> Ingresadas
+          </div>
+          <div className="text-2xl font-bold text-emerald-700">{enteredInventoryUnits}</div>
+          <div className="text-[10px] text-muted-foreground">a inventario</div>
+        </Card>
+        <Card className="p-3"><div className="text-xs text-muted-foreground">Cerradas / Canc.</div><div className="text-xl font-bold">{kpis.closed} / {kpis.cancelled}</div></Card>
       </div>
 
       {selectedOrders.size > 0 && (
@@ -801,8 +945,24 @@ export default function CoreProductionOrders() {
                   <div className="text-xs text-muted-foreground font-mono">{detailOrder.sku}</div>
                   <div className="grid grid-cols-3 gap-2 mt-3 text-sm">
                     <div><div className="text-xs text-muted-foreground">Total</div>{detailOrder.total_quantity}</div>
-                    <div><div className="text-xs text-muted-foreground">Pendientes</div>{detailOrder.pending_quantity}</div>
-                    <div><div className="text-xs text-muted-foreground">Completadas</div>{detailOrder.completed_quantity}</div>
+                    <div><div className="text-xs text-muted-foreground">Pendientes prod.</div>{detailOrder.pending_quantity}</div>
+                    <div><div className="text-xs text-muted-foreground">Completadas prod.</div>{detailOrder.completed_quantity}</div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Ingresadas inventario</div>
+                      <span className="text-emerald-700 font-semibold">{invByOrder[detailOrder.id]?.entered ?? 0}</span>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Pendientes inventario</div>
+                      <span className={(invByOrder[detailOrder.id]?.pending_inventory ?? 0) > 0 ? "text-red-700 font-semibold" : ""}>
+                        {invByOrder[detailOrder.id]?.pending_inventory ?? 0}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Estado inventario</div>
+                      {renderInventoryBadge(invByOrder[detailOrder.id])}
+                    </div>
                   </div>
                   {detailOrder.is_overproduction && (
                     <Badge variant="outline" className="mt-2 bg-orange-100 text-orange-800 border-orange-300">
@@ -845,6 +1005,108 @@ export default function CoreProductionOrders() {
                       ))}
                     </TableBody>
                   </Table>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      <PackageCheck className="h-4 w-4" /> Control de inventario
+                    </h4>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open("/core/inventario", "_blank")}
+                    >
+                      Abrir inventario
+                    </Button>
+                  </div>
+                  {detailUnits.length === 0 ? (
+                    <div className="text-xs text-muted-foreground">
+                      Aún no hay unidades generadas para esta orden.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Unidad</TableHead>
+                          <TableHead>Talla</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Inventario</TableHead>
+                          <TableHead>Responsable / Fuente</TableHead>
+                          <TableHead className="text-right">Acción</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {detailUnits.map((u) => {
+                          const entered = u.status === "entered_inventory";
+                          const completedNoInv = u.status === "completed";
+                          return (
+                            <TableRow key={u.id}>
+                              <TableCell className="font-mono text-xs">{u.unit_code}</TableCell>
+                              <TableCell>{u.size ?? u.variant_label ?? "—"}</TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    entered
+                                      ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                      : completedNoInv
+                                        ? "bg-amber-100 text-amber-800 border-amber-300"
+                                        : u.status === "cancelled" || u.status === "lost"
+                                          ? "bg-red-100 text-red-800 border-red-300"
+                                          : "bg-muted text-muted-foreground border-border"
+                                  }
+                                >
+                                  {u.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {entered ? (
+                                  <div className="text-xs">
+                                    <div className="text-emerald-700 font-semibold flex items-center gap-1">
+                                      <PackageCheck className="h-3 w-3" /> Ingresada
+                                    </div>
+                                    {u.entered_inventory_at && (
+                                      <div className="text-muted-foreground">
+                                        {new Date(u.entered_inventory_at).toLocaleString()}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : completedNoInv ? (
+                                  <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
+                                    <ShieldAlert className="h-3 w-3 mr-1" /> Lista sin ingresar
+                                  </Badge>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {entered ? (
+                                  <>
+                                    <div>{u.entered_inventory_by ? (detailUserMap[u.entered_inventory_by] ?? u.entered_inventory_by.slice(0, 8)) : "—"}</div>
+                                    <div className="text-muted-foreground">{u.inventory_entry_source ?? "—"}</div>
+                                  </>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {completedNoInv ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => window.open(`/core/escaneo?unit=${u.unit_code}`, "_blank")}
+                                  >
+                                    <QrCode className="h-3 w-3 mr-1" /> Escanear
+                                  </Button>
+                                ) : null}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
                 </div>
 
                 <div>
