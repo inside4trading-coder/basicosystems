@@ -961,6 +961,39 @@ export default function CoreProductionOrders() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk action confirm */}
+      <Dialog open={!!bulkOpen} onOpenChange={(o) => { if (!o) { setBulkOpen(null); setBulkReason(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {bulkOpen === "in_production" && "Marcar en producción"}
+              {bulkOpen === "open" && "Volver a abierta"}
+              {bulkOpen === "manually_closed" && "Cerrar manualmente (masivo)"}
+              {bulkOpen === "cancelled" && "Cancelar órdenes (masivo)"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div>Se aplicará a <b>{selectedOrders.size}</b> orden(es) seleccionada(s).</div>
+            {(bulkOpen === "cancelled" || bulkOpen === "manually_closed") && (
+              <div>
+                <Label>Motivo *</Label>
+                <Textarea value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setBulkOpen(null); setBulkReason(""); }}>Volver</Button>
+            <Button
+              variant={bulkOpen === "cancelled" ? "destructive" : "default"}
+              onClick={runBulk}
+              disabled={bulkRunning}
+            >
+              {bulkRunning ? "Aplicando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
