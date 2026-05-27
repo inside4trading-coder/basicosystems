@@ -325,6 +325,7 @@ export default function CorePayroll() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard icon={DollarSign} label="Total pendiente semana" value={fmt(kpis.totalPendingThisWeek)} />
+        <KpiCard icon={DollarSign} label="Total acumulado (todo lo pendiente)" value={fmt(kpis.totalPendingAll)} tone={kpis.totalPendingAll > 0 ? "warn" : "default"} />
         <KpiCard icon={Users} label="Operarios pendientes" value={String(kpis.operatorsPending)} />
         <KpiCard icon={ListChecks} label="Trabajos pendientes" value={String(kpis.processesCount)} />
         <KpiCard icon={AlertTriangle} label="Trabajos sin tarifa" value={String(kpis.missing)} tone={kpis.missing > 0 ? "warn" : "default"} />
@@ -334,12 +335,17 @@ export default function CorePayroll() {
         <KpiCard icon={FileText} label="Semana actual" value={`${formatDMY(week.start)} → ${formatDMY(week.end)}`} />
       </div>
 
-      <Tabs defaultValue="runs" className="w-full">
+      <Tabs defaultValue="operators" className="w-full">
         <TabsList>
+          <TabsTrigger value="operators">Por operario ({operatorSummaries.length})</TabsTrigger>
           <TabsTrigger value="runs">Nóminas</TabsTrigger>
-          <TabsTrigger value="pending">Trabajos pendientes</TabsTrigger>
+          <TabsTrigger value="pending">Trabajos pendientes ({pendingEntries.length})</TabsTrigger>
           <TabsTrigger value="missing">Sin tarifa ({kpis.missing})</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="operators">
+          <OperatorsPendingPanel summaries={operatorSummaries} totalAll={kpis.totalPendingAll} />
+        </TabsContent>
 
         <TabsContent value="runs">
           <Card>
@@ -365,8 +371,8 @@ export default function CorePayroll() {
                     {runs.map(r => (
                       <TableRow key={r.id}>
                         <TableCell className="font-mono text-xs">{r.payroll_code}</TableCell>
-                        <TableCell className="text-sm">{r.period_start} → {r.period_end}</TableCell>
-                        <TableCell className="text-sm">{r.payment_date ?? "—"}</TableCell>
+                        <TableCell className="text-sm">{formatDMY(r.period_start)} → {formatDMY(r.period_end)}</TableCell>
+                        <TableCell className="text-sm">{r.payment_date ? formatDMY(r.payment_date) : "—"}</TableCell>
                         <TableCell>{r.operators_count}</TableCell>
                         <TableCell>{r.work_entries_count}</TableCell>
                         <TableCell>{fmt(r.total_amount, r.currency)}</TableCell>
