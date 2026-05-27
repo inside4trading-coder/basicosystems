@@ -291,8 +291,8 @@ export default function CorePayroll() {
         <KpiCard icon={AlertTriangle} label="Trabajos sin tarifa" value={String(kpis.missing)} tone={kpis.missing > 0 ? "warn" : "default"} />
         <KpiCard icon={CheckCircle2} label="Nóminas aprobadas" value={String(kpis.approved)} />
         <KpiCard icon={Wallet} label="Nóminas pagadas" value={String(kpis.paid)} />
-        <KpiCard icon={FileText} label="Próximo pago" value={week.payment} />
-        <KpiCard icon={FileText} label="Semana actual" value={`${week.start} → ${week.end}`} />
+        <KpiCard icon={FileText} label="Próximo pago" value={formatDMY(week.payment)} />
+        <KpiCard icon={FileText} label="Semana actual" value={`${formatDMY(week.start)} → ${formatDMY(week.end)}`} />
       </div>
 
       <Tabs defaultValue="runs" className="w-full">
