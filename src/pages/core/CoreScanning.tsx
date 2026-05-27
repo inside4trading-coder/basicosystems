@@ -178,8 +178,20 @@ export default function CoreScanning() {
     setHistory((data as ScanEvent[]) || []);
   }
 
+  function extractToken(raw: string): string {
+    const s = raw.trim();
+    try {
+      const url = new URL(s);
+      const u = url.searchParams.get("unit");
+      if (u) return u.trim();
+    } catch { /* not absolute URL */ }
+    const m = s.match(/[?&]unit=([^&\s#]+)/i);
+    if (m) return decodeURIComponent(m[1]).trim();
+    return s;
+  }
+
   function openManual() {
-    const v = manualCode.trim();
+    const v = extractToken(manualCode);
     if (!v) return;
     setSearchParams({ unit: v });
   }
@@ -199,12 +211,7 @@ export default function CoreScanning() {
           { fps: 10, qrbox: { width: 240, height: 240 } },
           (decoded: string) => {
             try {
-              // Accept full URL or raw token
-              let token = decoded;
-              try {
-                const url = new URL(decoded);
-                token = url.searchParams.get("unit") || decoded;
-              } catch { /* not a URL */ }
+              const token = extractToken(decoded);
               setCameraOpen(false);
               setSearchParams({ unit: token });
             } catch { /* ignore */ }
