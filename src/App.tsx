@@ -125,6 +125,7 @@ const App = () => (
                 <Route path="ordenes-produccion" element={<CoreProductionOrders />} />
                 <Route path="qr" element={<CoreQRTravelSheets />} />
                 <Route path="escaneo" element={<CoreScanning />} />
+                <Route path="operarios" element={<CoreFactoryOperators />} />
                 <Route path="nomina" element={<CorePlaceholder title="Nómina" description="Cierre semanal y pagos." />} />
                 <Route path="inventario" element={<CorePlaceholder title="Inventario" description="Movimientos y sincronización con WooCommerce." />} />
                 <Route path="reportes" element={<CorePlaceholder title="Reportes" />} />
