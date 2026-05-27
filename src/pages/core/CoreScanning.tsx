@@ -91,7 +91,7 @@ function extractRate(snap: any): number | null {
   if (!snap) return null;
   if (typeof snap === "number") return snap;
   if (typeof snap === "object") {
-    const candidates = ["rate", "amount", "value", "price", "payroll_amount"];
+    const candidates = ["unit_cost", "rate", "amount", "value", "price", "payroll_amount", "cost"];
     for (const k of candidates) if (typeof snap[k] === "number") return snap[k];
     for (const k of candidates) if (typeof snap[k] === "string" && !isNaN(Number(snap[k]))) return Number(snap[k]);
   }
