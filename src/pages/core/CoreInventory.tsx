@@ -17,6 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Warehouse,
   PlayCircle,
@@ -26,6 +27,7 @@ import {
   XCircle,
   History,
   Package,
+  ShieldCheck,
 } from "lucide-react";
 
 type Unit = {
