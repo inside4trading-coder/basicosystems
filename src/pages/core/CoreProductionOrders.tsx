@@ -1008,6 +1008,108 @@ export default function CoreProductionOrders() {
                 </div>
 
                 <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      <PackageCheck className="h-4 w-4" /> Control de inventario
+                    </h4>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open("/core/inventario", "_blank")}
+                    >
+                      Abrir inventario
+                    </Button>
+                  </div>
+                  {detailUnits.length === 0 ? (
+                    <div className="text-xs text-muted-foreground">
+                      Aún no hay unidades generadas para esta orden.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Unidad</TableHead>
+                          <TableHead>Talla</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Inventario</TableHead>
+                          <TableHead>Responsable / Fuente</TableHead>
+                          <TableHead className="text-right">Acción</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {detailUnits.map((u) => {
+                          const entered = u.status === "entered_inventory";
+                          const completedNoInv = u.status === "completed";
+                          return (
+                            <TableRow key={u.id}>
+                              <TableCell className="font-mono text-xs">{u.unit_code}</TableCell>
+                              <TableCell>{u.size ?? u.variant_label ?? "—"}</TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    entered
+                                      ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                      : completedNoInv
+                                        ? "bg-amber-100 text-amber-800 border-amber-300"
+                                        : u.status === "cancelled" || u.status === "lost"
+                                          ? "bg-red-100 text-red-800 border-red-300"
+                                          : "bg-muted text-muted-foreground border-border"
+                                  }
+                                >
+                                  {u.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {entered ? (
+                                  <div className="text-xs">
+                                    <div className="text-emerald-700 font-semibold flex items-center gap-1">
+                                      <PackageCheck className="h-3 w-3" /> Ingresada
+                                    </div>
+                                    {u.entered_inventory_at && (
+                                      <div className="text-muted-foreground">
+                                        {new Date(u.entered_inventory_at).toLocaleString()}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : completedNoInv ? (
+                                  <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
+                                    <ShieldAlert className="h-3 w-3 mr-1" /> Lista sin ingresar
+                                  </Badge>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {entered ? (
+                                  <>
+                                    <div>{u.entered_inventory_by ? (detailUserMap[u.entered_inventory_by] ?? u.entered_inventory_by.slice(0, 8)) : "—"}</div>
+                                    <div className="text-muted-foreground">{u.inventory_entry_source ?? "—"}</div>
+                                  </>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {completedNoInv ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => window.open(`/core/escaneo?unit=${u.id}`, "_blank")}
+                                  >
+                                    <QrCode className="h-3 w-3 mr-1" /> Escanear
+                                  </Button>
+                                ) : null}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+
+                <div>
                   <h4 className="text-sm font-semibold mb-2">Procesos requeridos</h4>
                   {detailProcesses.length === 0 ? (
                     <div className="text-xs text-muted-foreground">
