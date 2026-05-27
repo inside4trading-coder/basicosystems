@@ -102,7 +102,7 @@ export default function CoreScanning() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [unit, setUnit] = useState<Unit | null>(null);
   const [processes, setProcesses] = useState<UnitProcess[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [operators, setOperators] = useState<Operator[]>([]);
   const [history, setHistory] = useState<ScanEvent[]>([]);
   const [recent, setRecent] = useState<ScanEvent[]>([]);
   const [manualCode, setManualCode] = useState("");
@@ -113,6 +113,8 @@ export default function CoreScanning() {
   const [operatorId, setOperatorId] = useState<string>("");
   const [noteText, setNoteText] = useState("");
   const [forceMissingRate, setForceMissingRate] = useState(false);
+  const [showAllOperators, setShowAllOperators] = useState(false);
+  const [confirmMismatch, setConfirmMismatch] = useState(false);
 
   // dialog: correction
   const [correctionProc, setCorrectionProc] = useState<UnitProcess | null>(null);
@@ -124,15 +126,24 @@ export default function CoreScanning() {
   const cameraDivRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<any>(null);
 
-  // Load active employees + recent scans
+  // Load active factory operators + recent scans
   useEffect(() => {
     (async () => {
-      const { data: emps } = await supabase
-        .from("employees")
-        .select("id,first_name,last_name,position,status")
-        .eq("status", "active")
-        .order("first_name");
-      setEmployees((emps as Employee[]) || []);
+      const [{ data: ops }, { data: opRoles }] = await Promise.all([
+        supabase.from("core_factory_operators").select("id,first_name,last_name,alias,status").eq("status", "active").order("first_name"),
+        supabase.from("core_factory_operator_roles").select("operator_id,role_type,is_primary,status").eq("status", "active"),
+      ]);
+      const byOp: Record<string, { types: string[]; primary: string | null }> = {};
+      for (const r of (opRoles as any[]) || []) {
+        if (!byOp[r.operator_id]) byOp[r.operator_id] = { types: [], primary: null };
+        byOp[r.operator_id].types.push(r.role_type);
+        if (r.is_primary) byOp[r.operator_id].primary = r.role_type;
+      }
+      const list: Operator[] = ((ops as any[]) || []).map((o) => ({
+        id: o.id, first_name: o.first_name, last_name: o.last_name, alias: o.alias, status: o.status,
+        role_types: byOp[o.id]?.types || [], primary_role: byOp[o.id]?.primary || null,
+      }));
+      setOperators(list);
 
       const { data: r } = await supabase
         .from("core_production_scan_events")
