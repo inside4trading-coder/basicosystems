@@ -556,12 +556,33 @@ export default function CoreReports() {
 
         {/* NÓMINA */}
         <TabsContent value="nomina" className="space-y-3">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KPI label="Trabajos pendientes" value={workEntries.filter((w) => w.payroll_status === "pending").length} />
-            <KPI label="Incluidos" value={workEntries.filter((w) => w.payroll_status === "included").length} />
-            <KPI label="Pagados" value={workEntries.filter((w) => w.payroll_status === "paid").length} />
-            <KPI label="Sin tarifa" value={workEntries.filter((w) => !Number(w.payroll_amount)).length} />
-          </div>
+          {(() => {
+            const missingRate = workEntries.filter(
+              (w) => w.payroll_status === "missing_rate" || w.rate_snapshot === null || w.rate_snapshot === undefined,
+            ).length;
+            const zeroRate = workEntries.filter(
+              (w) =>
+                w.payroll_status !== "missing_rate" &&
+                w.rate_snapshot !== null &&
+                w.rate_snapshot !== undefined &&
+                Number(w.rate_snapshot) === 0,
+            ).length;
+            return (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <KPI label="Pendientes" value={workEntries.filter((w) => w.payroll_status === "pending").length} />
+                  <KPI label="Incluidos" value={workEntries.filter((w) => w.payroll_status === "included").length} />
+                  <KPI label="Pagados" value={workEntries.filter((w) => w.payroll_status === "paid").length} />
+                  <KPI label="Sin tarifa / revisar" value={missingRate} tone={missingRate > 0 ? "danger" : "default"} />
+                  <KPI label="Tarifa 0.00 (definida)" value={zeroRate} />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  «Sin tarifa / revisar» cuenta solo entradas con <code>payroll_status=missing_rate</code> o tarifa nula.
+                  «Tarifa 0.00 (definida)» son procesos cuya estructura paga $0 — no son errores.
+                </p>
+              </>
+            );
+          })()}
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">{payrollRuns.length} nómina(s).</p>
             <Button size="sm" variant="outline" onClick={() => downloadCSV("nominas", payrollRuns)}>
