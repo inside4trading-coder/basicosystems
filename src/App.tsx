@@ -131,7 +131,7 @@ const App = () => (
                 <Route path="operarios" element={<CoreFactoryOperators />} />
                 <Route path="nomina" element={<CorePayroll />} />
                 <Route path="inventario" element={<CoreInventory />} />
-                <Route path="reportes" element={<CorePlaceholder title="Reportes" />} />
+                <Route path="reportes" element={<CoreReports />} />
               </Route>
             </Route>
             <Route path="/crew/incidencias" element={<CrewIncidencias />} />
