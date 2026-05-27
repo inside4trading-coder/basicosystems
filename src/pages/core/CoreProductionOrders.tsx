@@ -945,8 +945,24 @@ export default function CoreProductionOrders() {
                   <div className="text-xs text-muted-foreground font-mono">{detailOrder.sku}</div>
                   <div className="grid grid-cols-3 gap-2 mt-3 text-sm">
                     <div><div className="text-xs text-muted-foreground">Total</div>{detailOrder.total_quantity}</div>
-                    <div><div className="text-xs text-muted-foreground">Pendientes</div>{detailOrder.pending_quantity}</div>
-                    <div><div className="text-xs text-muted-foreground">Completadas</div>{detailOrder.completed_quantity}</div>
+                    <div><div className="text-xs text-muted-foreground">Pendientes prod.</div>{detailOrder.pending_quantity}</div>
+                    <div><div className="text-xs text-muted-foreground">Completadas prod.</div>{detailOrder.completed_quantity}</div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Ingresadas inventario</div>
+                      <span className="text-emerald-700 font-semibold">{invByOrder[detailOrder.id]?.entered ?? 0}</span>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Pendientes inventario</div>
+                      <span className={(invByOrder[detailOrder.id]?.pending_inventory ?? 0) > 0 ? "text-red-700 font-semibold" : ""}>
+                        {invByOrder[detailOrder.id]?.pending_inventory ?? 0}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Estado inventario</div>
+                      {renderInventoryBadge(invByOrder[detailOrder.id])}
+                    </div>
                   </div>
                   {detailOrder.is_overproduction && (
                     <Badge variant="outline" className="mt-2 bg-orange-100 text-orange-800 border-orange-300">
