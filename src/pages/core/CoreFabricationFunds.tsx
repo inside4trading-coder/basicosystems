@@ -90,12 +90,18 @@ const PENDING_REASON_LABEL: Record<string, string> = {
 const usd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(Number(n || 0));
 
+type ProdUnit = { id: string; sku: string | null; variant_sku: string | null; status: string };
+
+const normSku = (s: string | null | undefined) =>
+  (s ?? "").toString().trim().toUpperCase().replace(/\s+/g, "-").replace(/-+/g, "-");
+
 export default function CoreFabricationFunds() {
   const [tab, setTab] = useState("resumen");
   const [funds, setFunds] = useState<Fund[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [pendings, setPendings] = useState<Pending[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
+  const [units, setUnits] = useState<ProdUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -115,19 +121,22 @@ export default function CoreFabricationFunds() {
 
   async function load() {
     setLoading(true);
-    const [{ data: f }, { data: m }, { data: p }, { data: r }] = await Promise.all([
+    const [{ data: f }, { data: m }, { data: p }, { data: r }, { data: u }] = await Promise.all([
       supabase.from("core_fabrication_funds").select("*").order("fund_type"),
       supabase.from("core_fabrication_fund_movements").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("core_fabrication_fund_pending_items").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("core_fabrication_fund_runs").select("*").order("created_at", { ascending: false }).limit(50),
+      supabase.from("core_production_units").select("id, sku, variant_sku, status").limit(5000),
     ]);
     setFunds((f as any) ?? []);
     setMovements((m as any) ?? []);
     setPendings((p as any) ?? []);
     setRuns((r as any) ?? []);
+    setUnits((u as any) ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+
 
   const totals = useMemo(() => {
     const general = funds.filter(f => f.fund_type === "general").reduce((s, f) => s + Number(f.available_amount), 0);
@@ -148,8 +157,45 @@ export default function CoreFabricationFunds() {
     const sales = movements.filter(m => m.movement_type.startsWith("sale_generated")).length;
     const reversals = movements.filter(m => m.movement_type === "reversal").length;
     const manuals = movements.filter(m => m.movement_type.startsWith("manual_") || m.movement_type === "correction" || m.movement_type === "transfer").length;
-    return { general, nonR, pendingHist, lastRunPend, rangeCount, rangeRevenue, sales, reversals, manuals, lastRun };
-  }, [funds, pendings, movements, runs, periodStart, periodEnd]);
+
+    // === Visual interpretation: generated vs executed vs available ===
+    // Group posted sale movements by normalized SKU, oldest first.
+    // For each SKU, mark the first N movements as "executed" where N = units in entered_inventory for that SKU.
+    // Remaining posted sale amounts are "available sin asignar".
+    const saleMovs = movements
+      .filter(m => m.status === "posted" && m.movement_type.startsWith("sale_generated") && Number(m.amount) > 0)
+      .slice()
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const generatedTotal = saleMovs.reduce((s, m) => s + Number(m.amount), 0);
+
+    const executedUnitsBySku: Record<string, number> = {};
+    for (const u of units) {
+      if (u.status !== "entered_inventory") continue;
+      const k = normSku(u.variant_sku || u.sku);
+      if (!k) continue;
+      executedUnitsBySku[k] = (executedUnitsBySku[k] ?? 0) + 1;
+    }
+
+    let executedTotal = 0;
+    const usedBySku: Record<string, number> = {};
+    for (const mv of saleMovs) {
+      const k = normSku(mv.sku);
+      const capacity = executedUnitsBySku[k] ?? 0;
+      const used = usedBySku[k] ?? 0;
+      const qty = Number(mv.quantity ?? 1) || 1;
+      const perUnit = Number(mv.amount) / qty;
+      const remaining = Math.max(0, capacity - used);
+      const cover = Math.min(qty, remaining);
+      if (cover > 0) {
+        executedTotal += perUnit * cover;
+        usedBySku[k] = used + cover;
+      }
+    }
+    const availableUnassigned = Math.max(0, generatedTotal - executedTotal);
+
+    return { general, nonR, pendingHist, lastRunPend, rangeCount, rangeRevenue, sales, reversals, manuals, lastRun, generatedTotal, executedTotal, availableUnassigned };
+  }, [funds, pendings, movements, runs, periodStart, periodEnd, units]);
+
 
   async function processSales() {
     setProcessing(true);
@@ -345,7 +391,9 @@ export default function CoreFabricationFunds() {
         {/* RESUMEN */}
         <TabsContent value="resumen" className="space-y-4 mt-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KpiCard label="Partida general disponible" value={usd(totals.general)} tone="emerald" />
+            <KpiCard label="Partida generada" value={usd(totals.generatedTotal)} sub="Ventas confirmadas posted" tone="emerald" />
+            <KpiCard label="Ejecutado en inventario" value={usd(totals.executedTotal)} sub="Unidades ya ingresadas" tone="muted" />
+            <KpiCard label="Disponible sin asignar" value={usd(totals.availableUnassigned)} sub="Libre para fabricar" tone="emerald" />
             <KpiCard label="Partida no restockeable" value={usd(totals.nonR)} tone="orange" />
             <KpiCard label="Pendientes históricos" value={`${totals.pendingHist} ítems`} tone="yellow" />
             <KpiCard label="Pendientes último run" value={String(totals.lastRunPend)} tone="muted" />
@@ -355,6 +403,7 @@ export default function CoreFabricationFunds() {
             <KpiCard label="Último procesamiento" value={totals.lastRun ? new Date(totals.lastRun.created_at).toLocaleString() : "—"} tone="muted" />
           </div>
         </TabsContent>
+
 
         {/* PARTIDAS */}
         <TabsContent value="partidas" className="mt-4">
