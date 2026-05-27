@@ -420,46 +420,97 @@ export default function CoreProductionOrders() {
     await load();
   };
 
-  const renderRow = (o: Order) => (
-    <TableRow key={o.id}>
-      <TableCell className="font-mono text-sm">{o.order_code}</TableCell>
-      <TableCell>
-        <Badge variant="outline" className={STATUS_BADGE[o.status]}>
-          {STATUS_LABEL[o.status] ?? o.status}
-        </Badge>
-        {o.is_overproduction && (
-          <Badge variant="outline" className="ml-1 bg-orange-100 text-orange-800 border-orange-300">
-            Sobreprod.
+  const renderRow = (o: Order) => {
+    const lines = linesByOrder[o.id] ?? [];
+    const checked = selectedOrders.has(o.id);
+    return (
+      <TableRow key={o.id} data-state={checked ? "selected" : undefined}>
+        <TableCell className="w-[36px]">
+          <Checkbox
+            checked={checked}
+            onCheckedChange={(c) => {
+              setSelectedOrders((prev) => {
+                const next = new Set(prev);
+                if (c) next.add(o.id); else next.delete(o.id);
+                return next;
+              });
+            }}
+            aria-label="Seleccionar orden"
+          />
+        </TableCell>
+        <TableCell className="font-mono text-sm">{o.order_code}</TableCell>
+        <TableCell>
+          <Badge variant="outline" className={STATUS_BADGE[o.status]}>
+            {STATUS_LABEL[o.status] ?? o.status}
           </Badge>
-        )}
-      </TableCell>
-      <TableCell>
-        <div className="font-medium">{o.product_name}</div>
-        <div className="text-xs text-muted-foreground font-mono">{o.sku}</div>
-      </TableCell>
-      <TableCell className="text-right">{o.total_quantity}</TableCell>
-      <TableCell className="text-right">{o.pending_quantity}</TableCell>
-      <TableCell className="text-right">{o.completed_quantity}</TableCell>
-      <TableCell className="text-xs text-muted-foreground">{o.source}</TableCell>
-      <TableCell className="text-xs">{new Date(o.created_at).toLocaleString()}</TableCell>
-      <TableCell className="text-right">
-        <Button size="sm" variant="outline" onClick={() => openDetail(o)}>
-          <Eye className="h-3 w-3 mr-1" /> Ver
-        </Button>
-      </TableCell>
-    </TableRow>
-  );
+          {o.is_overproduction && (
+            <Badge variant="outline" className="ml-1 bg-orange-100 text-orange-800 border-orange-300">
+              Sobreprod.
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell>
+          <div className="font-medium">{o.product_name}</div>
+          <div className="text-xs text-muted-foreground font-mono">{o.sku}</div>
+        </TableCell>
+        <TableCell>
+          <div className="flex flex-wrap gap-1 max-w-[260px]">
+            {lines.length === 0 ? (
+              <span className="text-xs text-muted-foreground">—</span>
+            ) : lines.map((l) => (
+              <Badge
+                key={l.id}
+                variant="outline"
+                className="bg-primary/10 text-primary border-primary/30 font-bold text-[11px] px-2 py-0.5"
+                title={l.variant_sku ?? ""}
+              >
+                {(l.size ?? l.variant_label ?? "?")}
+                <span className="ml-1 font-semibold text-foreground/80">×{l.quantity_ordered}</span>
+              </Badge>
+            ))}
+          </div>
+        </TableCell>
+        <TableCell className="text-right">{o.total_quantity}</TableCell>
+        <TableCell className="text-right">{o.pending_quantity}</TableCell>
+        <TableCell className="text-right">{o.completed_quantity}</TableCell>
+        <TableCell className="text-xs text-muted-foreground">{o.source}</TableCell>
+        <TableCell className="text-xs">{new Date(o.created_at).toLocaleString()}</TableCell>
+        <TableCell className="text-right">
+          <Button size="sm" variant="outline" onClick={() => openDetail(o)}>
+            <Eye className="h-3 w-3 mr-1" /> Ver
+          </Button>
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   const filterTable = (statuses: string[]) => {
     const rows = orders.filter((o) => statuses.includes(o.status));
+    const allChecked = rows.length > 0 && rows.every((r) => selectedOrders.has(r.id));
+    const someChecked = rows.some((r) => selectedOrders.has(r.id));
     return (
       <Card className="p-4 mt-3">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[36px]">
+                <Checkbox
+                  checked={allChecked}
+                  onCheckedChange={(c) => {
+                    setSelectedOrders((prev) => {
+                      const next = new Set(prev);
+                      if (c) rows.forEach((r) => next.add(r.id));
+                      else rows.forEach((r) => next.delete(r.id));
+                      return next;
+                    });
+                  }}
+                  aria-label="Seleccionar todo"
+                />
+              </TableHead>
               <TableHead>Código</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Producto</TableHead>
+              <TableHead>Tallas</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="text-right">Pend.</TableHead>
               <TableHead className="text-right">Compl.</TableHead>
@@ -471,7 +522,7 @@ export default function CoreProductionOrders() {
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                   Sin órdenes en esta vista.
                 </TableCell>
               </TableRow>
