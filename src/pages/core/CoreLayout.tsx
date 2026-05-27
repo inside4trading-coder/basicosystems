@@ -36,6 +36,7 @@ const groups: { label: string; items: Section[] }[] = [
   {
     label: "Operación",
     items: [
+      { to: "/core/operarios", label: "Basico Crew (Operarios)", icon: HardHat },
       { to: "/core/nomina", label: "Nómina", icon: Wallet },
       { to: "/core/inventario", label: "Inventario", icon: Warehouse },
       { to: "/core/reportes", label: "Reportes", icon: BarChart3 },
