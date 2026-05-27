@@ -324,8 +324,8 @@ export default function CorePayroll() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard icon={DollarSign} label="Total pendiente semana" value={fmt(kpis.totalPendingThisWeek)} />
-        <KpiCard icon={DollarSign} label="Total acumulado (todo lo pendiente)" value={fmt(kpis.totalPendingAll)} tone={kpis.totalPendingAll > 0 ? "warn" : "default"} />
+        <KpiCard icon={DollarSign} label="Total pendiente (sin nominar)" value={fmt(kpis.totalPendingAll)} tone={kpis.totalPendingAll > 0 ? "warn" : "default"} />
+
         <KpiCard icon={Users} label="Operarios pendientes" value={String(kpis.operatorsPending)} />
         <KpiCard icon={ListChecks} label="Trabajos pendientes" value={String(kpis.processesCount)} />
         <KpiCard icon={AlertTriangle} label="Trabajos sin tarifa" value={String(kpis.missing)} tone={kpis.missing > 0 ? "warn" : "default"} />
