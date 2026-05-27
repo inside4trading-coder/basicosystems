@@ -391,7 +391,9 @@ export default function CoreFabricationFunds() {
         {/* RESUMEN */}
         <TabsContent value="resumen" className="space-y-4 mt-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KpiCard label="Partida general disponible" value={usd(totals.general)} tone="emerald" />
+            <KpiCard label="Partida generada" value={usd(totals.generatedTotal)} sub="Ventas confirmadas posted" tone="emerald" />
+            <KpiCard label="Ejecutado en inventario" value={usd(totals.executedTotal)} sub="Unidades ya ingresadas" tone="muted" />
+            <KpiCard label="Disponible sin asignar" value={usd(totals.availableUnassigned)} sub="Libre para fabricar" tone="emerald" />
             <KpiCard label="Partida no restockeable" value={usd(totals.nonR)} tone="orange" />
             <KpiCard label="Pendientes históricos" value={`${totals.pendingHist} ítems`} tone="yellow" />
             <KpiCard label="Pendientes último run" value={String(totals.lastRunPend)} tone="muted" />
@@ -401,6 +403,7 @@ export default function CoreFabricationFunds() {
             <KpiCard label="Último procesamiento" value={totals.lastRun ? new Date(totals.lastRun.created_at).toLocaleString() : "—"} tone="muted" />
           </div>
         </TabsContent>
+
 
         {/* PARTIDAS */}
         <TabsContent value="partidas" className="mt-4">
