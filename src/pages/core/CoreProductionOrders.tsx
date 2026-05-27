@@ -418,15 +418,41 @@ export default function CoreProductionOrders() {
 
   const openDetail = async (o: Order) => {
     setDetailOrder(o);
-    const [{ data: lines }, { data: procs }, { data: links }] = await Promise.all([
+    const [{ data: lines }, { data: procs }, { data: links }, { data: uns }] = await Promise.all([
       supabase.from("core_production_order_lines").select("*").eq("production_order_id", o.id),
       supabase.from("core_production_order_processes").select("*").eq("production_order_id", o.id).order("process_order"),
       supabase.from("core_production_order_need_links").select("*, core_production_needs(variant_sku, product_name, size)").eq("production_order_id", o.id),
+      supabase
+        .from("core_production_units")
+        .select(
+          "id, unit_code, production_order_id, core_variant_id, variant_sku, variant_label, size, status, entered_inventory_at, entered_inventory_by, inventory_entry_source, updated_at",
+        )
+        .eq("production_order_id", o.id)
+        .order("unit_code"),
     ]);
     setDetailLines((lines as any) ?? []);
     setDetailProcesses((procs as any) ?? []);
     setDetailLinks((links as any) ?? []);
+    const unitsArr = ((uns as any) ?? []) as Unit[];
+    setDetailUnits(unitsArr);
+    const userIds = Array.from(
+      new Set(unitsArr.map((u) => u.entered_inventory_by).filter(Boolean) as string[]),
+    );
+    if (userIds.length) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, email, full_name")
+        .in("id", userIds);
+      const map: Record<string, string> = {};
+      for (const p of (profiles as any[]) ?? []) {
+        map[p.id] = p.full_name || p.email || p.id;
+      }
+      setDetailUserMap(map);
+    } else {
+      setDetailUserMap({});
+    }
   };
+
 
   const changeStatus = async (o: Order, newStatus: string) => {
     const { error } = await supabase
