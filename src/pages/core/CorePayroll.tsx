@@ -152,14 +152,53 @@ export default function CorePayroll() {
   // KPIs
   const kpis = useMemo(() => {
     const currentRun = runs.find(r => r.period_start === week.start && r.period_end === week.end && r.status !== "cancelled");
-    const totalPendingThisWeek = pendingEntries
-      .filter(e => (e.payroll_week_start ?? "") >= week.start && (e.payroll_week_end ?? "") <= week.end)
-      .reduce((s, e) => s + Number(e.payroll_amount ?? 0), 0);
+    const inWeek = (e: WorkEntry) => {
+      const d = (e.created_at ?? "").slice(0, 10);
+      return d >= week.start && d <= week.end;
+    };
+    const totalPendingThisWeek = pendingEntries.filter(inWeek).reduce((s, e) => s + Number(e.payroll_amount ?? 0), 0);
+    const totalPendingAll = pendingEntries.reduce((s, e) => s + Number(e.payroll_amount ?? 0), 0);
     const operatorsPending = new Set(pendingEntries.filter(e => e.operator_id).map(e => e.operator_id!)).size;
     const approved = runs.filter(r => r.status === "approved").length;
     const paid = runs.filter(r => r.status === "paid").length;
-    return { currentRun, totalPendingThisWeek, operatorsPending, processesCount: pendingEntries.length, missing: missingRateEntries.length, approved, paid };
+    return { currentRun, totalPendingThisWeek, totalPendingAll, operatorsPending, processesCount: pendingEntries.length, missing: missingRateEntries.length, approved, paid };
   }, [runs, pendingEntries, missingRateEntries, week]);
+
+  // Group pending entries by operator
+  const operatorSummaries = useMemo(() => {
+    const map = new Map<string, {
+      operatorId: string;
+      name: string;
+      entries: WorkEntry[];
+      total: number;
+      byProcess: Map<string, { count: number; total: number }>;
+      byUnit: Set<string>;
+    }>();
+    for (const e of pendingEntries) {
+      const key = e.operator_id ?? "__none__";
+      let row = map.get(key);
+      if (!row) {
+        row = {
+          operatorId: key,
+          name: e.operator_name_snapshot ?? "Sin operario",
+          entries: [],
+          total: 0,
+          byProcess: new Map(),
+          byUnit: new Set(),
+        };
+        map.set(key, row);
+      }
+      row.entries.push(e);
+      row.total += Number(e.payroll_amount ?? 0);
+      const pName = e.process_name ?? "—";
+      const p = row.byProcess.get(pName) ?? { count: 0, total: 0 };
+      p.count += 1;
+      p.total += Number(e.payroll_amount ?? 0);
+      row.byProcess.set(pName, p);
+      if (e.unit_code) row.byUnit.add(e.unit_code);
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [pendingEntries]);
 
   async function generatePayroll() {
     if (!periodStart || !periodEnd || periodEnd < periodStart) {
@@ -286,6 +325,7 @@ export default function CorePayroll() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard icon={DollarSign} label="Total pendiente semana" value={fmt(kpis.totalPendingThisWeek)} />
+        <KpiCard icon={DollarSign} label="Total acumulado (todo lo pendiente)" value={fmt(kpis.totalPendingAll)} tone={kpis.totalPendingAll > 0 ? "warn" : "default"} />
         <KpiCard icon={Users} label="Operarios pendientes" value={String(kpis.operatorsPending)} />
         <KpiCard icon={ListChecks} label="Trabajos pendientes" value={String(kpis.processesCount)} />
         <KpiCard icon={AlertTriangle} label="Trabajos sin tarifa" value={String(kpis.missing)} tone={kpis.missing > 0 ? "warn" : "default"} />
@@ -295,12 +335,17 @@ export default function CorePayroll() {
         <KpiCard icon={FileText} label="Semana actual" value={`${formatDMY(week.start)} → ${formatDMY(week.end)}`} />
       </div>
 
-      <Tabs defaultValue="runs" className="w-full">
+      <Tabs defaultValue="operators" className="w-full">
         <TabsList>
+          <TabsTrigger value="operators">Por operario ({operatorSummaries.length})</TabsTrigger>
           <TabsTrigger value="runs">Nóminas</TabsTrigger>
-          <TabsTrigger value="pending">Trabajos pendientes</TabsTrigger>
+          <TabsTrigger value="pending">Trabajos pendientes ({pendingEntries.length})</TabsTrigger>
           <TabsTrigger value="missing">Sin tarifa ({kpis.missing})</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="operators">
+          <OperatorsPendingPanel summaries={operatorSummaries} totalAll={kpis.totalPendingAll} />
+        </TabsContent>
 
         <TabsContent value="runs">
           <Card>
@@ -326,8 +371,8 @@ export default function CorePayroll() {
                     {runs.map(r => (
                       <TableRow key={r.id}>
                         <TableCell className="font-mono text-xs">{r.payroll_code}</TableCell>
-                        <TableCell className="text-sm">{r.period_start} → {r.period_end}</TableCell>
-                        <TableCell className="text-sm">{r.payment_date ?? "—"}</TableCell>
+                        <TableCell className="text-sm">{formatDMY(r.period_start)} → {formatDMY(r.period_end)}</TableCell>
+                        <TableCell className="text-sm">{r.payment_date ? formatDMY(r.payment_date) : "—"}</TableCell>
                         <TableCell>{r.operators_count}</TableCell>
                         <TableCell>{r.work_entries_count}</TableCell>
                         <TableCell>{fmt(r.total_amount, r.currency)}</TableCell>
@@ -431,6 +476,108 @@ function WorkEntryTable({ entries, showRateActions }: { entries: WorkEntry[]; sh
                 <TableCell><StatusBadge s={e.payroll_status} /></TableCell>
               </TableRow>
             ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function OperatorsPendingPanel({
+  summaries,
+  totalAll,
+}: {
+  summaries: Array<{
+    operatorId: string;
+    name: string;
+    entries: WorkEntry[];
+    total: number;
+    byProcess: Map<string, { count: number; total: number }>;
+    byUnit: Set<string>;
+  }>;
+  totalAll: number;
+}) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  if (summaries.length === 0) {
+    return <Card><CardContent className="p-6 text-sm text-muted-foreground">Sin trabajos pendientes por operario.</CardContent></Card>;
+  }
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base">Pendientes por operario (aún sin nómina)</CardTitle>
+        <span className="text-sm font-bold">Total: {fmt(totalAll)}</span>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Operario</TableHead>
+              <TableHead className="text-right">Trabajos</TableHead>
+              <TableHead className="text-right">Unidades</TableHead>
+              <TableHead>Procesos</TableHead>
+              <TableHead className="text-right">Total USD</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {summaries.map(op => {
+              const procs = Array.from(op.byProcess.entries())
+                .map(([n, v]) => `${n} ×${v.count}`)
+                .join(" · ");
+              const expanded = openId === op.operatorId;
+              return [
+                <TableRow key={op.operatorId}>
+                  <TableCell className="font-medium">{op.name}</TableCell>
+                  <TableCell className="text-right">{op.entries.length}</TableCell>
+                  <TableCell className="text-right">{op.byUnit.size}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{procs}</TableCell>
+                  <TableCell className="text-right font-bold">{fmt(op.total)}</TableCell>
+                  <TableCell>
+                    <Button variant="outline" size="sm" onClick={() => setOpenId(expanded ? null : op.operatorId)}>
+                      {expanded ? "Ocultar" : "Detalle"}
+                    </Button>
+                  </TableCell>
+                </TableRow>,
+                expanded ? (
+                  <TableRow key={op.operatorId + "-d"}>
+                    <TableCell colSpan={6} className="bg-muted/30 p-0">
+                      <div className="p-3 space-y-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {Array.from(op.byProcess.entries()).map(([n, v]) => (
+                            <div key={n} className="rounded border bg-background px-3 py-2">
+                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{n}</div>
+                              <div className="text-sm font-bold">{v.count} trabajos · {fmt(v.total)}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Fecha</TableHead>
+                              <TableHead>Unidad</TableHead>
+                              <TableHead>Proceso</TableHead>
+                              <TableHead className="text-right">Tarifa</TableHead>
+                              <TableHead className="text-right">Monto</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {op.entries.map(e => (
+                              <TableRow key={e.id}>
+                                <TableCell className="text-xs">{formatDMY(e.created_at)}</TableCell>
+                                <TableCell className="font-mono text-xs">{e.unit_code}</TableCell>
+                                <TableCell className="text-sm">{e.process_name}</TableCell>
+                                <TableCell className="text-right">{fmt(e.rate_snapshot, e.currency ?? "USD")}</TableCell>
+                                <TableCell className="text-right">{fmt(e.payroll_amount, e.currency ?? "USD")}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : null,
+              ];
+            })}
           </TableBody>
         </Table>
       </CardContent>
