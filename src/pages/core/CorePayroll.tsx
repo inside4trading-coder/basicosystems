@@ -152,14 +152,53 @@ export default function CorePayroll() {
   // KPIs
   const kpis = useMemo(() => {
     const currentRun = runs.find(r => r.period_start === week.start && r.period_end === week.end && r.status !== "cancelled");
-    const totalPendingThisWeek = pendingEntries
-      .filter(e => (e.payroll_week_start ?? "") >= week.start && (e.payroll_week_end ?? "") <= week.end)
-      .reduce((s, e) => s + Number(e.payroll_amount ?? 0), 0);
+    const inWeek = (e: WorkEntry) => {
+      const d = (e.created_at ?? "").slice(0, 10);
+      return d >= week.start && d <= week.end;
+    };
+    const totalPendingThisWeek = pendingEntries.filter(inWeek).reduce((s, e) => s + Number(e.payroll_amount ?? 0), 0);
+    const totalPendingAll = pendingEntries.reduce((s, e) => s + Number(e.payroll_amount ?? 0), 0);
     const operatorsPending = new Set(pendingEntries.filter(e => e.operator_id).map(e => e.operator_id!)).size;
     const approved = runs.filter(r => r.status === "approved").length;
     const paid = runs.filter(r => r.status === "paid").length;
-    return { currentRun, totalPendingThisWeek, operatorsPending, processesCount: pendingEntries.length, missing: missingRateEntries.length, approved, paid };
+    return { currentRun, totalPendingThisWeek, totalPendingAll, operatorsPending, processesCount: pendingEntries.length, missing: missingRateEntries.length, approved, paid };
   }, [runs, pendingEntries, missingRateEntries, week]);
+
+  // Group pending entries by operator
+  const operatorSummaries = useMemo(() => {
+    const map = new Map<string, {
+      operatorId: string;
+      name: string;
+      entries: WorkEntry[];
+      total: number;
+      byProcess: Map<string, { count: number; total: number }>;
+      byUnit: Set<string>;
+    }>();
+    for (const e of pendingEntries) {
+      const key = e.operator_id ?? "__none__";
+      let row = map.get(key);
+      if (!row) {
+        row = {
+          operatorId: key,
+          name: e.operator_name_snapshot ?? "Sin operario",
+          entries: [],
+          total: 0,
+          byProcess: new Map(),
+          byUnit: new Set(),
+        };
+        map.set(key, row);
+      }
+      row.entries.push(e);
+      row.total += Number(e.payroll_amount ?? 0);
+      const pName = e.process_name ?? "—";
+      const p = row.byProcess.get(pName) ?? { count: 0, total: 0 };
+      p.count += 1;
+      p.total += Number(e.payroll_amount ?? 0);
+      row.byProcess.set(pName, p);
+      if (e.unit_code) row.byUnit.add(e.unit_code);
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [pendingEntries]);
 
   async function generatePayroll() {
     if (!periodStart || !periodEnd || periodEnd < periodStart) {
