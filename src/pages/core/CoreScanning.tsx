@@ -345,6 +345,18 @@ export default function CoreScanning() {
       toast({ title: "Operario obligatorio para procesos que suman a nómina.", variant: "destructive" });
       return;
     }
+    // Soft warning: role mismatch
+    if (operatorId) {
+      const opCheck = operatorById(operatorId);
+      if (opCheck && !operatorMatchesProc(opCheck, proc) && !confirmMismatch) {
+        toast({
+          title: "Operario sin rol sugerido",
+          description: "Marca la casilla de confirmación para continuar.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     if (missingRate && !forceMissingRate) {
       toast({
         title: "Tarifa faltante",
@@ -356,7 +368,8 @@ export default function CoreScanning() {
     }
 
     const op = operatorId ? operatorById(operatorId) : null;
-    const opName = op ? `${op.first_name} ${op.last_name}` : null;
+    const opName = op ? operatorFullName(op) : null;
+    const opRoles = op?.role_types || null;
     const { data: { user } } = await supabase.auth.getUser();
 
     // Insert scan event
