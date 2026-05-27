@@ -659,6 +659,8 @@ export default function CoreScanning() {
             </div>
           )}
 
+          <UnitInventorySection unit={unit} processes={processes} />
+
           <Tabs defaultValue="history">
             <TabsList>
               <TabsTrigger value="history"><History className="h-4 w-4 mr-1" /> Historial</TabsTrigger>
