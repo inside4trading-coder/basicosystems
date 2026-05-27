@@ -113,7 +113,12 @@ const CLOSED_STATUSES = ["closed", "manually_closed"];
 
 export default function CoreProductionOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [allLines, setAllLines] = useState<Line[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState<null | "in_production" | "open" | "cancelled" | "manually_closed">(null);
+  const [bulkReason, setBulkReason] = useState("");
+  const [bulkRunning, setBulkRunning] = useState(false);
 
   const [fromNeedsOpen, setFromNeedsOpen] = useState(false);
   const [approvedNeeds, setApprovedNeeds] = useState<Need[]>([]);
@@ -150,11 +155,70 @@ export default function CoreProductionOrders() {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(500);
-    setOrders((data as any) ?? []);
+    const ords = ((data as any) ?? []) as Order[];
+    setOrders(ords);
+    const ids = ords.map((o) => o.id);
+    if (ids.length) {
+      const { data: lns } = await supabase
+        .from("core_production_order_lines")
+        .select("*")
+        .in("production_order_id", ids);
+      setAllLines((lns as any) ?? []);
+    } else {
+      setAllLines([]);
+    }
+    setSelectedOrders(new Set());
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
+
+  const linesByOrder = useMemo(() => {
+    const m: Record<string, Line[]> = {};
+    for (const l of allLines) (m[l.production_order_id] ||= []).push(l);
+    return m;
+  }, [allLines]);
+
+  const runBulk = async () => {
+    const ids = Array.from(selectedOrders);
+    if (!ids.length || !bulkOpen) return;
+    if ((bulkOpen === "cancelled" || bulkOpen === "manually_closed") && !bulkReason.trim()) {
+      toast.error("Motivo obligatorio");
+      return;
+    }
+    setBulkRunning(true);
+    try {
+      const patch: any = { status: bulkOpen };
+      if (bulkOpen === "cancelled") {
+        patch.cancelled_reason = bulkReason;
+        patch.cancelled_at = new Date().toISOString();
+      }
+      if (bulkOpen === "manually_closed") {
+        patch.manual_close_reason = bulkReason;
+        patch.manual_close_notes = bulkReason;
+        patch.manually_closed_at = new Date().toISOString();
+      }
+      const { error } = await supabase
+        .from("core_production_orders")
+        .update(patch)
+        .in("id", ids);
+      if (error) throw error;
+      for (const id of ids) {
+        await logCoreAudit({
+          table: "core_production_orders", recordId: id,
+          action: `bulk_${bulkOpen}`, field: "status",
+          oldValue: null, newValue: bulkOpen,
+        });
+      }
+      toast.success(`${ids.length} orden(es) actualizadas`);
+      setBulkOpen(null); setBulkReason("");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error en acción masiva");
+    } finally {
+      setBulkRunning(false);
+    }
+  };
 
   const kpis = useMemo(() => {
     const open = orders.filter((o) => OPEN_STATUSES.includes(o.status));
