@@ -49,13 +49,31 @@ type UnitProcess = {
   notes: string | null;
 };
 
-type Employee = {
+type Operator = {
   id: string;
   first_name: string;
-  last_name: string;
-  position: string;
+  last_name: string | null;
+  alias: string | null;
   status: string;
+  role_types: string[];
+  primary_role: string | null;
 };
+
+// Map process_type / suggested_role to factory role_type
+const PROCESS_TO_ROLE: Record<string, string> = {
+  corte: "cutter", cutter: "cutter", cortador: "cutter", cortadora: "cutter",
+  costura: "sewer", sewer: "sewer", costurera: "sewer", costurero: "sewer",
+  estampado: "printer", printer: "printer", estampador: "printer",
+  bordado: "embroiderer", embroiderer: "embroiderer", bordador: "embroiderer",
+  empaque: "packing", packing: "packing",
+  logistica: "logistics", "logística": "logistics", logistics: "logistics",
+  calidad: "quality", quality: "quality",
+};
+function mapToRoleType(s?: string | null): string | null {
+  if (!s) return null;
+  const k = s.toLowerCase().trim();
+  return PROCESS_TO_ROLE[k] || null;
+}
 
 type ScanEvent = {
   id: string;
