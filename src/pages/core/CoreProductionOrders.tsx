@@ -639,9 +639,14 @@ export default function CoreProductionOrders() {
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{n.product_name}</div>
-                        <div className="text-xs text-muted-foreground font-mono">
-                          {n.variant_sku} · talla {n.size ?? "—"}
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-primary text-primary-foreground font-bold text-sm px-2.5 py-0.5">
+                            {n.size ?? "—"}
+                          </Badge>
+                          <div className="font-medium">{n.product_name}</div>
+                        </div>
+                        <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                          {n.variant_sku}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">{n.quantity_approved}</TableCell>
