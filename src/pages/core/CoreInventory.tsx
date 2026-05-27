@@ -693,6 +693,72 @@ export default function CoreInventory() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmar escritura Woo */}
+      <Dialog
+        open={!!confirming}
+        onOpenChange={(o) => { if (!o) { setConfirming(null); setConfirmChecked(false); } }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" /> Confirmar escritura WooCommerce
+            </DialogTitle>
+            <DialogDescription>
+              Vas a sumar <strong>+1</strong> al stock real de WooCommerce para esta variación.
+              Esta acción no debe repetirse.
+            </DialogDescription>
+          </DialogHeader>
+          {confirming && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div><span className="text-muted-foreground">Unidad: </span><span className="font-mono">{confirming.unit_code ?? "—"}</span></div>
+                <div><span className="text-muted-foreground">SKU variante: </span><span className="font-mono">{confirming.variant_sku ?? confirming.sku ?? "—"}</span></div>
+                <div><span className="text-muted-foreground">Talla: </span>{confirming.size ?? "—"}</div>
+                <div><span className="text-muted-foreground">Woo product: </span><span className="font-mono">{confirming.woo_product_id ?? "—"}</span></div>
+                <div><span className="text-muted-foreground">Woo variation: </span><span className="font-mono">{confirming.woo_variation_id ?? "—"}</span></div>
+                <div><span className="text-muted-foreground">Stock preview: </span>{confirming.stock_before ?? 0}</div>
+                <div><span className="text-muted-foreground">Entrada: </span><strong>+1</strong></div>
+                <div><span className="text-muted-foreground">Stock esperado: </span><strong>{confirming.stock_after_expected ?? 0}</strong></div>
+              </div>
+              <div className="text-xs text-amber-800 bg-amber-500/10 border border-amber-300/40 rounded p-2 flex gap-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5" />
+                <span>
+                  La función re-leerá el stock real de WooCommerce antes de escribir. Si cambió, la
+                  escritura se cancelará y deberás regenerar el preview.
+                </span>
+              </div>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <Checkbox
+                  checked={confirmChecked}
+                  onCheckedChange={(v) => setConfirmChecked(!!v)}
+                />
+                <span className="text-sm">
+                  Confirmo que quiero actualizar stock real en WooCommerce.
+                </span>
+              </label>
+              <p className="text-[11px] text-muted-foreground">
+                Revertir actualización Woo — próximamente.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setConfirming(null); setConfirmChecked(false); }}
+              disabled={confirmBusy}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => confirming && confirmWrite(confirming)}
+              disabled={!confirmChecked || confirmBusy}
+            >
+              {confirmBusy ? "Confirmando…" : "Confirmar y escribir en WooCommerce"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
