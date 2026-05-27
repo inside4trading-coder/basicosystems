@@ -2906,6 +2906,7 @@ export type Database = {
           update_woocommerce_inventory: boolean
           updated_at: string
           updated_by: string | null
+          woo_write_mode: string
         }
         Insert: {
           allow_stock_in_transit?: boolean
@@ -2931,6 +2932,7 @@ export type Database = {
           update_woocommerce_inventory?: boolean
           updated_at?: string
           updated_by?: string | null
+          woo_write_mode?: string
         }
         Update: {
           allow_stock_in_transit?: boolean
@@ -2956,6 +2958,7 @@ export type Database = {
           update_woocommerce_inventory?: boolean
           updated_at?: string
           updated_by?: string | null
+          woo_write_mode?: string
         }
         Relationships: [
           {
@@ -3066,6 +3069,96 @@ export type Database = {
           woo_stock_quantity?: number | null
           woo_variation_id?: number | null
           woo_variations?: Json | null
+        }
+        Relationships: []
+      }
+      core_woo_write_logs: {
+        Row: {
+          action_type: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          core_product_id: string | null
+          core_variant_id: string | null
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          idempotency_key: string | null
+          inventory_entry_id: string | null
+          mode: string
+          production_order_id: string | null
+          production_unit_id: string | null
+          quantity_delta: number | null
+          request_payload: Json | null
+          response_payload: Json | null
+          sku: string | null
+          source_id: string | null
+          source_type: string | null
+          status: string
+          stock_after_confirmed: number | null
+          stock_after_expected: number | null
+          stock_before: number | null
+          variant_sku: string | null
+          woo_product_id: number | null
+          woo_variation_id: number | null
+        }
+        Insert: {
+          action_type: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          idempotency_key?: string | null
+          inventory_entry_id?: string | null
+          mode: string
+          production_order_id?: string | null
+          production_unit_id?: string | null
+          quantity_delta?: number | null
+          request_payload?: Json | null
+          response_payload?: Json | null
+          sku?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          stock_after_confirmed?: number | null
+          stock_after_expected?: number | null
+          stock_before?: number | null
+          variant_sku?: string | null
+          woo_product_id?: number | null
+          woo_variation_id?: number | null
+        }
+        Update: {
+          action_type?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          idempotency_key?: string | null
+          inventory_entry_id?: string | null
+          mode?: string
+          production_order_id?: string | null
+          production_unit_id?: string | null
+          quantity_delta?: number | null
+          request_payload?: Json | null
+          response_payload?: Json | null
+          sku?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          stock_after_confirmed?: number | null
+          stock_after_expected?: number | null
+          stock_before?: number | null
+          variant_sku?: string | null
+          woo_product_id?: number | null
+          woo_variation_id?: number | null
         }
         Relationships: []
       }
