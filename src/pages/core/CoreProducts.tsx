@@ -340,7 +340,8 @@ export default function CoreProducts() {
                         <div>{p.core_sku}</div>
                         <div className="flex gap-1 mt-1 flex-wrap">
                           {p.sku_source === "woocommerce" && <Badge variant="outline" className="text-[10px] py-0 px-1">Woo</Badge>}
-                          {p.sync_status === "draft_from_woo" && <Badge variant="secondary" className="text-[10px] py-0 px-1">borrador Woo</Badge>}
+                          {p.sync_status === "draft_from_woo" && !(p.commercial_status === "active" && p.woo_product_id && Number(p.unit_cost) > 0) && <Badge variant="secondary" className="text-[10px] py-0 px-1">borrador Woo</Badge>}
+                          {p.woo_product_id && p.sync_status !== "draft_from_woo" && p.sync_status !== "conflict" && <Badge variant="outline" className="text-[10px] py-0 px-1 border-green-600 text-green-700">Woo conectado</Badge>}
                           {p.sync_status === "conflict" && <Badge variant="destructive" className="text-[10px] py-0 px-1">conflicto</Badge>}
                         </div>
                       </TableCell>
