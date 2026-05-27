@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { ListChecks, Play, Plus, RotateCcw, History, AlertCircle, CheckCircle2, Ban, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
+import { formatDMY } from "@/lib/dateUtils";
 
 type Need = {
   id: string;
@@ -336,7 +337,7 @@ export default function CoreProductionNeeds() {
                     <TableCell className="text-right">{n.quantity_converted_to_order}</TableCell>
                     <TableCell><Badge variant="outline" className={PRIORITY_BADGE[n.priority]}>{n.priority}</Badge></TableCell>
                     <TableCell className="text-xs">{n.need_type === "sale_generated" ? "Venta" : "Manual"}</TableCell>
-                    <TableCell className="text-xs">{n.last_sale_at ? new Date(n.last_sale_at).toLocaleDateString() : "—"}</TableCell>
+                    <TableCell className="text-xs">{n.last_sale_at ? new formatDMY(Date(n.last_sale_at)) : "—"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
                         <Button size="sm" variant="outline" onClick={() => approveAll(n)} title="Aprobar todo">

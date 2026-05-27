@@ -18,6 +18,7 @@ import {
 import { fetchConfig } from "@/hooks/useRRPPData";
 import { formatFollowers } from "./rrppConstants";
 import type { SocialMedia } from "@/types/rrpp";
+import { formatDMY } from "@/lib/dateUtils";
 
 const db = supabase as any;
 
@@ -263,7 +264,7 @@ export function RRPPSocialMedia({ contactId }: Props) {
                     return (
                       <div key={r.id} className="flex items-center justify-between text-xs border-t pt-2">
                         <div className="min-w-0">
-                          <p className="text-muted-foreground">{new Date(r.measured_at).toLocaleDateString()}</p>
+                          <p className="text-muted-foreground">{new formatDMY(Date(r.measured_at))}</p>
                           <p className="truncate">
                             @{r.handle} · {formatFollowers(r.followers)}
                             {next && (
@@ -284,7 +285,7 @@ export function RRPPSocialMedia({ contactId }: Props) {
                             <AlertDialogHeader>
                               <AlertDialogTitle>¿Eliminar registro?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Se eliminará la medición de {network} del {new Date(r.measured_at).toLocaleDateString()}.
+                                Se eliminará la medición de {network} del {new formatDMY(Date(r.measured_at))}.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

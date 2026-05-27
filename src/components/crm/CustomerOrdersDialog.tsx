@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Loader2, Package, Mail, Phone, MapPin, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { formatDMY } from "@/lib/dateUtils";
 
 interface Customer {
   id: number;
@@ -96,7 +97,7 @@ export function CustomerOrdersDialog({ customer, open, onOpenChange }: Props) {
     return rate > 0 ? val / rate : val;
   };
   const fmtDate = (d: string | null) =>
-    d ? new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+    d ? new formatDMY(Date(d)) : "—";
 
   const totalUsd = orders.reduce((sum, o) => sum + toUsd(o), 0);
 

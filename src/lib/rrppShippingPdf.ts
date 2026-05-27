@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import type { Collaboration } from "@/types/rrpp";
 import type { RRPPBrand } from "@/hooks/useRRPPBrand";
 import { RRPP_BRAND_LABELS } from "@/hooks/useRRPPBrand";
+import { formatDMY } from "@/lib/dateUtils";
 
 interface Params {
   collab: Collaboration;
@@ -10,7 +11,7 @@ interface Params {
   contactAlias?: string;
 }
 
-const today = () => new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
+const today = () => new formatDMY(Date());
 
 export function generateShippingPdf({ collab, brand, contactName, contactAlias }: Params) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -71,7 +72,7 @@ export function generateShippingPdf({ collab, brand, contactName, contactAlias }
   doc.setTextColor(0);
   y += 6;
   doc.setFont("helvetica", "normal");
-  y = drawField(doc, "Fecha de pedido", collab.send_date ? new Date(collab.send_date).toLocaleDateString("es-ES") : "—", M, y);
+  y = drawField(doc, "Fecha de pedido", collab.send_date ? new formatDMY(Date(collab.send_date)) : "—", M, y);
   y = drawMulti(doc, "Productos", collab.products || "—", M, y, W - M * 2);
   y = drawMulti(doc, "Detalles del pedido", collab.order_details || "—", M, y, W - M * 2);
   y += 4;

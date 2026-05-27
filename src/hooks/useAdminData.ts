@@ -7,7 +7,7 @@ import type {
   ObligationInstance,
 } from "@/types/admin";
 import { computeUrgency } from "@/types/admin";
-import { formatLocalDate } from "@/lib/dateUtils";
+import { formatLocalDate, formatDMY } from "@/lib/dateUtils";
 import { useAdminScope } from "@/contexts/AdminScope";
 
 async function logAudit(auditTable: string, entry: {
@@ -64,7 +64,7 @@ function generateDueDates(obligation: Obligation, monthsAhead: number, fromDate 
       const d = new Date(cursor);
       out.push({
         due_date: formatLocalDate(d),
-        period_label: d.toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }),
+        period_label: formatDMY(d),
       });
       cursor.setDate(cursor.getDate() + stepDays);
     }

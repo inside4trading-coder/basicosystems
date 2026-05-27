@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Save, Loader2, AlertTriangle } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
+import { formatDMY } from "@/lib/dateUtils";
 
 const PRODUCT_TYPES = ["Franela", "Hoodie", "Jogger", "Cargo", "Short", "Gorra", "Accesorio", "Producto terminado", "Otro"];
 const CURRENCIES = ["USD", "Bs", "EUR"];
@@ -780,7 +781,7 @@ function RawMaterialBlock({
           </div>
           {it.cost_snapshot && (
             <p className="text-[11px] text-muted-foreground">
-              Snapshot: {Number(it.cost_snapshot.unit_cost).toFixed(2)} {it.cost_snapshot.currency} — tomado {new Date(it.cost_snapshot.taken_at).toLocaleDateString()}
+              Snapshot: {Number(it.cost_snapshot.unit_cost).toFixed(2)} {it.cost_snapshot.currency} — tomado {new formatDMY(Date(it.cost_snapshot.taken_at))}
             </p>
           )}
         </div>

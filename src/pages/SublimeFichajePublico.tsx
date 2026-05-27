@@ -5,6 +5,7 @@ import { FichajePersonalPinSetup } from "@/components/sublime/FichajePersonalPin
 import { FichajeClock } from "@/components/sublime/FichajeClock";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { formatDMY } from "@/lib/dateUtils";
 
 type Stage = "identify" | "setup" | "clock";
 
@@ -26,9 +27,7 @@ export default function SublimeFichajePublico() {
     return () => clearInterval(t);
   }, []);
 
-  const fechaLarga = now.toLocaleDateString("es-ES", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
-  });
+  const fechaLarga = formatDMY(now);
   const horaLarga = now.toLocaleTimeString("es-ES", {
     hour: "2-digit", minute: "2-digit", second: "2-digit",
   });

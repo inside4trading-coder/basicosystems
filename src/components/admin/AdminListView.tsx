@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { ObligationInstance } from "@/types/admin";
 import { computeUrgency } from "@/types/admin";
-import { parseLocalDate } from "@/lib/dateUtils";
+import { parseLocalDate, formatDMY } from "@/lib/dateUtils";
 import {
   IMPORTANCE_BADGE,
   IMPORTANCE_LABEL,
@@ -205,7 +205,7 @@ export function AdminListView({ instances, onRowClick, onEdit, onPaid, onClearFi
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap">
                       <div className="font-bold">
-                        {due.toLocaleDateString("es-VE", { day: "2-digit", month: "short" })}
+                        {formatDMY(due)}
                       </div>
                       <div className="text-[11px] text-muted-foreground">{relativeDate(i.due_date)}</div>
                     </td>

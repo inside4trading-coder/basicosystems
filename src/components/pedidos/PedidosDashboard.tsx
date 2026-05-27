@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PERIOD_OPTIONS, periodBounds, type PeriodKey, CUTOFF } from "./periodFilters";
+import { formatDMY } from "@/lib/dateUtils";
 
 
 // Bucket definitions: each maps user-facing label to a list of order_status slugs.
@@ -287,7 +288,7 @@ export function PedidosDashboard() {
   );
 
   const fmtDate = (d: string | null) =>
-    d ? new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short" }) : "—";
+    d ? new formatDMY(Date(d)) : "—";
 
   return (
     <div className="bg-card rounded-lg border border-border p-4 sm:p-5 space-y-5">

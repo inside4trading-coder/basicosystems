@@ -9,6 +9,7 @@ import { isQuickAccess } from "@/config/orderStatuses";
 import { useBlurSales } from "@/hooks/useBlurSales";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { formatDMY } from "@/lib/dateUtils";
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "";
@@ -295,7 +296,7 @@ export default function Dashboard() {
                   <BarChart data={data.dailyRevenue}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))"
-                      tickFormatter={(v) => new Date(v).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} />
+                      tickFormatter={(v) => new formatDMY(Date(v))} />
                     <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}`} />
                     <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Ventas"]}
                       contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
@@ -315,7 +316,7 @@ export default function Dashboard() {
                   <BarChart data={data.dailyOrders}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))"
-                      tickFormatter={(v) => new Date(v).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} />
+                      tickFormatter={(v) => new formatDMY(Date(v))} />
                     <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                     <Tooltip formatter={(v: number) => [v, "Pedidos"]}
                       contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />

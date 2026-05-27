@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDMY } from "@/lib/dateUtils";
 
 interface EmployeeDocument {
   id: string;
@@ -114,11 +115,11 @@ export function CrewDocuments({ employeeId }: { employeeId: string }) {
                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {new Date(doc.created_at).toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" })}
+                    {new formatDMY(Date(doc.created_at))}
                   </span>
                   {doc.expiry_date && (
                     <span className={`flex items-center gap-1 ${expiry === "expired" ? "text-destructive font-semibold" : expiry === "soon" ? "text-yellow-600 font-semibold" : ""}`}>
-                      Vence: {new Date(doc.expiry_date).toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" })}
+                      Vence: {new formatDMY(Date(doc.expiry_date))}
                     </span>
                   )}
                 </div>

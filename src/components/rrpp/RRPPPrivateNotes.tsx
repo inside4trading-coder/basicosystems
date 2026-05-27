@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { PrivateNote } from "@/types/rrpp";
 import { useRRPPPermissions } from "./useRRPPPermissions";
+import { formatDMY } from "@/lib/dateUtils";
 
 const db = supabase as any;
 const NOTE_TYPES = ["Observación", "Advertencia", "Estratégica", "Compromiso", "Riesgo"];
@@ -176,7 +177,7 @@ export function RRPPPrivateNotes({ contactId }: Props) {
               <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-muted-foreground">
-                    {new Date(n.date).toLocaleDateString()}
+                    {new formatDMY(Date(n.date))}
                   </span>
                   {n.author && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1">

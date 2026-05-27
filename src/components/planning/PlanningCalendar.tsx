@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { NotionTask } from "@/hooks/usePlanningData";
 import { deriveStatus, statusVisual, type DerivedStatus } from "@/lib/planningStatus";
-import { formatLocalDate } from "@/lib/dateUtils";
+import { formatLocalDate, formatDMY } from "@/lib/dateUtils";
 
 interface PlanningCalendarProps {
   tasks: NotionTask[];
@@ -53,7 +53,7 @@ const DAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
 function fmtDate(d: string) {
   // Tratar "YYYY-MM-DD" como fecha local para evitar desfases de timezone
   const [y, m, day] = d.slice(0, 10).split("-").map(Number);
-  return new Date(y, (m ?? 1) - 1, day ?? 1).toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+  return new formatDMY(Date(y, (m ?? 1) - 1, day ?? 1));
 }
 
 function sameDay(a: Date, b: Date) {

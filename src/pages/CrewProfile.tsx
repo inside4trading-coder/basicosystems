@@ -31,6 +31,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { Employee, EmployeeStatus, RecurringTask } from "@/types/crew";
+import { formatDMY } from "@/lib/dateUtils";
 
 const statusConfig: Record<EmployeeStatus, { label: string; className: string }> = {
   active: { label: "Activo", className: "status-badge-success" },
@@ -263,7 +264,7 @@ export default function CrewProfile() {
               {employee.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{employee.location}</span>}
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {new Date(employee.start_date).toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" })}
+                {new formatDMY(Date(employee.start_date))}
               </span>
             </div>
           </div>

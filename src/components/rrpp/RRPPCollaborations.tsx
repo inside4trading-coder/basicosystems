@@ -23,6 +23,7 @@ import type { RRPPBrand } from "@/hooks/useRRPPBrand";
 import { useRRPPPermissions } from "./useRRPPPermissions";
 import { cn } from "@/lib/utils";
 import { generateShippingPdf } from "@/lib/rrppShippingPdf";
+import { formatDMY } from "@/lib/dateUtils";
 
 const db = supabase as any;
 const DEFAULT_NETWORKS = ["Instagram", "TikTok", "YouTube", "X", "Facebook", "LinkedIn"];
@@ -538,7 +539,7 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                 <div className="flex items-start justify-between flex-wrap gap-3">
                   <div>
                     <p className="text-xs text-muted-foreground">Pedido</p>
-                    <p className="font-semibold">{c.send_date ? new Date(c.send_date).toLocaleDateString() : "—"}</p>
+                    <p className="font-semibold">{c.send_date ? new formatDMY(Date(c.send_date)) : "—"}</p>
                   </div>
                   <div className="flex gap-2 flex-wrap items-center">
                     {c.has_coupon && (
@@ -620,7 +621,7 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Enviado</p>
-                      <p className="text-sm">{c.shipped_at ? new Date(c.shipped_at).toLocaleDateString() : "—"}</p>
+                      <p className="text-sm">{c.shipped_at ? new formatDMY(Date(c.shipped_at)) : "—"}</p>
                     </div>
                   </div>
                 )}
@@ -648,7 +649,7 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Fecha del post</p>
-                      <p className="text-sm">{c.post_date ? new Date(c.post_date).toLocaleDateString() : "—"}</p>
+                      <p className="text-sm">{c.post_date ? new formatDMY(Date(c.post_date)) : "—"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Post</p>

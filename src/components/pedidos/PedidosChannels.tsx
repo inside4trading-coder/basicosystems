@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { PERIOD_OPTIONS, periodBounds, type PeriodKey, CUTOFF } from "./periodFilters";
 import { isExcludedFromRevenue } from "@/config/orderStatuses";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { formatDMY } from "@/lib/dateUtils";
 
 type OrderRow = {
   order_id: number;
@@ -77,7 +78,7 @@ const fmtUsd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
 
 const fmtDate = (d: string | null) =>
-  d ? new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" }) : "";
+  d ? new formatDMY(Date(d)) : "";
 
 const MAX_REASONABLE_USD = 4000;
 

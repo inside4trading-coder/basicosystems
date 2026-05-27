@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Mail, Eye, Copy, Trash2, RefreshCw, Send } from "lucide-react";
 import { toast } from "sonner";
+import { formatDMY } from "@/lib/dateUtils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -181,9 +182,9 @@ export default function Campaigns() {
                     </td>
                     <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
                       {c.sent_at
-                        ? new Date(c.sent_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
+                        ? new formatDMY(Date(c.sent_at))
                         : c.scheduled_at
-                        ? new Date(c.scheduled_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
+                        ? new formatDMY(Date(c.scheduled_at))
                         : "—"}
                     </td>
                     <td className="px-4 py-3">{c.recipient_count || 0}</td>

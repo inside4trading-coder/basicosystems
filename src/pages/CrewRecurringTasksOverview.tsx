@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { Employee, RecurringTask } from "@/types/crew";
+import { formatDMY } from "@/lib/dateUtils";
 
 const TZ = "America/Caracas";
 
@@ -429,12 +430,7 @@ export default function CrewRecurringTasksOverview() {
     );
   }
 
-  const todayLabel = now.toLocaleDateString("es-VE", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    timeZone: TZ,
-  });
+  const todayLabel = formatDMY(now);
   const nowTimeLabel = now.toLocaleTimeString("es-VE", {
     hour: "2-digit",
     minute: "2-digit",
