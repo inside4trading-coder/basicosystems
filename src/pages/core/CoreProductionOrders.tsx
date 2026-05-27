@@ -713,9 +713,11 @@ export default function CoreProductionOrders() {
                 <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-auto">
                   {manualVariants.map((v) => (
                     <div key={v.id} className="flex items-center justify-between gap-3">
-                      <div className="text-sm">
-                        <span className="font-mono">{v.variant_sku}</span>
-                        <span className="text-muted-foreground ml-2">{v.size}</span>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Badge className="bg-primary text-primary-foreground font-bold text-sm px-2.5 py-0.5 min-w-[2.5rem] justify-center">
+                          {v.size ?? "—"}
+                        </Badge>
+                        <span className="font-mono text-xs text-muted-foreground">{v.variant_sku}</span>
                       </div>
                       <Input
                         type="number"
