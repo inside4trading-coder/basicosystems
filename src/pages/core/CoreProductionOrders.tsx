@@ -1095,7 +1095,7 @@ export default function CoreProductionOrders() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => window.open(`/core/escaneo?unit=${u.id}`, "_blank")}
+                                    onClick={() => window.open(`/core/escaneo?unit=${u.unit_code}`, "_blank")}
                                   >
                                     <QrCode className="h-3 w-3 mr-1" /> Escanear
                                   </Button>
