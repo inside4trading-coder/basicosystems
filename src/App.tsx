@@ -46,6 +46,7 @@ import CoreRestockControl from "./pages/core/CoreRestockControl";
 import CoreFabricationFunds from "./pages/core/CoreFabricationFunds";
 import CoreProductionNeeds from "./pages/core/CoreProductionNeeds";
 import CoreProductionOrders from "./pages/core/CoreProductionOrders";
+import CoreQRTravelSheets from "./pages/core/CoreQRTravelSheets";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -120,7 +121,7 @@ const App = () => (
                 <Route path="partidas-fabricacion" element={<CoreFabricationFunds />} />
                 <Route path="necesidades" element={<CoreProductionNeeds />} />
                 <Route path="ordenes-produccion" element={<CoreProductionOrders />} />
-                <Route path="qr" element={<CorePlaceholder title="QR / Ficha Viajera" description="Generación e impresión 57×40 mm." />} />
+                <Route path="qr" element={<CoreQRTravelSheets />} />
                 <Route path="escaneo" element={<CorePlaceholder title="Escaneo" description="Escaneo móvil con cámara." />} />
                 <Route path="nomina" element={<CorePlaceholder title="Nómina" description="Cierre semanal y pagos." />} />
                 <Route path="inventario" element={<CorePlaceholder title="Inventario" description="Movimientos y sincronización con WooCommerce." />} />
