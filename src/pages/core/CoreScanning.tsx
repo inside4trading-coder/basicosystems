@@ -695,17 +695,40 @@ export default function CoreScanning() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Operario {registerProc?.adds_to_payroll && <span className="text-destructive">*</span>}</Label>
-              <Select value={operatorId} onValueChange={setOperatorId}>
+              <Label className="flex items-center justify-between">
+                <span>Operario {registerProc?.adds_to_payroll && <span className="text-destructive">*</span>}</span>
+                {registerProc && targetRoleFor(registerProc) && (
+                  <button
+                    type="button"
+                    className="text-xs underline text-muted-foreground"
+                    onClick={() => setShowAllOperators((v) => !v)}
+                  >
+                    {showAllOperators ? "Mostrar sugeridos" : "Ver todos"}
+                  </button>
+                )}
+              </Label>
+              <Select value={operatorId} onValueChange={(v) => { setOperatorId(v); setConfirmMismatch(false); }}>
                 <SelectTrigger><SelectValue placeholder="Selecciona operario" /></SelectTrigger>
                 <SelectContent>
-                  {registerProc && suggestedFor(registerProc).map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.first_name} {e.last_name} — {e.position}
-                    </SelectItem>
-                  ))}
+                  {registerProc && (showAllOperators ? operators : suggestedFor(registerProc)).map((e) => {
+                    const matches = operatorMatchesProc(e, registerProc);
+                    return (
+                      <SelectItem key={e.id} value={e.id}>
+                        {operatorFullName(e)}{e.role_types.length > 0 && ` — ${e.role_types.join(", ")}`}{!matches && " ⚠"}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              {registerProc && operatorId && !operatorMatchesProc(operatorById(operatorId)!, registerProc) && (
+                <div className="mt-2 rounded border border-amber-400/50 bg-amber-100/40 p-2 text-xs">
+                  <p className="font-medium">Este operario no tiene el rol sugerido para este proceso.</p>
+                  <label className="flex items-center gap-2 mt-1">
+                    <input type="checkbox" checked={confirmMismatch} onChange={(e) => setConfirmMismatch(e.target.checked)} />
+                    Confirmo continuar igualmente
+                  </label>
+                </div>
+              )}
             </div>
             <div>
               <Label>Observación</Label>
