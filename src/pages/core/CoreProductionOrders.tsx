@@ -178,6 +178,8 @@ export default function CoreProductionOrders() {
   const [detailLines, setDetailLines] = useState<Line[]>([]);
   const [detailProcesses, setDetailProcesses] = useState<Process[]>([]);
   const [detailLinks, setDetailLinks] = useState<any[]>([]);
+  const [detailUnits, setDetailUnits] = useState<Unit[]>([]);
+  const [detailUserMap, setDetailUserMap] = useState<Record<string, string>>({});
 
   const [closeOpen, setCloseOpen] = useState<Order | null>(null);
   const [closeReason, setCloseReason] = useState("");
