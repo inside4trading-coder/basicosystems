@@ -1064,6 +1064,47 @@ export type Database = {
         }
         Relationships: []
       }
+      core_factory_operator_documents: {
+        Row: {
+          created_at: string
+          doc_type: string
+          expiry_date: string | null
+          file_url: string
+          id: string
+          name: string
+          operator_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          doc_type: string
+          expiry_date?: string | null
+          file_url: string
+          id?: string
+          name: string
+          operator_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          doc_type?: string
+          expiry_date?: string | null
+          file_url?: string
+          id?: string
+          name?: string
+          operator_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_factory_operator_documents_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "core_factory_operators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       core_factory_operator_roles: {
         Row: {
           created_at: string
@@ -1109,6 +1150,7 @@ export type Database = {
         Row: {
           alias: string | null
           base_rate: number | null
+          birth_date: string | null
           created_at: string
           created_by: string | null
           document_id: string | null
@@ -1127,6 +1169,7 @@ export type Database = {
         Insert: {
           alias?: string | null
           base_rate?: number | null
+          birth_date?: string | null
           created_at?: string
           created_by?: string | null
           document_id?: string | null
@@ -1145,6 +1188,7 @@ export type Database = {
         Update: {
           alias?: string | null
           base_rate?: number | null
+          birth_date?: string | null
           created_at?: string
           created_by?: string | null
           document_id?: string | null

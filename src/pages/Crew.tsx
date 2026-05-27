@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BirthdaysThisMonth } from "@/components/crew/BirthdaysThisMonth";
+import { CombinedBirthdays } from "@/components/shared/CombinedBirthdays";
+import { useBirthdayPeople } from "@/hooks/useBirthdayPeople";
 import type { EmployeeStatus } from "@/types/crew";
 import { formatDMY } from "@/lib/dateUtils";
 
@@ -22,6 +23,7 @@ const statusConfig: Record<EmployeeStatus, { label: string; className: string }>
 
 export default function Crew() {
   const { employees, loading, error, addEmployee } = useCrewData();
+  const { people: birthdayPeople } = useBirthdayPeople();
 
   const navigate = useNavigate();
 
@@ -103,7 +105,7 @@ export default function Crew() {
       </div>
 
       {/* Birthdays this month */}
-      <BirthdaysThisMonth employees={employees} />
+      <CombinedBirthdays people={birthdayPeople} />
 
       {/* Search + Filters */}
       <div className="flex flex-wrap items-center gap-3">

@@ -18,6 +18,9 @@ import {
 import { Plus, Search, Pencil, Power } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { CombinedBirthdays } from "@/components/shared/CombinedBirthdays";
+import { useBirthdayPeople } from "@/hooks/useBirthdayPeople";
+import { OperatorDocuments } from "@/components/core/OperatorDocuments";
 
 export const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "cutter", label: "Cortador" },
@@ -40,6 +43,7 @@ type Operator = {
   photo_url: string | null;
   status: string;
   start_date: string | null;
+  birth_date: string | null;
   base_rate: number | null;
   payroll_multiplier: number | null;
   notes: string | null;
@@ -64,9 +68,10 @@ export default function CoreFactoryOperators() {
   function emptyForm() {
     return {
       first_name: "", last_name: "", alias: "", phone: "", document_id: "",
-      status: "active", start_date: "", base_rate: "", payroll_multiplier: "1.00", notes: "", photo_url: "",
+      status: "active", start_date: "", birth_date: "", base_rate: "", payroll_multiplier: "1.00", notes: "", photo_url: "",
     };
   }
+  const { people: birthdayPeople } = useBirthdayPeople();
 
   async function load() {
     const [{ data: o }, { data: r }] = await Promise.all([
@@ -120,6 +125,7 @@ export default function CoreFactoryOperators() {
       document_id: op.document_id || "",
       status: op.status,
       start_date: op.start_date || "",
+      birth_date: op.birth_date || "",
       base_rate: op.base_rate ?? "",
       payroll_multiplier: op.payroll_multiplier == null ? "1.00" : String(op.payroll_multiplier),
       notes: op.notes || "",
@@ -144,6 +150,7 @@ export default function CoreFactoryOperators() {
       photo_url: form.photo_url?.trim() || null,
       status: form.status,
       start_date: form.start_date || null,
+      birth_date: form.birth_date || null,
       base_rate: form.base_rate === "" ? null : Number(form.base_rate),
       payroll_multiplier: form.payroll_multiplier === "" ? 1.00 : Number(form.payroll_multiplier),
       notes: form.notes?.trim() || null,
@@ -202,6 +209,8 @@ export default function CoreFactoryOperators() {
         </div>
         <Button onClick={openNew} variant="brand"><Plus className="h-4 w-4" /> Nuevo operario</Button>
       </div>
+
+      <CombinedBirthdays people={birthdayPeople} />
 
       <Card className="p-4">
         <div className="flex gap-2 flex-wrap items-end">
@@ -284,7 +293,7 @@ export default function CoreFactoryOperators() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar operario" : "Nuevo operario"}</DialogTitle>
             <DialogDescription>Datos básicos y roles productivos.</DialogDescription>
@@ -313,6 +322,10 @@ export default function CoreFactoryOperators() {
             <div>
               <Label>Fecha de ingreso</Label>
               <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+            </div>
+            <div>
+              <Label>Fecha de nacimiento</Label>
+              <Input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} />
             </div>
             <div>
               <Label>Tarifa base</Label>
@@ -375,6 +388,11 @@ export default function CoreFactoryOperators() {
               <Label>Notas</Label>
               <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
+            {editing && (
+              <div className="col-span-2 border-t pt-4">
+                <OperatorDocuments operatorId={editing.id} />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
