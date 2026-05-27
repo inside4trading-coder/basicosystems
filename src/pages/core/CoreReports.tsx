@@ -556,12 +556,33 @@ export default function CoreReports() {
 
         {/* NÓMINA */}
         <TabsContent value="nomina" className="space-y-3">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KPI label="Trabajos pendientes" value={workEntries.filter((w) => w.payroll_status === "pending").length} />
-            <KPI label="Incluidos" value={workEntries.filter((w) => w.payroll_status === "included").length} />
-            <KPI label="Pagados" value={workEntries.filter((w) => w.payroll_status === "paid").length} />
-            <KPI label="Sin tarifa" value={workEntries.filter((w) => !Number(w.payroll_amount)).length} />
-          </div>
+          {(() => {
+            const missingRate = workEntries.filter(
+              (w) => w.payroll_status === "missing_rate" || w.rate_snapshot === null || w.rate_snapshot === undefined,
+            ).length;
+            const zeroRate = workEntries.filter(
+              (w) =>
+                w.payroll_status !== "missing_rate" &&
+                w.rate_snapshot !== null &&
+                w.rate_snapshot !== undefined &&
+                Number(w.rate_snapshot) === 0,
+            ).length;
+            return (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <KPI label="Pendientes" value={workEntries.filter((w) => w.payroll_status === "pending").length} />
+                  <KPI label="Incluidos" value={workEntries.filter((w) => w.payroll_status === "included").length} />
+                  <KPI label="Pagados" value={workEntries.filter((w) => w.payroll_status === "paid").length} />
+                  <KPI label="Sin tarifa / revisar" value={missingRate} tone={missingRate > 0 ? "danger" : "default"} />
+                  <KPI label="Tarifa 0.00 (definida)" value={zeroRate} />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  «Sin tarifa / revisar» cuenta solo entradas con <code>payroll_status=missing_rate</code> o tarifa nula.
+                  «Tarifa 0.00 (definida)» son procesos cuya estructura paga $0 — no son errores.
+                </p>
+              </>
+            );
+          })()}
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">{payrollRuns.length} nómina(s).</p>
             <Button size="sm" variant="outline" onClick={() => downloadCSV("nominas", payrollRuns)}>
@@ -634,25 +655,38 @@ export default function CoreReports() {
                 {wooLogs
                   .filter((l) => matchSearch(l.sku) || matchSearch(l.variant_sku) || matchSearch(l.idempotency_key))
                   .slice(0, 500)
-                  .map((l) => (
-                    <TableRow key={l.id}>
-                      <TableCell className="text-xs">{fmtDate(l.created_at)}</TableCell>
-                      <TableCell className="text-xs">{l.action_type}</TableCell>
-                      <TableCell><Badge variant="outline">{l.mode}</Badge></TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={l.status === "failed" ? "destructive" : "outline"}
-                          className={l.status === "success" ? "bg-green-600 text-white" : ""}
-                        >
-                          {l.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{l.sku ?? l.variant_sku ?? "—"}</TableCell>
-                      <TableCell>{l.quantity_delta ?? 0}</TableCell>
-                      <TableCell className="text-xs">{l.stock_after_confirmed ?? "—"} {l.confirmed_at ? `· ${fmtDate(l.confirmed_at)}` : ""}</TableCell>
-                      <TableCell className="text-xs text-destructive">{l.error_message ?? ""}</TableCell>
-                    </TableRow>
-                  ))}
+                  .map((l) => {
+                    const realWrite = l.status === "success" && l.confirmed_at;
+                    return (
+                      <TableRow key={l.id}>
+                        <TableCell className="text-xs">{fmtDate(l.created_at)}</TableCell>
+                        <TableCell className="text-xs">{l.action_type}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline" className="w-fit">preview: {l.mode}</Badge>
+                            {realWrite && (
+                              <Badge className="bg-blue-600 hover:bg-blue-600/80 text-white w-fit">
+                                Confirmado manualmente
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={l.status === "failed" ? "destructive" : "outline"}
+                            className={l.status === "success" ? "bg-green-600 text-white" : ""}
+                          >
+                            {l.status}
+                            {realWrite ? " · escritura real" : ""}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{l.sku ?? l.variant_sku ?? "—"}</TableCell>
+                        <TableCell>{l.quantity_delta ?? 0}</TableCell>
+                        <TableCell className="text-xs">{l.stock_after_confirmed ?? "—"} {l.confirmed_at ? `· ${fmtDate(l.confirmed_at)}` : ""}</TableCell>
+                        <TableCell className="text-xs text-destructive">{l.error_message ?? ""}</TableCell>
+                      </TableRow>
+                    );
+                  })}
               </TableBody>
             </Table>
           </Card>
