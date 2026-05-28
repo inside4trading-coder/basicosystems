@@ -686,9 +686,9 @@ export default function CoreInventory() {
       <Dialog open={!!discarding} onOpenChange={(o) => !o && setDiscarding(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Descartar preview</DialogTitle>
+            <DialogTitle>Descartar entrada preparada</DialogTitle>
             <DialogDescription>
-              El preview se marcará como <code>skipped</code>. No se borra del historial y no afecta WooCommerce ni la unidad.
+              La entrada preparada se marcará como <code>skipped</code>. Queda en el historial y no afecta WooCommerce ni la unidad.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
