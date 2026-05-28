@@ -501,11 +501,13 @@ export default function CoreInventory() {
                       </TableCell>
                       <TableCell className="text-right font-medium">{l.stock_after_expected ?? 0}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={tone(l.status)}>{l.status}</Badge>
+                        <Badge variant="outline" className={tone(l.status)}>
+                          {l.status === "preview" ? "entrada preparada" : l.status}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button size="sm" variant="ghost" onClick={() => setDetail(l)}>
-                          <Eye className="h-4 w-4" /> Ver
+                          <Eye className="h-4 w-4" /> Ver entrada preparada
                         </Button>
                         {writeMode === "manual_confirm" && l.status === "preview" && (
                           <Button
@@ -513,7 +515,7 @@ export default function CoreInventory() {
                             variant="default"
                             onClick={() => { setConfirming(l); setConfirmChecked(false); }}
                           >
-                            <ShieldCheck className="h-4 w-4" /> Confirmar escritura Woo
+                            <ShieldCheck className="h-4 w-4" /> Confirmar y escribir en WooCommerce
                           </Button>
                         )}
                         <Button
