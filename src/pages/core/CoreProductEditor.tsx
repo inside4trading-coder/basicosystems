@@ -228,6 +228,65 @@ export default function CoreProductEditor() {
     setVariants(v => v.filter((_, i) => i !== idx));
   }
 
+  const [importingVariants, setImportingVariants] = useState(false);
+  async function importVariantsFromWoo() {
+    if (!wooProductId) {
+      toast.error("Falta woo_product_id en la pestaña Woo / Tracking");
+      return;
+    }
+    setImportingVariants(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("core-woo-import-variants", {
+        body: { woo_product_id: Number(wooProductId), apply: false },
+      });
+      if (error) throw error;
+      const incoming: any[] = data?.variants ?? [];
+      if (incoming.length === 0) {
+        toast.warning("Woo no devolvió variantes utilizables (¿producto simple o sin atributo de talla?)");
+        return;
+      }
+      // Merge: por woo_variation_id, luego por size. No duplicar.
+      setVariants(prev => {
+        const byVarId = new Map<number, number>();
+        const bySize = new Map<string, number>();
+        prev.forEach((v, i) => {
+          if (v.woo_variation_id) byVarId.set(Number(v.woo_variation_id), i);
+          if (v.size) bySize.set(v.size.toUpperCase(), i);
+        });
+        const next = [...prev];
+        for (const v of incoming) {
+          const idx = (v.woo_variation_id && byVarId.get(v.woo_variation_id)) ?? bySize.get(String(v.size).toUpperCase()) ?? -1;
+          const payload = {
+            size: v.size,
+            variant_label: v.variant_label,
+            status: "active" as const,
+            woo_variation_id: v.woo_variation_id,
+            woo_sku: v.woo_sku,
+            woo_stock_quantity: v.woo_stock_quantity,
+            woo_regular_price: v.woo_regular_price,
+            woo_sale_price: v.woo_sale_price,
+          };
+          if (idx >= 0) {
+            next[idx] = { ...next[idx], ...payload };
+          } else {
+            next.push({ _local: crypto.randomUUID(), sort_order: next.length, ...payload });
+          }
+        }
+        return next;
+      });
+      toast.success(`Importadas ${incoming.length} variantes desde Woo. Guarda para persistir.`);
+      if (data?.skipped_missing_size > 0) {
+        toast.warning(`${data.skipped_missing_size} variante(s) de Woo omitidas por no tener atributo de talla.`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error importando variantes");
+    } finally {
+      setImportingVariants(false);
+    }
+  }
+
+
+
   async function handleSave() {
     if (!name.trim()) return toast.error("Nombre obligatorio");
     if (!productType) return toast.error("Tipo de producto obligatorio");
