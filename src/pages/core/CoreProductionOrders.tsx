@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
+import { ProductionPipelineSection } from "@/components/core/ProductionPipelineSection";
 
 type Unit = {
   id: string;
