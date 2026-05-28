@@ -187,7 +187,17 @@ export default function CoreScanning() {
       setLoading(false);
       return;
     }
-    setUnit(u as Unit);
+    // Enrich with real product name (variant_label/sku can be misleading e.g. "M")
+    let product_name: string | null = null;
+    if ((u as any).core_product_id) {
+      const { data: prod } = await supabase
+        .from("core_products")
+        .select("name")
+        .eq("id", (u as any).core_product_id)
+        .maybeSingle();
+      product_name = (prod as any)?.name ?? null;
+    }
+    setUnit({ ...(u as Unit), product_name });
     await loadProcesses((u as Unit).id);
     await loadHistory((u as Unit).id);
     setLoading(false);
