@@ -842,11 +842,11 @@ export default function CoreProductionOrders() {
           <TabsTrigger value="closed">Cerradas</TabsTrigger>
           <TabsTrigger value="cancelled">Canceladas</TabsTrigger>
         </TabsList>
-        <TabsContent value="open">{filterTable(OPEN_STATUSES)}</TabsContent>
-        <TabsContent value="prod">{filterTable(PROD_STATUSES)}</TabsContent>
-        <TabsContent value="done">{filterTable(DONE_STATUSES)}</TabsContent>
-        <TabsContent value="closed">{filterTable(CLOSED_STATUSES)}</TabsContent>
-        <TabsContent value="cancelled">{filterTable(["cancelled"])}</TabsContent>
+        <TabsContent value="open">{filterTable("open")}</TabsContent>
+        <TabsContent value="prod">{filterTable("prod")}</TabsContent>
+        <TabsContent value="done">{filterTable("done")}</TabsContent>
+        <TabsContent value="closed">{filterTable("closed")}</TabsContent>
+        <TabsContent value="cancelled">{filterTable("cancelled")}</TabsContent>
       </Tabs>
 
       {/* Crear desde necesidades */}
