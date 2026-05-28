@@ -508,15 +508,62 @@ export default function CoreProductionOrders() {
       })
       .eq("id", cancelOpen.id);
     if (error) { toast.error(error.message); return; }
+
+    // Liberar necesidades vinculadas: devolverlas a 'approved' con su pending restaurado
+    const { data: links } = await supabase
+      .from("core_production_order_need_links")
+      .select("production_need_id, quantity_taken")
+      .eq("production_order_id", cancelOpen.id);
+
+    if (links && links.length) {
+      const needIds = links.map((l: any) => l.production_need_id);
+      const { data: needs } = await supabase
+        .from("core_production_needs")
+        .select("id, quantity_approved, quantity_converted_to_order, quantity_needed")
+        .in("id", needIds);
+      const takenByNeed = new Map<string, number>();
+      for (const l of links) {
+        takenByNeed.set(
+          l.production_need_id,
+          (takenByNeed.get(l.production_need_id) ?? 0) + Number(l.quantity_taken ?? 0),
+        );
+      }
+      for (const n of needs ?? []) {
+        const taken = takenByNeed.get(n.id) ?? 0;
+        const newConverted = Math.max(0, Number(n.quantity_converted_to_order ?? 0) - taken);
+        const approved = Number(n.quantity_approved ?? 0);
+        const newPending = Math.max(0, approved - newConverted);
+        const newStatus =
+          newConverted <= 0
+            ? "approved"
+            : newConverted >= Number(n.quantity_needed ?? approved)
+            ? "converted_to_order"
+            : "partially_converted";
+        await supabase
+          .from("core_production_needs")
+          .update({
+            quantity_converted_to_order: newConverted,
+            quantity_pending: newPending,
+            status: newStatus,
+          })
+          .eq("id", n.id);
+      }
+      await supabase
+        .from("core_production_order_need_links")
+        .delete()
+        .eq("production_order_id", cancelOpen.id);
+    }
+
     await logCoreAudit({
       table: "core_production_orders", recordId: cancelOpen.id,
       action: "cancel", field: "status",
       oldValue: cancelOpen.status, newValue: "cancelled",
     });
-    toast.success("Orden cancelada");
+    toast.success("Orden cancelada y necesidades liberadas");
     setCancelOpen(null); setCancelReason("");
     await load();
   };
+
 
   const renderInventoryBadge = (inv: OrderInvStats | undefined) => {
     if (!inv || inv.total === 0) {
