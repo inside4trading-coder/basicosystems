@@ -641,9 +641,9 @@ export default function CoreInventory() {
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Detalle de preview Woo</DialogTitle>
+            <DialogTitle>Detalle de entrada preparada</DialogTitle>
             <DialogDescription>
-              Modo actual: <strong>{detail?.mode}</strong> — este preview NO escribe en WooCommerce.
+              Modo actual: <strong>{detail?.mode}</strong> — esta entrada todavía NO actualiza WooCommerce.
             </DialogDescription>
           </DialogHeader>
           {detail && (
