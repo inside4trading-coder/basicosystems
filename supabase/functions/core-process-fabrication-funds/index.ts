@@ -603,6 +603,28 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 function roundAmt(n: number) { return Math.round(n * 10000) / 10000; }
+
+// Deriva la talla de un line item Woo cuando no hay variante mapeada en Core.
+function deriveSizeFromItem(it: any, _product: any): string | null {
+  const sku = (it?.sku ?? "").toString().trim();
+  const parent = (it?.parent_sku ?? "").toString().trim();
+  const name = (it?.product_name ?? "").toString();
+  const SIZE_RE = /^(XXS|XS|S|M|L|XL|XXL|XXXL|2XL|3XL|4XL|\d{1,3})$/i;
+
+  if (parent && sku && sku.toUpperCase().startsWith(parent.toUpperCase())) {
+    const tail = sku.slice(parent.length).replace(/^[\s\-_]+/, "").trim();
+    const firstToken = tail.split(/[\s\-_]/)[0];
+    if (firstToken && SIZE_RE.test(firstToken)) return firstToken.toUpperCase();
+  }
+  if (sku) {
+    const tokens = sku.split(/[\s\-_]/).filter(Boolean);
+    const last = tokens[tokens.length - 1];
+    if (last && SIZE_RE.test(last)) return last.toUpperCase();
+  }
+  const m = name.match(/talla\s+([A-Z0-9]+)/i);
+  if (m && SIZE_RE.test(m[1])) return m[1].toUpperCase();
+  return null;
+}
 async function currentFund(supabase: any, id: string) {
   const { data } = await supabase.from("core_fabrication_funds").select("available_amount").eq("id", id).single();
   return Number(data?.available_amount ?? 0);
