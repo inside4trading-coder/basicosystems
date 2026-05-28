@@ -731,7 +731,7 @@ export default function CoreInventory() {
                 <AlertTriangle className="h-4 w-4 mt-0.5" />
                 <span>
                   La función re-leerá el stock real de WooCommerce antes de escribir. Si cambió, la
-                  escritura se cancelará y deberás regenerar el preview.
+                  escritura se cancelará y deberás preparar la entrada nuevamente.
                 </span>
               </div>
               <label className="flex items-start gap-2 cursor-pointer">
