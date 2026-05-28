@@ -299,6 +299,29 @@ export default function CoreProductionNeeds() {
 
   const manuals = useMemo(() => needs.filter(n => n.need_type === "manual_restock"), [needs]);
 
+  const converted = useMemo(() => {
+    const needsById = new Map(needs.map((n) => [n.id, n]));
+    return links
+      .map((l) => {
+        const n = needsById.get(l.production_need_id);
+        return {
+          link_id: l.id,
+          created_at: l.created_at,
+          quantity_taken: l.quantity_taken,
+          order_code: l.order_code,
+          order_status: l.order_status,
+          product_name: n?.product_name ?? null,
+          sku: n?.sku ?? null,
+          variant_sku: n?.variant_sku ?? null,
+          size: n?.size ?? n?.variant_label ?? null,
+          need_status: n?.status ?? null,
+          need_id: l.production_need_id,
+          completed: l.order_status === "closed" || l.order_status === "manually_closed",
+        };
+      })
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  }, [links, needs]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
