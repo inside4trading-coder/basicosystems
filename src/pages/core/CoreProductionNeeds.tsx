@@ -76,7 +76,7 @@ const ORDER_STATUS_BADGE: Record<string, string> = {
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pendiente", review: "En revisión", approved: "Aprobada",
   partially_converted: "Parcial", converted_to_order: "Convertida",
-  ignored: "Ignorada", cancelled: "Cancelada", blocked: "Bloqueada",
+  ignored: "Denegada", cancelled: "Cancelada", blocked: "Bloqueada",
 };
 const STATUS_BADGE: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
@@ -311,6 +311,7 @@ export default function CoreProductionNeeds() {
   }, [needs, runs]);
 
   const openNeeds = useMemo(() => needs.filter(n => OPEN_STATUSES.includes(n.status)), [needs]);
+  const denied = useMemo(() => needs.filter(n => n.status === "ignored"), [needs]);
 
   const byProduct = useMemo(() => {
     const m = new Map<string, { product_name: string; sku: string; total: number; sizes: Need[] }>();
@@ -382,6 +383,7 @@ export default function CoreProductionNeeds() {
           <TabsTrigger value="bySize">Por talla</TabsTrigger>
           <TabsTrigger value="manuals">Manuales ({manuals.length})</TabsTrigger>
           <TabsTrigger value="converted">Convertidas ({converted.length})</TabsTrigger>
+          <TabsTrigger value="denied">Denegadas ({denied.length})</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
 
@@ -601,6 +603,46 @@ export default function CoreProductionNeeds() {
             </Table>
           </Card>
         </TabsContent>
+
+        <TabsContent value="denied">
+          <Card className="p-0 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Talla</TableHead>
+                  <TableHead>SKU variante</TableHead>
+                  <TableHead className="text-right">Necesaria</TableHead>
+                  <TableHead>Origen</TableHead>
+                  <TableHead>Última venta</TableHead>
+                  <TableHead>Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {denied.length === 0 && (
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Sin necesidades denegadas.</TableCell></TableRow>
+                )}
+                {denied.map(n => (
+                  <TableRow key={n.id}>
+                    <TableCell><Badge variant="outline" className={STATUS_BADGE[n.status]}>{STATUS_LABEL[n.status] ?? n.status}</Badge></TableCell>
+                    <TableCell><div className="font-medium">{n.product_name ?? "-"}</div><div className="text-xs text-muted-foreground">{n.sku}</div></TableCell>
+                    <TableCell>{n.size ?? n.variant_label ?? "-"}</TableCell>
+                    <TableCell className="font-mono text-xs">{n.variant_sku ?? "-"}</TableCell>
+                    <TableCell className="text-right">{n.quantity_needed}</TableCell>
+                    <TableCell className="text-xs">{n.need_type === "sale_generated" ? "Venta" : "Manual"}</TableCell>
+                    <TableCell className="text-xs">{n.last_sale_at ? formatDMY(n.last_sale_at) : "—"}</TableCell>
+                    <TableCell>
+                      <Button size="sm" variant="outline" onClick={() => changeStatus(n, "pending")}>Reactivar</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+
+
 
         <TabsContent value="history">
           <Card className="p-0 overflow-hidden">
