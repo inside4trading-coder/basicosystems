@@ -174,6 +174,23 @@ export default function CoreProductionNeeds() {
       } else {
         toast.success(`Generado: ${d.needs_created} nuevas, ${d.needs_updated} actualizadas, ${d.movements_linked} mov. enlazados`);
       }
+      // Alertas fuertes por descartes silenciosos
+      const reasons = (d?.by_skip_reason ?? {}) as Record<string, number>;
+      const missingIds = Number(reasons["missing_core_ids"] ?? 0);
+      const insertFails = Object.entries(reasons).filter(([k]) => k.startsWith("insert_failed") || k === "update_failed").reduce((a, [, v]) => a + Number(v ?? 0), 0);
+      if (missingIds > 0) {
+        toast.error(
+          `⚠️ ${missingIds} movimiento(s) DESCARTADOS por falta de variante/producto Core. Revisa "Partidas de Fabricación → Pendientes".`,
+          { duration: 15000 },
+        );
+      }
+      if (insertFails > 0) {
+        toast.error(`⚠️ ${insertFails} necesidad(es) fallaron al insertarse. Revisa logs.`, { duration: 15000 });
+      }
+      if (Number(d?.non_restockable_skipped ?? 0) > 0) {
+        toast.warning(`${d.non_restockable_skipped} mov. omitidos por control de reposición activo.`, { duration: 8000 });
+      }
+
       await load();
     } catch (e: any) {
       toast.error(e.message ?? "Error");

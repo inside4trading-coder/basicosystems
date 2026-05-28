@@ -243,11 +243,46 @@ async function runProcessSales(
           }
           continue;
         }
-        // Producto resuelto pero variante Woo sin mapear → no postear movimiento huérfano
+        // Producto resuelto pero variante Woo sin mapear → auto-crear desde SKU padre / Woo IDs
         if (wooVarId && !variant) {
-          queuePending("variation_not_mapped", "Asociar la variante Woo a una variante Core");
-          continue;
+          const autoSize = deriveSizeFromItem(it, product);
+          if (!autoSize) {
+            queuePending(
+              "variation_not_mapped",
+              `No se pudo derivar talla automáticamente del SKU "${it.sku ?? ""}" (parent "${it.parent_sku ?? ""}"). Asociar variante manualmente.`,
+            );
+            continue;
+          }
+          const wooSku = (it.sku ?? "").toString().trim() || null;
+          const variantSku = wooSku ? wooSku.replace(/\s+/g, "-") : null;
+          const { data: createdVar, error: createVarErr } = await supabase
+            .from("core_product_variants")
+            .insert({
+              core_product_id: product.id,
+              size: autoSize,
+              variant_label: autoSize,
+              status: "active",
+              woo_variation_id: wooVarId,
+              woo_sku: wooSku,
+              variant_sku: variantSku,
+            })
+            .select("id, core_product_id, variant_sku, woo_sku, woo_variation_id, status, size, variant_label")
+            .single();
+          if (createVarErr || !createdVar) {
+            queuePending(
+              "variation_not_mapped",
+              `Falló auto-creación de variante para wooVarId ${wooVarId}: ${createVarErr?.message ?? "desconocido"}`,
+            );
+            continue;
+          }
+          // Registrar y cachear para próximos ítems del mismo run
+          variationIdToVariant.set(Number(wooVarId), createdVar);
+          if (createdVar.variant_sku) skuToVariant.set(createdVar.variant_sku.toLowerCase(), createdVar);
+          if (createdVar.woo_sku) skuToVariant.set(createdVar.woo_sku.toLowerCase(), createdVar);
+          variant = createdVar;
+          summary.by_reason["variant_auto_created"] = (summary.by_reason["variant_auto_created"] ?? 0) + 1;
         }
+
         const unitCost = Number(product.unit_cost ?? 0);
         if (!unitCost || unitCost <= 0) { queuePending("unit_cost_missing", "Asignar estructura de costos o snapshot al Producto Core"); continue; }
 
@@ -568,6 +603,28 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 function roundAmt(n: number) { return Math.round(n * 10000) / 10000; }
+
+// Deriva la talla de un line item Woo cuando no hay variante mapeada en Core.
+function deriveSizeFromItem(it: any, _product: any): string | null {
+  const sku = (it?.sku ?? "").toString().trim();
+  const parent = (it?.parent_sku ?? "").toString().trim();
+  const name = (it?.product_name ?? "").toString();
+  const SIZE_RE = /^(XXS|XS|S|M|L|XL|XXL|XXXL|2XL|3XL|4XL|\d{1,3})$/i;
+
+  if (parent && sku && sku.toUpperCase().startsWith(parent.toUpperCase())) {
+    const tail = sku.slice(parent.length).replace(/^[\s\-_]+/, "").trim();
+    const firstToken = tail.split(/[\s\-_]/)[0];
+    if (firstToken && SIZE_RE.test(firstToken)) return firstToken.toUpperCase();
+  }
+  if (sku) {
+    const tokens = sku.split(/[\s\-_]/).filter(Boolean);
+    const last = tokens[tokens.length - 1];
+    if (last && SIZE_RE.test(last)) return last.toUpperCase();
+  }
+  const m = name.match(/talla\s+([A-Z0-9]+)/i);
+  if (m && SIZE_RE.test(m[1])) return m[1].toUpperCase();
+  return null;
+}
 async function currentFund(supabase: any, id: string) {
   const { data } = await supabase.from("core_fabrication_funds").select("available_amount").eq("id", id).single();
   return Number(data?.available_amount ?? 0);
