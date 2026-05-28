@@ -293,12 +293,48 @@ export default function CoreProductionOrders() {
     }
   };
 
+  // An order's production is "done" when every non-cancelled unit is either
+  // completed (ready_for_inventory) or already entered_inventory. Such orders
+  // belong in the "Completadas" tab even if order.status is still
+  // in_production/partially_completed (the auto-close trigger only fires once
+  // all units are entered_inventory).
+  const productionDoneByOrder = useMemo(() => {
+    const m: Record<string, boolean> = {};
+    for (const o of orders) {
+      const us = unitsByOrder[o.id] ?? [];
+      const active = us.filter(
+        (u) => u.status !== "cancelled" && u.status !== "discarded",
+      );
+      m[o.id] =
+        active.length > 0 &&
+        active.every(
+          (u) => u.status === "completed" || u.status === "entered_inventory",
+        );
+    }
+    return m;
+  }, [orders, unitsByOrder]);
+
+  const bucketOf = (o: Order): "open" | "prod" | "done" | "closed" | "cancelled" => {
+    if (o.status === "cancelled") return "cancelled";
+    if (CLOSED_STATUSES.includes(o.status)) return "closed";
+    if (DONE_STATUSES.includes(o.status)) return "done";
+    if (PROD_STATUSES.includes(o.status)) {
+      return productionDoneByOrder[o.id] ? "done" : "prod";
+    }
+    if (OPEN_STATUSES.includes(o.status)) return "open";
+    return "open";
+  };
+
   const kpis = useMemo(() => {
-    const open = orders.filter((o) => OPEN_STATUSES.includes(o.status));
-    const prod = orders.filter((o) => PROD_STATUSES.includes(o.status));
-    const done = orders.filter((o) => DONE_STATUSES.includes(o.status));
-    const closed = orders.filter((o) => CLOSED_STATUSES.includes(o.status));
-    const cancelled = orders.filter((o) => o.status === "cancelled");
+    const open: Order[] = [], prod: Order[] = [], done: Order[] = [], closed: Order[] = [], cancelled: Order[] = [];
+    for (const o of orders) {
+      const b = bucketOf(o);
+      if (b === "open") open.push(o);
+      else if (b === "prod") prod.push(o);
+      else if (b === "done") done.push(o);
+      else if (b === "closed") closed.push(o);
+      else if (b === "cancelled") cancelled.push(o);
+    }
     return {
       open: open.length,
       open_units: open.reduce((a, o) => a + Number(o.pending_quantity), 0),
@@ -308,7 +344,7 @@ export default function CoreProductionOrders() {
       cancelled: cancelled.length,
       last: orders[0]?.created_at ?? null,
     };
-  }, [orders]);
+  }, [orders, productionDoneByOrder]);
 
   const openFromNeeds = async () => {
     const { data } = await supabase
@@ -684,8 +720,8 @@ export default function CoreProductionOrders() {
     );
   };
 
-  const filterTable = (statuses: string[]) => {
-    const rows = orders.filter((o) => statuses.includes(o.status));
+  const filterTable = (bucket: "open" | "prod" | "done" | "closed" | "cancelled") => {
+    const rows = orders.filter((o) => bucketOf(o) === bucket);
     const allChecked = rows.length > 0 && rows.every((r) => selectedOrders.has(r.id));
     const someChecked = rows.some((r) => selectedOrders.has(r.id));
     return (
@@ -806,11 +842,11 @@ export default function CoreProductionOrders() {
           <TabsTrigger value="closed">Cerradas</TabsTrigger>
           <TabsTrigger value="cancelled">Canceladas</TabsTrigger>
         </TabsList>
-        <TabsContent value="open">{filterTable(OPEN_STATUSES)}</TabsContent>
-        <TabsContent value="prod">{filterTable(PROD_STATUSES)}</TabsContent>
-        <TabsContent value="done">{filterTable(DONE_STATUSES)}</TabsContent>
-        <TabsContent value="closed">{filterTable(CLOSED_STATUSES)}</TabsContent>
-        <TabsContent value="cancelled">{filterTable(["cancelled"])}</TabsContent>
+        <TabsContent value="open">{filterTable("open")}</TabsContent>
+        <TabsContent value="prod">{filterTable("prod")}</TabsContent>
+        <TabsContent value="done">{filterTable("done")}</TabsContent>
+        <TabsContent value="closed">{filterTable("closed")}</TabsContent>
+        <TabsContent value="cancelled">{filterTable("cancelled")}</TabsContent>
       </Tabs>
 
       {/* Crear desde necesidades */}
