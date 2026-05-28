@@ -32,6 +32,7 @@ type Unit = {
   variant_sku: string | null;
   variant_label: string | null;
   size: string | null;
+  product_name?: string | null;
 };
 
 type UnitProcess = {
