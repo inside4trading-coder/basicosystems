@@ -317,11 +317,53 @@ Deno.serve(async (req) => {
       .eq("id", (unit as any).core_variant_id)
       .maybeSingle();
 
-    const stock_before = Number(
+    // === Stock real de WooCommerce (fuente de verdad para el preview) ===
+    const consumerKey = Deno.env.get("WC_CONSUMER_KEY");
+    const consumerSecret = Deno.env.get("WC_CONSUMER_SECRET");
+    const wooProductId = (product as any)?.woo_product_id ?? null;
+    const wooVariationId = (variant as any)?.woo_variation_id ?? null;
+
+    let stock_before = Number(
       (variant as any)?.woo_stock_quantity ??
         (product as any)?.woo_stock_quantity ??
         0,
     );
+    let usedLiveWoo = false;
+    let liveFetchError: string | null = null;
+
+    if (consumerKey && consumerSecret && wooProductId) {
+      const endpoint = wooVariationId
+        ? `${WC_BASE}/products/${wooProductId}/variations/${wooVariationId}`
+        : `${WC_BASE}/products/${wooProductId}`;
+      const auth = "Basic " + btoa(`${consumerKey}:${consumerSecret}`);
+      try {
+        const r = await fetch(endpoint, {
+          headers: { Authorization: auth, "Content-Type": "application/json" },
+        });
+        const j = await r.json();
+        if (r.ok) {
+          stock_before = Number(j?.stock_quantity ?? 0);
+          usedLiveWoo = true;
+          // Sincronizar caché local para que la UI no muestre valores viejos
+          if (wooVariationId && (unit as any).core_variant_id) {
+            await admin
+              .from("core_product_variants")
+              .update({ woo_stock_quantity: stock_before })
+              .eq("id", (unit as any).core_variant_id);
+          } else if ((unit as any).core_product_id) {
+            await admin
+              .from("core_products")
+              .update({ woo_stock_quantity: stock_before })
+              .eq("id", (unit as any).core_product_id);
+          }
+        } else {
+          liveFetchError = `GET Woo ${r.status}`;
+        }
+      } catch (e: any) {
+        liveFetchError = e?.message ?? String(e);
+      }
+    }
+
     let stock_after_expected = stock_before;
     if (action_type === "stock_increase") stock_after_expected = stock_before + quantity;
     if (action_type === "stock_decrease") stock_after_expected = stock_before - quantity;
@@ -349,8 +391,8 @@ Deno.serve(async (req) => {
           production_order_id: (unit as any).production_order_id,
           core_product_id: (unit as any).core_product_id,
           core_variant_id: (unit as any).core_variant_id,
-          woo_product_id: (product as any)?.woo_product_id ?? null,
-          woo_variation_id: (variant as any)?.woo_variation_id ?? null,
+          woo_product_id: wooProductId,
+          woo_variation_id: wooVariationId,
           sku: (unit as any).sku,
           variant_sku: (unit as any).variant_sku,
           stock_before,
@@ -375,6 +417,8 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Si hay un preview activo y su stock_before coincide con el real => reusar.
+    // Si no coincide (stale) y leímos Woo en vivo => marcarlo failed y crear uno nuevo.
     const { data: existingPreview } = await admin
       .from("core_woo_write_logs")
       .select("*")
@@ -385,13 +429,32 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existingPreview) {
-      return json({
-        ok: true,
-        mode,
-        reused_preview: true,
-        warning: mode === "dry_run" ? "No se escribirá en WooCommerce." : "Preview listo para confirmar.",
-        preview: existingPreview,
-      });
+      const prevStock = Number((existingPreview as any).stock_before);
+      if (usedLiveWoo && prevStock !== stock_before) {
+        await admin
+          .from("core_woo_write_logs")
+          .update({
+            status: "failed",
+            error_message: `stale_preview: stock cambió de ${prevStock} a ${stock_before} en Woo. Regenerado automáticamente.`,
+            response_payload: {
+              real_stock_before: stock_before,
+              preview_stock_before: prevStock,
+              auto_regenerated: true,
+            },
+          })
+          .eq("id", (existingPreview as any).id);
+        // continuar y crear un preview nuevo abajo
+      } else {
+        return json({
+          ok: true,
+          mode,
+          reused_preview: true,
+          warning: mode === "dry_run" ? "No se escribirá en WooCommerce." : "Preview listo para confirmar.",
+          live_woo: usedLiveWoo,
+          live_fetch_error: liveFetchError,
+          preview: existingPreview,
+        });
+      }
     }
 
     const simulatedPayload: Record<string, unknown> = {
