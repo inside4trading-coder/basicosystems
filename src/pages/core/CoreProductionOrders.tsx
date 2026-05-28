@@ -720,8 +720,8 @@ export default function CoreProductionOrders() {
     );
   };
 
-  const filterTable = (statuses: string[]) => {
-    const rows = orders.filter((o) => statuses.includes(o.status));
+  const filterTable = (bucket: "open" | "prod" | "done" | "closed" | "cancelled") => {
+    const rows = orders.filter((o) => bucketOf(o) === bucket);
     const allChecked = rows.length > 0 && rows.every((r) => selectedOrders.has(r.id));
     const someChecked = rows.some((r) => selectedOrders.has(r.id));
     return (
