@@ -16,6 +16,9 @@ const CONFIRMED_STATUSES = new Set([
   "tu-pedido-ha-sido",
   "pedido-listo-para",
   "tu-pago-fue-confi",
+  "ml-pago-por-confi",
+  "fabricacion",
+  "enviado",
   "completed",
 ]);
 
