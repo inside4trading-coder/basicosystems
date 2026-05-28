@@ -604,6 +604,46 @@ export default function CoreProductionNeeds() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="denied">
+          <Card className="p-0 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Talla</TableHead>
+                  <TableHead>SKU variante</TableHead>
+                  <TableHead className="text-right">Necesaria</TableHead>
+                  <TableHead>Origen</TableHead>
+                  <TableHead>Última venta</TableHead>
+                  <TableHead>Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {denied.length === 0 && (
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Sin necesidades denegadas.</TableCell></TableRow>
+                )}
+                {denied.map(n => (
+                  <TableRow key={n.id}>
+                    <TableCell><Badge variant="outline" className={STATUS_BADGE[n.status]}>{STATUS_LABEL[n.status] ?? n.status}</Badge></TableCell>
+                    <TableCell><div className="font-medium">{n.product_name ?? "-"}</div><div className="text-xs text-muted-foreground">{n.sku}</div></TableCell>
+                    <TableCell>{n.size ?? n.variant_label ?? "-"}</TableCell>
+                    <TableCell className="font-mono text-xs">{n.variant_sku ?? "-"}</TableCell>
+                    <TableCell className="text-right">{n.quantity_needed}</TableCell>
+                    <TableCell className="text-xs">{n.need_type === "sale_generated" ? "Venta" : "Manual"}</TableCell>
+                    <TableCell className="text-xs">{n.last_sale_at ? formatDMY(n.last_sale_at) : "—"}</TableCell>
+                    <TableCell>
+                      <Button size="sm" variant="outline" onClick={() => changeStatus(n, "pending")}>Reactivar</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+
+
+
         <TabsContent value="history">
           <Card className="p-0 overflow-hidden">
             <Table>
