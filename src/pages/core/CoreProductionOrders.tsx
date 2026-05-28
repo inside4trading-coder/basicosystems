@@ -1031,17 +1031,37 @@ export default function CoreProductionOrders() {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                     <h4 className="text-sm font-semibold flex items-center gap-2">
                       <PackageCheck className="h-4 w-4" /> Control de inventario
                     </h4>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => window.open("/core/inventario", "_blank")}
-                    >
-                      Abrir inventario
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          const { data, error } = await supabase.functions.invoke(
+                            "core-generate-production-units",
+                            { body: { production_order_id: detailOrder.id, repair_missing_processes: true } },
+                          );
+                          if (error) { toast.error(error.message); return; }
+                          const d: any = data;
+                          toast.success(
+                            `Reparadas: ${d?.repaired?.length ?? 0} · Omitidas: ${d?.skipped?.length ?? 0}`,
+                          );
+                          await openDetail(detailOrder);
+                        }}
+                      >
+                        Reparar procesos
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open("/core/inventario", "_blank")}
+                      >
+                        Abrir inventario
+                      </Button>
+                    </div>
                   </div>
                   {detailUnits.length === 0 ? (
                     <div className="text-xs text-muted-foreground">
