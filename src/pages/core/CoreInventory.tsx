@@ -353,8 +353,8 @@ export default function CoreInventory() {
           <CardContent className="py-3 text-sm flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-blue-700" />
             <span>
-              <strong>dry_run activo:</strong> esta pantalla NO escribe en WooCommerce ni cambia stock.
-              Solo prepara previews para revisión.
+              <strong>dry_run activo:</strong> esta pantalla NO actualiza WooCommerce ni cambia stock.
+              Solo prepara entradas para revisión.
             </span>
           </CardContent>
         </Card>
