@@ -208,6 +208,20 @@ export default function CoreInventory() {
     load();
   }, [load]);
 
+  // Mapa de entradas preparadas activas (cualquier mode) por unidad
+  const previewLogs = useMemo(
+    () => logs.filter((l) => l.status === "preview" && l.action_type === "stock_increase"),
+    [logs],
+  );
+
+  const previewByUnit = useMemo(() => {
+    const m = new Map<string, WooLog>();
+    for (const l of previewLogs) {
+      if (l.production_unit_id && !m.has(l.production_unit_id)) m.set(l.production_unit_id, l);
+    }
+    return m;
+  }, [previewLogs]);
+
   // Clasificación de unidades
   const { readyUnits, blockedUnits } = useMemo(() => {
     const successKeys = new Set(
@@ -222,27 +236,18 @@ export default function CoreInventory() {
       if (u.status !== "completed") reasons.push(`Estado: ${u.status} (no completed)`);
       if (!u.core_variant_id) reasons.push("Falta variante (core_variant_id)");
       if (!u.woo_product_id) reasons.push("Falta woo_product_id");
-      // variation_id solo requerido si producto tiene variantes — heurística: si hay core_variant_id sin woo_variation_id, bloquear
       if (u.core_variant_id && !u.woo_variation_id) reasons.push("Falta woo_variation_id");
       if (successKeys.has(`${u.unit_code}::stock_increase`)) reasons.push("Ya ingresada (idempotency)");
-      if (reasons.length === 0) ready.push(u);
-      else blocked.push({ ...u, reason: reasons.join(" · ") });
+      if (reasons.length > 0) {
+        blocked.push({ ...u, reason: reasons.join(" · ") });
+        continue;
+      }
+      // Si ya tiene entrada preparada activa, no aparece en "Unidades listas"
+      if (previewByUnit.has(u.id)) continue;
+      ready.push(u);
     }
     return { readyUnits: ready, blockedUnits: blocked };
-  }, [units, logs]);
-
-  const previewLogs = useMemo(
-    () => logs.filter((l) => l.mode === "dry_run" && l.status === "preview"),
-    [logs],
-  );
-
-  const previewByUnit = useMemo(() => {
-    const m = new Map<string, WooLog>();
-    for (const l of previewLogs) {
-      if (l.production_unit_id && !m.has(l.production_unit_id)) m.set(l.production_unit_id, l);
-    }
-    return m;
-  }, [previewLogs]);
+  }, [units, logs, previewByUnit]);
 
   const generatePreview = async (u: Unit) => {
     setBusyUnit(u.id);
@@ -258,9 +263,9 @@ export default function CoreInventory() {
           variant: "destructive",
         });
       } else if ((data as any)?.reused_preview) {
-        toast({ title: "Preview reutilizado", description: "Ya existía un preview activo para esta unidad." });
+        toast({ title: "Entrada preparada ya existente", description: "Esta unidad ya tiene una entrada preparada activa." });
       } else {
-        toast({ title: "Preview generado", description: "No se escribió en WooCommerce." });
+        toast({ title: "Entrada preparada", description: "Aún NO se actualiza WooCommerce. Debe confirmarse manualmente." });
       }
       await load();
     } catch (e: any) {
@@ -277,7 +282,7 @@ export default function CoreInventory() {
         .update({ status: "skipped", error_message: "Descartado manualmente desde Inventario." })
         .eq("id", log.id);
       if (error) throw error;
-      toast({ title: "Preview descartado" });
+      toast({ title: "Entrada preparada descartada" });
       setDiscarding(null);
       await load();
     } catch (e: any) {
@@ -348,8 +353,8 @@ export default function CoreInventory() {
           <CardContent className="py-3 text-sm flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-blue-700" />
             <span>
-              <strong>dry_run activo:</strong> esta pantalla NO escribe en WooCommerce ni cambia stock.
-              Solo prepara previews para revisión.
+              <strong>dry_run activo:</strong> esta pantalla NO actualiza WooCommerce ni cambia stock.
+              Solo prepara entradas para revisión.
             </span>
           </CardContent>
         </Card>
@@ -362,11 +367,11 @@ export default function CoreInventory() {
             <Badge variant="secondary" className="ml-2">{readyUnits.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="previews">
-            <Eye className="h-4 w-4 mr-1" /> Previews Woo
+            <Eye className="h-4 w-4 mr-1" /> Entradas preparadas
             <Badge variant="secondary" className="ml-2">{previewLogs.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="history">
-            <History className="h-4 w-4 mr-1" /> Historial Woo
+            <History className="h-4 w-4 mr-1" /> Historial de entradas
             <Badge variant="secondary" className="ml-2">{logs.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="blocked">
@@ -406,7 +411,6 @@ export default function CoreInventory() {
                     </TableRow>
                   )}
                   {readyUnits.map((u) => {
-                    const hasPreview = previewByUnit.has(u.id);
                     return (
                       <TableRow key={u.id}>
                         <TableCell className="font-mono text-xs">{u.unit_code}</TableCell>
@@ -423,12 +427,12 @@ export default function CoreInventory() {
                         <TableCell className="text-right">
                           <Button
                             size="sm"
-                            variant={hasPreview ? "outline" : "default"}
+                            variant="default"
                             disabled={busyUnit === u.id}
                             onClick={() => generatePreview(u)}
                           >
                             <PlayCircle className="h-4 w-4" />
-                            {hasPreview ? "Ver/regenerar" : "Generar preview"}
+                            Preparar entrada
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -444,15 +448,15 @@ export default function CoreInventory() {
         <TabsContent value="previews" className="space-y-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Previews pendientes</CardTitle>
+              <CardTitle className="text-base">Entradas preparadas pendientes</CardTitle>
               {writeMode === "dry_run" && (
                 <p className="text-xs text-muted-foreground">
-                  Modo dry_run: no se puede escribir en WooCommerce.
+                  Modo dry_run: las entradas preparadas no pueden confirmarse en WooCommerce.
                 </p>
               )}
               {writeMode === "manual_confirm" && (
                 <p className="text-xs text-amber-700">
-                  Modo manual_confirm: cada confirmación escribe stock real en WooCommerce.
+                  Modo manual_confirm: confirmar una entrada actualiza el stock real en WooCommerce.
                 </p>
               )}
             </CardHeader>
@@ -477,7 +481,7 @@ export default function CoreInventory() {
                   {previewLogs.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
-                        No hay previews activos.
+                        No hay entradas preparadas activas.
                       </TableCell>
                     </TableRow>
                   )}
@@ -497,11 +501,13 @@ export default function CoreInventory() {
                       </TableCell>
                       <TableCell className="text-right font-medium">{l.stock_after_expected ?? 0}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={tone(l.status)}>{l.status}</Badge>
+                        <Badge variant="outline" className={tone(l.status)}>
+                          {l.status === "preview" ? "entrada preparada" : l.status}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button size="sm" variant="ghost" onClick={() => setDetail(l)}>
-                          <Eye className="h-4 w-4" /> Ver
+                          <Eye className="h-4 w-4" /> Ver entrada preparada
                         </Button>
                         {writeMode === "manual_confirm" && l.status === "preview" && (
                           <Button
@@ -509,7 +515,7 @@ export default function CoreInventory() {
                             variant="default"
                             onClick={() => { setConfirming(l); setConfirmChecked(false); }}
                           >
-                            <ShieldCheck className="h-4 w-4" /> Confirmar escritura Woo
+                            <ShieldCheck className="h-4 w-4" /> Confirmar y escribir en WooCommerce
                           </Button>
                         )}
                         <Button
@@ -635,9 +641,9 @@ export default function CoreInventory() {
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Detalle de preview Woo</DialogTitle>
+            <DialogTitle>Detalle de entrada preparada</DialogTitle>
             <DialogDescription>
-              Modo actual: <strong>{detail?.mode}</strong> — este preview NO escribe en WooCommerce.
+              Modo actual: <strong>{detail?.mode}</strong> — esta entrada todavía NO actualiza WooCommerce.
             </DialogDescription>
           </DialogHeader>
           {detail && (
@@ -666,7 +672,7 @@ export default function CoreInventory() {
               </div>
               <div className="text-xs text-amber-700 bg-amber-500/10 border border-amber-300/40 rounded p-2 flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
-                Este preview NO escribe en WooCommerce.
+                Esta entrada todavía NO actualiza WooCommerce. Debe confirmarse manualmente.
               </div>
             </div>
           )}
@@ -680,9 +686,9 @@ export default function CoreInventory() {
       <Dialog open={!!discarding} onOpenChange={(o) => !o && setDiscarding(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Descartar preview</DialogTitle>
+            <DialogTitle>Descartar entrada preparada</DialogTitle>
             <DialogDescription>
-              El preview se marcará como <code>skipped</code>. No se borra del historial y no afecta WooCommerce ni la unidad.
+              La entrada preparada se marcará como <code>skipped</code>. Queda en el historial y no afecta WooCommerce ni la unidad.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -717,7 +723,7 @@ export default function CoreInventory() {
                 <div><span className="text-muted-foreground">Talla: </span>{confirming.size ?? "—"}</div>
                 <div><span className="text-muted-foreground">Woo product: </span><span className="font-mono">{confirming.woo_product_id ?? "—"}</span></div>
                 <div><span className="text-muted-foreground">Woo variation: </span><span className="font-mono">{confirming.woo_variation_id ?? "—"}</span></div>
-                <div><span className="text-muted-foreground">Stock preview: </span>{confirming.stock_before ?? 0}</div>
+                <div><span className="text-muted-foreground">Stock preparado: </span>{confirming.stock_before ?? 0}</div>
                 <div><span className="text-muted-foreground">Entrada: </span><strong>+1</strong></div>
                 <div><span className="text-muted-foreground">Stock esperado: </span><strong>{confirming.stock_after_expected ?? 0}</strong></div>
               </div>
@@ -725,7 +731,7 @@ export default function CoreInventory() {
                 <AlertTriangle className="h-4 w-4 mt-0.5" />
                 <span>
                   La función re-leerá el stock real de WooCommerce antes de escribir. Si cambió, la
-                  escritura se cancelará y deberás regenerar el preview.
+                  escritura se cancelará y deberás preparar la entrada nuevamente.
                 </span>
               </div>
               <label className="flex items-start gap-2 cursor-pointer">
