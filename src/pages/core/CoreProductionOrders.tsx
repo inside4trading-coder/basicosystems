@@ -1003,12 +1003,13 @@ export default function CoreProductionOrders() {
                 </Card>
 
                 <div>
-                  <h4 className="text-sm font-semibold mb-2">Líneas por talla</h4>
+                  <h4 className="text-sm font-semibold mb-2">Líneas ({detailLines.length})</h4>
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Producto</TableHead>
                         <TableHead>Talla</TableHead>
-                        <TableHead>SKU</TableHead>
+                        <TableHead>SKU variante</TableHead>
                         <TableHead className="text-right">Ord.</TableHead>
                         <TableHead className="text-right">Compl.</TableHead>
                         <TableHead className="text-right">Pend.</TableHead>
@@ -1017,6 +1018,7 @@ export default function CoreProductionOrders() {
                     <TableBody>
                       {detailLines.map((l) => (
                         <TableRow key={l.id}>
+                          <TableCell className="font-mono text-xs">{l.sku ?? "—"}</TableCell>
                           <TableCell>{l.size ?? l.variant_label}</TableCell>
                           <TableCell className="font-mono text-xs">{l.variant_sku}</TableCell>
                           <TableCell className="text-right">{l.quantity_ordered}</TableCell>
