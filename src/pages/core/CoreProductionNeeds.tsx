@@ -76,7 +76,7 @@ const ORDER_STATUS_BADGE: Record<string, string> = {
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pendiente", review: "En revisión", approved: "Aprobada",
   partially_converted: "Parcial", converted_to_order: "Convertida",
-  ignored: "Ignorada", cancelled: "Cancelada", blocked: "Bloqueada",
+  ignored: "Denegada", cancelled: "Cancelada", blocked: "Bloqueada",
 };
 const STATUS_BADGE: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
