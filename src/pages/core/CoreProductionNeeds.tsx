@@ -311,6 +311,7 @@ export default function CoreProductionNeeds() {
   }, [needs, runs]);
 
   const openNeeds = useMemo(() => needs.filter(n => OPEN_STATUSES.includes(n.status)), [needs]);
+  const denied = useMemo(() => needs.filter(n => n.status === "ignored"), [needs]);
 
   const byProduct = useMemo(() => {
     const m = new Map<string, { product_name: string; sku: string; total: number; sizes: Need[] }>();
