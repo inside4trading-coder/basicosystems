@@ -32,6 +32,7 @@ type Unit = {
   variant_sku: string | null;
   variant_label: string | null;
   size: string | null;
+  product_name?: string | null;
 };
 
 type UnitProcess = {
@@ -186,7 +187,17 @@ export default function CoreScanning() {
       setLoading(false);
       return;
     }
-    setUnit(u as Unit);
+    // Enrich with real product name (variant_label/sku can be misleading e.g. "M")
+    let product_name: string | null = null;
+    if ((u as any).core_product_id) {
+      const { data: prod } = await supabase
+        .from("core_products")
+        .select("name")
+        .eq("id", (u as any).core_product_id)
+        .maybeSingle();
+      product_name = (prod as any)?.name ?? null;
+    }
+    setUnit({ ...(u as Unit), product_name });
     await loadProcesses((u as Unit).id);
     await loadHistory((u as Unit).id);
     setLoading(false);
@@ -600,10 +611,13 @@ export default function CoreScanning() {
               </div>
               <p className="text-sm">
                 <span className="text-muted-foreground">Producto: </span>
-                <span className="font-medium">{unit.variant_label || unit.sku}</span>
+                <span className="font-medium">
+                  {unit.product_name || unit.sku || "—"}
+                </span>
               </p>
               <p className="text-xs text-muted-foreground">
-                SKU: {unit.sku} · Variante: {unit.variant_sku}
+                SKU: {unit.sku ?? "—"} · Variante: {unit.variant_sku ?? "—"}
+                {unit.variant_label && unit.variant_label !== unit.size ? ` · ${unit.variant_label}` : ""}
               </p>
             </div>
             <Button variant="ghost" size="sm" onClick={() => { setUnit(null); setProcesses([]); setHistory([]); setSearchParams({}); }}>
@@ -613,7 +627,20 @@ export default function CoreScanning() {
 
           <div>
             <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Procesos pendientes</p>
-            {pendingProcs.length === 0 && <p className="text-sm text-muted-foreground">Todos los procesos completados.</p>}
+            {processes.length === 0 ? (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+                <p className="font-medium flex items-center gap-1">
+                  <AlertTriangle className="h-4 w-4" /> Esta unidad no tiene procesos generados.
+                </p>
+                <p className="text-xs mt-1">
+                  Requiere reparación antes de registrar trabajo o ingresarla a inventario.
+                  Ve a <span className="font-mono">Órdenes de Producción</span> y usa
+                  el botón <em>Reparar procesos</em> en esta OP.
+                </p>
+              </div>
+            ) : pendingProcs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Todos los procesos completados.</p>
+            ) : null}
             <div className="grid gap-2">
               {pendingProcs.map((p) => (
                 <div key={p.id} className="flex items-center justify-between gap-2 border rounded-lg p-3">
