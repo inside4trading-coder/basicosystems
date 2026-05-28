@@ -448,15 +448,15 @@ export default function CoreInventory() {
         <TabsContent value="previews" className="space-y-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Previews pendientes</CardTitle>
+              <CardTitle className="text-base">Entradas preparadas pendientes</CardTitle>
               {writeMode === "dry_run" && (
                 <p className="text-xs text-muted-foreground">
-                  Modo dry_run: no se puede escribir en WooCommerce.
+                  Modo dry_run: las entradas preparadas no pueden confirmarse en WooCommerce.
                 </p>
               )}
               {writeMode === "manual_confirm" && (
                 <p className="text-xs text-amber-700">
-                  Modo manual_confirm: cada confirmación escribe stock real en WooCommerce.
+                  Modo manual_confirm: confirmar una entrada actualiza el stock real en WooCommerce.
                 </p>
               )}
             </CardHeader>
