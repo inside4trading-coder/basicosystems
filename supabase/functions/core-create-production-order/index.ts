@@ -205,192 +205,209 @@ async function createFromNeeds(
     );
   }
 
-  // Agrupar por core_product_id
-  const groups = new Map<string, any[]>();
+  // BLOQUE 9.1 — UNA sola OP por lote. Agrupar líneas por (core_product_id, core_variant_id|variant_sku|size).
+  let totalQty = 0;
+  let isOverproduction = false;
+  const linesMap = new Map<string, any>();
+
   for (const n of needs) {
-    const k = n.core_product_id ?? "__none__";
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k)!.push(n);
+    const requested =
+      body.quantities?.[n.id] !== undefined
+        ? Number(body.quantities[n.id])
+        : Number(n.quantity_pending);
+    if (requested <= 0) continue;
+    if (
+      requested >
+        Number(n.quantity_approved) - Number(n.quantity_converted_to_order)
+    ) {
+      if (!body.allow_overproduction) {
+        return json(
+          {
+            error:
+              `La necesidad ${n.id} (${n.variant_sku}) excede lo aprobado pendiente. Use allow_overproduction:true.`,
+            need_id: n.id,
+          },
+          400,
+        );
+      }
+      isOverproduction = true;
+    }
+    totalQty += requested;
+
+    const vkey =
+      `${n.core_product_id ?? "np"}|${n.core_variant_id ?? n.variant_sku ?? n.size ?? "nv-" + n.id}`;
+    if (linesMap.has(vkey)) {
+      const existing = linesMap.get(vkey)!;
+      existing.quantity_ordered = Number(existing.quantity_ordered) + requested;
+      existing.quantity_pending = existing.quantity_ordered;
+      existing._needs.push({ need: n, qty: requested });
+    } else {
+      linesMap.set(vkey, {
+        core_product_id: n.core_product_id,
+        core_variant_id: n.core_variant_id,
+        sku: n.sku,
+        product_name: n.product_name,
+        variant_sku: n.variant_sku,
+        variant_label: n.variant_label,
+        size: n.size,
+        quantity_ordered: requested,
+        quantity_completed: 0,
+        quantity_pending: requested,
+        status: "pending",
+        _needs: [{ need: n, qty: requested }],
+      });
+    }
   }
 
-  const created: any[] = [];
+  if (totalQty <= 0) {
+    return json({ error: "No hay cantidades > 0 para convertir" }, 400);
+  }
 
-  for (const [productId, groupNeeds] of groups.entries()) {
-    // calcular cantidad a tomar por necesidad
-    let totalQty = 0;
-    let isOverproduction = false;
-    const linesMap = new Map<string, any>(); // por core_variant_id
+  const linesArr = Array.from(linesMap.values());
+  const distinctProductIds = Array.from(
+    new Set(linesArr.map((l) => l.core_product_id).filter(Boolean)),
+  );
+  const distinctSkus = Array.from(
+    new Set(linesArr.map((l) => l.sku).filter(Boolean)),
+  );
+  const isMultiProduct = distinctProductIds.length > 1;
+  const headerProductId = isMultiProduct ? null : (distinctProductIds[0] ?? null);
+  const headerSku = isMultiProduct
+    ? `MULTI (${distinctSkus.length})`
+    : (linesArr[0]?.sku ?? null);
+  const headerName = isMultiProduct
+    ? `Lote multiproducto · ${distinctProductIds.length} productos · ${linesArr.length} líneas`
+    : (linesArr[0]?.product_name ?? null);
 
-    for (const n of groupNeeds) {
-      const requested =
-        body.quantities?.[n.id] !== undefined
-          ? Number(body.quantities[n.id])
-          : Number(n.quantity_pending);
-      if (requested <= 0) continue;
-      if (
-        requested >
-          Number(n.quantity_approved) -
-            Number(n.quantity_converted_to_order)
-      ) {
-        if (!body.allow_overproduction) {
-          return json(
-            {
-              error: `La necesidad ${n.id} (${n.variant_sku}) excede lo aprobado pendiente. Use allow_overproduction:true.`,
-              need_id: n.id,
-            },
-            400,
-          );
-        }
-        isOverproduction = true;
-      }
-      totalQty += requested;
-
-      const vkey = n.core_variant_id ?? `nv-${n.id}`;
-      if (linesMap.has(vkey)) {
-        const existing = linesMap.get(vkey)!;
-        existing.quantity_ordered =
-          Number(existing.quantity_ordered) + requested;
-        existing.quantity_pending = existing.quantity_ordered;
-        existing._needs.push({ need: n, qty: requested });
-      } else {
-        linesMap.set(vkey, {
-          core_product_id: n.core_product_id,
-          core_variant_id: n.core_variant_id,
-          sku: n.sku,
-          variant_sku: n.variant_sku,
-          variant_label: n.variant_label,
-          size: n.size,
-          quantity_ordered: requested,
-          quantity_completed: 0,
-          quantity_pending: requested,
-          status: "pending",
-          _needs: [{ need: n, qty: requested }],
-        });
-      }
-    }
-
-    if (totalQty <= 0) continue;
-
-    // info producto
-    const sampleNeed = groupNeeds[0];
-
-    const { data: orderRow, error: orderErr } = await supabase
-      .from("core_production_orders")
-      .insert({
-        status: "open",
-        order_type: "from_needs",
-        priority: body.priority ?? sampleNeed.priority ?? "media",
-        core_product_id: productId === "__none__" ? null : productId,
-        sku: sampleNeed.sku,
-        product_name: sampleNeed.product_name,
-        total_quantity: totalQty,
-        completed_quantity: 0,
-        pending_quantity: totalQty,
-        source: "needs",
-        expected_date: body.expected_date ?? null,
-        responsible_user_id: body.responsible_user_id ?? null,
-        notes: body.notes ?? null,
-        is_overproduction: isOverproduction,
-        created_by: userId,
-        updated_by: userId,
-      })
-      .select()
-      .single();
-    if (orderErr) throw orderErr;
-
-    // Insertar líneas
-    const linesToInsert = Array.from(linesMap.values()).map((l) => ({
-      production_order_id: orderRow.id,
-      core_product_id: l.core_product_id,
-      core_variant_id: l.core_variant_id,
-      sku: l.sku,
-      variant_sku: l.variant_sku,
-      variant_label: l.variant_label,
-      size: l.size,
-      quantity_ordered: l.quantity_ordered,
-      quantity_completed: 0,
-      quantity_pending: l.quantity_pending,
-      status: "pending",
-    }));
-    const { error: linesErr } = await supabase
-      .from("core_production_order_lines")
-      .insert(linesToInsert);
-    if (linesErr) throw linesErr;
-
-    // Insertar links + actualizar necesidades
-    const links: any[] = [];
-    for (const l of linesMap.values()) {
-      for (const { need, qty } of l._needs) {
-        links.push({
-          production_order_id: orderRow.id,
-          production_need_id: need.id,
-          quantity_taken: qty,
-          created_by: userId,
-        });
-        const newConverted =
-          Number(need.quantity_converted_to_order) + qty;
-        const newPending = Math.max(
-          0,
-          Number(need.quantity_approved) - newConverted,
-        );
-        const fullyConverted =
-          newConverted >= Number(need.quantity_needed) && newPending === 0;
-        await supabase
-          .from("core_production_needs")
-          .update({
-            quantity_converted_to_order: newConverted,
-            quantity_pending: newPending,
-            status: fullyConverted
-              ? "converted_to_order"
-              : "partially_converted",
-            updated_by: userId,
-          })
-          .eq("id", need.id);
-        await audit(
-          supabase,
-          "core_production_needs",
-          need.id,
-          "convert_to_order",
-          "quantity_converted_to_order",
-          String(need.quantity_converted_to_order),
-          String(newConverted),
-          userId,
-        );
-      }
-    }
-    if (links.length) {
-      await supabase.from("core_production_order_need_links").insert(links);
-    }
-
-    // Procesos desde estructura de costos
-    const processCount = await insertProcessesForOrder(
-      supabase,
-      orderRow.id,
-      productId === "__none__" ? null : productId,
-    );
-
-    await audit(
-      supabase,
-      "core_production_orders",
-      orderRow.id,
-      "create_from_needs",
-      null,
-      null,
-      orderRow.order_code,
-      userId,
-    );
-
-    created.push({
-      id: orderRow.id,
-      order_code: orderRow.order_code,
+  const sampleNeed = needs[0];
+  const { data: orderRow, error: orderErr } = await supabase
+    .from("core_production_orders")
+    .insert({
+      status: "open",
+      order_type: "from_needs",
+      priority: body.priority ?? sampleNeed.priority ?? "media",
+      core_product_id: headerProductId,
+      sku: headerSku,
+      product_name: headerName,
       total_quantity: totalQty,
-      lines: linesToInsert.length,
-      processes: processCount,
+      completed_quantity: 0,
+      pending_quantity: totalQty,
+      source: "needs",
+      expected_date: body.expected_date ?? null,
+      responsible_user_id: body.responsible_user_id ?? null,
+      notes: body.notes ?? null,
       is_overproduction: isOverproduction,
-    });
+      created_by: userId,
+      updated_by: userId,
+    })
+    .select()
+    .single();
+  if (orderErr) throw orderErr;
+
+  const linesToInsert = linesArr.map((l) => ({
+    production_order_id: orderRow.id,
+    core_product_id: l.core_product_id,
+    core_variant_id: l.core_variant_id,
+    sku: l.sku,
+    variant_sku: l.variant_sku,
+    variant_label: l.variant_label,
+    size: l.size,
+    quantity_ordered: l.quantity_ordered,
+    quantity_completed: 0,
+    quantity_pending: l.quantity_pending,
+    status: "pending",
+  }));
+  const { error: linesErr } = await supabase
+    .from("core_production_order_lines")
+    .insert(linesToInsert);
+  if (linesErr) throw linesErr;
+
+  // Links + actualizar necesidades (sin duplicar: cada need se procesa una sola vez)
+  const links: any[] = [];
+  const processedNeedIds = new Set<string>();
+  for (const l of linesArr) {
+    for (const { need, qty } of l._needs) {
+      links.push({
+        production_order_id: orderRow.id,
+        production_need_id: need.id,
+        quantity_taken: qty,
+        created_by: userId,
+      });
+      if (processedNeedIds.has(need.id)) continue;
+      processedNeedIds.add(need.id);
+      const newConverted = Number(need.quantity_converted_to_order) + qty;
+      const newPending = Math.max(
+        0,
+        Number(need.quantity_approved) - newConverted,
+      );
+      const fullyConverted =
+        newConverted >= Number(need.quantity_needed) && newPending === 0;
+      await supabase
+        .from("core_production_needs")
+        .update({
+          quantity_converted_to_order: newConverted,
+          quantity_pending: newPending,
+          status: fullyConverted
+            ? "converted_to_order"
+            : "partially_converted",
+          updated_by: userId,
+        })
+        .eq("id", need.id);
+      await audit(
+        supabase,
+        "core_production_needs",
+        need.id,
+        "convert_to_order",
+        "quantity_converted_to_order",
+        String(need.quantity_converted_to_order),
+        String(newConverted),
+        userId,
+      );
+    }
+  }
+  if (links.length) {
+    await supabase.from("core_production_order_need_links").insert(links);
   }
 
-  return json({ created, count: created.length });
+  // Procesos: si es un único producto, los traemos de su estructura de costos.
+  // Si es multiproducto, no insertamos procesos a nivel orden (cada unidad
+  // queda sin procesos vinculados al header — los procesos por producto deben
+  // resolverse por línea en un paso posterior si se requiere).
+  let processCount = 0;
+  if (!isMultiProduct && headerProductId) {
+    processCount = await insertProcessesForOrder(
+      supabase,
+      orderRow.id,
+      headerProductId,
+    );
+  }
+
+  await audit(
+    supabase,
+    "core_production_orders",
+    orderRow.id,
+    "create_from_needs",
+    null,
+    null,
+    orderRow.order_code,
+    userId,
+  );
+
+  return json({
+    created: [
+      {
+        id: orderRow.id,
+        order_code: orderRow.order_code,
+        total_quantity: totalQty,
+        lines: linesToInsert.length,
+        processes: processCount,
+        is_overproduction: isOverproduction,
+        multi_product: isMultiProduct,
+        distinct_products: distinctProductIds.length,
+      },
+    ],
+    count: 1,
+  });
 }
 
 async function createManual(

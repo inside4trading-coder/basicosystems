@@ -580,8 +580,29 @@ export default function CoreProductionOrders() {
           )}
         </TableCell>
         <TableCell>
-          <div className="font-medium">{o.product_name}</div>
-          <div className="text-xs text-muted-foreground font-mono">{o.sku}</div>
+          {(() => {
+            const distinctProducts = Array.from(
+              new Set(lines.map((l) => l.sku).filter(Boolean)),
+            );
+            if (distinctProducts.length > 1) {
+              return (
+                <div>
+                  <div className="font-medium">
+                    {distinctProducts.length} productos / {o.total_quantity} unidades
+                  </div>
+                  <div className="text-xs text-muted-foreground font-mono truncate max-w-[260px]">
+                    {distinctProducts.join(" + ")}
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <>
+                <div className="font-medium">{o.product_name}</div>
+                <div className="text-xs text-muted-foreground font-mono">{o.sku}</div>
+              </>
+            );
+          })()}
         </TableCell>
         <TableCell>
           <div className="flex flex-wrap gap-1 max-w-[260px]">
@@ -592,7 +613,7 @@ export default function CoreProductionOrders() {
                 key={l.id}
                 variant="outline"
                 className="bg-primary/10 text-primary border-primary/30 font-bold text-[11px] px-2 py-0.5"
-                title={l.variant_sku ?? ""}
+                title={`${l.sku ?? ""} ${l.variant_sku ?? ""}`}
               >
                 {(l.size ?? l.variant_label ?? "?")}
                 <span className="ml-1 font-semibold text-foreground/80">×{l.quantity_ordered}</span>
@@ -982,12 +1003,13 @@ export default function CoreProductionOrders() {
                 </Card>
 
                 <div>
-                  <h4 className="text-sm font-semibold mb-2">Líneas por talla</h4>
+                  <h4 className="text-sm font-semibold mb-2">Líneas ({detailLines.length})</h4>
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Producto</TableHead>
                         <TableHead>Talla</TableHead>
-                        <TableHead>SKU</TableHead>
+                        <TableHead>SKU variante</TableHead>
                         <TableHead className="text-right">Ord.</TableHead>
                         <TableHead className="text-right">Compl.</TableHead>
                         <TableHead className="text-right">Pend.</TableHead>
@@ -996,6 +1018,7 @@ export default function CoreProductionOrders() {
                     <TableBody>
                       {detailLines.map((l) => (
                         <TableRow key={l.id}>
+                          <TableCell className="font-mono text-xs">{l.sku ?? "—"}</TableCell>
                           <TableCell>{l.size ?? l.variant_label}</TableCell>
                           <TableCell className="font-mono text-xs">{l.variant_sku}</TableCell>
                           <TableCell className="text-right">{l.quantity_ordered}</TableCell>
