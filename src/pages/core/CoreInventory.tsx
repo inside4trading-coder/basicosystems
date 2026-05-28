@@ -411,7 +411,6 @@ export default function CoreInventory() {
                     </TableRow>
                   )}
                   {readyUnits.map((u) => {
-                    const hasPreview = previewByUnit.has(u.id);
                     return (
                       <TableRow key={u.id}>
                         <TableCell className="font-mono text-xs">{u.unit_code}</TableCell>
@@ -428,12 +427,12 @@ export default function CoreInventory() {
                         <TableCell className="text-right">
                           <Button
                             size="sm"
-                            variant={hasPreview ? "outline" : "default"}
+                            variant="default"
                             disabled={busyUnit === u.id}
                             onClick={() => generatePreview(u)}
                           >
                             <PlayCircle className="h-4 w-4" />
-                            {hasPreview ? "Ver/regenerar" : "Generar preview"}
+                            Preparar entrada
                           </Button>
                         </TableCell>
                       </TableRow>
