@@ -481,7 +481,7 @@ export default function CoreInventory() {
                   {previewLogs.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
-                        No hay previews activos.
+                        No hay entradas preparadas activas.
                       </TableCell>
                     </TableRow>
                   )}
