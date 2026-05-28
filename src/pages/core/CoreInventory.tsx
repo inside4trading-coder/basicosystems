@@ -367,11 +367,11 @@ export default function CoreInventory() {
             <Badge variant="secondary" className="ml-2">{readyUnits.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="previews">
-            <Eye className="h-4 w-4 mr-1" /> Previews Woo
+            <Eye className="h-4 w-4 mr-1" /> Entradas preparadas
             <Badge variant="secondary" className="ml-2">{previewLogs.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="history">
-            <History className="h-4 w-4 mr-1" /> Historial Woo
+            <History className="h-4 w-4 mr-1" /> Historial de entradas
             <Badge variant="secondary" className="ml-2">{logs.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="blocked">
