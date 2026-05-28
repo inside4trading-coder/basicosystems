@@ -208,6 +208,20 @@ export default function CoreInventory() {
     load();
   }, [load]);
 
+  // Mapa de entradas preparadas activas (cualquier mode) por unidad
+  const previewLogs = useMemo(
+    () => logs.filter((l) => l.status === "preview" && l.action_type === "stock_increase"),
+    [logs],
+  );
+
+  const previewByUnit = useMemo(() => {
+    const m = new Map<string, WooLog>();
+    for (const l of previewLogs) {
+      if (l.production_unit_id && !m.has(l.production_unit_id)) m.set(l.production_unit_id, l);
+    }
+    return m;
+  }, [previewLogs]);
+
   // Clasificación de unidades
   const { readyUnits, blockedUnits } = useMemo(() => {
     const successKeys = new Set(
@@ -222,27 +236,18 @@ export default function CoreInventory() {
       if (u.status !== "completed") reasons.push(`Estado: ${u.status} (no completed)`);
       if (!u.core_variant_id) reasons.push("Falta variante (core_variant_id)");
       if (!u.woo_product_id) reasons.push("Falta woo_product_id");
-      // variation_id solo requerido si producto tiene variantes — heurística: si hay core_variant_id sin woo_variation_id, bloquear
       if (u.core_variant_id && !u.woo_variation_id) reasons.push("Falta woo_variation_id");
       if (successKeys.has(`${u.unit_code}::stock_increase`)) reasons.push("Ya ingresada (idempotency)");
-      if (reasons.length === 0) ready.push(u);
-      else blocked.push({ ...u, reason: reasons.join(" · ") });
+      if (reasons.length > 0) {
+        blocked.push({ ...u, reason: reasons.join(" · ") });
+        continue;
+      }
+      // Si ya tiene entrada preparada activa, no aparece en "Unidades listas"
+      if (previewByUnit.has(u.id)) continue;
+      ready.push(u);
     }
     return { readyUnits: ready, blockedUnits: blocked };
-  }, [units, logs]);
-
-  const previewLogs = useMemo(
-    () => logs.filter((l) => l.mode === "dry_run" && l.status === "preview"),
-    [logs],
-  );
-
-  const previewByUnit = useMemo(() => {
-    const m = new Map<string, WooLog>();
-    for (const l of previewLogs) {
-      if (l.production_unit_id && !m.has(l.production_unit_id)) m.set(l.production_unit_id, l);
-    }
-    return m;
-  }, [previewLogs]);
+  }, [units, logs, previewByUnit]);
 
   const generatePreview = async (u: Unit) => {
     setBusyUnit(u.id);
@@ -258,9 +263,9 @@ export default function CoreInventory() {
           variant: "destructive",
         });
       } else if ((data as any)?.reused_preview) {
-        toast({ title: "Preview reutilizado", description: "Ya existía un preview activo para esta unidad." });
+        toast({ title: "Entrada preparada ya existente", description: "Esta unidad ya tiene una entrada preparada activa." });
       } else {
-        toast({ title: "Preview generado", description: "No se escribió en WooCommerce." });
+        toast({ title: "Entrada preparada", description: "Aún NO se actualiza WooCommerce. Debe confirmarse manualmente." });
       }
       await load();
     } catch (e: any) {
