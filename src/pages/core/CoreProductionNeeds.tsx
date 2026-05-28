@@ -46,6 +46,33 @@ type Run = {
   blocked_count: number; non_restockable_skipped: number; summary: any;
 };
 
+type ConvertedLink = {
+  id: string;
+  production_need_id: string;
+  production_order_id: string;
+  quantity_taken: number;
+  created_at: string;
+  order_code: string | null;
+  order_status: string | null;
+};
+
+const ORDER_STATUS_LABEL: Record<string, string> = {
+  draft: "Borrador",
+  open: "Abierta",
+  in_progress: "En proceso",
+  ready_to_print: "Lista para imprimir",
+  printing: "Imprimiendo",
+  in_production: "En producción",
+  closed: "Completada",
+  manually_closed: "Cerrada manual",
+  cancelled: "Cancelada",
+};
+const ORDER_STATUS_BADGE: Record<string, string> = {
+  closed: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  manually_closed: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  cancelled: "bg-muted text-muted-foreground border-border",
+};
+
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pendiente", review: "En revisión", approved: "Aprobada",
   partially_converted: "Parcial", converted_to_order: "Convertida",
