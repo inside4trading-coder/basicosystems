@@ -243,6 +243,11 @@ async function runProcessSales(
           }
           continue;
         }
+        // Producto resuelto pero variante Woo sin mapear → no postear movimiento huérfano
+        if (wooVarId && !variant) {
+          queuePending("variation_not_mapped", "Asociar la variante Woo a una variante Core");
+          continue;
+        }
         const unitCost = Number(product.unit_cost ?? 0);
         if (!unitCost || unitCost <= 0) { queuePending("unit_cost_missing", "Asignar estructura de costos o snapshot al Producto Core"); continue; }
 
