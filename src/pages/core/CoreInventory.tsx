@@ -723,7 +723,7 @@ export default function CoreInventory() {
                 <div><span className="text-muted-foreground">Talla: </span>{confirming.size ?? "—"}</div>
                 <div><span className="text-muted-foreground">Woo product: </span><span className="font-mono">{confirming.woo_product_id ?? "—"}</span></div>
                 <div><span className="text-muted-foreground">Woo variation: </span><span className="font-mono">{confirming.woo_variation_id ?? "—"}</span></div>
-                <div><span className="text-muted-foreground">Stock preview: </span>{confirming.stock_before ?? 0}</div>
+                <div><span className="text-muted-foreground">Stock preparado: </span>{confirming.stock_before ?? 0}</div>
                 <div><span className="text-muted-foreground">Entrada: </span><strong>+1</strong></div>
                 <div><span className="text-muted-foreground">Stock esperado: </span><strong>{confirming.stock_after_expected ?? 0}</strong></div>
               </div>
