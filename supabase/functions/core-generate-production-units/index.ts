@@ -1,5 +1,8 @@
 // Generate / regenerate individual production units (QR) for a Production Order.
 // Idempotent: never duplicates units. Re-runs only create missing ones.
+// Multiproduct-aware: processes are resolved per line from its product's cost-structure.
+// Supports repair_missing_processes:true to backfill unit_processes on existing
+// units that were created with 0 processes (and have no scan/work history).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -10,7 +13,112 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const ALLOWED_STATUSES = ["open", "in_production", "partially_completed", "draft"];
+const ALLOWED_STATUSES = [
+  "open", "in_production", "partially_completed", "draft",
+];
+
+const PROCESS_ITEM_TYPES = new Set(["labor", "technical_process", "process"]);
+
+function isProcessItem(it: any): boolean {
+  if (PROCESS_ITEM_TYPES.has(String(it.item_type ?? "").toLowerCase())) return true;
+  const sec = String(it.section ?? "").toLowerCase();
+  if (sec.includes("labor") || sec.includes("process")) return true;
+  if (it.adds_to_payroll) return true;
+  return false;
+}
+
+// Cache cost-structure → process rows per request to avoid N+1
+async function resolveProcessesForLine(
+  supa: any,
+  line: any,
+  costStructureCache: Map<string, any[]>,
+  orderLevelProcesses: any[],
+): Promise<any[]> {
+  const productId = line.core_product_id;
+  if (!productId) {
+    // No product on line → fallback to order-level (legacy single-product)
+    return orderLevelProcesses;
+  }
+
+  if (costStructureCache.has(productId)) {
+    return costStructureCache.get(productId)!;
+  }
+
+  const { data: prod } = await supa
+    .from("core_products")
+    .select("cost_structure_id")
+    .eq("id", productId)
+    .maybeSingle();
+
+  const csId = prod?.cost_structure_id;
+  if (!csId) {
+    // No cost-structure linked → fallback to order-level
+    costStructureCache.set(productId, orderLevelProcesses);
+    return orderLevelProcesses;
+  }
+
+  const { data: items } = await supa
+    .from("core_cost_structure_items")
+    .select(
+      "name,process_name,item_type,section,adds_to_payroll,suggested_role,sort_order,process_order,unit_cost,currency",
+    )
+    .eq("cost_structure_id", csId)
+    .order("sort_order", { ascending: true });
+
+  const rows = (items ?? [])
+    .filter(isProcessItem)
+    .map((it: any, idx: number) => ({
+      // shape compatible with order-level processes
+      id: null, // virtual; not from core_production_order_processes
+      process_name: it.process_name ?? it.name ?? `Proceso ${idx + 1}`,
+      process_type: it.item_type ?? it.section ?? null,
+      process_order: it.process_order ?? it.sort_order ?? idx,
+      adds_to_payroll: !!it.adds_to_payroll,
+      suggested_role: it.suggested_role ?? null,
+      rate_snapshot: { unit_cost: it.unit_cost, currency: it.currency },
+    }));
+
+  costStructureCache.set(productId, rows);
+  return rows;
+}
+
+async function insertUnitProcessesIfMissing(
+  supa: any,
+  unitId: string,
+  resolvedProcesses: any[],
+) {
+  if (!resolvedProcesses.length) return 0;
+  // Check what already exists for this unit
+  const { data: existing } = await supa
+    .from("core_production_unit_processes")
+    .select("process_name, process_order")
+    .eq("production_unit_id", unitId);
+
+  const seen = new Set(
+    (existing ?? []).map(
+      (e: any) => `${e.process_order}|${String(e.process_name).toLowerCase()}`,
+    ),
+  );
+
+  const rows = resolvedProcesses
+    .filter((p: any) => !seen.has(`${p.process_order}|${String(p.process_name).toLowerCase()}`))
+    .map((p: any) => ({
+      production_unit_id: unitId,
+      production_order_process_id: p.id ?? null,
+      process_name: p.process_name,
+      process_type: p.process_type,
+      process_order: p.process_order,
+      adds_to_payroll: p.adds_to_payroll,
+      suggested_role: p.suggested_role,
+      rate_snapshot: p.rate_snapshot,
+      status: "pending",
+    }));
+
+  if (!rows.length) return 0;
+  const { error } = await supa.from("core_production_unit_processes").insert(rows);
+  if (error) throw error;
+  return rows.length;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -18,6 +126,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const production_order_id: string | undefined = body.production_order_id;
     const allow_draft: boolean = !!body.allow_draft;
+    const repair_missing_processes: boolean = !!body.repair_missing_processes;
     if (!production_order_id) {
       return new Response(JSON.stringify({ error: "production_order_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -31,7 +140,6 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    // Identify caller (best effort)
     let userId: string | null = null;
     if (authHeader.startsWith("Bearer ")) {
       const anon = createClient(
@@ -69,12 +177,72 @@ Deno.serve(async (req) => {
       .select("*")
       .eq("production_order_id", production_order_id);
 
-    const { data: processes } = await supa
+    const { data: orderProcesses } = await supa
       .from("core_production_order_processes")
       .select("*")
       .eq("production_order_id", production_order_id)
       .order("process_order");
 
+    const costStructureCache = new Map<string, any[]>();
+    const orderLevelProcesses = orderProcesses ?? [];
+
+    // ============== REPAIR MODE ==============
+    if (repair_missing_processes) {
+      const { data: units } = await supa
+        .from("core_production_units")
+        .select("id, unit_code, status, production_order_line_id, core_product_id")
+        .eq("production_order_id", production_order_id);
+
+      const repaired: any[] = [];
+      const skipped: any[] = [];
+
+      for (const u of units ?? []) {
+        // Safety: only repair units without scan/work history and not in inventory
+        const [{ count: scanCnt }, { count: workCnt }, { count: procCnt }] = await Promise.all([
+          supa.from("core_production_scan_events").select("id", { count: "exact", head: true })
+            .eq("production_unit_id", u.id),
+          supa.from("core_production_work_entries").select("id", { count: "exact", head: true })
+            .eq("production_unit_id", u.id),
+          supa.from("core_production_unit_processes").select("id", { count: "exact", head: true })
+            .eq("production_unit_id", u.id),
+        ]);
+
+        if ((scanCnt ?? 0) > 0 || (workCnt ?? 0) > 0) {
+          skipped.push({ unit_code: u.unit_code, reason: "tiene escaneos o nómina" });
+          continue;
+        }
+        if (u.status === "entered_inventory" || u.status === "completed") {
+          skipped.push({ unit_code: u.unit_code, reason: `status=${u.status}` });
+          continue;
+        }
+        if ((procCnt ?? 0) > 0) {
+          skipped.push({ unit_code: u.unit_code, reason: "ya tiene procesos" });
+          continue;
+        }
+
+        const line = (lines ?? []).find((l: any) => l.id === u.production_order_line_id);
+        const resolved = line
+          ? await resolveProcessesForLine(supa, line, costStructureCache, orderLevelProcesses)
+          : orderLevelProcesses;
+        const inserted = await insertUnitProcessesIfMissing(supa, u.id, resolved);
+        repaired.push({ unit_code: u.unit_code, processes_inserted: inserted });
+      }
+
+      await supa.from("core_audit_logs").insert({
+        action: "repair_unit_processes",
+        table_name: "core_production_units",
+        record_id: production_order_id,
+        new_value: `repaired:${repaired.length} skipped:${skipped.length}`,
+        performed_by: userId,
+      });
+
+      return new Response(
+        JSON.stringify({ ok: true, mode: "repair", repaired, skipped }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // ============== NORMAL GENERATION MODE ==============
     const { data: existing } = await supa
       .from("core_production_units")
       .select("id, unit_code, production_order_line_id, size")
@@ -89,9 +257,6 @@ Deno.serve(async (req) => {
     const createdUnits: any[] = [];
     let skipped = 0;
 
-    // Detectar multiproducto: si las líneas tienen más de un sku distinto,
-    // incluir el SKU del producto en unit_code para evitar colisiones
-    // (ej. dos productos con talla L generarían el mismo código).
     const distinctSkus = Array.from(
       new Set((lines ?? []).map((l: any) => l.sku).filter(Boolean)),
     );
@@ -107,6 +272,10 @@ Deno.serve(async (req) => {
       const productTag = isMultiProduct
         ? `-${String(line.sku ?? "P").toUpperCase().replace(/\s+/g, "")}`
         : "";
+
+      const resolvedProcesses = await resolveProcessesForLine(
+        supa, line, costStructureCache, orderLevelProcesses,
+      );
 
       for (let i = 0; i < toCreate; i++) {
         const seq = have + i + 1;
@@ -142,24 +311,10 @@ Deno.serve(async (req) => {
         }
         createdUnits.push(ins);
 
-        if (processes?.length) {
-          const procRows = processes.map((p: any) => ({
-            production_unit_id: ins.id,
-            production_order_process_id: p.id,
-            process_name: p.process_name,
-            process_type: p.process_type,
-            process_order: p.process_order,
-            adds_to_payroll: p.adds_to_payroll,
-            suggested_role: p.suggested_role,
-            rate_snapshot: p.rate_snapshot,
-            status: "pending",
-          }));
-          await supa.from("core_production_unit_processes").insert(procRows);
-        }
+        await insertUnitProcessesIfMissing(supa, ins.id, resolvedProcesses);
       }
     }
 
-    // Audit log
     await supa.from("core_audit_logs").insert({
       action: "generate_production_units",
       table_name: "core_production_units",
