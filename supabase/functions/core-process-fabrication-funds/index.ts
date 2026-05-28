@@ -243,11 +243,46 @@ async function runProcessSales(
           }
           continue;
         }
-        // Producto resuelto pero variante Woo sin mapear → no postear movimiento huérfano
+        // Producto resuelto pero variante Woo sin mapear → auto-crear desde SKU padre / Woo IDs
         if (wooVarId && !variant) {
-          queuePending("variation_not_mapped", "Asociar la variante Woo a una variante Core");
-          continue;
+          const autoSize = deriveSizeFromItem(it, product);
+          if (!autoSize) {
+            queuePending(
+              "variation_not_mapped",
+              `No se pudo derivar talla automáticamente del SKU "${it.sku ?? ""}" (parent "${it.parent_sku ?? ""}"). Asociar variante manualmente.`,
+            );
+            continue;
+          }
+          const wooSku = (it.sku ?? "").toString().trim() || null;
+          const variantSku = wooSku ? wooSku.replace(/\s+/g, "-") : null;
+          const { data: createdVar, error: createVarErr } = await supabase
+            .from("core_product_variants")
+            .insert({
+              core_product_id: product.id,
+              size: autoSize,
+              variant_label: autoSize,
+              status: "active",
+              woo_variation_id: wooVarId,
+              woo_sku: wooSku,
+              variant_sku: variantSku,
+            })
+            .select("id, core_product_id, variant_sku, woo_sku, woo_variation_id, status, size, variant_label")
+            .single();
+          if (createVarErr || !createdVar) {
+            queuePending(
+              "variation_not_mapped",
+              `Falló auto-creación de variante para wooVarId ${wooVarId}: ${createVarErr?.message ?? "desconocido"}`,
+            );
+            continue;
+          }
+          // Registrar y cachear para próximos ítems del mismo run
+          variationIdToVariant.set(Number(wooVarId), createdVar);
+          if (createdVar.variant_sku) skuToVariant.set(createdVar.variant_sku.toLowerCase(), createdVar);
+          if (createdVar.woo_sku) skuToVariant.set(createdVar.woo_sku.toLowerCase(), createdVar);
+          variant = createdVar;
+          summary.by_reason["variant_auto_created"] = (summary.by_reason["variant_auto_created"] ?? 0) + 1;
         }
+
         const unitCost = Number(product.unit_cost ?? 0);
         if (!unitCost || unitCost <= 0) { queuePending("unit_cost_missing", "Asignar estructura de costos o snapshot al Producto Core"); continue; }
 
