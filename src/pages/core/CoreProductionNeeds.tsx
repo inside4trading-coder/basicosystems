@@ -120,21 +120,31 @@ export default function CoreProductionNeeds() {
       supabase.from("core_production_need_runs").select("*").order("created_at", { ascending: false }).limit(20),
       supabase
         .from("core_production_order_need_links")
-        .select("id, production_need_id, production_order_id, quantity_taken, created_at, core_production_orders(order_code, status)")
+        .select("id, production_need_id, production_order_id, quantity_taken, created_at")
         .order("created_at", { ascending: false })
         .limit(500),
     ]);
+    const linkRows = (l as any[]) ?? [];
+    const orderIds = Array.from(new Set(linkRows.map((row) => row.production_order_id).filter(Boolean)));
+    const ordersMap = new Map<string, { order_code: string | null; status: string | null }>();
+    if (orderIds.length) {
+      const { data: ords } = await supabase
+        .from("core_production_orders")
+        .select("id, order_code, status")
+        .in("id", orderIds);
+      (ords ?? []).forEach((o: any) => ordersMap.set(o.id, { order_code: o.order_code, status: o.status }));
+    }
     setNeeds((n as Need[]) ?? []);
     setRuns((r as Run[]) ?? []);
     setLinks(
-      ((l as any[]) ?? []).map((row) => ({
+      linkRows.map((row) => ({
         id: row.id,
         production_need_id: row.production_need_id,
         production_order_id: row.production_order_id,
         quantity_taken: Number(row.quantity_taken),
         created_at: row.created_at,
-        order_code: row.core_production_orders?.order_code ?? null,
-        order_status: row.core_production_orders?.status ?? null,
+        order_code: ordersMap.get(row.production_order_id)?.order_code ?? null,
+        order_status: ordersMap.get(row.production_order_id)?.status ?? null,
       })),
     );
     setLoading(false);
