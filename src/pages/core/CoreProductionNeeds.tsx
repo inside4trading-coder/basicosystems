@@ -522,6 +522,59 @@ export default function CoreProductionNeeds() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="converted">
+          <Card className="p-0 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fecha conversión</TableHead>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Talla</TableHead>
+                  <TableHead>SKU variante</TableHead>
+                  <TableHead className="text-right">Cantidad</TableHead>
+                  <TableHead>Orden producción</TableHead>
+                  <TableHead>Estado OP</TableHead>
+                  <TableHead>Completada</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {converted.length === 0 && (
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Sin necesidades convertidas todavía.</TableCell></TableRow>
+                )}
+                {converted.map((c) => (
+                  <TableRow key={c.link_id}>
+                    <TableCell className="text-xs">{formatDMY(c.created_at)}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{c.product_name ?? "-"}</div>
+                      <div className="text-xs text-muted-foreground">{c.sku ?? ""}</div>
+                    </TableCell>
+                    <TableCell>{c.size ?? "-"}</TableCell>
+                    <TableCell className="font-mono text-xs">{c.variant_sku ?? "-"}</TableCell>
+                    <TableCell className="text-right font-semibold">{c.quantity_taken}</TableCell>
+                    <TableCell className="font-mono text-xs">{c.order_code ?? "—"}</TableCell>
+                    <TableCell>
+                      {c.order_status ? (
+                        <Badge variant="outline" className={ORDER_STATUS_BADGE[c.order_status] ?? ""}>
+                          {ORDER_STATUS_LABEL[c.order_status] ?? c.order_status}
+                        </Badge>
+                      ) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {c.completed ? (
+                        <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300">
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> Sí
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-muted text-muted-foreground border-border">No</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="history">
           <Card className="p-0 overflow-hidden">
             <Table>
