@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
 
       for (let i = 0; i < toCreate; i++) {
         const seq = have + i + 1;
-        const unit_code = `${order.order_code}-${sizeTag}-${String(seq).padStart(3, "0")}`;
+        const unit_code = `${order.order_code}${productTag}-${sizeTag}-${String(seq).padStart(3, "0")}`;
         const qr_token = crypto.randomUUID().replace(/-/g, "");
         const qr_payload = `/core/escaneo?unit=${qr_token}`;
 
@@ -120,9 +120,9 @@ Deno.serve(async (req) => {
             unit_code,
             production_order_id,
             production_order_line_id: line.id,
-            core_product_id: order.core_product_id,
+            core_product_id: line.core_product_id ?? order.core_product_id,
             core_variant_id: line.core_variant_id,
-            sku: order.sku,
+            sku: line.sku ?? order.sku,
             variant_sku: line.variant_sku,
             variant_label: line.variant_label,
             size: line.size,
