@@ -354,6 +354,7 @@ export default function CoreProductionNeeds() {
           <TabsTrigger value="byProduct">Por producto</TabsTrigger>
           <TabsTrigger value="bySize">Por talla</TabsTrigger>
           <TabsTrigger value="manuals">Manuales ({manuals.length})</TabsTrigger>
+          <TabsTrigger value="converted">Convertidas ({converted.length})</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
 
