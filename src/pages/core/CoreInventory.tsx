@@ -282,7 +282,7 @@ export default function CoreInventory() {
         .update({ status: "skipped", error_message: "Descartado manualmente desde Inventario." })
         .eq("id", log.id);
       if (error) throw error;
-      toast({ title: "Preview descartado" });
+      toast({ title: "Entrada preparada descartada" });
       setDiscarding(null);
       await load();
     } catch (e: any) {
