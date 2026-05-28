@@ -550,11 +550,22 @@ export default function CoreProductEditor() {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="font-semibold">Tallas / Variaciones</h3>
               <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={importVariantsFromWoo}
+                  disabled={importingVariants || !wooProductId}
+                  title={!wooProductId ? "Asigna primero woo_product_id" : "Trae variantes desde WooCommerce"}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1 ${importingVariants ? "animate-spin" : ""}`} />
+                  {importingVariants ? "Importando…" : "Importar desde Woo"}
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => addPreset("prendas")}>Preset prendas</Button>
                 <Button variant="outline" size="sm" onClick={() => addPreset("pantalones")}>Preset pantalones</Button>
                 <Button size="sm" onClick={() => addVariant()}><Plus className="h-4 w-4 mr-1" />Agregar talla</Button>
               </div>
             </div>
+
             <div className="rounded-lg border overflow-x-auto">
               <Table>
                 <TableHeader>
