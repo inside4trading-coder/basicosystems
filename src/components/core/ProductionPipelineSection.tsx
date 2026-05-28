@@ -203,10 +203,12 @@ export function ProductionPipelineSection({ productionOrderId, orderCode, onRepa
     if (productIds.length) {
       const { data: prods } = await supabase
         .from("core_products")
-        .select("id, sku, product_name")
+        .select("id, core_sku, name")
         .in("id", productIds);
       const map: Record<string, ProductInfo> = {};
-      for (const p of (prods as ProductInfo[]) ?? []) map[p.id] = p;
+      for (const p of ((prods as any[]) ?? [])) {
+        map[p.id] = { id: p.id, sku: p.core_sku ?? null, product_name: p.name ?? null };
+      }
       setProducts(map);
     } else {
       setProducts({});
