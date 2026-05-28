@@ -672,7 +672,7 @@ export default function CoreInventory() {
               </div>
               <div className="text-xs text-amber-700 bg-amber-500/10 border border-amber-300/40 rounded p-2 flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
-                Este preview NO escribe en WooCommerce.
+                Esta entrada todavía NO actualiza WooCommerce. Debe confirmarse manualmente.
               </div>
             </div>
           )}
