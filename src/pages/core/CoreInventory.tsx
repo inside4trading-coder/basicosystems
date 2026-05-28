@@ -290,6 +290,20 @@ export default function CoreInventory() {
     }
   };
 
+  const parseEdgeError = async (error: any): Promise<any | null> => {
+    try {
+      const ctx = error?.context;
+      if (ctx && typeof ctx.json === "function") {
+        return await ctx.clone().json();
+      }
+      if (ctx && typeof ctx.text === "function") {
+        const t = await ctx.clone().text();
+        try { return JSON.parse(t); } catch { return { message: t }; }
+      }
+    } catch { /* ignore */ }
+    return null;
+  };
+
   const confirmWrite = async (log: WooLog) => {
     setConfirmBusy(true);
     try {
@@ -297,13 +311,28 @@ export default function CoreInventory() {
         body: { action: "confirm", preview_log_id: log.id },
       });
       if (error) {
-        // edge function returned non-2xx — surface error message
-        const msg = (error as any)?.message ?? "Error en la escritura";
-        toast({ title: "No se pudo confirmar", description: msg, variant: "destructive" });
+        const body = await parseEdgeError(error);
+        if (body?.stale_preview) {
+          toast({
+            title: "Stock cambió en WooCommerce",
+            description:
+              `El stock real de WooCommerce cambió desde que preparaste esta entrada. ` +
+              `Stock preparado: ${body.preview_stock ?? log.stock_before ?? 0} · ` +
+              `Stock real actual: ${body.real_stock ?? "?"}. Regenera la entrada antes de confirmar.`,
+            variant: "destructive",
+          });
+          setConfirming(null);
+          setConfirmChecked(false);
+        } else if (body?.skipped) {
+          toast({ title: "Bloqueado", description: body.message ?? "Duplicado.", variant: "destructive" });
+        } else {
+          const msg = body?.message ?? body?.error ?? (error as any)?.message ?? "Error en la escritura";
+          toast({ title: "No se pudo confirmar", description: msg, variant: "destructive" });
+        }
       } else if ((data as any)?.stale_preview) {
         toast({
-          title: "Preview obsoleto",
-          description: (data as any)?.message ?? "El stock cambió en Woo. Regenera el preview.",
+          title: "Stock cambió en WooCommerce",
+          description: (data as any)?.message ?? "El stock cambió en Woo. Regenera la entrada antes de confirmar.",
           variant: "destructive",
         });
       } else if ((data as any)?.skipped) {
