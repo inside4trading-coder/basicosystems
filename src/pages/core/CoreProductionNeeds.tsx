@@ -99,6 +99,7 @@ const OPEN_STATUSES = ["pending", "review", "approved", "partially_converted"];
 export default function CoreProductionNeeds() {
   const [needs, setNeeds] = useState<Need[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
+  const [links, setLinks] = useState<ConvertedLink[]>([]);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -114,12 +115,28 @@ export default function CoreProductionNeeds() {
 
   async function load() {
     setLoading(true);
-    const [{ data: n }, { data: r }] = await Promise.all([
+    const [{ data: n }, { data: r }, { data: l }] = await Promise.all([
       supabase.from("core_production_needs").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("core_production_need_runs").select("*").order("created_at", { ascending: false }).limit(20),
+      supabase
+        .from("core_production_order_need_links")
+        .select("id, production_need_id, production_order_id, quantity_taken, created_at, core_production_orders(order_code, status)")
+        .order("created_at", { ascending: false })
+        .limit(500),
     ]);
     setNeeds((n as Need[]) ?? []);
     setRuns((r as Run[]) ?? []);
+    setLinks(
+      ((l as any[]) ?? []).map((row) => ({
+        id: row.id,
+        production_need_id: row.production_need_id,
+        production_order_id: row.production_order_id,
+        quantity_taken: Number(row.quantity_taken),
+        created_at: row.created_at,
+        order_code: row.core_production_orders?.order_code ?? null,
+        order_status: row.core_production_orders?.status ?? null,
+      })),
+    );
     setLoading(false);
   }
 
