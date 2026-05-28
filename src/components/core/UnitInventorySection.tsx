@@ -87,7 +87,11 @@ export function UnitInventorySection({ unit, processes }: Props) {
 
   const blockers: string[] = [];
   if (invalidStatus) blockers.push("Unidad cancelada/no válida.");
-  if (!allComplete) blockers.push("Aún hay procesos pendientes.");
+  if (processes.length === 0) {
+    blockers.push("Esta unidad no tiene procesos generados — requiere reparación.");
+  } else if (!allComplete) {
+    blockers.push("Aún hay procesos pendientes.");
+  }
   if (missingVariant) blockers.push("Falta variante asociada.");
   if (missingWooProduct) blockers.push("Falta Woo Product ID.");
   if (missingWooVariation) blockers.push("Falta Woo Variation ID.");
