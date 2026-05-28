@@ -46,6 +46,33 @@ type Run = {
   blocked_count: number; non_restockable_skipped: number; summary: any;
 };
 
+type ConvertedLink = {
+  id: string;
+  production_need_id: string;
+  production_order_id: string;
+  quantity_taken: number;
+  created_at: string;
+  order_code: string | null;
+  order_status: string | null;
+};
+
+const ORDER_STATUS_LABEL: Record<string, string> = {
+  draft: "Borrador",
+  open: "Abierta",
+  in_progress: "En proceso",
+  ready_to_print: "Lista para imprimir",
+  printing: "Imprimiendo",
+  in_production: "En producción",
+  closed: "Completada",
+  manually_closed: "Cerrada manual",
+  cancelled: "Cancelada",
+};
+const ORDER_STATUS_BADGE: Record<string, string> = {
+  closed: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  manually_closed: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  cancelled: "bg-muted text-muted-foreground border-border",
+};
+
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pendiente", review: "En revisión", approved: "Aprobada",
   partially_converted: "Parcial", converted_to_order: "Convertida",
@@ -72,6 +99,7 @@ const OPEN_STATUSES = ["pending", "review", "approved", "partially_converted"];
 export default function CoreProductionNeeds() {
   const [needs, setNeeds] = useState<Need[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
+  const [links, setLinks] = useState<ConvertedLink[]>([]);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -87,12 +115,28 @@ export default function CoreProductionNeeds() {
 
   async function load() {
     setLoading(true);
-    const [{ data: n }, { data: r }] = await Promise.all([
+    const [{ data: n }, { data: r }, { data: l }] = await Promise.all([
       supabase.from("core_production_needs").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("core_production_need_runs").select("*").order("created_at", { ascending: false }).limit(20),
+      supabase
+        .from("core_production_order_need_links")
+        .select("id, production_need_id, production_order_id, quantity_taken, created_at, core_production_orders(order_code, status)")
+        .order("created_at", { ascending: false })
+        .limit(500),
     ]);
     setNeeds((n as Need[]) ?? []);
     setRuns((r as Run[]) ?? []);
+    setLinks(
+      ((l as any[]) ?? []).map((row) => ({
+        id: row.id,
+        production_need_id: row.production_need_id,
+        production_order_id: row.production_order_id,
+        quantity_taken: Number(row.quantity_taken),
+        created_at: row.created_at,
+        order_code: row.core_production_orders?.order_code ?? null,
+        order_status: row.core_production_orders?.status ?? null,
+      })),
+    );
     setLoading(false);
   }
 
@@ -255,6 +299,29 @@ export default function CoreProductionNeeds() {
 
   const manuals = useMemo(() => needs.filter(n => n.need_type === "manual_restock"), [needs]);
 
+  const converted = useMemo(() => {
+    const needsById = new Map(needs.map((n) => [n.id, n]));
+    return links
+      .map((l) => {
+        const n = needsById.get(l.production_need_id);
+        return {
+          link_id: l.id,
+          created_at: l.created_at,
+          quantity_taken: l.quantity_taken,
+          order_code: l.order_code,
+          order_status: l.order_status,
+          product_name: n?.product_name ?? null,
+          sku: n?.sku ?? null,
+          variant_sku: n?.variant_sku ?? null,
+          size: n?.size ?? n?.variant_label ?? null,
+          need_status: n?.status ?? null,
+          need_id: l.production_need_id,
+          completed: l.order_status === "closed" || l.order_status === "manually_closed",
+        };
+      })
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  }, [links, needs]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -287,6 +354,7 @@ export default function CoreProductionNeeds() {
           <TabsTrigger value="byProduct">Por producto</TabsTrigger>
           <TabsTrigger value="bySize">Por talla</TabsTrigger>
           <TabsTrigger value="manuals">Manuales ({manuals.length})</TabsTrigger>
+          <TabsTrigger value="converted">Convertidas ({converted.length})</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
 
@@ -447,6 +515,59 @@ export default function CoreProductionNeeds() {
                     <TableCell><Badge variant="outline" className={PRIORITY_BADGE[n.priority]}>{n.priority}</Badge></TableCell>
                     <TableCell><Badge variant="outline" className={STATUS_BADGE[n.status]}>{STATUS_LABEL[n.status]}</Badge></TableCell>
                     <TableCell className="text-xs">{new Date(n.created_at).toLocaleString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="converted">
+          <Card className="p-0 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fecha conversión</TableHead>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Talla</TableHead>
+                  <TableHead>SKU variante</TableHead>
+                  <TableHead className="text-right">Cantidad</TableHead>
+                  <TableHead>Orden producción</TableHead>
+                  <TableHead>Estado OP</TableHead>
+                  <TableHead>Completada</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {converted.length === 0 && (
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Sin necesidades convertidas todavía.</TableCell></TableRow>
+                )}
+                {converted.map((c) => (
+                  <TableRow key={c.link_id}>
+                    <TableCell className="text-xs">{formatDMY(c.created_at)}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{c.product_name ?? "-"}</div>
+                      <div className="text-xs text-muted-foreground">{c.sku ?? ""}</div>
+                    </TableCell>
+                    <TableCell>{c.size ?? "-"}</TableCell>
+                    <TableCell className="font-mono text-xs">{c.variant_sku ?? "-"}</TableCell>
+                    <TableCell className="text-right font-semibold">{c.quantity_taken}</TableCell>
+                    <TableCell className="font-mono text-xs">{c.order_code ?? "—"}</TableCell>
+                    <TableCell>
+                      {c.order_status ? (
+                        <Badge variant="outline" className={ORDER_STATUS_BADGE[c.order_status] ?? ""}>
+                          {ORDER_STATUS_LABEL[c.order_status] ?? c.order_status}
+                        </Badge>
+                      ) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {c.completed ? (
+                        <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300">
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> Sí
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-muted text-muted-foreground border-border">No</Badge>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
