@@ -89,6 +89,14 @@ Deno.serve(async (req) => {
     const createdUnits: any[] = [];
     let skipped = 0;
 
+    // Detectar multiproducto: si las líneas tienen más de un sku distinto,
+    // incluir el SKU del producto en unit_code para evitar colisiones
+    // (ej. dos productos con talla L generarían el mismo código).
+    const distinctSkus = Array.from(
+      new Set((lines ?? []).map((l: any) => l.sku).filter(Boolean)),
+    );
+    const isMultiProduct = distinctSkus.length > 1;
+
     for (const line of lines ?? []) {
       const need = Number(line.quantity_ordered) || 0;
       const have = existingByLine[line.id] ?? 0;
@@ -96,6 +104,9 @@ Deno.serve(async (req) => {
       if (toCreate === 0) { skipped += have; continue; }
 
       const sizeTag = (line.size ?? line.variant_label ?? "X").toString().toUpperCase().replace(/\s+/g, "");
+      const productTag = isMultiProduct
+        ? `-${String(line.sku ?? "P").toUpperCase().replace(/\s+/g, "")}`
+        : "";
 
       for (let i = 0; i < toCreate; i++) {
         const seq = have + i + 1;
