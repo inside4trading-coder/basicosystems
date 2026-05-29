@@ -1,16 +1,50 @@
-import { useState } from "react";
-import { Loader2, AlertTriangle, RefreshCw, ExternalLink, Database, Table, Calendar, ListChecks } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Loader2, AlertTriangle, RefreshCw, ExternalLink, Database, Table, Calendar, ListChecks, Archive, ArchiveRestore } from "lucide-react";
 import { toast } from "sonner";
 import { usePlanningDatabases, usePlanningTasks } from "@/hooks/usePlanningData";
 import PlanningTable from "@/components/planning/PlanningTable";
 import PlanningCalendar from "@/components/planning/PlanningCalendar";
 import PlanningAgenda from "@/components/planning/PlanningAgenda";
 
+const ARCHIVED_KEY = "planning:archived_sources";
+
+function useArchivedSources() {
+  const [archived, setArchived] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(ARCHIVED_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(ARCHIVED_KEY, JSON.stringify(archived)); } catch {}
+  }, [archived]);
+  const toggle = (id: string) =>
+    setArchived((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  return { archived, toggle, isArchived: (id: string) => archived.includes(id) };
+}
+
 export default function Planning() {
-  const { databases, loading: loadingDbs, error: dbError, refetch: refetchDbs } = usePlanningDatabases();
+  const { databases: allDatabases, loading: loadingDbs, error: dbError, refetch: refetchDbs } = usePlanningDatabases();
+  const { archived, toggle: toggleArchive, isArchived } = useArchivedSources();
+  const [showArchived, setShowArchived] = useState(false);
+
+  const visibleDatabases = useMemo(
+    () => allDatabases.filter((d) => (showArchived ? isArchived(d.id) : !isArchived(d.id))),
+    [allDatabases, archived, showArchived]
+  );
+  const databases = visibleDatabases;
+
   const [selectedSource, setSelectedSource] = useState<string>("all");
   const [view, setView] = useState<"agenda" | "tabla" | "calendario">("agenda");
-  const { tasks, loading: loadingTasks, error: taskError, refetch: refetchTasks } = usePlanningTasks(selectedSource, databases);
+
+  // Reset selection if it's no longer visible
+  useEffect(() => {
+    if (selectedSource !== "all" && !visibleDatabases.find((d) => d.id === selectedSource)) {
+      setSelectedSource("all");
+    }
+  }, [visibleDatabases, selectedSource]);
+
+  const { tasks, loading: loadingTasks, error: taskError, refetch: refetchTasks } = usePlanningTasks(selectedSource, visibleDatabases);
   const [syncing, setSyncing] = useState(false);
 
   const isTokenError = (msg: string | null) =>
