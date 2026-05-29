@@ -4,6 +4,7 @@ import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { useAuth, canAccessRoute, subscribeRoleRoutes, type ProfileRole } from "@/hooks/useAuth";
 import basicoLogo from "@/assets/basico-logo.png";
+import { InstallAppButton } from "@/components/InstallAppButton";
 
 import {
   Sidebar,
