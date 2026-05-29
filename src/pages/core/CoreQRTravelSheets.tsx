@@ -217,11 +217,13 @@ html, body { margin: 0; padding: 0; font-family: Inter, system-ui, sans-serif; c
 .size { font-weight: 900; font-size: 22pt; line-height: 1; margin-top: 1mm; }
 .product { font-size: 8pt; margin-top: 2mm; font-weight: 600; line-height: 1.15; }
 h4 { font-size: 7.5pt; margin: 2.5mm 0 1mm; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 0.5px solid #999; padding-bottom: 0.5mm; }
-ul.proc { list-style: none; padding: 0; margin: 0; font-size: 7.5pt; flex: 1; }
-ul.proc li { display: flex; gap: 1.5mm; padding: 0.6mm 0; align-items: center; line-height: 1.15; }
-ul.proc li .chk { width: 2.8mm; height: 2.8mm; border: 1px solid #0a0a0a; display: inline-block; flex: none; }
-ul.proc li .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-ul.proc li .pay { font-size: 6pt; padding: 0.3mm 1mm; border-radius: 1mm; background: #fdecef; color: #E3001B; font-weight: 700; }
+.proc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2mm; flex: 1; align-content: start; }
+.proc-cell { border: 1px solid #0a0a0a; border-radius: 1mm; padding: 1.2mm 1.5mm; display: flex; align-items: center; gap: 1.2mm; font-size: 7pt; line-height: 1.1; min-height: 6.5mm; box-sizing: border-box; }
+.proc-cell .chk { width: 3mm; height: 3mm; border: 1px solid #0a0a0a; flex: none; border-radius: 0.5mm; }
+.proc-cell .num { font-weight: 900; font-size: 7pt; }
+.proc-cell .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.proc-cell .pay { font-size: 6pt; padding: 0.2mm 1mm; border-radius: 1mm; background: #fdecef; color: #E3001B; font-weight: 900; flex: none; }
+.proc-empty { font-size: 7pt; font-style: italic; opacity: 0.7; padding: 2mm 0; }
 </style></head><body>
 ${units_.map((u, i) => {
   const ord = orders.find((o) => o.id === u.production_order_id);
@@ -242,16 +244,15 @@ ${units_.map((u, i) => {
     </div>
     <div class="product">${(u.core_product_id ? productNameById[u.core_product_id] : "") || ord?.product_name || ""}</div>
     <h4>Procesos requeridos</h4>
-    <ul class="proc">
-      ${procs.length === 0
-        ? '<li><i>Sin procesos asociados.</i></li>'
-        : procs.map((p) => `
-        <li>
+    ${procs.length === 0
+      ? '<div class="proc-empty">Sin procesos asociados.</div>'
+      : `<div class="proc-grid">${procs.map((p) => `
+        <div class="proc-cell">
           <span class="chk"></span>
-          <span class="name"><b>${p.process_order}.</b> ${p.process_name}</span>
+          <span class="num">${p.process_order}.</span>
+          <span class="name">${p.process_name}</span>
           ${p.adds_to_payroll ? '<span class="pay">N</span>' : ""}
-        </li>`).join("")}
-    </ul>
+        </div>`).join("")}</div>`}
   </div>`;
 }).join("")}
 <script>window.onload = () => { window.print(); };</script>
