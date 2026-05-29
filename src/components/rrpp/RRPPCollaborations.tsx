@@ -63,6 +63,9 @@ const emptyForm = () => ({
   shipping_address: "",
   shipping_city: "",
   shipping_country: "",
+  // Step 2.0 - Sin necesidad de envío
+  no_shipping_needed: false,
+  no_shipping_method: "" as "" | "rrpp_delivers" | "store_pickup" | "other",
   // Step 2.1 - Confirmación de envío
   tracking_number: "",
   shipped_at: "",
@@ -160,6 +163,8 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
       shipping_address: c.shipping_address ?? "",
       shipping_city: c.shipping_city ?? "",
       shipping_country: c.shipping_country ?? "",
+      no_shipping_needed: !!(c as any).no_shipping_needed,
+      no_shipping_method: ((c as any).no_shipping_method ?? "") as any,
       tracking_number: c.tracking_number ?? "",
       shipped_at: c.shipped_at ? c.shipped_at.slice(0, 10) : "",
       received: !!c.received,
@@ -193,8 +198,10 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
         shipping_address: form.shipping_address.trim(),
         shipping_city: form.shipping_city.trim(),
         shipping_country: form.shipping_country.trim(),
-        tracking_number: form.tracking_number.trim(),
-        shipped_at: form.shipped_at || null,
+        no_shipping_needed: form.no_shipping_needed,
+        no_shipping_method: form.no_shipping_needed ? (form.no_shipping_method || null) : null,
+        tracking_number: form.no_shipping_needed ? "" : form.tracking_number.trim(),
+        shipped_at: form.no_shipping_needed ? null : (form.shipped_at || null),
         received: form.received,
         collab_done: form.collab_done,
         has_coupon: form.has_coupon,
@@ -319,6 +326,34 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
 
             {/* STEP 2 - ENVÍO (destinatario por marca) */}
             <Section icon={Truck} title="2. Datos de envío" active={currentStage >= 2}>
+              <div className="rounded-md border p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="cursor-pointer">Sin necesidad de envío</Label>
+                  <Switch
+                    checked={form.no_shipping_needed}
+                    onCheckedChange={(v) => setForm({ ...form, no_shipping_needed: v })}
+                  />
+                </div>
+                {form.no_shipping_needed && (
+                  <div>
+                    <Label>Método de entrega</Label>
+                    <Select
+                      value={form.no_shipping_method}
+                      onValueChange={(v) => setForm({ ...form, no_shipping_method: v as any })}
+                    >
+                      <SelectTrigger className="mt-1"><SelectValue placeholder="Selecciona una opción" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="rrpp_delivers">El RRPP se encarga de entregar</SelectItem>
+                        <SelectItem value="store_pickup">Retira en tienda / spot</SelectItem>
+                        <SelectItem value="other">Otro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {!form.no_shipping_needed && (
+              <>
               <p className="text-xs text-muted-foreground -mt-1">
                 {brand === "basico_es"
                   ? "Datos para envío internacional (Básico España / Europa)."
@@ -438,6 +473,8 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                   <Switch checked={form.received} onCheckedChange={(v) => setForm({ ...form, received: v })} />
                 </div>
               </div>
+              </>
+              )}
             </Section>
 
 
@@ -606,7 +643,21 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                   </div>
                 )}
 
-                {(c.shipping_name || c.tracking_number || c.shipped_at) && (
+                {(c as any).no_shipping_needed ? (
+                  <div className="mt-3 p-3 rounded-md bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Entrega</p>
+                    <p className="text-sm font-semibold">
+                      Sin necesidad de envío
+                      {(c as any).no_shipping_method && (
+                        <> · {
+                          (c as any).no_shipping_method === "rrpp_delivers" ? "El RRPP se encarga de entregar"
+                          : (c as any).no_shipping_method === "store_pickup" ? "Retira en tienda / spot"
+                          : "Otro"
+                        }</>
+                      )}
+                    </p>
+                  </div>
+                ) : (c.shipping_name || c.tracking_number || c.shipped_at) && (
                   <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 p-3 rounded-md bg-muted/50">
                     <div>
                       <p className="text-xs text-muted-foreground">Destinatario</p>

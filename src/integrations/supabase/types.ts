@@ -4026,6 +4026,8 @@ export type Database = {
           has_coupon: boolean
           id: string
           network_posted: string | null
+          no_shipping_method: string | null
+          no_shipping_needed: boolean
           observations: string | null
           order_details: string | null
           post_date: string | null
@@ -4056,6 +4058,8 @@ export type Database = {
           has_coupon?: boolean
           id?: string
           network_posted?: string | null
+          no_shipping_method?: string | null
+          no_shipping_needed?: boolean
           observations?: string | null
           order_details?: string | null
           post_date?: string | null
@@ -4086,6 +4090,8 @@ export type Database = {
           has_coupon?: boolean
           id?: string
           network_posted?: string | null
+          no_shipping_method?: string | null
+          no_shipping_needed?: boolean
           observations?: string | null
           order_details?: string | null
           post_date?: string | null
