@@ -163,6 +163,8 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
       shipping_address: c.shipping_address ?? "",
       shipping_city: c.shipping_city ?? "",
       shipping_country: c.shipping_country ?? "",
+      no_shipping_needed: !!(c as any).no_shipping_needed,
+      no_shipping_method: ((c as any).no_shipping_method ?? "") as any,
       tracking_number: c.tracking_number ?? "",
       shipped_at: c.shipped_at ? c.shipped_at.slice(0, 10) : "",
       received: !!c.received,
