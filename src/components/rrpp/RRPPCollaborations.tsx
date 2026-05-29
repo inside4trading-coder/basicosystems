@@ -643,7 +643,21 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                   </div>
                 )}
 
-                {(c.shipping_name || c.tracking_number || c.shipped_at) && (
+                {(c as any).no_shipping_needed ? (
+                  <div className="mt-3 p-3 rounded-md bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Entrega</p>
+                    <p className="text-sm font-semibold">
+                      Sin necesidad de envío
+                      {(c as any).no_shipping_method && (
+                        <> · {
+                          (c as any).no_shipping_method === "rrpp_delivers" ? "El RRPP se encarga de entregar"
+                          : (c as any).no_shipping_method === "store_pickup" ? "Retira en tienda / spot"
+                          : "Otro"
+                        }</>
+                      )}
+                    </p>
+                  </div>
+                ) : (c.shipping_name || c.tracking_number || c.shipped_at) && (
                   <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 p-3 rounded-md bg-muted/50">
                     <div>
                       <p className="text-xs text-muted-foreground">Destinatario</p>
