@@ -372,7 +372,7 @@ ${units_.map((u, i) => {
             QR / Ficha Viajera
           </h1>
           <p className="text-sm text-muted-foreground">
-            Genera unidades individuales con QR, ficha viajera y etiquetas 57×40 mm.
+            Genera unidades individuales con QR, ficha viajera y etiquetas 100×100 mm.
           </p>
         </div>
         <Button variant="outline" onClick={load} disabled={loading}>
