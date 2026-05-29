@@ -118,6 +118,9 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <SidebarMenu>
           <SidebarMenuItem>
+            <InstallAppButton collapsed={collapsed} />
+          </SidebarMenuItem>
+          <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleLogout}
               className="hover:bg-sidebar-accent/50 rounded-md text-sidebar-foreground/70"
