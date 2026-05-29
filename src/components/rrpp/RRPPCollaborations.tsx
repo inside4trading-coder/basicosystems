@@ -473,6 +473,8 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                   <Switch checked={form.received} onCheckedChange={(v) => setForm({ ...form, received: v })} />
                 </div>
               </div>
+              </>
+              )}
             </Section>
 
 
