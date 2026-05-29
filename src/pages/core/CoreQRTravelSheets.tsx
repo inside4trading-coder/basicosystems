@@ -191,30 +191,62 @@ export default function CoreQRTravelSheets() {
     if (!units_.length) { toast.error("Sin unidades para imprimir"); return; }
     const qrs = await Promise.all(units_.map((u) => buildQrDataUrl(u.qr_payload ?? u.unit_code)));
     const html = `
-<!doctype html><html><head><meta charset="utf-8"/><title>Etiquetas QR</title>
+<!doctype html><html><head><meta charset="utf-8"/><title>Etiquetas QR 10×10</title>
 <style>
-@page { size: 57mm 40mm; margin: 0; }
-html, body { margin: 0; padding: 0; font-family: Inter, system-ui, sans-serif; }
-.label { width: 57mm; height: 40mm; padding: 2mm 2.5mm; box-sizing: border-box;
-  display: flex; gap: 2mm; align-items: center; page-break-after: always; }
+@page { size: 100mm 100mm; margin: 0; }
+html, body { margin: 0; padding: 0; font-family: Inter, system-ui, sans-serif; color: #0a0a0a; }
+.label { width: 100mm; height: 100mm; padding: 4mm; box-sizing: border-box;
+  display: flex; flex-direction: column; page-break-after: always; }
 .label:last-child { page-break-after: auto; }
-.label img { width: 32mm; height: 32mm; }
-.meta { display: flex; flex-direction: column; gap: 0.5mm; font-size: 8pt; line-height: 1.1; flex: 1; min-width: 0; overflow: hidden; }
-.code { font-weight: 800; font-size: 9pt; word-break: break-all; }
-.sku { font-family: ui-monospace, Menlo, monospace; font-size: 7.5pt; }
-.size { font-weight: 800; font-size: 14pt; }
-.op { font-size: 7pt; opacity: 0.75; }
+.head { display: flex; justify-content: space-between; align-items: flex-start;
+  border-bottom: 1.5px solid #0a0a0a; padding-bottom: 1.5mm; margin-bottom: 2mm; }
+.brand { font-weight: 900; font-size: 8pt; letter-spacing: 0.05em; color: #E3001B; }
+.op { font-size: 7pt; opacity: 0.75; font-family: ui-monospace, Menlo, monospace; }
+.top { display: flex; gap: 3mm; align-items: center; }
+.top img { width: 30mm; height: 30mm; flex: none; }
+.meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5mm; }
+.code { font-weight: 900; font-size: 9pt; word-break: break-all; line-height: 1.1; }
+.sku { font-family: ui-monospace, Menlo, monospace; font-size: 7pt; }
+.size { font-weight: 900; font-size: 22pt; line-height: 1; margin-top: 1mm; }
+.product { font-size: 8pt; margin-top: 2mm; font-weight: 600; line-height: 1.15; }
+h4 { font-size: 7.5pt; margin: 2.5mm 0 1mm; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 0.5px solid #999; padding-bottom: 0.5mm; }
+ul.proc { list-style: none; padding: 0; margin: 0; font-size: 7.5pt; flex: 1; }
+ul.proc li { display: flex; gap: 1.5mm; padding: 0.6mm 0; align-items: center; line-height: 1.15; }
+ul.proc li .chk { width: 2.8mm; height: 2.8mm; border: 1px solid #0a0a0a; display: inline-block; flex: none; }
+ul.proc li .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ul.proc li .pay { font-size: 6pt; padding: 0.3mm 1mm; border-radius: 1mm; background: #fdecef; color: #E3001B; font-weight: 700; }
 </style></head><body>
-${units_.map((u, i) => `
+${units_.map((u, i) => {
+  const ord = orders.find((o) => o.id === u.production_order_id);
+  const procs = processesByUnit[u.id] ?? [];
+  return `
   <div class="label">
-    <img src="${qrs[i]}" alt="QR" />
-    <div class="meta">
-      <div class="code">${u.unit_code}</div>
-      <div class="sku">${u.variant_sku ?? u.sku ?? ""}</div>
-      <div class="size">Talla ${u.size ?? u.variant_label ?? "—"}</div>
-      <div class="op">${orders.find((o) => o.id === u.production_order_id)?.order_code ?? ""}</div>
+    <div class="head">
+      <div class="brand">BASICO</div>
+      <div class="op">OP: ${ord?.order_code ?? ""}</div>
     </div>
-  </div>`).join("")}
+    <div class="top">
+      <img src="${qrs[i]}" alt="QR" />
+      <div class="meta">
+        <div class="code">${u.unit_code}</div>
+        <div class="sku">${u.variant_sku ?? u.sku ?? ord?.sku ?? ""}</div>
+        <div class="size">${u.size ?? u.variant_label ?? "—"}</div>
+      </div>
+    </div>
+    <div class="product">${ord?.product_name ?? ""}</div>
+    <h4>Procesos requeridos</h4>
+    <ul class="proc">
+      ${procs.length === 0
+        ? '<li><i>Sin procesos asociados.</i></li>'
+        : procs.map((p) => `
+        <li>
+          <span class="chk"></span>
+          <span class="name"><b>${p.process_order}.</b> ${p.process_name}</span>
+          ${p.adds_to_payroll ? '<span class="pay">N</span>' : ""}
+        </li>`).join("")}
+    </ul>
+  </div>`;
+}).join("")}
 <script>window.onload = () => { window.print(); };</script>
 </body></html>`;
     const w = window.open("", "_blank");
