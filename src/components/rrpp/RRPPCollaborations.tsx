@@ -326,6 +326,34 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
 
             {/* STEP 2 - ENVÍO (destinatario por marca) */}
             <Section icon={Truck} title="2. Datos de envío" active={currentStage >= 2}>
+              <div className="rounded-md border p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="cursor-pointer">Sin necesidad de envío</Label>
+                  <Switch
+                    checked={form.no_shipping_needed}
+                    onCheckedChange={(v) => setForm({ ...form, no_shipping_needed: v })}
+                  />
+                </div>
+                {form.no_shipping_needed && (
+                  <div>
+                    <Label>Método de entrega</Label>
+                    <Select
+                      value={form.no_shipping_method}
+                      onValueChange={(v) => setForm({ ...form, no_shipping_method: v as any })}
+                    >
+                      <SelectTrigger className="mt-1"><SelectValue placeholder="Selecciona una opción" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="rrpp_delivers">El RRPP se encarga de entregar</SelectItem>
+                        <SelectItem value="store_pickup">Retira en tienda / spot</SelectItem>
+                        <SelectItem value="other">Otro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {!form.no_shipping_needed && (
+              <>
               <p className="text-xs text-muted-foreground -mt-1">
                 {brand === "basico_es"
                   ? "Datos para envío internacional (Básico España / Europa)."
