@@ -311,7 +311,7 @@ ${units_.map((u, i) => {
         <div class="size">${u.size ?? u.variant_label ?? "—"}</div>
       </div>
     </div>
-    <div class="row"><b>Producto:</b> ${ord?.product_name ?? ""}</div>
+    <div class="row"><b>Producto:</b> ${(u.core_product_id ? productNameById[u.core_product_id] : "") || ord?.product_name || ""}</div>
     <div class="row"><b>SKU padre:</b> ${u.sku ?? ord?.sku ?? ""}</div>
     <div class="row"><b>SKU variante:</b> ${u.variant_sku ?? ""}</div>
     <div class="row"><b>Cantidad:</b> 1 unidad</div>
