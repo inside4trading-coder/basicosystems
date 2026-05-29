@@ -63,6 +63,9 @@ const emptyForm = () => ({
   shipping_address: "",
   shipping_city: "",
   shipping_country: "",
+  // Step 2.0 - Sin necesidad de envío
+  no_shipping_needed: false,
+  no_shipping_method: "" as "" | "rrpp_delivers" | "store_pickup" | "other",
   // Step 2.1 - Confirmación de envío
   tracking_number: "",
   shipped_at: "",
