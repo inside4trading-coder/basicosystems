@@ -34,6 +34,7 @@ type Unit = {
   unit_code: string;
   production_order_id: string;
   production_order_line_id: string | null;
+  core_product_id: string | null;
   sku: string | null;
   variant_sku: string | null;
   variant_label: string | null;
@@ -88,9 +89,11 @@ export default function CoreQRTravelSheets() {
   const [cancelReason, setCancelReason] = useState("");
   const [detailUnit, setDetailUnit] = useState<Unit | null>(null);
 
+  const [productNameById, setProductNameById] = useState<Record<string, string>>({});
+
   const load = async () => {
     setLoading(true);
-    const [{ data: ords }, { data: us }, { data: ps }] = await Promise.all([
+    const [{ data: ords }, { data: us }, { data: ps }, { data: prods }] = await Promise.all([
       supabase.from("core_production_orders")
         .select("id, order_code, status, sku, product_name, total_quantity, pending_quantity, completed_quantity, created_at")
         .order("created_at", { ascending: false })
@@ -102,10 +105,14 @@ export default function CoreQRTravelSheets() {
       supabase.from("core_production_unit_processes")
         .select("*")
         .order("process_order"),
+      supabase.from("core_products").select("id, name"),
     ]);
     setOrders((ords as any) ?? []);
     setUnits((us as any) ?? []);
     setProcesses((ps as any) ?? []);
+    const map: Record<string, string> = {};
+    for (const p of (prods as any[]) ?? []) map[p.id] = p.name;
+    setProductNameById(map);
     setLoading(false);
   };
 
@@ -233,7 +240,7 @@ ${units_.map((u, i) => {
         <div class="size">${u.size ?? u.variant_label ?? "—"}</div>
       </div>
     </div>
-    <div class="product">${ord?.product_name ?? ""}</div>
+    <div class="product">${(u.core_product_id ? productNameById[u.core_product_id] : "") || ord?.product_name || ""}</div>
     <h4>Procesos requeridos</h4>
     <ul class="proc">
       ${procs.length === 0
@@ -304,7 +311,7 @@ ${units_.map((u, i) => {
         <div class="size">${u.size ?? u.variant_label ?? "—"}</div>
       </div>
     </div>
-    <div class="row"><b>Producto:</b> ${ord?.product_name ?? ""}</div>
+    <div class="row"><b>Producto:</b> ${(u.core_product_id ? productNameById[u.core_product_id] : "") || ord?.product_name || ""}</div>
     <div class="row"><b>SKU padre:</b> ${u.sku ?? ord?.sku ?? ""}</div>
     <div class="row"><b>SKU variante:</b> ${u.variant_sku ?? ""}</div>
     <div class="row"><b>Cantidad:</b> 1 unidad</div>
