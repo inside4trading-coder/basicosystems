@@ -107,7 +107,7 @@ export default function Planning() {
   }
 
   // ── No databases ──
-  if (databases.length === 0) {
+  if (allDatabases.length === 0) {
     return (
       <div className="space-y-6">
         <Header />
@@ -119,6 +119,9 @@ export default function Planning() {
       </div>
     );
   }
+
+  const archivedCount = archived.filter((id) => allDatabases.some((d) => d.id === id)).length;
+  const activeCount = allDatabases.length - archivedCount;
 
   return (
     <div className="space-y-6">
@@ -150,6 +153,26 @@ export default function Planning() {
         </div>
       </div>
 
+      {/* Active / Archived toggle */}
+      <div className="flex items-center gap-1 bg-muted rounded-lg p-1 w-fit">
+        <button
+          onClick={() => setShowArchived(false)}
+          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+            !showArchived ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Activas ({activeCount})
+        </button>
+        <button
+          onClick={() => setShowArchived(true)}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+            showArchived ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Archive className="h-3.5 w-3.5" /> Archivadas ({archivedCount})
+        </button>
+      </div>
+
       {/* Source selector + view toggle */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-1 bg-muted rounded-lg p-1 overflow-x-auto">
@@ -159,21 +182,44 @@ export default function Planning() {
               selectedSource === "all" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Todas las fuentes
+            {showArchived ? "Todas archivadas" : "Todas las fuentes"}
           </button>
-          {databases.map((db) => (
-            <button
+          {visibleDatabases.length === 0 && (
+            <span className="px-3 py-1.5 text-xs text-muted-foreground whitespace-nowrap">
+              {showArchived ? "Sin fuentes archivadas" : "Sin fuentes activas"}
+            </span>
+          )}
+          {visibleDatabases.map((db) => (
+            <div
               key={db.id}
-              onClick={() => setSelectedSource(db.id)}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors truncate max-w-[160px] ${
-                selectedSource === db.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              className={`group flex items-center rounded-md transition-colors ${
+                selectedSource === db.id ? "bg-card shadow-sm" : "hover:bg-card/50"
               }`}
-              title={db.name}
             >
-              {db.name}
-            </button>
+              <button
+                onClick={() => setSelectedSource(db.id)}
+                className={`pl-3 pr-1 py-1.5 rounded-l-md text-xs font-semibold transition-colors truncate max-w-[160px] ${
+                  selectedSource === db.id ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                }`}
+                title={db.name}
+              >
+                {db.name}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleArchive(db.id);
+                  toast.success(showArchived ? "Fuente restaurada" : "Fuente archivada");
+                }}
+                className="px-1.5 py-1.5 rounded-r-md text-muted-foreground hover:text-foreground opacity-60 hover:opacity-100 transition"
+                title={showArchived ? "Restaurar fuente" : "Archivar fuente"}
+              >
+                {showArchived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+              </button>
+            </div>
           ))}
         </div>
+
 
         <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
           <button
