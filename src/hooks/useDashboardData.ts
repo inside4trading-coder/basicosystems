@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isValidOrder, isExcludedFromRevenue } from "@/config/orderStatuses";
+import { formatLocalDate } from "@/lib/dateUtils";
 
 export type Period = "today" | "week" | "month" | "year" | "custom";
 
@@ -86,28 +87,28 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       const prev = getPrevDateRange(period, customRange);
       const yoy = getYoYDateRange(period, customRange);
 
-      // Fetch current orders
+      // Fetch current orders (use local Madrid date, not UTC, to avoid timezone shift)
       const { data: currentOrders, error: cErr } = await supabase
         .from("orders")
         .select("*")
-        .gte("order_date", start.toISOString().split("T")[0])
-        .lte("order_date", end.toISOString().split("T")[0]);
+        .gte("order_date", formatLocalDate(start))
+        .lte("order_date", formatLocalDate(end));
       if (cErr) throw new Error(cErr.message);
 
       // Fetch previous period orders
       const { data: prevOrders, error: pErr } = await supabase
         .from("orders")
         .select("order_id, total_amount, total_amount_usd, order_status, customer_email")
-        .gte("order_date", prev.start.toISOString().split("T")[0])
-        .lt("order_date", prev.end.toISOString().split("T")[0]);
+        .gte("order_date", formatLocalDate(prev.start))
+        .lt("order_date", formatLocalDate(prev.end));
       if (pErr) throw new Error(pErr.message);
 
       // Fetch year-over-year orders (same range, last year)
       const { data: yoyOrders, error: yErr } = await supabase
         .from("orders")
         .select("order_id, total_amount, total_amount_usd, order_status, customer_email")
-        .gte("order_date", yoy.start.toISOString().split("T")[0])
-        .lte("order_date", yoy.end.toISOString().split("T")[0]);
+        .gte("order_date", formatLocalDate(yoy.start))
+        .lte("order_date", formatLocalDate(yoy.end));
       if (yErr) throw new Error(yErr.message);
 
 
@@ -357,8 +358,8 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       try {
         const projectId = (import.meta as any).env.VITE_SUPABASE_PROJECT_ID;
         const anonKey = (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        const s = start.toISOString().split("T")[0];
-        const e = end.toISOString().split("T")[0];
+        const s = formatLocalDate(start);
+        const e = formatLocalDate(end);
         const res = await fetch(
           `https://${projectId}.supabase.co/functions/v1/woo-analytics-kpis?start=${s}&end=${e}`,
           { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
