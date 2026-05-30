@@ -52,6 +52,10 @@ import CoreFactoryOperators from "./pages/core/CoreFactoryOperators";
 import CorePayroll from "./pages/core/CorePayroll";
 import CoreInventory from "./pages/core/CoreInventory";
 import CoreReports from "./pages/core/CoreReports";
+import EspanaLayout from "./pages/espana/EspanaLayout";
+import EspanaDashboard from "./pages/espana/EspanaDashboard";
+import EspanaConfiguracion from "./pages/espana/EspanaConfiguracion";
+import EspanaPlaceholder from "./pages/espana/EspanaPlaceholder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -132,6 +136,18 @@ const App = () => (
                 <Route path="nomina" element={<CorePayroll />} />
                 <Route path="inventario" element={<CoreInventory />} />
                 <Route path="reportes" element={<CoreReports />} />
+              </Route>
+              <Route path="/espana" element={<EspanaLayout />}>
+                <Route index element={<EspanaDashboard />} />
+                <Route path="configuracion" element={<EspanaConfiguracion />} />
+                <Route path="reportes" element={<EspanaPlaceholder title="Reportes España" description="Ventas por canal, sede, método de pago, productos más vendidos, stock y fabricación pendiente." />} />
+                <Route path="ventas" element={<EspanaPlaceholder title="Ventas España" description="Registro y consulta de ventas por canal (Web, Pop Up Ibiza, Arturo Soria, Otros)." />} />
+                <Route path="pos" element={<EspanaPlaceholder title="POS Móvil" description="POS móvil para registrar ventas presenciales escaneando QR, eligiendo método de pago y descontando inventario de la sede." bullets={["Detección de sede default o selección manual","Escaneo QR / búsqueda manual de producto","Botones de método de pago configurables","Descuento automático de inventario por sede"]} />} />
+                <Route path="woocommerce" element={<EspanaPlaceholder title="WooCommerce España" description="Conexión con basicoclothes.es. Actualmente no conectado." bullets={["Web: basicoclothes.es","Estado: no conectado","Modo futuro: read_only / manual / conectado","Moneda: EUR"]} />} />
+                <Route path="productos" element={<EspanaPlaceholder title="Productos España" description="Gestión de productos de Basico España (SKU, variantes, precios, QR, imágenes)." />} />
+                <Route path="inventario" element={<EspanaPlaceholder title="Inventario por sedes" description="Stock por producto y variante en cada sede de España." />} />
+                <Route path="fabricacion" element={<EspanaPlaceholder title="Listado de fabricación" description="Cola de fabricación generada desde pedidos WooCommerce España." />} />
+                <Route path="blanks-dtf" element={<EspanaPlaceholder title="Blanks / DTF" description="Inventario sencillo de blanks y consumibles DTF, con entradas, salidas y ajustes." />} />
               </Route>
             </Route>
             <Route path="/crew/incidencias" element={<CrewIncidencias />} />
