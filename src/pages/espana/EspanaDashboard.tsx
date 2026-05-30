@@ -21,29 +21,52 @@ export default function EspanaDashboard() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
+  const [stockByLoc, setStockByLoc] = useState<Record<string, number>>({});
+  const [activeProducts, setActiveProducts] = useState(0);
+  const [activeVariants, setActiveVariants] = useState(0);
+  const [lowStock, setLowStock] = useState(0);
 
   useEffect(() => {
     (async () => {
-      const [c, l, p] = await Promise.all([
+      const [c, l, p, s, pr, vr] = await Promise.all([
         supabase.from("esp_sales_channels").select("id,name,key,is_active").order("name"),
         supabase.from("esp_locations").select("id,name,code,inventory_mode").order("name"),
         supabase.from("esp_payment_methods").select("id,name,key,color").order("sort_order"),
+        supabase.from("esp_inventory_stock").select("location_id,variant_id,quantity_on_hand"),
+        supabase.from("esp_products").select("id", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("esp_product_variants").select("id", { count: "exact", head: true }).eq("status", "active"),
       ]);
       if (c.data) setChannels(c.data as Channel[]);
       if (l.data) setLocations(l.data as Location[]);
       if (p.data) setPayments(p.data as PaymentMethod[]);
+      const bl: Record<string, number> = {};
+      const byVariant: Record<string, number> = {};
+      (s.data as any[] | null)?.forEach((x) => {
+        bl[x.location_id] = (bl[x.location_id] || 0) + (x.quantity_on_hand || 0);
+        byVariant[x.variant_id] = (byVariant[x.variant_id] || 0) + (x.quantity_on_hand || 0);
+      });
+      setStockByLoc(bl);
+      setLowStock(Object.values(byVariant).filter((v) => v > 0 && v <= 2).length);
+      setActiveProducts(pr.count || 0);
+      setActiveVariants(vr.count || 0);
     })();
   }, []);
 
+  const totalStock = Object.values(stockByLoc).reduce((a, b) => a + b, 0);
+  const stockAt = (code: string) => {
+    const loc = locations.find(l => l.code === code);
+    return loc ? (stockByLoc[loc.id] || 0) : 0;
+  };
+
   const kpis = [
+    { label: "Productos activos", value: String(activeProducts), icon: Package },
+    { label: "Variantes activas", value: String(activeVariants), icon: ShoppingBag },
+    { label: "Stock total España", value: String(totalStock), icon: Warehouse },
+    { label: "Stock Pop Up Ibiza", value: String(stockAt("ibiza")), icon: Warehouse },
+    { label: "Stock Arturo Soria", value: String(stockAt("arturo_soria")), icon: Warehouse },
+    { label: "Stock central", value: String(stockAt("central")), icon: Warehouse },
+    { label: "Variantes bajo stock", value: String(lowStock), icon: TrendingUp },
     { label: "Ventas hoy", value: "€0,00", icon: Euro },
-    { label: "Ventas mes", value: "€0,00", icon: TrendingUp },
-    { label: "Ventas registradas", value: "0", icon: ShoppingBag },
-    { label: "Ticket promedio", value: "€0,00", icon: CreditCard },
-    { label: "Productos vendidos", value: "0", icon: Package },
-    { label: "Stock total España", value: "0", icon: Warehouse },
-    { label: "Pendientes fabricación ES", value: "0", icon: Hammer },
-    { label: "Inventario Blanks / DTF", value: "0", icon: Shirt },
   ];
 
   return (
@@ -86,7 +109,7 @@ export default function EspanaDashboard() {
                   <span className="font-medium">{l.name}</span>
                   <Badge variant="outline" className="text-[10px]">{l.inventory_mode}</Badge>
                 </div>
-                <span className="text-muted-foreground">0 uds</span>
+                <span className="text-muted-foreground">{stockByLoc[l.id] || 0} uds</span>
               </div>
             ))}
           </div>
