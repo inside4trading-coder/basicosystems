@@ -358,8 +358,8 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       try {
         const projectId = (import.meta as any).env.VITE_SUPABASE_PROJECT_ID;
         const anonKey = (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        const s = start.toISOString().split("T")[0];
-        const e = end.toISOString().split("T")[0];
+        const s = formatLocalDate(start);
+        const e = formatLocalDate(end);
         const res = await fetch(
           `https://${projectId}.supabase.co/functions/v1/woo-analytics-kpis?start=${s}&end=${e}`,
           { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } }
