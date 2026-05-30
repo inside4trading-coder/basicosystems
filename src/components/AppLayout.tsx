@@ -8,10 +8,11 @@ export function AppLayout() {
   const { role } = useAuth();
   const userRole = role ?? "partner";
   const location = useLocation();
-  const [open, setOpen] = useState(!location.pathname.startsWith("/core"));
+  const isModule = (p: string) => p.startsWith("/core") || p.startsWith("/espana");
+  const [open, setOpen] = useState(!isModule(location.pathname));
 
   useEffect(() => {
-    setOpen(!location.pathname.startsWith("/core"));
+    setOpen(!isModule(location.pathname));
   }, [location.pathname]);
 
   return (
