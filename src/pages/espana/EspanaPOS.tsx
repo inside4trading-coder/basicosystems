@@ -30,9 +30,9 @@ interface CartLine {
 }
 
 export default function EspanaPOS() {
-  const { user, profile } = useAuth();
-  const isAdmin = profile?.role === "admin";
-  const isPriv = isAdmin || profile?.role === "manager";
+  const { user, role } = useAuth();
+  const isAdmin = role === "admin";
+  const isPriv = isAdmin || role === "manager";
 
   const [locs, setLocs] = useState<Loc[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
