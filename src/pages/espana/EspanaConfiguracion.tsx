@@ -191,18 +191,7 @@ export default function EspanaConfiguracion() {
 
       {/* WOO */}
       <TabsContent value="woo">
-        <Card className="p-6 rounded-2xl max-w-2xl space-y-3">
-          <h3 className="text-lg font-bold">WooCommerce España</h3>
-          <div className="text-sm space-y-2">
-            <div className="flex justify-between"><span className="text-muted-foreground">Web</span><span className="font-medium">basicoclothes.es</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Estado</span><Badge variant="secondary">No conectado</Badge></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Modo futuro</span><span>read_only / manual / conectado</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Moneda</span><span>EUR</span></div>
-          </div>
-          <p className="text-xs text-muted-foreground border-t pt-3">
-            La conexión a basicoclothes.es se habilitará en un próximo bloque. Este módulo NO usa basicoclothes.com.
-          </p>
-        </Card>
+        <WooEspanaPanel settings={settings} onUpdated={reload} />
       </TabsContent>
     </Tabs>
   );
