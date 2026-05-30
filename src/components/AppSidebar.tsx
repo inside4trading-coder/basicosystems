@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, Package, Users, Users2, ClipboardList, Mail, Phone, Settings, LogOut, Star, Building2, Store, Factory } from "lucide-react";
+import { BarChart3, Package, Users, Users2, ClipboardList, Mail, Phone, Settings, LogOut, Star, Building2, Store, Factory, Flag } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { useAuth, canAccessRoute, subscribeRoleRoutes, type ProfileRole } from "@/hooks/useAuth";
@@ -30,6 +30,7 @@ const mainItems = [
   { title: "CRM", url: "/crm", icon: Users },
   { title: "Sublime", url: "/sublime", icon: Store },
   { title: "Basico Core", url: "/core", icon: Factory },
+  { title: "Basico España", url: "/espana", icon: Flag },
 ];
 
 const adminItems = [

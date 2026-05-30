@@ -32,14 +32,15 @@ export const ALL_ROUTES: { path: string; label: string }[] = [
   { path: "/crm", label: "CRM" },
   { path: "/configuracion", label: "Configuración" },
   { path: "/core", label: "BASICO CORE" },
+  { path: "/espana", label: "BASICO ESPAÑA" },
 ];
 
 const DEFAULT_ROLE_ROUTES: Record<ProfileRole, string[]> = {
-  admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/crew", "/rrpp", "/campaigns", "/llamadas", "/configuracion", "/administracion", "/sublime", "/core"],
-  manager: ["/pedidos", "/crm", "/planning", "/campaigns", "/llamadas", "/core"],
+  admin: ["/dashboard", "/pedidos", "/crm", "/planning", "/crew", "/rrpp", "/campaigns", "/llamadas", "/configuracion", "/administracion", "/sublime", "/core", "/espana"],
+  manager: ["/pedidos", "/crm", "/planning", "/campaigns", "/llamadas", "/core", "/espana"],
   partner: ["/planning"],
   rrpp: ["/rrpp"],
-  marketing: ["/rrpp", "/campaigns"],
+  marketing: ["/rrpp", "/campaigns", "/espana"],
 };
 
 // Mutable in-memory cache, hydrated from DB (table: role_routes).

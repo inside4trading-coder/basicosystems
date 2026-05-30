@@ -3485,6 +3485,230 @@ export type Database = {
         }
         Relationships: []
       }
+      esp_locations: {
+        Row: {
+          city: string | null
+          code: string
+          connects_to_woo: boolean
+          country: string
+          created_at: string
+          currency: string
+          id: string
+          inventory_mode: string
+          is_active: boolean
+          linked_location_id: string | null
+          name: string
+          notes: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          code: string
+          connects_to_woo?: boolean
+          country?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          inventory_mode?: string
+          is_active?: boolean
+          linked_location_id?: string | null
+          name: string
+          notes?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          code?: string
+          connects_to_woo?: boolean
+          country?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          inventory_mode?: string
+          is_active?: boolean
+          linked_location_id?: string | null
+          name?: string
+          notes?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_locations_linked_location_id_fkey"
+            columns: ["linked_location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_payment_methods: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          key: string
+          location_id: string | null
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          location_id?: string | null
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          location_id?: string | null
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_payment_methods_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_sales_channels: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          key: string
+          location_id: string | null
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          location_id?: string | null
+          name: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          location_id?: string | null
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_sales_channels_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_settings: {
+        Row: {
+          country: string
+          created_at: string
+          currency: string
+          data_mode: string
+          id: string
+          main_city: string | null
+          main_website: string | null
+          module_active: boolean
+          updated_at: string
+          woo_connected: boolean
+          woo_status: string
+        }
+        Insert: {
+          country?: string
+          created_at?: string
+          currency?: string
+          data_mode?: string
+          id?: string
+          main_city?: string | null
+          main_website?: string | null
+          module_active?: boolean
+          updated_at?: string
+          woo_connected?: boolean
+          woo_status?: string
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          currency?: string
+          data_mode?: string
+          id?: string
+          main_city?: string | null
+          main_website?: string | null
+          module_active?: boolean
+          updated_at?: string
+          woo_connected?: boolean
+          woo_status?: string
+        }
+        Relationships: []
+      }
+      esp_user_location_access: {
+        Row: {
+          allowed_location_ids: string[]
+          can_choose_location: boolean
+          created_at: string
+          default_location_id: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowed_location_ids?: string[]
+          can_choose_location?: boolean
+          created_at?: string
+          default_location_id?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowed_location_ids?: string[]
+          can_choose_location?: boolean
+          created_at?: string
+          default_location_id?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_user_location_access_default_location_id_fkey"
+            columns: ["default_location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incidents: {
         Row: {
           category: string
