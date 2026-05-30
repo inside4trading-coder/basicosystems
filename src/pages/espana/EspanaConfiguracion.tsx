@@ -191,18 +191,7 @@ export default function EspanaConfiguracion() {
 
       {/* WOO */}
       <TabsContent value="woo">
-        <Card className="p-6 rounded-2xl max-w-2xl space-y-3">
-          <h3 className="text-lg font-bold">WooCommerce España</h3>
-          <div className="text-sm space-y-2">
-            <div className="flex justify-between"><span className="text-muted-foreground">Web</span><span className="font-medium">basicoclothes.es</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Estado</span><Badge variant="secondary">No conectado</Badge></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Modo futuro</span><span>read_only / manual / conectado</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Moneda</span><span>EUR</span></div>
-          </div>
-          <p className="text-xs text-muted-foreground border-t pt-3">
-            La conexión a basicoclothes.es se habilitará en un próximo bloque. Este módulo NO usa basicoclothes.com.
-          </p>
-        </Card>
+        <WooEspanaPanel settings={settings} onUpdated={reload} />
       </TabsContent>
     </Tabs>
   );
@@ -456,6 +445,70 @@ function UsuariosPanel({ locations }: { locations: Location[] }) {
         })}
         {profiles.length === 0 && <p className="text-xs text-muted-foreground">No hay usuarios cargados.</p>}
       </div>
+    </Card>
+  );
+}
+
+/* ----- WooCommerce España ----- */
+function WooEspanaPanel({ settings, onUpdated }: { settings: Settings | null; onUpdated: () => void }) {
+  const [testing, setTesting] = useState(false);
+  const [result, setResult] = useState<any>(null);
+
+  const test = async () => {
+    setTesting(true);
+    setResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("esp-woo-test");
+      if (error) throw error;
+      setResult(data);
+      if (data?.ok) {
+        toast.success("Conexión OK con basicoclothes.es");
+        if (settings && !settings.woo_connected) {
+          await supabase.from("esp_settings").update({ woo_connected: true, woo_status: "conectado" }).eq("id", settings.id);
+          onUpdated();
+        }
+      } else {
+        toast.error("La API respondió con error");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error probando la conexión");
+      setResult({ ok: false, error: e?.message });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <Card className="p-6 rounded-2xl max-w-2xl space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-bold">WooCommerce España</h3>
+          <p className="text-xs text-muted-foreground">Conexión read-only a basicoclothes.es vía REST API v3.</p>
+        </div>
+        <Badge variant={settings?.woo_connected ? "default" : "secondary"}>
+          {settings?.woo_connected ? "Conectado" : "No conectado"}
+        </Badge>
+      </div>
+
+      <div className="text-sm space-y-2">
+        <div className="flex justify-between"><span className="text-muted-foreground">Web</span><span className="font-medium">basicoclothes.es</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Credenciales</span><span>Almacenadas en secretos (WC_ES_*)</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Moneda</span><span>EUR</span></div>
+      </div>
+
+      <Button onClick={test} disabled={testing}>
+        {testing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Probando…</> : "Probar conexión"}
+      </Button>
+
+      {result && (
+        <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-72">
+{JSON.stringify(result, null, 2)}
+        </pre>
+      )}
+
+      <p className="text-xs text-muted-foreground border-t pt-3">
+        Este módulo NO toca basicoclothes.com (Venezuela). La sincronización completa de pedidos/productos se hará en bloques posteriores.
+      </p>
     </Card>
   );
 }
