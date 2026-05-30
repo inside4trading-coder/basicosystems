@@ -87,28 +87,28 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       const prev = getPrevDateRange(period, customRange);
       const yoy = getYoYDateRange(period, customRange);
 
-      // Fetch current orders
+      // Fetch current orders (use local Madrid date, not UTC, to avoid timezone shift)
       const { data: currentOrders, error: cErr } = await supabase
         .from("orders")
         .select("*")
-        .gte("order_date", start.toISOString().split("T")[0])
-        .lte("order_date", end.toISOString().split("T")[0]);
+        .gte("order_date", formatLocalDate(start))
+        .lte("order_date", formatLocalDate(end));
       if (cErr) throw new Error(cErr.message);
 
       // Fetch previous period orders
       const { data: prevOrders, error: pErr } = await supabase
         .from("orders")
         .select("order_id, total_amount, total_amount_usd, order_status, customer_email")
-        .gte("order_date", prev.start.toISOString().split("T")[0])
-        .lt("order_date", prev.end.toISOString().split("T")[0]);
+        .gte("order_date", formatLocalDate(prev.start))
+        .lt("order_date", formatLocalDate(prev.end));
       if (pErr) throw new Error(pErr.message);
 
       // Fetch year-over-year orders (same range, last year)
       const { data: yoyOrders, error: yErr } = await supabase
         .from("orders")
         .select("order_id, total_amount, total_amount_usd, order_status, customer_email")
-        .gte("order_date", yoy.start.toISOString().split("T")[0])
-        .lte("order_date", yoy.end.toISOString().split("T")[0]);
+        .gte("order_date", formatLocalDate(yoy.start))
+        .lte("order_date", formatLocalDate(yoy.end));
       if (yErr) throw new Error(yErr.message);
 
 
