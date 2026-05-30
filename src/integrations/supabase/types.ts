@@ -3876,6 +3876,204 @@ export type Database = {
         }
         Relationships: []
       }
+      esp_sale_items: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_movement_id: string | null
+          product_id: string
+          product_name_snapshot: string | null
+          quantity: number
+          sale_id: string
+          sku_snapshot: string | null
+          subtotal_eur: number
+          unit_price_eur: number
+          variant_id: string
+          variant_label_snapshot: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_movement_id?: string | null
+          product_id: string
+          product_name_snapshot?: string | null
+          quantity: number
+          sale_id: string
+          sku_snapshot?: string | null
+          subtotal_eur: number
+          unit_price_eur: number
+          variant_id: string
+          variant_label_snapshot?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_movement_id?: string | null
+          product_id?: string
+          product_name_snapshot?: string | null
+          quantity?: number
+          sale_id?: string
+          sku_snapshot?: string | null
+          subtotal_eur?: number
+          unit_price_eur?: number
+          variant_id?: string
+          variant_label_snapshot?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_sale_items_inventory_movement_id_fkey"
+            columns: ["inventory_movement_id"]
+            isOneToOne: false
+            referencedRelation: "esp_inventory_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "esp_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "esp_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_sale_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "esp_product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_sale_payments: {
+        Row: {
+          amount_eur: number
+          created_at: string
+          created_by: string | null
+          id: string
+          payment_method_id: string | null
+          reference: string | null
+          sale_id: string
+        }
+        Insert: {
+          amount_eur: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          payment_method_id?: string | null
+          reference?: string | null
+          sale_id: string
+        }
+        Update: {
+          amount_eur?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          payment_method_id?: string | null
+          reference?: string | null
+          sale_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_sale_payments_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "esp_payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_sale_payments_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "esp_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_sales: {
+        Row: {
+          channel_id: string | null
+          created_at: string
+          created_by: string | null
+          discount_eur: number
+          id: string
+          inventory_location_id: string | null
+          location_id: string | null
+          notes: string | null
+          payment_status: string
+          sale_date: string
+          sale_number: string
+          status: string
+          subtotal_eur: number
+          total_eur: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount_eur?: number
+          id?: string
+          inventory_location_id?: string | null
+          location_id?: string | null
+          notes?: string | null
+          payment_status?: string
+          sale_date?: string
+          sale_number: string
+          status?: string
+          subtotal_eur?: number
+          total_eur?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount_eur?: number
+          id?: string
+          inventory_location_id?: string | null
+          location_id?: string | null
+          notes?: string | null
+          payment_status?: string
+          sale_date?: string
+          sale_number?: string
+          status?: string
+          subtotal_eur?: number
+          total_eur?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_sales_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "esp_sales_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_sales_inventory_location_id_fkey"
+            columns: ["inventory_location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_sales_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       esp_sales_channels: {
         Row: {
           created_at: string
@@ -5594,6 +5792,18 @@ export type Database = {
           p_reason?: string
           p_to_location_id?: string
           p_variant_id: string
+        }
+        Returns: Json
+      }
+      esp_register_pos_sale: {
+        Args: {
+          p_allow_negative?: boolean
+          p_channel_id: string
+          p_items: Json
+          p_location_id: string
+          p_notes?: string
+          p_payment_method_id: string
+          p_payment_reference?: string
         }
         Returns: Json
       }
