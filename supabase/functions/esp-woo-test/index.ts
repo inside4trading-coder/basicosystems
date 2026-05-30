@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
 
   const key = Deno.env.get("WC_ES_CONSUMER_KEY");
   const secret = Deno.env.get("WC_ES_CONSUMER_SECRET");
-  const baseRaw = Deno.env.get("WC_ES_BASE_URL") || "https://basicoclothes.es";
+  const baseRaw = (Deno.env.get("WC_ES_BASE_URL") || "https://basicoclothes.es").trim();
 
   if (!key || !secret) {
     return new Response(JSON.stringify({ ok: false, error: "missing_credentials" }), {
@@ -17,7 +17,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  const base = baseRaw.replace(/\/+$/, "") + "/wp-json/wc/v3";
+  const withProto = /^https?:\/\//i.test(baseRaw) ? baseRaw : `https://${baseRaw}`;
+  const base = withProto.replace(/\/+$/, "") + "/wp-json/wc/v3";
   const auth = "Basic " + btoa(`${key}:${secret}`);
   const headers = { Authorization: auth };
 
