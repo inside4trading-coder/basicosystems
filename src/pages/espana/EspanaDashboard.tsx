@@ -165,7 +165,7 @@ export default function EspanaDashboard() {
                   <span className="h-2 w-2 rounded-full" style={{ background: p.color || "#737373" }} />
                   <span>{p.name}</span>
                 </div>
-                <span className="text-muted-foreground text-xs">€0,00</span>
+                <span className="text-muted-foreground text-xs">€{(salesByMethod[p.id] || 0).toFixed(2)}</span>
               </div>
             ))}
           </div>
