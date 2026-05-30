@@ -109,7 +109,7 @@ export default function EspanaDashboard() {
                   <span className="font-medium">{l.name}</span>
                   <Badge variant="outline" className="text-[10px]">{l.inventory_mode}</Badge>
                 </div>
-                <span className="text-muted-foreground">0 uds</span>
+                <span className="text-muted-foreground">{stockByLoc[l.id] || 0} uds</span>
               </div>
             ))}
           </div>
