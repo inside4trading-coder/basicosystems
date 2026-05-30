@@ -3485,6 +3485,157 @@ export type Database = {
         }
         Relationships: []
       }
+      esp_inventory_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          from_location_id: string | null
+          id: string
+          location_id: string | null
+          movement_type: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          quantity_after: number | null
+          quantity_before: number | null
+          reason: string | null
+          reference_id: string | null
+          reference_type: string | null
+          to_location_id: string | null
+          variant_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          from_location_id?: string | null
+          id?: string
+          location_id?: string | null
+          movement_type: string
+          notes?: string | null
+          product_id: string
+          quantity: number
+          quantity_after?: number | null
+          quantity_before?: number | null
+          reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          to_location_id?: string | null
+          variant_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          from_location_id?: string | null
+          id?: string
+          location_id?: string | null
+          movement_type?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          quantity_after?: number | null
+          quantity_before?: number | null
+          reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          to_location_id?: string | null
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_inventory_movements_from_location_id_fkey"
+            columns: ["from_location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_inventory_movements_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_inventory_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "esp_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_inventory_movements_to_location_id_fkey"
+            columns: ["to_location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_inventory_movements_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "esp_product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_inventory_stock: {
+        Row: {
+          id: string
+          location_id: string
+          low_stock_threshold: number
+          product_id: string
+          quantity_on_hand: number
+          quantity_reserved: number
+          updated_at: string
+          updated_by: string | null
+          variant_id: string
+        }
+        Insert: {
+          id?: string
+          location_id: string
+          low_stock_threshold?: number
+          product_id: string
+          quantity_on_hand?: number
+          quantity_reserved?: number
+          updated_at?: string
+          updated_by?: string | null
+          variant_id: string
+        }
+        Update: {
+          id?: string
+          location_id?: string
+          low_stock_threshold?: number
+          product_id?: string
+          quantity_on_hand?: number
+          quantity_reserved?: number
+          updated_at?: string
+          updated_by?: string | null
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_inventory_stock_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_inventory_stock_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "esp_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_inventory_stock_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "esp_product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       esp_locations: {
         Row: {
           city: string | null
@@ -3587,6 +3738,143 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      esp_product_variants: {
+        Row: {
+          barcode: string | null
+          color: string | null
+          cost_eur: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          price_eur: number | null
+          product_id: string
+          qr_code: string | null
+          scan_code: string | null
+          size: string | null
+          sort_order: number | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          variant_sku: string
+          woo_variation_id: number | null
+        }
+        Insert: {
+          barcode?: string | null
+          color?: string | null
+          cost_eur?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          price_eur?: number | null
+          product_id: string
+          qr_code?: string | null
+          scan_code?: string | null
+          size?: string | null
+          sort_order?: number | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_sku: string
+          woo_variation_id?: number | null
+        }
+        Update: {
+          barcode?: string | null
+          color?: string | null
+          cost_eur?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          price_eur?: number | null
+          product_id?: string
+          qr_code?: string | null
+          scan_code?: string | null
+          size?: string | null
+          sort_order?: number | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_sku?: string
+          woo_variation_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "esp_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_products: {
+        Row: {
+          category: string | null
+          color: string | null
+          cost_eur: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          has_variants: boolean
+          id: string
+          image_url: string | null
+          is_made_to_order: boolean
+          is_sellable: boolean
+          name: string
+          notes: string | null
+          price_eur: number | null
+          product_type: string | null
+          sku: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          woo_product_id: number | null
+        }
+        Insert: {
+          category?: string | null
+          color?: string | null
+          cost_eur?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          has_variants?: boolean
+          id?: string
+          image_url?: string | null
+          is_made_to_order?: boolean
+          is_sellable?: boolean
+          name: string
+          notes?: string | null
+          price_eur?: number | null
+          product_type?: string | null
+          sku: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          woo_product_id?: number | null
+        }
+        Update: {
+          category?: string | null
+          color?: string | null
+          cost_eur?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          has_variants?: boolean
+          id?: string
+          image_url?: string | null
+          is_made_to_order?: boolean
+          is_sellable?: boolean
+          name?: string
+          notes?: string | null
+          price_eur?: number | null
+          product_type?: string | null
+          sku?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          woo_product_id?: number | null
+        }
+        Relationships: []
       }
       esp_sales_channels: {
         Row: {
@@ -5294,6 +5582,20 @@ export type Database = {
       compute_sublime_daily_shift: {
         Args: { p_date: string; p_employee_id: string }
         Returns: undefined
+      }
+      esp_apply_movement: {
+        Args: {
+          p_allow_negative?: boolean
+          p_from_location_id?: string
+          p_location_id?: string
+          p_movement_type: string
+          p_notes?: string
+          p_quantity: number
+          p_reason?: string
+          p_to_location_id?: string
+          p_variant_id: string
+        }
+        Returns: Json
       }
       get_crew_employees: {
         Args: never
