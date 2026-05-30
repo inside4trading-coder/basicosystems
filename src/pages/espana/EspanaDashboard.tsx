@@ -17,6 +17,10 @@ interface Channel { id: string; name: string; key: string; is_active: boolean }
 interface Location { id: string; name: string; code: string; inventory_mode: string }
 interface PaymentMethod { id: string; name: string; key: string; color: string | null }
 
+interface SaleRow { id: string; sale_date: string; location_id: string | null; total_eur: number }
+interface ItemRow { sale_id: string; quantity: number }
+interface PayRow { sale_id: string; payment_method_id: string | null; amount_eur: number }
+
 export default function EspanaDashboard() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -25,16 +29,23 @@ export default function EspanaDashboard() {
   const [activeProducts, setActiveProducts] = useState(0);
   const [activeVariants, setActiveVariants] = useState(0);
   const [lowStock, setLowStock] = useState(0);
+  const [sales, setSales] = useState<SaleRow[]>([]);
+  const [items, setItems] = useState<ItemRow[]>([]);
+  const [salePays, setSalePays] = useState<PayRow[]>([]);
 
   useEffect(() => {
     (async () => {
-      const [c, l, p, s, pr, vr] = await Promise.all([
+      const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+      const [c, l, p, s, pr, vr, sa, si, sp] = await Promise.all([
         supabase.from("esp_sales_channels").select("id,name,key,is_active").order("name"),
         supabase.from("esp_locations").select("id,name,code,inventory_mode").order("name"),
         supabase.from("esp_payment_methods").select("id,name,key,color").order("sort_order"),
         supabase.from("esp_inventory_stock").select("location_id,variant_id,quantity_on_hand"),
         supabase.from("esp_products").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("esp_product_variants").select("id", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("esp_sales").select("id,sale_date,location_id,total_eur").gte("sale_date", monthStart.toISOString()).eq("status", "completed"),
+        supabase.from("esp_sale_items").select("sale_id,quantity"),
+        supabase.from("esp_sale_payments").select("sale_id,payment_method_id,amount_eur"),
       ]);
       if (c.data) setChannels(c.data as Channel[]);
       if (l.data) setLocations(l.data as Location[]);
@@ -49,6 +60,9 @@ export default function EspanaDashboard() {
       setLowStock(Object.values(byVariant).filter((v) => v > 0 && v <= 2).length);
       setActiveProducts(pr.count || 0);
       setActiveVariants(vr.count || 0);
+      setSales((sa.data || []) as SaleRow[]);
+      setItems((si.data || []) as ItemRow[]);
+      setSalePays((sp.data || []) as PayRow[]);
     })();
   }, []);
 
@@ -58,15 +72,42 @@ export default function EspanaDashboard() {
     return loc ? (stockByLoc[loc.id] || 0) : 0;
   };
 
+  const today = new Date(); today.setHours(0,0,0,0);
+  const salesToday = sales.filter(s => new Date(s.sale_date) >= today);
+  const sumToday = salesToday.reduce((a, s) => a + Number(s.total_eur || 0), 0);
+  const sumMonth = sales.reduce((a, s) => a + Number(s.total_eur || 0), 0);
+  const avgTicket = sales.length ? sumMonth / sales.length : 0;
+  const salesAtCode = (code: string) => {
+    const loc = locations.find(l => l.code === code);
+    if (!loc) return 0;
+    return sales.filter(s => s.location_id === loc.id).reduce((a, s) => a + Number(s.total_eur || 0), 0);
+  };
+  const productsSold = items
+    .filter(i => sales.some(s => s.id === i.sale_id))
+    .reduce((a, i) => a + (i.quantity || 0), 0);
+
+  const salesByMethod: Record<string, number> = {};
+  const saleIds = new Set(sales.map(s => s.id));
+  salePays.forEach(sp => {
+    if (!saleIds.has(sp.sale_id) || !sp.payment_method_id) return;
+    salesByMethod[sp.payment_method_id] = (salesByMethod[sp.payment_method_id] || 0) + Number(sp.amount_eur || 0);
+  });
+
+  const fmt = (n: number) => `€${n.toFixed(2)}`;
+
   const kpis = [
+    { label: "Ventas hoy", value: fmt(sumToday), icon: Euro },
+    { label: "Ventas mes", value: fmt(sumMonth), icon: TrendingUp },
+    { label: "Ticket promedio", value: fmt(avgTicket), icon: CreditCard },
+    { label: "Productos vendidos", value: String(productsSold), icon: ShoppingBag },
+    { label: "Ventas Pop Up Ibiza", value: fmt(salesAtCode("ibiza")), icon: Euro },
+    { label: "Ventas Arturo Soria", value: fmt(salesAtCode("arturo_soria")), icon: Euro },
+    { label: "Ventas Otros", value: fmt(salesAtCode("otros")), icon: Euro },
     { label: "Productos activos", value: String(activeProducts), icon: Package },
     { label: "Variantes activas", value: String(activeVariants), icon: ShoppingBag },
     { label: "Stock total España", value: String(totalStock), icon: Warehouse },
-    { label: "Stock Pop Up Ibiza", value: String(stockAt("ibiza")), icon: Warehouse },
-    { label: "Stock Arturo Soria", value: String(stockAt("arturo_soria")), icon: Warehouse },
+    { label: "Variantes bajo stock", value: String(lowStock), icon: Warehouse },
     { label: "Stock central", value: String(stockAt("central")), icon: Warehouse },
-    { label: "Variantes bajo stock", value: String(lowStock), icon: TrendingUp },
-    { label: "Ventas hoy", value: "€0,00", icon: Euro },
   ];
 
   return (
@@ -124,7 +165,7 @@ export default function EspanaDashboard() {
                   <span className="h-2 w-2 rounded-full" style={{ background: p.color || "#737373" }} />
                   <span>{p.name}</span>
                 </div>
-                <span className="text-muted-foreground text-xs">€0,00</span>
+                <span className="text-muted-foreground text-xs">€{(salesByMethod[p.id] || 0).toFixed(2)}</span>
               </div>
             ))}
           </div>

@@ -58,6 +58,8 @@ import EspanaConfiguracion from "./pages/espana/EspanaConfiguracion";
 import EspanaPlaceholder from "./pages/espana/EspanaPlaceholder";
 import EspanaProductos from "./pages/espana/EspanaProductos";
 import EspanaInventario from "./pages/espana/EspanaInventario";
+import EspanaPOS from "./pages/espana/EspanaPOS";
+import EspanaVentas from "./pages/espana/EspanaVentas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -143,8 +145,8 @@ const App = () => (
                 <Route index element={<EspanaDashboard />} />
                 <Route path="configuracion" element={<EspanaConfiguracion />} />
                 <Route path="reportes" element={<EspanaPlaceholder title="Reportes España" description="Ventas por canal, sede, método de pago, productos más vendidos, stock y fabricación pendiente." />} />
-                <Route path="ventas" element={<EspanaPlaceholder title="Ventas España" description="Registro y consulta de ventas por canal (Web, Pop Up Ibiza, Arturo Soria, Otros)." />} />
-                <Route path="pos" element={<EspanaPlaceholder title="POS Móvil" description="POS móvil para registrar ventas presenciales escaneando QR, eligiendo método de pago y descontando inventario de la sede." bullets={["Detección de sede default o selección manual","Escaneo QR / búsqueda manual de producto","Botones de método de pago configurables","Descuento automático de inventario por sede"]} />} />
+                <Route path="ventas" element={<EspanaVentas />} />
+                <Route path="pos" element={<EspanaPOS />} />
                 <Route path="woocommerce" element={<EspanaPlaceholder title="WooCommerce España" description="Conexión con basicoclothes.es. Actualmente no conectado." bullets={["Web: basicoclothes.es","Estado: no conectado","Modo futuro: read_only / manual / conectado","Moneda: EUR"]} />} />
                 <Route path="productos" element={<EspanaProductos />} />
                 <Route path="inventario" element={<EspanaInventario />} />
