@@ -148,7 +148,7 @@ const App = () => (
                 <Route path="reportes" element={<EspanaPlaceholder title="Reportes España" description="Ventas por canal, sede, método de pago, productos más vendidos, stock y fabricación pendiente." />} />
                 <Route path="ventas" element={<EspanaVentas />} />
                 <Route path="pos" element={<EspanaPOS />} />
-                <Route path="woocommerce" element={<EspanaPlaceholder title="WooCommerce España" description="Conexión con basicoclothes.es. Actualmente no conectado." bullets={["Web: basicoclothes.es","Estado: no conectado","Modo futuro: read_only / manual / conectado","Moneda: EUR"]} />} />
+                <Route path="woocommerce" element={<EspanaWooCommerce />} />
                 <Route path="productos" element={<EspanaProductos />} />
                 <Route path="inventario" element={<EspanaInventario />} />
                 <Route path="fabricacion" element={<EspanaPlaceholder title="Listado de fabricación" description="Cola de fabricación generada desde pedidos WooCommerce España." />} />
