@@ -3485,6 +3485,107 @@ export type Database = {
         }
         Relationships: []
       }
+      esp_fabrication_requests: {
+        Row: {
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          priority: string
+          product_id: string | null
+          product_name: string | null
+          quantity: number
+          sku: string | null
+          source_order_id: string | null
+          source_order_item_id: string | null
+          source_type: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          variant_id: string | null
+          variant_label: string | null
+          woo_order_id: number | null
+          woo_order_item_id: number | null
+        }
+        Insert: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string
+          product_id?: string | null
+          product_name?: string | null
+          quantity?: number
+          sku?: string | null
+          source_order_id?: string | null
+          source_order_item_id?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_id?: string | null
+          variant_label?: string | null
+          woo_order_id?: number | null
+          woo_order_item_id?: number | null
+        }
+        Update: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string
+          product_id?: string | null
+          product_name?: string | null
+          quantity?: number
+          sku?: string | null
+          source_order_id?: string | null
+          source_order_item_id?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_id?: string | null
+          variant_label?: string | null
+          woo_order_id?: number | null
+          woo_order_item_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_fabrication_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "esp_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_fabrication_requests_source_order_id_fkey"
+            columns: ["source_order_id"]
+            isOneToOne: false
+            referencedRelation: "esp_woo_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_fabrication_requests_source_order_item_id_fkey"
+            columns: ["source_order_item_id"]
+            isOneToOne: true
+            referencedRelation: "esp_woo_order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_fabrication_requests_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "esp_product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       esp_inventory_movements: {
         Row: {
           created_at: string
@@ -3914,43 +4015,49 @@ export type Database = {
           created_at: string
           id: string
           inventory_movement_id: string | null
-          product_id: string
+          product_id: string | null
           product_name_snapshot: string | null
           quantity: number
           sale_id: string
           sku_snapshot: string | null
+          source: string
           subtotal_eur: number
           unit_price_eur: number
-          variant_id: string
+          variant_id: string | null
           variant_label_snapshot: string | null
+          woo_order_item_id: number | null
         }
         Insert: {
           created_at?: string
           id?: string
           inventory_movement_id?: string | null
-          product_id: string
+          product_id?: string | null
           product_name_snapshot?: string | null
           quantity: number
           sale_id: string
           sku_snapshot?: string | null
+          source?: string
           subtotal_eur: number
           unit_price_eur: number
-          variant_id: string
+          variant_id?: string | null
           variant_label_snapshot?: string | null
+          woo_order_item_id?: number | null
         }
         Update: {
           created_at?: string
           id?: string
           inventory_movement_id?: string | null
-          product_id?: string
+          product_id?: string | null
           product_name_snapshot?: string | null
           quantity?: number
           sale_id?: string
           sku_snapshot?: string | null
+          source?: string
           subtotal_eur?: number
           unit_price_eur?: number
-          variant_id?: string
+          variant_id?: string | null
           variant_label_snapshot?: string | null
+          woo_order_item_id?: number | null
         }
         Relationships: [
           {
@@ -4033,14 +4140,21 @@ export type Database = {
           channel_id: string | null
           created_at: string
           created_by: string | null
+          customer_email_snapshot: string | null
+          customer_name_snapshot: string | null
           discount_eur: number
+          external_order_number: string | null
           id: string
           inventory_location_id: string | null
           location_id: string | null
           notes: string | null
           payment_status: string
+          reference_id: string | null
+          reference_type: string | null
           sale_date: string
           sale_number: string
+          shipping_total_eur: number
+          source: string
           status: string
           subtotal_eur: number
           total_eur: number
@@ -4051,14 +4165,21 @@ export type Database = {
           channel_id?: string | null
           created_at?: string
           created_by?: string | null
+          customer_email_snapshot?: string | null
+          customer_name_snapshot?: string | null
           discount_eur?: number
+          external_order_number?: string | null
           id?: string
           inventory_location_id?: string | null
           location_id?: string | null
           notes?: string | null
           payment_status?: string
+          reference_id?: string | null
+          reference_type?: string | null
           sale_date?: string
           sale_number: string
+          shipping_total_eur?: number
+          source?: string
           status?: string
           subtotal_eur?: number
           total_eur?: number
@@ -4069,14 +4190,21 @@ export type Database = {
           channel_id?: string | null
           created_at?: string
           created_by?: string | null
+          customer_email_snapshot?: string | null
+          customer_name_snapshot?: string | null
           discount_eur?: number
+          external_order_number?: string | null
           id?: string
           inventory_location_id?: string | null
           location_id?: string | null
           notes?: string | null
           payment_status?: string
+          reference_id?: string | null
+          reference_type?: string | null
           sale_date?: string
           sale_number?: string
+          shipping_total_eur?: number
+          source?: string
           status?: string
           subtotal_eur?: number
           total_eur?: number
@@ -4224,6 +4352,270 @@ export type Database = {
             columns: ["default_location_id"]
             isOneToOne: false
             referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_woo_order_items: {
+        Row: {
+          created_at: string
+          esp_woo_order_id: string
+          fabrication_request_id: string | null
+          id: string
+          name: string
+          needs_fabrication: boolean
+          product_id: string | null
+          quantity: number
+          raw_payload: Json | null
+          sku: string | null
+          subtotal_eur: number
+          total_eur: number
+          unit_price_eur: number | null
+          variant_id: string | null
+          woo_order_id: number
+          woo_order_item_id: number
+          woo_product_id: number | null
+          woo_variation_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          esp_woo_order_id: string
+          fabrication_request_id?: string | null
+          id?: string
+          name: string
+          needs_fabrication?: boolean
+          product_id?: string | null
+          quantity?: number
+          raw_payload?: Json | null
+          sku?: string | null
+          subtotal_eur?: number
+          total_eur?: number
+          unit_price_eur?: number | null
+          variant_id?: string | null
+          woo_order_id: number
+          woo_order_item_id: number
+          woo_product_id?: number | null
+          woo_variation_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          esp_woo_order_id?: string
+          fabrication_request_id?: string | null
+          id?: string
+          name?: string
+          needs_fabrication?: boolean
+          product_id?: string | null
+          quantity?: number
+          raw_payload?: Json | null
+          sku?: string | null
+          subtotal_eur?: number
+          total_eur?: number
+          unit_price_eur?: number | null
+          variant_id?: string | null
+          woo_order_id?: number
+          woo_order_item_id?: number
+          woo_product_id?: number | null
+          woo_variation_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_woo_order_items_esp_woo_order_id_fkey"
+            columns: ["esp_woo_order_id"]
+            isOneToOne: false
+            referencedRelation: "esp_woo_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_woo_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "esp_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_woo_order_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "esp_product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_woo_order_sync_runs: {
+        Row: {
+          created_by: string | null
+          errors_count: number
+          fabrication_requests_created: number
+          finished_at: string | null
+          id: string
+          items_checked: number
+          items_created: number
+          items_updated: number
+          orders_checked: number
+          orders_created: number
+          orders_updated: number
+          params: Json | null
+          sales_created: number
+          sales_updated: number
+          started_at: string
+          status: string
+          summary: Json | null
+          sync_type: string
+          unmapped_items: number
+        }
+        Insert: {
+          created_by?: string | null
+          errors_count?: number
+          fabrication_requests_created?: number
+          finished_at?: string | null
+          id?: string
+          items_checked?: number
+          items_created?: number
+          items_updated?: number
+          orders_checked?: number
+          orders_created?: number
+          orders_updated?: number
+          params?: Json | null
+          sales_created?: number
+          sales_updated?: number
+          started_at?: string
+          status?: string
+          summary?: Json | null
+          sync_type?: string
+          unmapped_items?: number
+        }
+        Update: {
+          created_by?: string | null
+          errors_count?: number
+          fabrication_requests_created?: number
+          finished_at?: string | null
+          id?: string
+          items_checked?: number
+          items_created?: number
+          items_updated?: number
+          orders_checked?: number
+          orders_created?: number
+          orders_updated?: number
+          params?: Json | null
+          sales_created?: number
+          sales_updated?: number
+          started_at?: string
+          status?: string
+          summary?: Json | null
+          sync_type?: string
+          unmapped_items?: number
+        }
+        Relationships: []
+      }
+      esp_woo_orders: {
+        Row: {
+          billing_address_snapshot: Json | null
+          billing_city: string | null
+          billing_country: string | null
+          created_at: string
+          currency: string
+          customer_email: string | null
+          customer_id: number | null
+          customer_name: string | null
+          customer_phone: string | null
+          date_created: string | null
+          date_modified: string | null
+          date_paid: string | null
+          discount_eur: number
+          esp_sale_id: string | null
+          id: string
+          imported_at: string
+          last_synced_at: string
+          order_number: string | null
+          payment_method: string | null
+          payment_method_title: string | null
+          raw_payload: Json | null
+          shipping_address_snapshot: Json | null
+          shipping_city: string | null
+          shipping_country: string | null
+          shipping_total_eur: number
+          source: string
+          status: string
+          subtotal_eur: number
+          total_eur: number
+          total_tax_eur: number
+          updated_at: string
+          woo_order_id: number
+        }
+        Insert: {
+          billing_address_snapshot?: Json | null
+          billing_city?: string | null
+          billing_country?: string | null
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_id?: number | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          date_created?: string | null
+          date_modified?: string | null
+          date_paid?: string | null
+          discount_eur?: number
+          esp_sale_id?: string | null
+          id?: string
+          imported_at?: string
+          last_synced_at?: string
+          order_number?: string | null
+          payment_method?: string | null
+          payment_method_title?: string | null
+          raw_payload?: Json | null
+          shipping_address_snapshot?: Json | null
+          shipping_city?: string | null
+          shipping_country?: string | null
+          shipping_total_eur?: number
+          source?: string
+          status: string
+          subtotal_eur?: number
+          total_eur?: number
+          total_tax_eur?: number
+          updated_at?: string
+          woo_order_id: number
+        }
+        Update: {
+          billing_address_snapshot?: Json | null
+          billing_city?: string | null
+          billing_country?: string | null
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_id?: number | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          date_created?: string | null
+          date_modified?: string | null
+          date_paid?: string | null
+          discount_eur?: number
+          esp_sale_id?: string | null
+          id?: string
+          imported_at?: string
+          last_synced_at?: string
+          order_number?: string | null
+          payment_method?: string | null
+          payment_method_title?: string | null
+          raw_payload?: Json | null
+          shipping_address_snapshot?: Json | null
+          shipping_city?: string | null
+          shipping_country?: string | null
+          shipping_total_eur?: number
+          source?: string
+          status?: string
+          subtotal_eur?: number
+          total_eur?: number
+          total_tax_eur?: number
+          updated_at?: string
+          woo_order_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_woo_orders_esp_sale_id_fkey"
+            columns: ["esp_sale_id"]
+            isOneToOne: false
+            referencedRelation: "esp_sales"
             referencedColumns: ["id"]
           },
         ]
