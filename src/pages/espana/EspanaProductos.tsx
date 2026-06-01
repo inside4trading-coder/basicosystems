@@ -35,6 +35,10 @@ interface Product {
   image_url: string | null;
   has_variants: boolean;
   woo_product_id: number | null;
+  source?: string | null;
+  woo_permalink?: string | null;
+  woo_status?: string | null;
+  woo_synced_at?: string | null;
 }
 interface Variant {
   id: string;
