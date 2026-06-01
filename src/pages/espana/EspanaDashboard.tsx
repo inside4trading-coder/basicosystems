@@ -17,7 +17,7 @@ interface Channel { id: string; name: string; key: string; is_active: boolean }
 interface Location { id: string; name: string; code: string; inventory_mode: string }
 interface PaymentMethod { id: string; name: string; key: string; color: string | null }
 
-interface SaleRow { id: string; sale_date: string; location_id: string | null; total_eur: number }
+interface SaleRow { id: string; sale_date: string; location_id: string | null; channel_id: string | null; total_eur: number; source?: string | null }
 interface ItemRow { sale_id: string; quantity: number }
 interface PayRow { sale_id: string; payment_method_id: string | null; amount_eur: number }
 
@@ -32,20 +32,22 @@ export default function EspanaDashboard() {
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [items, setItems] = useState<ItemRow[]>([]);
   const [salePays, setSalePays] = useState<PayRow[]>([]);
+  const [fabPending, setFabPending] = useState(0);
 
   useEffect(() => {
     (async () => {
       const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
-      const [c, l, p, s, pr, vr, sa, si, sp] = await Promise.all([
+      const [c, l, p, s, pr, vr, sa, si, sp, fab] = await Promise.all([
         supabase.from("esp_sales_channels").select("id,name,key,is_active").order("name"),
         supabase.from("esp_locations").select("id,name,code,inventory_mode").order("name"),
         supabase.from("esp_payment_methods").select("id,name,key,color").order("sort_order"),
         supabase.from("esp_inventory_stock").select("location_id,variant_id,quantity_on_hand"),
         supabase.from("esp_products").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("esp_product_variants").select("id", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("esp_sales").select("id,sale_date,location_id,total_eur").gte("sale_date", monthStart.toISOString()).eq("status", "completed"),
+        supabase.from("esp_sales").select("id,sale_date,location_id,channel_id,total_eur,source").gte("sale_date", monthStart.toISOString()).eq("status", "completed"),
         supabase.from("esp_sale_items").select("sale_id,quantity"),
         supabase.from("esp_sale_payments").select("sale_id,payment_method_id,amount_eur"),
+        supabase.from("esp_fabrication_requests").select("id", { count: "exact", head: true }).in("status", ["pending","in_progress"]),
       ]);
       if (c.data) setChannels(c.data as Channel[]);
       if (l.data) setLocations(l.data as Location[]);
@@ -63,7 +65,7 @@ export default function EspanaDashboard() {
       setSales((sa.data || []) as SaleRow[]);
       setItems((si.data || []) as ItemRow[]);
       setSalePays((sp.data || []) as PayRow[]);
-    })();
+      setFabPending(fab.count || 0);
   }, []);
 
   const totalStock = Object.values(stockByLoc).reduce((a, b) => a + b, 0);
