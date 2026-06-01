@@ -63,6 +63,7 @@ export default function EspanaProductos() {
   const [stockByVariant, setStockByVariant] = useState<Record<string, number>>({});
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [open, setOpen] = useState(false);
