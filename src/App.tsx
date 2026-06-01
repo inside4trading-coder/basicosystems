@@ -60,6 +60,7 @@ import EspanaProductos from "./pages/espana/EspanaProductos";
 import EspanaInventario from "./pages/espana/EspanaInventario";
 import EspanaPOS from "./pages/espana/EspanaPOS";
 import EspanaVentas from "./pages/espana/EspanaVentas";
+import EspanaWooCommerce from "./pages/espana/EspanaWooCommerce";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
