@@ -172,7 +172,18 @@ export default function EspanaProductos() {
               {filtered.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="font-mono text-xs">{p.sku}</TableCell>
-                  <TableCell className="font-medium">{p.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span>{p.name}</span>
+                      {p.source === "woocommerce_es"
+                        ? <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">Woo ES</Badge>
+                        : <Badge variant="outline" className="text-[10px]">Manual</Badge>}
+                      {!p.sku && <Badge variant="destructive" className="text-[10px]">Sin SKU</Badge>}
+                      {!(variantsByProduct[p.id]?.length) && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600/40">Sin variantes</Badge>}
+                      {(variantsByProduct[p.id] || []).some(v => !v.scan_code && !v.variant_sku) && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600/40">Sin scan_code</Badge>}
+                      {totalStock(p.id) === 0 && <Badge variant="outline" className="text-[10px] text-muted-foreground">Sin stock</Badge>}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-xs">{p.product_type || "—"}</TableCell>
                   <TableCell><Badge variant={p.status === "active" ? "default" : "outline"}>{p.status}</Badge></TableCell>
                   <TableCell className="text-right">{p.price_eur != null ? `€${Number(p.price_eur).toFixed(2)}` : "—"}</TableCell>
