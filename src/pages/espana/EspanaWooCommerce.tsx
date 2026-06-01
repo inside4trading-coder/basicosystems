@@ -95,7 +95,7 @@ export default function EspanaWooCommerce() {
         <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
           <Globe className="h-6 w-6 text-primary" /> WooCommerce España
         </h2>
-        <p className="text-sm text-muted-foreground">Sincronización de catálogo desde basicoclothes.es · modo solo lectura.</p>
+        <p className="text-sm text-muted-foreground">Sincronización de catálogo desde basicoclothes.es · modo solo lectura. <a href="/espana/woocommerce/pedidos" className="text-primary font-semibold underline-offset-2 hover:underline">Ver pedidos Woo →</a></p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

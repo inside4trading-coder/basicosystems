@@ -17,7 +17,7 @@ interface Channel { id: string; name: string; key: string; is_active: boolean }
 interface Location { id: string; name: string; code: string; inventory_mode: string }
 interface PaymentMethod { id: string; name: string; key: string; color: string | null }
 
-interface SaleRow { id: string; sale_date: string; location_id: string | null; total_eur: number }
+interface SaleRow { id: string; sale_date: string; location_id: string | null; channel_id: string | null; total_eur: number; source?: string | null }
 interface ItemRow { sale_id: string; quantity: number }
 interface PayRow { sale_id: string; payment_method_id: string | null; amount_eur: number }
 
@@ -32,20 +32,22 @@ export default function EspanaDashboard() {
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [items, setItems] = useState<ItemRow[]>([]);
   const [salePays, setSalePays] = useState<PayRow[]>([]);
+  const [fabPending, setFabPending] = useState(0);
 
   useEffect(() => {
     (async () => {
       const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
-      const [c, l, p, s, pr, vr, sa, si, sp] = await Promise.all([
+      const [c, l, p, s, pr, vr, sa, si, sp, fab] = await Promise.all([
         supabase.from("esp_sales_channels").select("id,name,key,is_active").order("name"),
         supabase.from("esp_locations").select("id,name,code,inventory_mode").order("name"),
         supabase.from("esp_payment_methods").select("id,name,key,color").order("sort_order"),
         supabase.from("esp_inventory_stock").select("location_id,variant_id,quantity_on_hand"),
         supabase.from("esp_products").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("esp_product_variants").select("id", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("esp_sales").select("id,sale_date,location_id,total_eur").gte("sale_date", monthStart.toISOString()).eq("status", "completed"),
+        supabase.from("esp_sales").select("id,sale_date,location_id,channel_id,total_eur,source").gte("sale_date", monthStart.toISOString()).eq("status", "completed"),
         supabase.from("esp_sale_items").select("sale_id,quantity"),
         supabase.from("esp_sale_payments").select("sale_id,payment_method_id,amount_eur"),
+        supabase.from("esp_fabrication_requests").select("id", { count: "exact", head: true }).in("status", ["pending","in_progress"]),
       ]);
       if (c.data) setChannels(c.data as Channel[]);
       if (l.data) setLocations(l.data as Location[]);
@@ -63,6 +65,7 @@ export default function EspanaDashboard() {
       setSales((sa.data || []) as SaleRow[]);
       setItems((si.data || []) as ItemRow[]);
       setSalePays((sp.data || []) as PayRow[]);
+      setFabPending(fab.count || 0);
     })();
   }, []);
 
@@ -95,19 +98,27 @@ export default function EspanaDashboard() {
 
   const fmt = (n: number) => `€${n.toFixed(2)}`;
 
+  const sumByChannelKey = (key: string) => {
+    const ch = channels.find(c => c.key === key);
+    if (!ch) return 0;
+    return sales.filter(s => s.channel_id === ch.id).reduce((a, s) => a + Number(s.total_eur || 0), 0);
+  };
+  const sumWoo = sales.filter(s => s.source === "woocommerce_es").reduce((a, s) => a + Number(s.total_eur || 0), 0);
+  const sumPos = sumMonth - sumWoo;
+
   const kpis = [
     { label: "Ventas hoy", value: fmt(sumToday), icon: Euro },
     { label: "Ventas mes", value: fmt(sumMonth), icon: TrendingUp },
     { label: "Ticket promedio", value: fmt(avgTicket), icon: CreditCard },
     { label: "Productos vendidos", value: String(productsSold), icon: ShoppingBag },
-    { label: "Ventas Pop Up Ibiza", value: fmt(salesAtCode("ibiza")), icon: Euro },
-    { label: "Ventas Arturo Soria", value: fmt(salesAtCode("arturo_soria")), icon: Euro },
-    { label: "Ventas Otros", value: fmt(salesAtCode("otros")), icon: Euro },
+    { label: "Ventas WooCommerce ES", value: fmt(sumWoo), icon: TrendingUp },
+    { label: "Ventas POS", value: fmt(sumPos), icon: CreditCard },
+    { label: "Ventas Pop Up Ibiza", value: fmt(salesAtCode("IBIZA")), icon: Euro },
+    { label: "Ventas Arturo Soria", value: fmt(salesAtCode("ARTURO_SORIA")), icon: Euro },
+    { label: "Pendientes fabricación ES", value: String(fabPending), icon: Hammer },
     { label: "Productos activos", value: String(activeProducts), icon: Package },
     { label: "Variantes activas", value: String(activeVariants), icon: ShoppingBag },
     { label: "Stock total España", value: String(totalStock), icon: Warehouse },
-    { label: "Variantes bajo stock", value: String(lowStock), icon: Warehouse },
-    { label: "Stock central", value: String(stockAt("central")), icon: Warehouse },
   ];
 
   return (
@@ -131,12 +142,15 @@ export default function EspanaDashboard() {
         <Card className="p-5 rounded-2xl">
           <h3 className="text-sm font-bold mb-3">Ventas por canal</h3>
           <div className="space-y-2">
-            {channels.map((c) => (
-              <div key={c.id} className="flex items-center justify-between text-sm border-b border-border/50 pb-2 last:border-0">
-                <span className="font-medium">{c.name}</span>
-                <span className="text-muted-foreground">€0,00</span>
-              </div>
-            ))}
+            {channels.map((c) => {
+              const total = sales.filter(s => s.channel_id === c.id).reduce((a, s) => a + Number(s.total_eur || 0), 0);
+              return (
+                <div key={c.id} className="flex items-center justify-between text-sm border-b border-border/50 pb-2 last:border-0">
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-muted-foreground">{fmt(total)}</span>
+                </div>
+              );
+            })}
             {channels.length === 0 && <p className="text-xs text-muted-foreground">Sin canales todavía.</p>}
           </div>
         </Card>

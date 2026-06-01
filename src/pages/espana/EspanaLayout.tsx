@@ -31,6 +31,7 @@ const groups: { label: string; items: Section[] }[] = [
       { to: "/espana/ventas", label: "Ventas", icon: ShoppingCart },
       { to: "/espana/pos", label: "POS Móvil", icon: Smartphone },
       { to: "/espana/woocommerce", label: "WooCommerce España", icon: Globe },
+      { to: "/espana/woocommerce/pedidos", label: "Pedidos Woo", icon: ShoppingCart },
     ],
   },
   {

@@ -61,6 +61,8 @@ import EspanaInventario from "./pages/espana/EspanaInventario";
 import EspanaPOS from "./pages/espana/EspanaPOS";
 import EspanaVentas from "./pages/espana/EspanaVentas";
 import EspanaWooCommerce from "./pages/espana/EspanaWooCommerce";
+import EspanaWooOrders from "./pages/espana/EspanaWooOrders";
+import EspanaFabricacion from "./pages/espana/EspanaFabricacion";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -149,9 +151,10 @@ const App = () => (
                 <Route path="ventas" element={<EspanaVentas />} />
                 <Route path="pos" element={<EspanaPOS />} />
                 <Route path="woocommerce" element={<EspanaWooCommerce />} />
+                <Route path="woocommerce/pedidos" element={<EspanaWooOrders />} />
                 <Route path="productos" element={<EspanaProductos />} />
                 <Route path="inventario" element={<EspanaInventario />} />
-                <Route path="fabricacion" element={<EspanaPlaceholder title="Listado de fabricación" description="Cola de fabricación generada desde pedidos WooCommerce España." />} />
+                <Route path="fabricacion" element={<EspanaFabricacion />} />
                 <Route path="blanks-dtf" element={<EspanaPlaceholder title="Blanks / DTF" description="Inventario sencillo de blanks y consumibles DTF, con entradas, salidas y ajustes." />} />
               </Route>
             </Route>
