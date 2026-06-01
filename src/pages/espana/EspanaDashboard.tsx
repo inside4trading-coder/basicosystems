@@ -98,19 +98,27 @@ export default function EspanaDashboard() {
 
   const fmt = (n: number) => `€${n.toFixed(2)}`;
 
+  const sumByChannelKey = (key: string) => {
+    const ch = channels.find(c => c.key === key);
+    if (!ch) return 0;
+    return sales.filter(s => s.channel_id === ch.id).reduce((a, s) => a + Number(s.total_eur || 0), 0);
+  };
+  const sumWoo = sales.filter(s => s.source === "woocommerce_es").reduce((a, s) => a + Number(s.total_eur || 0), 0);
+  const sumPos = sumMonth - sumWoo;
+
   const kpis = [
     { label: "Ventas hoy", value: fmt(sumToday), icon: Euro },
     { label: "Ventas mes", value: fmt(sumMonth), icon: TrendingUp },
     { label: "Ticket promedio", value: fmt(avgTicket), icon: CreditCard },
     { label: "Productos vendidos", value: String(productsSold), icon: ShoppingBag },
-    { label: "Ventas Pop Up Ibiza", value: fmt(salesAtCode("ibiza")), icon: Euro },
-    { label: "Ventas Arturo Soria", value: fmt(salesAtCode("arturo_soria")), icon: Euro },
-    { label: "Ventas Otros", value: fmt(salesAtCode("otros")), icon: Euro },
+    { label: "Ventas WooCommerce ES", value: fmt(sumWoo), icon: TrendingUp },
+    { label: "Ventas POS", value: fmt(sumPos), icon: CreditCard },
+    { label: "Ventas Pop Up Ibiza", value: fmt(salesAtCode("IBIZA")), icon: Euro },
+    { label: "Ventas Arturo Soria", value: fmt(salesAtCode("ARTURO_SORIA")), icon: Euro },
+    { label: "Pendientes fabricación ES", value: String(fabPending), icon: Hammer },
     { label: "Productos activos", value: String(activeProducts), icon: Package },
     { label: "Variantes activas", value: String(activeVariants), icon: ShoppingBag },
     { label: "Stock total España", value: String(totalStock), icon: Warehouse },
-    { label: "Variantes bajo stock", value: String(lowStock), icon: Warehouse },
-    { label: "Stock central", value: String(stockAt("central")), icon: Warehouse },
   ];
 
   return (
@@ -134,12 +142,15 @@ export default function EspanaDashboard() {
         <Card className="p-5 rounded-2xl">
           <h3 className="text-sm font-bold mb-3">Ventas por canal</h3>
           <div className="space-y-2">
-            {channels.map((c) => (
-              <div key={c.id} className="flex items-center justify-between text-sm border-b border-border/50 pb-2 last:border-0">
-                <span className="font-medium">{c.name}</span>
-                <span className="text-muted-foreground">€0,00</span>
-              </div>
-            ))}
+            {channels.map((c) => {
+              const total = sales.filter(s => s.channel_id === c.id).reduce((a, s) => a + Number(s.total_eur || 0), 0);
+              return (
+                <div key={c.id} className="flex items-center justify-between text-sm border-b border-border/50 pb-2 last:border-0">
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-muted-foreground">{fmt(total)}</span>
+                </div>
+              );
+            })}
             {channels.length === 0 && <p className="text-xs text-muted-foreground">Sin canales todavía.</p>}
           </div>
         </Card>
