@@ -35,6 +35,10 @@ interface Product {
   image_url: string | null;
   has_variants: boolean;
   woo_product_id: number | null;
+  source?: string | null;
+  woo_permalink?: string | null;
+  woo_status?: string | null;
+  woo_synced_at?: string | null;
 }
 interface Variant {
   id: string;
@@ -59,6 +63,7 @@ export default function EspanaProductos() {
   const [stockByVariant, setStockByVariant] = useState<Record<string, number>>({});
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [open, setOpen] = useState(false);
@@ -89,9 +94,10 @@ export default function EspanaProductos() {
 
   const filtered = useMemo(() => rows.filter((r) => {
     if (statusFilter !== "all" && r.status !== statusFilter) return false;
+    if (sourceFilter !== "all" && (r.source || "manual") !== sourceFilter) return false;
     if (q && !`${r.sku} ${r.name}`.toLowerCase().includes(q.toLowerCase())) return false;
     return true;
-  }), [rows, q, statusFilter]);
+  }), [rows, q, statusFilter, sourceFilter]);
 
   const totalStock = (productId: string) => {
     const vs = variantsByProduct[productId] || [];
@@ -136,6 +142,14 @@ export default function EspanaProductos() {
               {STATUS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toda fuente</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+              <SelectItem value="woocommerce_es">WooCommerce ES</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="overflow-x-auto">
           <Table>
@@ -158,7 +172,18 @@ export default function EspanaProductos() {
               {filtered.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="font-mono text-xs">{p.sku}</TableCell>
-                  <TableCell className="font-medium">{p.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span>{p.name}</span>
+                      {p.source === "woocommerce_es"
+                        ? <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">Woo ES</Badge>
+                        : <Badge variant="outline" className="text-[10px]">Manual</Badge>}
+                      {!p.sku && <Badge variant="destructive" className="text-[10px]">Sin SKU</Badge>}
+                      {!(variantsByProduct[p.id]?.length) && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600/40">Sin variantes</Badge>}
+                      {(variantsByProduct[p.id] || []).some(v => !v.scan_code && !v.variant_sku) && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600/40">Sin scan_code</Badge>}
+                      {totalStock(p.id) === 0 && <Badge variant="outline" className="text-[10px] text-muted-foreground">Sin stock</Badge>}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-xs">{p.product_type || "—"}</TableCell>
                   <TableCell><Badge variant={p.status === "active" ? "default" : "outline"}>{p.status}</Badge></TableCell>
                   <TableCell className="text-right">{p.price_eur != null ? `€${Number(p.price_eur).toFixed(2)}` : "—"}</TableCell>
