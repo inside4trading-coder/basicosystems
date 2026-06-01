@@ -66,6 +66,7 @@ export default function EspanaDashboard() {
       setItems((si.data || []) as ItemRow[]);
       setSalePays((sp.data || []) as PayRow[]);
       setFabPending(fab.count || 0);
+    })();
   }, []);
 
   const totalStock = Object.values(stockByLoc).reduce((a, b) => a + b, 0);
