@@ -3753,10 +3753,15 @@ export type Database = {
           scan_code: string | null
           size: string | null
           sort_order: number | null
+          source: string
           status: string
           updated_at: string
           updated_by: string | null
           variant_sku: string
+          woo_product_id: number | null
+          woo_status: string | null
+          woo_stock_quantity: number | null
+          woo_synced_at: string | null
           woo_variation_id: number | null
         }
         Insert: {
@@ -3772,10 +3777,15 @@ export type Database = {
           scan_code?: string | null
           size?: string | null
           sort_order?: number | null
+          source?: string
           status?: string
           updated_at?: string
           updated_by?: string | null
           variant_sku: string
+          woo_product_id?: number | null
+          woo_status?: string | null
+          woo_stock_quantity?: number | null
+          woo_synced_at?: string | null
           woo_variation_id?: number | null
         }
         Update: {
@@ -3791,10 +3801,15 @@ export type Database = {
           scan_code?: string | null
           size?: string | null
           sort_order?: number | null
+          source?: string
           status?: string
           updated_at?: string
           updated_by?: string | null
           variant_sku?: string
+          woo_product_id?: number | null
+          woo_status?: string | null
+          woo_stock_quantity?: number | null
+          woo_synced_at?: string | null
           woo_variation_id?: number | null
         }
         Relationships: [
@@ -3825,10 +3840,16 @@ export type Database = {
           price_eur: number | null
           product_type: string | null
           sku: string
+          source: string
           status: string
           updated_at: string
           updated_by: string | null
+          woo_image_url: string | null
+          woo_permalink: string | null
           woo_product_id: number | null
+          woo_status: string | null
+          woo_synced_at: string | null
+          woo_type: string | null
         }
         Insert: {
           category?: string | null
@@ -3847,10 +3868,16 @@ export type Database = {
           price_eur?: number | null
           product_type?: string | null
           sku: string
+          source?: string
           status?: string
           updated_at?: string
           updated_by?: string | null
+          woo_image_url?: string | null
+          woo_permalink?: string | null
           woo_product_id?: number | null
+          woo_status?: string | null
+          woo_synced_at?: string | null
+          woo_type?: string | null
         }
         Update: {
           category?: string | null
@@ -3869,10 +3896,16 @@ export type Database = {
           price_eur?: number | null
           product_type?: string | null
           sku?: string
+          source?: string
           status?: string
           updated_at?: string
           updated_by?: string | null
+          woo_image_url?: string | null
+          woo_permalink?: string | null
           woo_product_id?: number | null
+          woo_status?: string | null
+          woo_synced_at?: string | null
+          woo_type?: string | null
         }
         Relationships: []
       }
@@ -4194,6 +4227,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      esp_woo_sync_runs: {
+        Row: {
+          created_by: string | null
+          errors_count: number
+          finished_at: string | null
+          id: string
+          products_checked: number
+          products_created: number
+          products_updated: number
+          skipped_no_sku: number
+          started_at: string
+          status: string
+          summary: Json | null
+          sync_type: string
+          variants_checked: number
+          variants_created: number
+          variants_updated: number
+        }
+        Insert: {
+          created_by?: string | null
+          errors_count?: number
+          finished_at?: string | null
+          id?: string
+          products_checked?: number
+          products_created?: number
+          products_updated?: number
+          skipped_no_sku?: number
+          started_at?: string
+          status?: string
+          summary?: Json | null
+          sync_type?: string
+          variants_checked?: number
+          variants_created?: number
+          variants_updated?: number
+        }
+        Update: {
+          created_by?: string | null
+          errors_count?: number
+          finished_at?: string | null
+          id?: string
+          products_checked?: number
+          products_created?: number
+          products_updated?: number
+          skipped_no_sku?: number
+          started_at?: string
+          status?: string
+          summary?: Json | null
+          sync_type?: string
+          variants_checked?: number
+          variants_created?: number
+          variants_updated?: number
+        }
+        Relationships: []
       }
       incidents: {
         Row: {
