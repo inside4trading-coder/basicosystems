@@ -142,6 +142,14 @@ export default function EspanaProductos() {
               {STATUS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toda fuente</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+              <SelectItem value="woocommerce_es">WooCommerce ES</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="overflow-x-auto">
           <Table>
