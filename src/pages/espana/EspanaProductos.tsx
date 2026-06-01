@@ -94,9 +94,10 @@ export default function EspanaProductos() {
 
   const filtered = useMemo(() => rows.filter((r) => {
     if (statusFilter !== "all" && r.status !== statusFilter) return false;
+    if (sourceFilter !== "all" && (r.source || "manual") !== sourceFilter) return false;
     if (q && !`${r.sku} ${r.name}`.toLowerCase().includes(q.toLowerCase())) return false;
     return true;
-  }), [rows, q, statusFilter]);
+  }), [rows, q, statusFilter, sourceFilter]);
 
   const totalStock = (productId: string) => {
     const vs = variantsByProduct[productId] || [];
