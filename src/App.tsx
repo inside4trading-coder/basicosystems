@@ -160,7 +160,7 @@ const App = () => (
                 <Route path="productos" element={<EspanaProductos />} />
                 <Route path="inventario" element={<EspanaInventario />} />
                 <Route path="fabricacion" element={<EspanaFabricacion />} />
-                <Route path="blanks-dtf" element={<EspanaPlaceholder title="Blanks / DTF" description="Inventario sencillo de blanks y consumibles DTF, con entradas, salidas y ajustes." />} />
+                <Route path="blanks-dtf" element={<EspanaBlanksDTF />} />
               </Route>
             </Route>
             <Route path="/crew/incidencias" element={<CrewIncidencias />} />
