@@ -11,6 +11,7 @@ import {
   Warehouse,
   Hammer,
   Shirt,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
