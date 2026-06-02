@@ -3488,10 +3488,15 @@ export type Database = {
       esp_fabrication_requests: {
         Row: {
           cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string
           created_by: string | null
           due_date: string | null
           id: string
+          is_legacy: boolean
+          is_test: boolean
+          legacy_reason: string | null
           notes: string | null
           priority: string
           product_id: string | null
@@ -3502,6 +3507,7 @@ export type Database = {
           source_order_item_id: string | null
           source_type: string
           status: string
+          test_reason: string | null
           updated_at: string
           updated_by: string | null
           variant_id: string | null
@@ -3511,10 +3517,15 @@ export type Database = {
         }
         Insert: {
           cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string | null
           id?: string
+          is_legacy?: boolean
+          is_test?: boolean
+          legacy_reason?: string | null
           notes?: string | null
           priority?: string
           product_id?: string | null
@@ -3525,6 +3536,7 @@ export type Database = {
           source_order_item_id?: string | null
           source_type?: string
           status?: string
+          test_reason?: string | null
           updated_at?: string
           updated_by?: string | null
           variant_id?: string | null
@@ -3534,10 +3546,15 @@ export type Database = {
         }
         Update: {
           cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string | null
           id?: string
+          is_legacy?: boolean
+          is_test?: boolean
+          legacy_reason?: string | null
           notes?: string | null
           priority?: string
           product_id?: string | null
@@ -3548,6 +3565,7 @@ export type Database = {
           source_order_item_id?: string | null
           source_type?: string
           status?: string
+          test_reason?: string | null
           updated_at?: string
           updated_by?: string | null
           variant_id?: string | null
