@@ -4362,6 +4362,10 @@ export type Database = {
           esp_woo_order_id: string
           fabrication_request_id: string | null
           id: string
+          mapped_manually_at: string | null
+          mapped_manually_by: string | null
+          mapping_note: string | null
+          mapping_status: string
           name: string
           needs_fabrication: boolean
           product_id: string | null
@@ -4382,6 +4386,10 @@ export type Database = {
           esp_woo_order_id: string
           fabrication_request_id?: string | null
           id?: string
+          mapped_manually_at?: string | null
+          mapped_manually_by?: string | null
+          mapping_note?: string | null
+          mapping_status?: string
           name: string
           needs_fabrication?: boolean
           product_id?: string | null
@@ -4402,6 +4410,10 @@ export type Database = {
           esp_woo_order_id?: string
           fabrication_request_id?: string | null
           id?: string
+          mapped_manually_at?: string | null
+          mapped_manually_by?: string | null
+          mapping_note?: string | null
+          mapping_status?: string
           name?: string
           needs_fabrication?: boolean
           product_id?: string | null

@@ -11,6 +11,7 @@ import {
   Warehouse,
   Hammer,
   Shirt,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +33,7 @@ const groups: { label: string; items: Section[] }[] = [
       { to: "/espana/pos", label: "POS Móvil", icon: Smartphone },
       { to: "/espana/woocommerce", label: "WooCommerce España", icon: Globe },
       { to: "/espana/woocommerce/pedidos", label: "Pedidos Woo", icon: ShoppingCart },
+      { to: "/espana/woocommerce/problemas", label: "Problemas Woo", icon: AlertTriangle },
     ],
   },
   {
