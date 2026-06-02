@@ -160,6 +160,16 @@ Deno.serve(async (req) => {
           const sku = wooSku || existing?.sku || `WOO-${wooId}`;
           if (!wooSku && !existing) summary.skipped_no_sku++;
 
+          const manageStock: boolean = !!wp.manage_stock;
+          const stockStatus: string | null = wp.stock_status || null;
+          const stockQty: number | null = typeof wp.stock_quantity === "number" ? wp.stock_quantity : null;
+          // Política inicial: si Woo no gestiona stock -> fabricación ligera.
+          const isPhysical = manageStock;
+          const fulfillmentMode = isPhysical ? "physical_stock" : "made_to_order";
+          const webStockPolicy = isPhysical ? "woo_managed_stock" : "no_web_stock";
+          const isMto = !isPhysical;
+          const reqFab = !isPhysical;
+
           const payload: any = {
             sku, name,
             product_type: wp.type || null,
@@ -175,6 +185,16 @@ Deno.serve(async (req) => {
             woo_synced_at: new Date().toISOString(),
             source: "woocommerce_es",
             updated_by: userId,
+            woo_manage_stock: manageStock,
+            woo_stock_status: stockStatus,
+            woo_stock_quantity: stockQty,
+          };
+          // Solo asignar política operativa la primera vez (no pisar ediciones manuales)
+          const initialPolicyPayload = {
+            fulfillment_mode: fulfillmentMode,
+            web_stock_policy: webStockPolicy,
+            is_made_to_order: isMto,
+            requires_fabrication: reqFab,
           };
 
           let productId: string;
