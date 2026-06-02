@@ -63,6 +63,7 @@ import EspanaVentas from "./pages/espana/EspanaVentas";
 import EspanaWooCommerce from "./pages/espana/EspanaWooCommerce";
 import EspanaWooOrders from "./pages/espana/EspanaWooOrders";
 import EspanaFabricacion from "./pages/espana/EspanaFabricacion";
+import EspanaBlanksDTF from "./pages/espana/EspanaBlanksDTF";
 import EspanaWooProblemas from "./pages/espana/EspanaWooProblemas";
 import EspanaWooReclasificar from "./pages/espana/EspanaWooReclasificar";
 import NotFound from "./pages/NotFound";
