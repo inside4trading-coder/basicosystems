@@ -3951,6 +3951,7 @@ export type Database = {
           is_sellable: boolean
           name: string
           notes: string | null
+          operation_policy_locked: boolean
           price_eur: number | null
           product_type: string | null
           requires_fabrication: boolean
@@ -3985,6 +3986,7 @@ export type Database = {
           is_sellable?: boolean
           name: string
           notes?: string | null
+          operation_policy_locked?: boolean
           price_eur?: number | null
           product_type?: string | null
           requires_fabrication?: boolean
@@ -4019,6 +4021,7 @@ export type Database = {
           is_sellable?: boolean
           name?: string
           notes?: string | null
+          operation_policy_locked?: boolean
           price_eur?: number | null
           product_type?: string | null
           requires_fabrication?: boolean
