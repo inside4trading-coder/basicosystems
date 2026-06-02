@@ -64,6 +64,7 @@ import EspanaWooCommerce from "./pages/espana/EspanaWooCommerce";
 import EspanaWooOrders from "./pages/espana/EspanaWooOrders";
 import EspanaFabricacion from "./pages/espana/EspanaFabricacion";
 import EspanaWooProblemas from "./pages/espana/EspanaWooProblemas";
+import EspanaWooReclasificar from "./pages/espana/EspanaWooReclasificar";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
