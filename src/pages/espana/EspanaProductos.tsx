@@ -171,7 +171,7 @@ export default function EspanaProductos() {
               {!loading && filtered.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">Sin productos todavía.</TableCell></TableRow>}
               {filtered.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="font-mono text-xs">{p.sku}</TableCell>
+                  <TableCell className="font-mono text-xs">{String(p.sku ?? "")}</TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span>{p.name}</span>
@@ -179,11 +179,14 @@ export default function EspanaProductos() {
                         ? <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">Woo ES</Badge>
                         : <Badge variant="outline" className="text-[10px]">Manual</Badge>}
                       {!p.sku && <Badge variant="destructive" className="text-[10px]">Sin SKU</Badge>}
+                      {p.sku && /^-?\d+([.,]\d+)?[eE][+-]?\d+$/.test(String(p.sku).trim()) && <Badge variant="destructive" className="text-[10px]">SKU inválido</Badge>}
                       {!(variantsByProduct[p.id]?.length) && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600/40">Sin variantes</Badge>}
                       {(variantsByProduct[p.id] || []).some(v => !v.scan_code && !v.variant_sku) && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600/40">Sin scan_code</Badge>}
+                      {(variantsByProduct[p.id] || []).some(v => /^-?\d+([.,]\d+)?[eE][+-]?\d+$/.test(String(v.variant_sku ?? "").trim())) && <Badge variant="destructive" className="text-[10px]">Variante SKU inválido</Badge>}
                       {totalStock(p.id) === 0 && <Badge variant="outline" className="text-[10px] text-muted-foreground">Sin stock</Badge>}
                     </div>
                   </TableCell>
+
                   <TableCell className="text-xs">{p.product_type || "—"}</TableCell>
                   <TableCell><Badge variant={p.status === "active" ? "default" : "outline"}>{p.status}</Badge></TableCell>
                   <TableCell className="text-right">{p.price_eur != null ? `€${Number(p.price_eur).toFixed(2)}` : "—"}</TableCell>

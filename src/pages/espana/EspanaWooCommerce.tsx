@@ -25,12 +25,23 @@ interface SyncRun {
   summary: any;
 }
 
+// SKU treated strictly as string. Detects scientific notation / Excel-corrupted SKUs.
+const isInvalidSku = (s: unknown): boolean => {
+  if (s == null) return false;
+  const str = String(s).trim();
+  if (!str) return false;
+  return /^-?\d+([.,]\d+)?[eE][+-]?\d+$/.test(str);
+};
+
 export default function EspanaWooCommerce() {
+
   const [runs, setRuns] = useState<SyncRun[]>([]);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [conn, setConn] = useState<{ status: "unknown" | "connected" | "not_connected" | "error"; message?: string; total?: string | null }>({ status: "unknown" });
   const [totals, setTotals] = useState({ products: 0, variants: 0, wooProducts: 0, wooVariants: 0 });
+  const [invalidSkus, setInvalidSkus] = useState<{ products: { id: string; sku: string; name: string }[]; variants: { id: string; variant_sku: string; product_id: string }[] }>({ products: [], variants: [] });
 
   const loadRuns = async () => {
     const { data } = await supabase.from("esp_woo_sync_runs")
@@ -39,19 +50,35 @@ export default function EspanaWooCommerce() {
   };
 
   const loadTotals = async () => {
-    const [p, v, wp, wv] = await Promise.all([
+    setRefreshing(true);
+    const [p, v, wp, wv, allP, allV] = await Promise.all([
       supabase.from("esp_products").select("id", { count: "exact", head: true }),
       supabase.from("esp_product_variants").select("id", { count: "exact", head: true }),
       supabase.from("esp_products").select("id", { count: "exact", head: true }).eq("source", "woocommerce_es"),
       supabase.from("esp_product_variants").select("id", { count: "exact", head: true }).eq("source", "woocommerce_es"),
+      supabase.from("esp_products").select("id, sku, name"),
+      supabase.from("esp_product_variants").select("id, variant_sku, product_id"),
     ]);
+    if (p.error) console.error("count products", p.error);
+    if (wp.error) console.error("count woo products", wp.error);
     setTotals({
-      products: p.count || 0, variants: v.count || 0,
-      wooProducts: wp.count || 0, wooVariants: wv.count || 0,
+      products: p.count ?? 0, variants: v.count ?? 0,
+      wooProducts: wp.count ?? 0, wooVariants: wv.count ?? 0,
     });
+    setInvalidSkus({
+      products: ((allP.data || []) as any[]).filter(x => isInvalidSku(x.sku)) as any,
+      variants: ((allV.data || []) as any[]).filter(x => isInvalidSku(x.variant_sku)) as any,
+    });
+    setRefreshing(false);
   };
 
-  useEffect(() => { loadRuns(); loadTotals(); }, []);
+  useEffect(() => {
+    loadRuns(); loadTotals();
+    const onFocus = () => loadTotals();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
 
   const testConn = async () => {
     setTesting(true);
@@ -91,12 +118,51 @@ export default function EspanaWooCommerce() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
-          <Globe className="h-6 w-6 text-primary" /> WooCommerce España
-        </h2>
-        <p className="text-sm text-muted-foreground">Sincronización de catálogo desde basicoclothes.es · modo solo lectura. <a href="/espana/woocommerce/pedidos" className="text-primary font-semibold underline-offset-2 hover:underline">Ver pedidos Woo →</a></p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
+            <Globe className="h-6 w-6 text-primary" /> WooCommerce España
+          </h2>
+          <p className="text-sm text-muted-foreground">Sincronización de catálogo desde basicoclothes.es · modo solo lectura. <a href="/espana/woocommerce/pedidos" className="text-primary font-semibold underline-offset-2 hover:underline">Ver pedidos Woo →</a></p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => { loadRuns(); loadTotals(); }} disabled={refreshing}>
+          {refreshing ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-2" />}
+          Refrescar
+        </Button>
       </div>
+
+      {(invalidSkus.products.length > 0 || invalidSkus.variants.length > 0) && (
+        <Card className="p-4 border-destructive/40 bg-destructive/5">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
+            <div className="flex-1 space-y-2">
+              <p className="text-sm font-bold text-destructive">SKU en notación científica detectados</p>
+              <p className="text-xs text-muted-foreground">Los SKU deben tratarse siempre como texto. Estos registros tienen valores tipo "1,73E+18" que probablemente vienen de un export Excel corrupto. No se autocorrigen — requieren revisión manual con el SKU original.</p>
+              {invalidSkus.products.length > 0 && (
+                <div className="text-xs">
+                  <p className="font-semibold mb-1">Productos ({invalidSkus.products.length}):</p>
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    {invalidSkus.products.map(p => (
+                      <li key={p.id}><span className="font-mono">{p.sku}</span> — {p.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {invalidSkus.variants.length > 0 && (
+                <div className="text-xs">
+                  <p className="font-semibold mb-1">Variantes ({invalidSkus.variants.length}):</p>
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    {invalidSkus.variants.map(v => (
+                      <li key={v.id}><span className="font-mono">{v.variant_sku}</span></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-4 space-y-3">
