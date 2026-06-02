@@ -249,6 +249,8 @@ Deno.serve(async (req) => {
                     woo_variation_id: wvId,
                     woo_product_id: wooId,
                     woo_status: wv.status || null,
+                    woo_manage_stock: !!wv.manage_stock,
+                    woo_stock_status: wv.stock_status || null,
                     woo_stock_quantity: typeof wv.stock_quantity === "number" ? wv.stock_quantity : null,
                     woo_synced_at: new Date().toISOString(),
                     source: "woocommerce_es",
