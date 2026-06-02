@@ -328,6 +328,52 @@ function ProductDialog({ open, onOpenChange, product, variants, stockByVariant, 
           <div className="col-span-2 space-y-1.5"><Label>Descripción</Label><Textarea value={form.description || ""} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
         </div>
 
+        <div className="mt-5 border-t pt-4 space-y-3">
+          <div>
+            <h4 className="text-sm font-bold">Operación España</h4>
+            <p className="text-xs text-muted-foreground">Define cómo se vende y fabrica este producto. No modifica WooCommerce.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Modo de fabricación</Label>
+              <Select value={form.fulfillment_mode || "made_to_order"} onValueChange={(v) => setForm({ ...form, fulfillment_mode: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="made_to_order">Fabricación ligera (made_to_order)</SelectItem>
+                  <SelectItem value="physical_stock">Stock físico</SelectItem>
+                  <SelectItem value="hybrid">Híbrido</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Política de stock web</Label>
+              <Select value={form.web_stock_policy || "no_web_stock"} onValueChange={(v) => setForm({ ...form, web_stock_policy: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no_web_stock">Sin stock web</SelectItem>
+                  <SelectItem value="woo_managed_stock">Gestionado por Woo</SelectItem>
+                  <SelectItem value="hub_managed_stock">Gestionado por Hub</SelectItem>
+                  <SelectItem value="manual_review">Revisión manual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2"><Switch checked={!!form.is_made_to_order} onCheckedChange={(v) => setForm({ ...form, is_made_to_order: v })} /><Label>Hecho a pedido</Label></div>
+            <div className="flex items-center gap-2"><Switch checked={!!form.requires_fabrication} onCheckedChange={(v) => setForm({ ...form, requires_fabrication: v })} /><Label>Requiere fabricación</Label></div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            <strong>Fabricación ligera:</strong> se vende en Woo sin stock gestionado y se fabrica después del pedido (usa blanks + DTF).{" "}
+            <strong>Stock físico:</strong> existe físicamente y puede manejar stock en Woo o en sedes del Hub.
+          </p>
+          {form.source === "woocommerce_es" && (
+            <div className="text-[11px] text-muted-foreground bg-muted/40 p-2 rounded">
+              Woo: manage_stock = <strong>{form.woo_manage_stock ? "Sí" : "No"}</strong>
+              {form.woo_stock_status ? <> · stock_status = <strong>{form.woo_stock_status}</strong></> : null}
+              {form.woo_stock_quantity != null ? <> · qty = <strong>{form.woo_stock_quantity}</strong></> : null}
+            </div>
+          )}
+        </div>
+
         {!isNew && (
           <div className="space-y-2 mt-4">
             <h4 className="text-sm font-bold flex items-center gap-2"><Package className="h-4 w-4" />Variantes / Tallas</h4>
