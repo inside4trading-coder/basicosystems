@@ -457,6 +457,18 @@ function UsuariosPanel({ locations }: { locations: Location[] }) {
 function WooEspanaPanel({ settings, onUpdated }: { settings: Settings | null; onUpdated: () => void }) {
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [policy, setPolicy] = useState({
+    interpret_woo_unmanaged_as_made_to_order: settings?.interpret_woo_unmanaged_as_made_to_order ?? true,
+    auto_create_fabrication_for_mto: settings?.auto_create_fabrication_for_mto ?? true,
+    auto_decrement_web_stock: settings?.auto_decrement_web_stock ?? false,
+  });
+  useEffect(() => {
+    setPolicy({
+      interpret_woo_unmanaged_as_made_to_order: settings?.interpret_woo_unmanaged_as_made_to_order ?? true,
+      auto_create_fabrication_for_mto: settings?.auto_create_fabrication_for_mto ?? true,
+      auto_decrement_web_stock: settings?.auto_decrement_web_stock ?? false,
+    });
+  }, [settings?.id]);
 
   const test = async () => {
     setTesting(true);
@@ -482,37 +494,94 @@ function WooEspanaPanel({ settings, onUpdated }: { settings: Settings | null; on
     }
   };
 
+  const savePolicy = async () => {
+    if (!settings) return;
+    const { error } = await supabase.from("esp_settings").update(policy).eq("id", settings.id);
+    if (error) toast.error(error.message);
+    else { toast.success("Política guardada"); onUpdated(); }
+  };
+
   return (
-    <Card className="p-6 rounded-2xl max-w-2xl space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-lg font-bold">WooCommerce España</h3>
-          <p className="text-xs text-muted-foreground">Conexión read-only a basicoclothes.es vía REST API v3.</p>
+    <div className="space-y-4 max-w-2xl">
+      <Card className="p-6 rounded-2xl space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-bold">WooCommerce España</h3>
+            <p className="text-xs text-muted-foreground">Conexión read-only a basicoclothes.es vía REST API v3.</p>
+          </div>
+          <Badge variant={settings?.woo_connected ? "default" : "secondary"}>
+            {settings?.woo_connected ? "Conectado" : "No conectado"}
+          </Badge>
         </div>
-        <Badge variant={settings?.woo_connected ? "default" : "secondary"}>
-          {settings?.woo_connected ? "Conectado" : "No conectado"}
-        </Badge>
-      </div>
 
-      <div className="text-sm space-y-2">
-        <div className="flex justify-between"><span className="text-muted-foreground">Web</span><span className="font-medium">basicoclothes.es</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Credenciales</span><span>Almacenadas en secretos (WC_ES_*)</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Moneda</span><span>EUR</span></div>
-      </div>
+        <div className="text-sm space-y-2">
+          <div className="flex justify-between"><span className="text-muted-foreground">Web</span><span className="font-medium">basicoclothes.es</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Credenciales</span><span>Almacenadas en secretos (WC_ES_*)</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Moneda</span><span>EUR</span></div>
+        </div>
 
-      <Button onClick={test} disabled={testing}>
-        {testing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Probando…</> : "Probar conexión"}
-      </Button>
+        <Button onClick={test} disabled={testing}>
+          {testing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Probando…</> : "Probar conexión"}
+        </Button>
 
-      {result && (
-        <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-72">
+        {result && (
+          <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-72">
 {JSON.stringify(result, null, 2)}
-        </pre>
-      )}
+          </pre>
+        )}
+      </Card>
 
-      <p className="text-xs text-muted-foreground border-t pt-3">
-        Este módulo NO toca basicoclothes.com (Venezuela). La sincronización completa de pedidos/productos se hará en bloques posteriores.
+      <Card className="p-6 rounded-2xl space-y-4">
+        <div>
+          <h3 className="text-lg font-bold">Política de stock web</h3>
+          <p className="text-xs text-muted-foreground">Reglas globales para interpretar el catálogo Woo. No escribe en WooCommerce.</p>
+        </div>
+
+        <div className="flex items-start justify-between gap-3 border-b pb-3">
+          <div>
+            <Label className="font-semibold">Interpretar manage_stock=false como fabricación ligera</Label>
+            <p className="text-xs text-muted-foreground">Productos Woo sin stock gestionado se marcan como made_to_order automáticamente.</p>
+          </div>
+          <Switch
+            checked={policy.interpret_woo_unmanaged_as_made_to_order}
+            onCheckedChange={(v) => setPolicy({ ...policy, interpret_woo_unmanaged_as_made_to_order: v })}
+          />
+        </div>
+
+        <div className="flex items-start justify-between gap-3 border-b pb-3">
+          <div>
+            <Label className="font-semibold">Crear fabricación automática para made_to_order</Label>
+            <p className="text-xs text-muted-foreground">Cada pedido Woo de un producto made_to_order genera una solicitud de fabricación.</p>
+          </div>
+          <Switch
+            checked={policy.auto_create_fabrication_for_mto}
+            onCheckedChange={(v) => setPolicy({ ...policy, auto_create_fabrication_for_mto: v })}
+          />
+        </div>
+
+        <div className="flex items-start justify-between gap-3 border-b pb-3 opacity-70">
+          <div>
+            <Label className="font-semibold">Descontar inventario web automáticamente</Label>
+            <p className="text-xs text-muted-foreground">Mantener apagado. Reservado para fases futuras.</p>
+          </div>
+          <Switch
+            checked={policy.auto_decrement_web_stock}
+            onCheckedChange={(v) => setPolicy({ ...policy, auto_decrement_web_stock: v })}
+            disabled
+          />
+        </div>
+
+        <div>
+          <Label className="text-xs">Sede de stock web</Label>
+          <Input value="" placeholder="(no activo todavía)" disabled />
+        </div>
+
+        <Button onClick={savePolicy}><Save className="h-4 w-4 mr-2" />Guardar política</Button>
+      </Card>
+
+      <p className="text-xs text-muted-foreground">
+        Este módulo NO toca basicoclothes.com (Venezuela). Solo lectura sobre basicoclothes.es.
       </p>
-    </Card>
+    </div>
   );
 }
