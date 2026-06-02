@@ -592,7 +592,7 @@ function RecipeTestDialog({ state, onClose, recipes, recipeItems, materials, sto
   const recipe = recipes.find((r: any) => r.id === state.recipeId);
   const [size, setSize] = useState("M");
   const items = recipeItems.filter((i: any) => i.recipe_id === state.recipeId);
-  const matsById = useMemo(() => new Map(materials.map((m: MaterialItem) => [m.id, m])), [materials]);
+  const matsById = useMemo(() => new Map<string, MaterialItem>(materials.map((m: MaterialItem) => [m.id, m])), [materials]);
 
   const resolved = items.map((it: any) => {
     const baseMat = matsById.get(it.material_id) as MaterialItem | undefined;
