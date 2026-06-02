@@ -64,6 +64,7 @@ import EspanaWooCommerce from "./pages/espana/EspanaWooCommerce";
 import EspanaWooOrders from "./pages/espana/EspanaWooOrders";
 import EspanaFabricacion from "./pages/espana/EspanaFabricacion";
 import EspanaWooProblemas from "./pages/espana/EspanaWooProblemas";
+import EspanaWooReclasificar from "./pages/espana/EspanaWooReclasificar";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -154,6 +155,7 @@ const App = () => (
                 <Route path="woocommerce" element={<EspanaWooCommerce />} />
                 <Route path="woocommerce/pedidos" element={<EspanaWooOrders />} />
                 <Route path="woocommerce/problemas" element={<EspanaWooProblemas />} />
+                <Route path="woocommerce/reclasificar" element={<EspanaWooReclasificar />} />
                 <Route path="productos" element={<EspanaProductos />} />
                 <Route path="inventario" element={<EspanaInventario />} />
                 <Route path="fabricacion" element={<EspanaFabricacion />} />

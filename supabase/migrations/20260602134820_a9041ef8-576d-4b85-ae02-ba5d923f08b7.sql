@@ -1,0 +1,2 @@
+ALTER TABLE public.esp_products ADD COLUMN IF NOT EXISTS operation_policy_locked boolean NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.esp_products.operation_policy_locked IS 'When true, masivo Woo reclassification will skip this product. Set when user manually edits Operación España.';
