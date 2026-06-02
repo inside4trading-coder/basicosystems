@@ -39,6 +39,13 @@ interface Product {
   woo_permalink?: string | null;
   woo_status?: string | null;
   woo_synced_at?: string | null;
+  fulfillment_mode?: string | null;
+  web_stock_policy?: string | null;
+  is_made_to_order?: boolean | null;
+  requires_fabrication?: boolean | null;
+  woo_manage_stock?: boolean | null;
+  woo_stock_status?: string | null;
+  woo_stock_quantity?: number | null;
 }
 interface Variant {
   id: string;
