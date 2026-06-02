@@ -176,21 +176,33 @@ export default function EspanaProductos() {
             <TableBody>
               {loading && <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground">Cargando...</TableCell></TableRow>}
               {!loading && filtered.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">Sin productos todavía.</TableCell></TableRow>}
-              {filtered.map((p) => (
+              {filtered.map((p) => {
+                const isWoo = p.source === "woocommerce_es";
+                const mode = p.fulfillment_mode || "made_to_order";
+                const isPhysical = mode === "physical_stock";
+                const isMto = mode === "made_to_order";
+                const isHybrid = mode === "hybrid";
+                const noStockWebProblem =
+                  isPhysical && p.woo_manage_stock && (p.woo_stock_quantity ?? 0) <= 0;
+                return (
                 <TableRow key={p.id}>
                   <TableCell className="font-mono text-xs">{String(p.sku ?? "")}</TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span>{p.name}</span>
-                      {p.source === "woocommerce_es"
+                      {isWoo
                         ? <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">Woo ES</Badge>
                         : <Badge variant="outline" className="text-[10px]">Manual</Badge>}
+                      {isMto && <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-600">Fabricación ligera</Badge>}
+                      {isPhysical && <Badge variant="outline" className="text-[10px] border-blue-500/40 text-blue-600">Stock físico</Badge>}
+                      {isHybrid && <Badge variant="outline" className="text-[10px] border-purple-500/40 text-purple-600">Híbrido</Badge>}
+                      {p.requires_fabrication && <Badge variant="outline" className="text-[10px]">Req. fabricación</Badge>}
                       {!p.sku && <Badge variant="destructive" className="text-[10px]">Sin SKU</Badge>}
                       {p.sku && /^-?\d+([.,]\d+)?[eE][+-]?\d+$/.test(String(p.sku).trim()) && <Badge variant="destructive" className="text-[10px]">SKU inválido</Badge>}
                       {!(variantsByProduct[p.id]?.length) && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600/40">Sin variantes</Badge>}
                       {(variantsByProduct[p.id] || []).some(v => !v.scan_code && !v.variant_sku) && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600/40">Sin scan_code</Badge>}
                       {(variantsByProduct[p.id] || []).some(v => /^-?\d+([.,]\d+)?[eE][+-]?\d+$/.test(String(v.variant_sku ?? "").trim())) && <Badge variant="destructive" className="text-[10px]">Variante SKU inválido</Badge>}
-                      {totalStock(p.id) === 0 && <Badge variant="outline" className="text-[10px] text-muted-foreground">Sin stock</Badge>}
+                      {noStockWebProblem && <Badge variant="destructive" className="text-[10px]">Sin stock web</Badge>}
                     </div>
                   </TableCell>
 
@@ -199,10 +211,19 @@ export default function EspanaProductos() {
                   <TableCell className="text-right">{p.price_eur != null ? `€${Number(p.price_eur).toFixed(2)}` : "—"}</TableCell>
                   <TableCell className="text-center">{(variantsByProduct[p.id] || []).length}</TableCell>
                   <TableCell className="text-right">{totalStock(p.id)}</TableCell>
-                  <TableCell className="text-xs">{p.woo_product_id ?? "—"}</TableCell>
+                  <TableCell className="text-xs">
+                    {p.woo_product_id ? (
+                      <span className="inline-flex flex-col">
+                        <span>#{p.woo_product_id}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          manage_stock: {p.woo_manage_stock ? "Sí" : "No"}
+                        </span>
+                      </span>
+                    ) : "—"}
+                  </TableCell>
                   <TableCell><Button size="sm" variant="ghost" onClick={() => { setEditing(p); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
                 </TableRow>
-              ))}
+              );})}
             </TableBody>
           </Table>
         </div>
