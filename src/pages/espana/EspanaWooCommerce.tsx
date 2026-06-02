@@ -25,7 +25,16 @@ interface SyncRun {
   summary: any;
 }
 
+// SKU treated strictly as string. Detects scientific notation / Excel-corrupted SKUs.
+const isInvalidSku = (s: unknown): boolean => {
+  if (s == null) return false;
+  const str = String(s).trim();
+  if (!str) return false;
+  return /^-?\d+([.,]\d+)?[eE][+-]?\d+$/.test(str);
+};
+
 export default function EspanaWooCommerce() {
+
   const [runs, setRuns] = useState<SyncRun[]>([]);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
