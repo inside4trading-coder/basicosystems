@@ -249,13 +249,19 @@ Deno.serve(async (req) => {
               }
               if (!productId && wooProdId) {
                 const { data: p } = await admin.from("esp_products")
-                  .select("id, name, is_made_to_order").eq("woo_product_id", wooProdId).maybeSingle();
-                if (p) { productId = p.id; pName = p.name; isMadeToOrder = !!p.is_made_to_order; }
+                  .select("id, name, is_made_to_order, requires_fabrication, fulfillment_mode").eq("woo_product_id", wooProdId).maybeSingle();
+                if (p) {
+                  productId = p.id; pName = p.name;
+                  isMadeToOrder = !!p.is_made_to_order || !!p.requires_fabrication || p.fulfillment_mode === "made_to_order";
+                }
               }
               if (productId && !isMadeToOrder) {
                 const { data: p } = await admin.from("esp_products")
-                  .select("name, is_made_to_order").eq("id", productId).maybeSingle();
-                if (p) { pName = p.name; isMadeToOrder = !!p.is_made_to_order; }
+                  .select("name, is_made_to_order, requires_fabrication, fulfillment_mode").eq("id", productId).maybeSingle();
+                if (p) {
+                  pName = p.name;
+                  isMadeToOrder = !!p.is_made_to_order || !!p.requires_fabrication || p.fulfillment_mode === "made_to_order";
+                }
               }
               if (!variantId || !productId) summary.unmapped_items++;
 

@@ -3847,10 +3847,12 @@ export type Database = {
           cost_eur: number | null
           created_at: string
           created_by: string | null
+          fulfillment_mode: string | null
           id: string
           price_eur: number | null
           product_id: string
           qr_code: string | null
+          requires_fabrication: boolean | null
           scan_code: string | null
           size: string | null
           sort_order: number | null
@@ -3859,9 +3861,11 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           variant_sku: string
+          woo_manage_stock: boolean | null
           woo_product_id: number | null
           woo_status: string | null
           woo_stock_quantity: number | null
+          woo_stock_status: string | null
           woo_synced_at: string | null
           woo_variation_id: number | null
         }
@@ -3871,10 +3875,12 @@ export type Database = {
           cost_eur?: number | null
           created_at?: string
           created_by?: string | null
+          fulfillment_mode?: string | null
           id?: string
           price_eur?: number | null
           product_id: string
           qr_code?: string | null
+          requires_fabrication?: boolean | null
           scan_code?: string | null
           size?: string | null
           sort_order?: number | null
@@ -3883,9 +3889,11 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           variant_sku: string
+          woo_manage_stock?: boolean | null
           woo_product_id?: number | null
           woo_status?: string | null
           woo_stock_quantity?: number | null
+          woo_stock_status?: string | null
           woo_synced_at?: string | null
           woo_variation_id?: number | null
         }
@@ -3895,10 +3903,12 @@ export type Database = {
           cost_eur?: number | null
           created_at?: string
           created_by?: string | null
+          fulfillment_mode?: string | null
           id?: string
           price_eur?: number | null
           product_id?: string
           qr_code?: string | null
+          requires_fabrication?: boolean | null
           scan_code?: string | null
           size?: string | null
           sort_order?: number | null
@@ -3907,9 +3917,11 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           variant_sku?: string
+          woo_manage_stock?: boolean | null
           woo_product_id?: number | null
           woo_status?: string | null
           woo_stock_quantity?: number | null
+          woo_stock_status?: string | null
           woo_synced_at?: string | null
           woo_variation_id?: number | null
         }
@@ -3931,6 +3943,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          fulfillment_mode: string
           has_variants: boolean
           id: string
           image_url: string | null
@@ -3940,15 +3953,20 @@ export type Database = {
           notes: string | null
           price_eur: number | null
           product_type: string | null
+          requires_fabrication: boolean
           sku: string
           source: string
           status: string
           updated_at: string
           updated_by: string | null
+          web_stock_policy: string
           woo_image_url: string | null
+          woo_manage_stock: boolean | null
           woo_permalink: string | null
           woo_product_id: number | null
           woo_status: string | null
+          woo_stock_quantity: number | null
+          woo_stock_status: string | null
           woo_synced_at: string | null
           woo_type: string | null
         }
@@ -3959,6 +3977,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          fulfillment_mode?: string
           has_variants?: boolean
           id?: string
           image_url?: string | null
@@ -3968,15 +3987,20 @@ export type Database = {
           notes?: string | null
           price_eur?: number | null
           product_type?: string | null
+          requires_fabrication?: boolean
           sku: string
           source?: string
           status?: string
           updated_at?: string
           updated_by?: string | null
+          web_stock_policy?: string
           woo_image_url?: string | null
+          woo_manage_stock?: boolean | null
           woo_permalink?: string | null
           woo_product_id?: number | null
           woo_status?: string | null
+          woo_stock_quantity?: number | null
+          woo_stock_status?: string | null
           woo_synced_at?: string | null
           woo_type?: string | null
         }
@@ -3987,6 +4011,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          fulfillment_mode?: string
           has_variants?: boolean
           id?: string
           image_url?: string | null
@@ -3996,15 +4021,20 @@ export type Database = {
           notes?: string | null
           price_eur?: number | null
           product_type?: string | null
+          requires_fabrication?: boolean
           sku?: string
           source?: string
           status?: string
           updated_at?: string
           updated_by?: string | null
+          web_stock_policy?: string
           woo_image_url?: string | null
+          woo_manage_stock?: boolean | null
           woo_permalink?: string | null
           woo_product_id?: number | null
           woo_status?: string | null
+          woo_stock_quantity?: number | null
+          woo_stock_status?: string | null
           woo_synced_at?: string | null
           woo_type?: string | null
         }
@@ -4278,41 +4308,53 @@ export type Database = {
       }
       esp_settings: {
         Row: {
+          auto_create_fabrication_for_mto: boolean
+          auto_decrement_web_stock: boolean
           country: string
           created_at: string
           currency: string
           data_mode: string
           id: string
+          interpret_woo_unmanaged_as_made_to_order: boolean
           main_city: string | null
           main_website: string | null
           module_active: boolean
           updated_at: string
+          web_stock_location_id: string | null
           woo_connected: boolean
           woo_status: string
         }
         Insert: {
+          auto_create_fabrication_for_mto?: boolean
+          auto_decrement_web_stock?: boolean
           country?: string
           created_at?: string
           currency?: string
           data_mode?: string
           id?: string
+          interpret_woo_unmanaged_as_made_to_order?: boolean
           main_city?: string | null
           main_website?: string | null
           module_active?: boolean
           updated_at?: string
+          web_stock_location_id?: string | null
           woo_connected?: boolean
           woo_status?: string
         }
         Update: {
+          auto_create_fabrication_for_mto?: boolean
+          auto_decrement_web_stock?: boolean
           country?: string
           created_at?: string
           currency?: string
           data_mode?: string
           id?: string
+          interpret_woo_unmanaged_as_made_to_order?: boolean
           main_city?: string | null
           main_website?: string | null
           module_active?: boolean
           updated_at?: string
+          web_stock_location_id?: string | null
           woo_connected?: boolean
           woo_status?: string
         }

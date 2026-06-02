@@ -39,6 +39,13 @@ interface Product {
   woo_permalink?: string | null;
   woo_status?: string | null;
   woo_synced_at?: string | null;
+  fulfillment_mode?: string | null;
+  web_stock_policy?: string | null;
+  is_made_to_order?: boolean | null;
+  requires_fabrication?: boolean | null;
+  woo_manage_stock?: boolean | null;
+  woo_stock_status?: string | null;
+  woo_stock_quantity?: number | null;
 }
 interface Variant {
   id: string;
@@ -169,21 +176,33 @@ export default function EspanaProductos() {
             <TableBody>
               {loading && <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground">Cargando...</TableCell></TableRow>}
               {!loading && filtered.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">Sin productos todavía.</TableCell></TableRow>}
-              {filtered.map((p) => (
+              {filtered.map((p) => {
+                const isWoo = p.source === "woocommerce_es";
+                const mode = p.fulfillment_mode || "made_to_order";
+                const isPhysical = mode === "physical_stock";
+                const isMto = mode === "made_to_order";
+                const isHybrid = mode === "hybrid";
+                const noStockWebProblem =
+                  isPhysical && p.woo_manage_stock && (p.woo_stock_quantity ?? 0) <= 0;
+                return (
                 <TableRow key={p.id}>
                   <TableCell className="font-mono text-xs">{String(p.sku ?? "")}</TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span>{p.name}</span>
-                      {p.source === "woocommerce_es"
+                      {isWoo
                         ? <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">Woo ES</Badge>
                         : <Badge variant="outline" className="text-[10px]">Manual</Badge>}
+                      {isMto && <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-600">Fabricación ligera</Badge>}
+                      {isPhysical && <Badge variant="outline" className="text-[10px] border-blue-500/40 text-blue-600">Stock físico</Badge>}
+                      {isHybrid && <Badge variant="outline" className="text-[10px] border-purple-500/40 text-purple-600">Híbrido</Badge>}
+                      {p.requires_fabrication && <Badge variant="outline" className="text-[10px]">Req. fabricación</Badge>}
                       {!p.sku && <Badge variant="destructive" className="text-[10px]">Sin SKU</Badge>}
                       {p.sku && /^-?\d+([.,]\d+)?[eE][+-]?\d+$/.test(String(p.sku).trim()) && <Badge variant="destructive" className="text-[10px]">SKU inválido</Badge>}
                       {!(variantsByProduct[p.id]?.length) && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600/40">Sin variantes</Badge>}
                       {(variantsByProduct[p.id] || []).some(v => !v.scan_code && !v.variant_sku) && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600/40">Sin scan_code</Badge>}
                       {(variantsByProduct[p.id] || []).some(v => /^-?\d+([.,]\d+)?[eE][+-]?\d+$/.test(String(v.variant_sku ?? "").trim())) && <Badge variant="destructive" className="text-[10px]">Variante SKU inválido</Badge>}
-                      {totalStock(p.id) === 0 && <Badge variant="outline" className="text-[10px] text-muted-foreground">Sin stock</Badge>}
+                      {noStockWebProblem && <Badge variant="destructive" className="text-[10px]">Sin stock web</Badge>}
                     </div>
                   </TableCell>
 
@@ -192,10 +211,19 @@ export default function EspanaProductos() {
                   <TableCell className="text-right">{p.price_eur != null ? `€${Number(p.price_eur).toFixed(2)}` : "—"}</TableCell>
                   <TableCell className="text-center">{(variantsByProduct[p.id] || []).length}</TableCell>
                   <TableCell className="text-right">{totalStock(p.id)}</TableCell>
-                  <TableCell className="text-xs">{p.woo_product_id ?? "—"}</TableCell>
+                  <TableCell className="text-xs">
+                    {p.woo_product_id ? (
+                      <span className="inline-flex flex-col">
+                        <span>#{p.woo_product_id}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          manage_stock: {p.woo_manage_stock ? "Sí" : "No"}
+                        </span>
+                      </span>
+                    ) : "—"}
+                  </TableCell>
                   <TableCell><Button size="sm" variant="ghost" onClick={() => { setEditing(p); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
                 </TableRow>
-              ))}
+              );})}
             </TableBody>
           </Table>
         </div>
@@ -237,6 +265,10 @@ function ProductDialog({ open, onOpenChange, product, variants, stockByVariant, 
       cost_eur: form.cost_eur, color: form.color || null, category: form.category || null,
       description: form.description || null, notes: form.notes || null,
       image_url: form.image_url || null, has_variants: form.has_variants,
+      fulfillment_mode: form.fulfillment_mode || "made_to_order",
+      web_stock_policy: form.web_stock_policy || "no_web_stock",
+      is_made_to_order: !!form.is_made_to_order,
+      requires_fabrication: !!form.requires_fabrication,
     };
     let res;
     if (isNew) {
@@ -294,6 +326,52 @@ function ProductDialog({ open, onOpenChange, product, variants, stockByVariant, 
           <div className="flex items-center gap-2"><Switch checked={form.is_sellable} onCheckedChange={(v) => setForm({ ...form, is_sellable: v })} /><Label>Vendible</Label></div>
           <div className="flex items-center gap-2"><Switch checked={form.has_variants} onCheckedChange={(v) => setForm({ ...form, has_variants: v })} /><Label>Con variantes</Label></div>
           <div className="col-span-2 space-y-1.5"><Label>Descripción</Label><Textarea value={form.description || ""} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+        </div>
+
+        <div className="mt-5 border-t pt-4 space-y-3">
+          <div>
+            <h4 className="text-sm font-bold">Operación España</h4>
+            <p className="text-xs text-muted-foreground">Define cómo se vende y fabrica este producto. No modifica WooCommerce.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Modo de fabricación</Label>
+              <Select value={form.fulfillment_mode || "made_to_order"} onValueChange={(v) => setForm({ ...form, fulfillment_mode: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="made_to_order">Fabricación ligera (made_to_order)</SelectItem>
+                  <SelectItem value="physical_stock">Stock físico</SelectItem>
+                  <SelectItem value="hybrid">Híbrido</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Política de stock web</Label>
+              <Select value={form.web_stock_policy || "no_web_stock"} onValueChange={(v) => setForm({ ...form, web_stock_policy: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no_web_stock">Sin stock web</SelectItem>
+                  <SelectItem value="woo_managed_stock">Gestionado por Woo</SelectItem>
+                  <SelectItem value="hub_managed_stock">Gestionado por Hub</SelectItem>
+                  <SelectItem value="manual_review">Revisión manual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2"><Switch checked={!!form.is_made_to_order} onCheckedChange={(v) => setForm({ ...form, is_made_to_order: v })} /><Label>Hecho a pedido</Label></div>
+            <div className="flex items-center gap-2"><Switch checked={!!form.requires_fabrication} onCheckedChange={(v) => setForm({ ...form, requires_fabrication: v })} /><Label>Requiere fabricación</Label></div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            <strong>Fabricación ligera:</strong> se vende en Woo sin stock gestionado y se fabrica después del pedido (usa blanks + DTF).{" "}
+            <strong>Stock físico:</strong> existe físicamente y puede manejar stock en Woo o en sedes del Hub.
+          </p>
+          {form.source === "woocommerce_es" && (
+            <div className="text-[11px] text-muted-foreground bg-muted/40 p-2 rounded">
+              Woo: manage_stock = <strong>{form.woo_manage_stock ? "Sí" : "No"}</strong>
+              {form.woo_stock_status ? <> · stock_status = <strong>{form.woo_stock_status}</strong></> : null}
+              {form.woo_stock_quantity != null ? <> · qty = <strong>{form.woo_stock_quantity}</strong></> : null}
+            </div>
+          )}
         </div>
 
         {!isNew && (
