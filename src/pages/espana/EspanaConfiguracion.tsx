@@ -23,6 +23,10 @@ interface Settings {
   data_mode: string;
   woo_status: string;
   woo_connected: boolean;
+  interpret_woo_unmanaged_as_made_to_order?: boolean;
+  auto_create_fabrication_for_mto?: boolean;
+  auto_decrement_web_stock?: boolean;
+  web_stock_location_id?: string | null;
 }
 
 interface Location {
