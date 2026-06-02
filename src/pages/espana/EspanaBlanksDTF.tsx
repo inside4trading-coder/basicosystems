@@ -609,7 +609,7 @@ function RecipeTestDialog({ state, onClose, recipes, recipeItems, materials, sto
       if (candidate) { target = candidate; matchNote = `Match por talla ${normSize}`; }
       else matchNote = `Sin blank para talla ${normSize}`;
     }
-    const totalStock = target ? Array.from({ length: locations.length }).reduce((s: number, _, i) => s + (stockByMatLoc.get(`${target!.id}::${locations[i].id}`) || 0), 0) : 0;
+    const totalStock: number = target ? (locations as LocationRow[]).reduce((s: number, l: LocationRow) => s + (Number(stockByMatLoc.get(`${target!.id}::${l.id}`)) || 0), 0) : 0;
     const required = Number(it.quantity_per_unit) || 1;
     return { itemId: it.id, baseMat, target, required, totalStock, matchNote, ok: !!target && totalStock >= required };
   });
