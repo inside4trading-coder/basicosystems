@@ -29,8 +29,10 @@ export default function EspanaWooCommerce() {
   const [runs, setRuns] = useState<SyncRun[]>([]);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [conn, setConn] = useState<{ status: "unknown" | "connected" | "not_connected" | "error"; message?: string; total?: string | null }>({ status: "unknown" });
   const [totals, setTotals] = useState({ products: 0, variants: 0, wooProducts: 0, wooVariants: 0 });
+  const [invalidSkus, setInvalidSkus] = useState<{ products: { id: string; sku: string; name: string }[]; variants: { id: string; variant_sku: string; product_id: string }[] }>({ products: [], variants: [] });
 
   const loadRuns = async () => {
     const { data } = await supabase.from("esp_woo_sync_runs")
@@ -39,19 +41,35 @@ export default function EspanaWooCommerce() {
   };
 
   const loadTotals = async () => {
-    const [p, v, wp, wv] = await Promise.all([
+    setRefreshing(true);
+    const [p, v, wp, wv, allP, allV] = await Promise.all([
       supabase.from("esp_products").select("id", { count: "exact", head: true }),
       supabase.from("esp_product_variants").select("id", { count: "exact", head: true }),
       supabase.from("esp_products").select("id", { count: "exact", head: true }).eq("source", "woocommerce_es"),
       supabase.from("esp_product_variants").select("id", { count: "exact", head: true }).eq("source", "woocommerce_es"),
+      supabase.from("esp_products").select("id, sku, name"),
+      supabase.from("esp_product_variants").select("id, variant_sku, product_id"),
     ]);
+    if (p.error) console.error("count products", p.error);
+    if (wp.error) console.error("count woo products", wp.error);
     setTotals({
-      products: p.count || 0, variants: v.count || 0,
-      wooProducts: wp.count || 0, wooVariants: wv.count || 0,
+      products: p.count ?? 0, variants: v.count ?? 0,
+      wooProducts: wp.count ?? 0, wooVariants: wv.count ?? 0,
     });
+    setInvalidSkus({
+      products: ((allP.data || []) as any[]).filter(x => isInvalidSku(x.sku)) as any,
+      variants: ((allV.data || []) as any[]).filter(x => isInvalidSku(x.variant_sku)) as any,
+    });
+    setRefreshing(false);
   };
 
-  useEffect(() => { loadRuns(); loadTotals(); }, []);
+  useEffect(() => {
+    loadRuns(); loadTotals();
+    const onFocus = () => loadTotals();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
 
   const testConn = async () => {
     setTesting(true);
