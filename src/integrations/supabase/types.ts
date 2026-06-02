@@ -3814,6 +3814,194 @@ export type Database = {
           },
         ]
       }
+      esp_material_items: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          low_stock_threshold: number
+          material_type: string
+          name: string
+          normalized_size: string | null
+          notes: string | null
+          size: string | null
+          sku: string | null
+          status: string
+          unit: string
+          unit_cost_eur: number | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          low_stock_threshold?: number
+          material_type: string
+          name: string
+          normalized_size?: string | null
+          notes?: string | null
+          size?: string | null
+          sku?: string | null
+          status?: string
+          unit?: string
+          unit_cost_eur?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          low_stock_threshold?: number
+          material_type?: string
+          name?: string
+          normalized_size?: string | null
+          notes?: string | null
+          size?: string | null
+          sku?: string | null
+          status?: string
+          unit?: string
+          unit_cost_eur?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      esp_material_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          from_location_id: string | null
+          id: string
+          location_id: string | null
+          material_id: string
+          movement_type: string
+          notes: string | null
+          quantity: number
+          quantity_after: number | null
+          quantity_before: number | null
+          reason: string | null
+          reference_id: string | null
+          reference_type: string | null
+          to_location_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          from_location_id?: string | null
+          id?: string
+          location_id?: string | null
+          material_id: string
+          movement_type: string
+          notes?: string | null
+          quantity: number
+          quantity_after?: number | null
+          quantity_before?: number | null
+          reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          to_location_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          from_location_id?: string | null
+          id?: string
+          location_id?: string | null
+          material_id?: string
+          movement_type?: string
+          notes?: string | null
+          quantity?: number
+          quantity_after?: number | null
+          quantity_before?: number | null
+          reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          to_location_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_material_movements_from_location_id_fkey"
+            columns: ["from_location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_material_movements_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_material_movements_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "esp_material_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_material_movements_to_location_id_fkey"
+            columns: ["to_location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_material_stock: {
+        Row: {
+          id: string
+          location_id: string | null
+          low_stock_threshold: number | null
+          material_id: string
+          quantity_on_hand: number
+          quantity_reserved: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          location_id?: string | null
+          low_stock_threshold?: number | null
+          material_id: string
+          quantity_on_hand?: number
+          quantity_reserved?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          location_id?: string | null
+          low_stock_threshold?: number | null
+          material_id?: string
+          quantity_on_hand?: number
+          quantity_reserved?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_material_stock_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_material_stock_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "esp_material_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       esp_payment_methods: {
         Row: {
           color: string | null
@@ -3854,6 +4042,108 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_product_material_recipe_items: {
+        Row: {
+          created_at: string
+          id: string
+          material_id: string
+          notes: string | null
+          quantity_per_unit: number
+          recipe_id: string
+          required: boolean
+          size_strategy: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          material_id: string
+          notes?: string | null
+          quantity_per_unit?: number
+          recipe_id: string
+          required?: boolean
+          size_strategy?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          material_id?: string
+          notes?: string | null
+          quantity_per_unit?: number
+          recipe_id?: string
+          required?: boolean
+          size_strategy?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_product_material_recipe_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "esp_material_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_product_material_recipe_items_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "esp_product_material_recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_product_material_recipes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string | null
+          notes: string | null
+          product_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string | null
+          notes?: string | null
+          product_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string | null
+          notes?: string | null
+          product_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_product_material_recipes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "esp_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_product_material_recipes_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "esp_product_variants"
             referencedColumns: ["id"]
           },
         ]
@@ -6334,6 +6624,22 @@ export type Database = {
       compute_sublime_daily_shift: {
         Args: { p_date: string; p_employee_id: string }
         Returns: undefined
+      }
+      esp_apply_material_movement: {
+        Args: {
+          p_allow_negative?: boolean
+          p_from_location_id?: string
+          p_location_id?: string
+          p_material_id: string
+          p_movement_type: string
+          p_notes?: string
+          p_quantity: number
+          p_reason?: string
+          p_reference_id?: string
+          p_reference_type?: string
+          p_to_location_id?: string
+        }
+        Returns: Json
       }
       esp_apply_movement: {
         Args: {
