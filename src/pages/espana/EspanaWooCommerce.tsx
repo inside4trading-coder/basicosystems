@@ -123,7 +123,7 @@ export default function EspanaWooCommerce() {
           <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
             <Globe className="h-6 w-6 text-primary" /> WooCommerce España
           </h2>
-          <p className="text-sm text-muted-foreground">Sincronización de catálogo desde basicoclothes.es · modo solo lectura. <a href="/espana/woocommerce/pedidos" className="text-primary font-semibold underline-offset-2 hover:underline">Ver pedidos Woo →</a></p>
+          <p className="text-sm text-muted-foreground">Sincronización de catálogo desde basicoclothes.es · modo solo lectura. <a href="/espana/woocommerce/pedidos" className="text-primary font-semibold underline-offset-2 hover:underline">Ver pedidos Woo →</a> · <a href="/espana/woocommerce/problemas" className="text-amber-600 font-semibold underline-offset-2 hover:underline">Problemas de catálogo →</a></p>
         </div>
         <Button size="sm" variant="outline" onClick={() => { loadRuns(); loadTotals(); }} disabled={refreshing}>
           {refreshing ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-2" />}
