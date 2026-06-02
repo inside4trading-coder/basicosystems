@@ -265,6 +265,10 @@ function ProductDialog({ open, onOpenChange, product, variants, stockByVariant, 
       cost_eur: form.cost_eur, color: form.color || null, category: form.category || null,
       description: form.description || null, notes: form.notes || null,
       image_url: form.image_url || null, has_variants: form.has_variants,
+      fulfillment_mode: form.fulfillment_mode || "made_to_order",
+      web_stock_policy: form.web_stock_policy || "no_web_stock",
+      is_made_to_order: !!form.is_made_to_order,
+      requires_fabrication: !!form.requires_fabrication,
     };
     let res;
     if (isNew) {
