@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
             summary.products_updated++;
           } else {
             const { data, error } = await admin.from("esp_products")
-              .insert({ ...payload, created_by: userId }).select("id").single();
+              .insert({ ...payload, ...initialPolicyPayload, created_by: userId }).select("id").single();
             if (error) throw new Error(`product insert ${wooId}: ${error.message}`);
             productId = data.id;
             summary.products_created++;
