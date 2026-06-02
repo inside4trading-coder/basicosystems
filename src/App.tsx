@@ -153,6 +153,7 @@ const App = () => (
                 <Route path="pos" element={<EspanaPOS />} />
                 <Route path="woocommerce" element={<EspanaWooCommerce />} />
                 <Route path="woocommerce/pedidos" element={<EspanaWooOrders />} />
+                <Route path="woocommerce/problemas" element={<EspanaWooProblemas />} />
                 <Route path="productos" element={<EspanaProductos />} />
                 <Route path="inventario" element={<EspanaInventario />} />
                 <Route path="fabricacion" element={<EspanaFabricacion />} />
