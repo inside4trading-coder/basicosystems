@@ -130,7 +130,11 @@ export default function EspanaFabricacion() {
           </h2>
           <p className="text-sm text-muted-foreground">Cola generada desde pedidos WooCommerce España cuando el producto requiere fabricación.</p>
         </div>
+        <a href="/espana/blanks-dtf" className="text-sm text-primary font-semibold underline-offset-2 hover:underline">Blanks / DTF →</a>
       </div>
+      <Card className="p-3 border-l-4 border-l-blue-500 text-xs">
+        <span className="font-semibold">Blanks / DTF disponible</span> para configurar materiales y recetas. El consumo desde fabricación se activará en el BLOQUE 5B.
+      </Card>
 
       {/* KPIs separados: real / pruebas / legacy */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
