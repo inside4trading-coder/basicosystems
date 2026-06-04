@@ -904,8 +904,10 @@ export default function SublimeAdminFichaje() {
                         </TableCell>
                       </TableRow>
                     );
-                  })}
+                  });
+                  })()}
                 </TableBody>
+
               </Table>
             ) : (
               <EmptyState
