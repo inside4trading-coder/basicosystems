@@ -775,7 +775,15 @@ export default function SublimeAdminFichaje() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {attendanceRows.map((row) => {
+                  {(() => {
+                    const uniqueDays = Array.from(new Set(attendanceRows.map((r) => r.dayKey)));
+                    const dayShade: Record<string, string> = {};
+                    uniqueDays.forEach((d, i) => {
+                      dayShade[d] = i % 2 === 0
+                        ? "bg-muted/60 hover:bg-muted/70"
+                        : "bg-background hover:bg-muted/30";
+                    });
+                    return attendanceRows.map((row) => {
                     const autoClosed = isAutoClosed(row.entryAt, row.exitAt);
                     const status = row.pending
                       ? { label: "Pendiente revisión", className: "bg-destructive/10 text-destructive border-destructive/20" }
@@ -787,7 +795,8 @@ export default function SublimeAdminFichaje() {
                             ? { label: "En turno", className: "bg-muted text-foreground border-border" }
                             : { label: "Registrado", className: "bg-muted text-muted-foreground border-border" };
                     return (
-                      <TableRow key={row.key} data-state={selectedRows.has(row.key) ? "selected" : undefined}>
+                      <TableRow key={row.key} data-state={selectedRows.has(row.key) ? "selected" : undefined} className={dayShade[row.dayKey]}>
+
                         <TableCell className="w-10">
                           <Checkbox
                             checked={selectedRows.has(row.key)}
@@ -895,8 +904,10 @@ export default function SublimeAdminFichaje() {
                         </TableCell>
                       </TableRow>
                     );
-                  })}
+                  });
+                  })()}
                 </TableBody>
+
               </Table>
             ) : (
               <EmptyState
