@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Star, Search, MapPin, User as UserIcon, Archive, BarChart3, Users } from "lucide-react";
+import { Plus, Star, Search, MapPin, User as UserIcon, Archive, BarChart3, Users, CalendarIcon } from "lucide-react";
 import { fetchContacts, fetchConfig } from "@/hooks/useRRPPData";
+import { supabase } from "@/integrations/supabase/client";
 import type { Contact, ContactType, RelationshipStatus } from "@/types/rrpp";
 import { useRRPPBrand, RRPP_BRAND_LABELS } from "@/hooks/useRRPPBrand";
 import { BrandSwitcher } from "@/components/rrpp/BrandSwitcher";
@@ -12,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { AddContactSheet } from "@/components/rrpp/AddContactSheet";
 import RRPPDashboard from "@/components/rrpp/RRPPDashboard";
 import {
@@ -20,6 +23,31 @@ import {
 } from "@/components/rrpp/rrppConstants";
 import { ContactGridSkeleton } from "@/components/rrpp/RRPPSkeletons";
 import { AlertTriangle } from "lucide-react";
+import { formatLocalDate, formatDMY, parseLocalDate } from "@/lib/dateUtils";
+import { cn } from "@/lib/utils";
+
+type PeriodKey = "this_month" | "last_month" | "last_3_months" | "all" | "custom";
+
+function periodRange(p: PeriodKey, customFrom?: Date, customTo?: Date): { from: Date; to: Date } | null {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  switch (p) {
+    case "this_month":
+      return { from: new Date(y, m, 1), to: endOfDay(new Date(y, m + 1, 0)) };
+    case "last_month":
+      return { from: new Date(y, m - 1, 1), to: endOfDay(new Date(y, m, 0)) };
+    case "last_3_months":
+      return { from: new Date(y, m - 2, 1), to: endOfDay(new Date(y, m + 1, 0)) };
+    case "custom":
+      if (!customFrom || !customTo) return null;
+      return { from: new Date(customFrom.getFullYear(), customFrom.getMonth(), customFrom.getDate()), to: endOfDay(customTo) };
+    case "all":
+    default:
+      return null;
+  }
+}
 
 const ALL = "__all__";
 
