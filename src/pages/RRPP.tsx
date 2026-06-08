@@ -93,6 +93,32 @@ export default function RRPP() {
     fetchConfig("city").then((rows) => setCityOptions(rows.map((r) => r.value))).catch(() => {});
   }, []);
 
+  // Fetch collaboration activity dates for brand contacts (to filter "contacts collaborating in period")
+  useEffect(() => {
+    const ids = contacts.filter((c) => c.brand === brand).map((c) => c.id);
+    if (ids.length === 0) { setCollabContactDates(new Map()); return; }
+    let cancelled = false;
+    (supabase as any)
+      .from("rrpp_collaborations")
+      .select("contact_id, send_date, post_date, shipped_at, published_at, created_at")
+      .in("contact_id", ids)
+      .then(({ data }: any) => {
+        if (cancelled) return;
+        const map = new Map<string, Date[]>();
+        for (const row of data ?? []) {
+          const arr = map.get(row.contact_id) ?? [];
+          for (const v of [row.send_date, row.post_date, row.shipped_at, row.published_at, row.created_at]) {
+            if (!v) continue;
+            const d = typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? parseLocalDate(v) : new Date(v);
+            if (!isNaN(d.getTime())) arr.push(d);
+          }
+          map.set(row.contact_id, arr);
+        }
+        setCollabContactDates(map);
+      });
+    return () => { cancelled = true; };
+  }, [contacts, brand]);
+
   // Scope by brand first
   const brandContacts = useMemo(
     () => contacts.filter((c) => c.brand === brand),
@@ -103,6 +129,8 @@ export default function RRPP() {
     () => Array.from(new Set(brandContacts.map((c) => c.responsible).filter(Boolean))).sort(),
     [brandContacts]
   );
+
+  const dateRange = useMemo(() => periodRange(period, customFrom, customTo), [period, customFrom, customTo]);
 
   const filtered = useMemo(() => {
     return brandContacts.filter((c) => {
@@ -115,9 +143,17 @@ export default function RRPP() {
         const hay = `${c.name} ${c.alias} ${c.city}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      if (dateRange) {
+        const { from, to } = dateRange;
+        const created = c.created_at ? new Date(c.created_at) : null;
+        const createdInRange = !!(created && !isNaN(created.getTime()) && created >= from && created <= to);
+        const collabDates = collabContactDates.get(c.id) ?? [];
+        const collabInRange = collabDates.some((d) => d >= from && d <= to);
+        if (!createdInRange && !collabInRange) return false;
+      }
       return true;
     });
-  }, [brandContacts, search, typeFilter, relFilter, respFilter, cityFilter]);
+  }, [brandContacts, search, typeFilter, relFilter, respFilter, cityFilter, dateRange, collabContactDates]);
 
   const hasFilters = search || typeFilter !== ALL || relFilter !== ALL || respFilter !== ALL || cityFilter;
   const clearFilters = () => {
