@@ -23,7 +23,7 @@ import {
 } from "@/components/rrpp/rrppConstants";
 import { ContactGridSkeleton } from "@/components/rrpp/RRPPSkeletons";
 import { AlertTriangle } from "lucide-react";
-import { formatLocalDate, formatDMY, parseLocalDate } from "@/lib/dateUtils";
+import { formatDMY, parseLocalDate } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 
 type PeriodKey = "this_month" | "last_month" | "last_3_months" | "all" | "custom";
