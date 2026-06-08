@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Star, Search, MapPin, User as UserIcon, Archive, BarChart3, Users } from "lucide-react";
+import { Plus, Star, Search, MapPin, User as UserIcon, Archive, BarChart3, Users, CalendarIcon } from "lucide-react";
 import { fetchContacts, fetchConfig } from "@/hooks/useRRPPData";
+import { supabase } from "@/integrations/supabase/client";
 import type { Contact, ContactType, RelationshipStatus } from "@/types/rrpp";
 import { useRRPPBrand, RRPP_BRAND_LABELS } from "@/hooks/useRRPPBrand";
 import { BrandSwitcher } from "@/components/rrpp/BrandSwitcher";
@@ -12,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { AddContactSheet } from "@/components/rrpp/AddContactSheet";
 import RRPPDashboard from "@/components/rrpp/RRPPDashboard";
 import {
@@ -20,6 +23,31 @@ import {
 } from "@/components/rrpp/rrppConstants";
 import { ContactGridSkeleton } from "@/components/rrpp/RRPPSkeletons";
 import { AlertTriangle } from "lucide-react";
+import { formatDMY, parseLocalDate } from "@/lib/dateUtils";
+import { cn } from "@/lib/utils";
+
+type PeriodKey = "this_month" | "last_month" | "last_3_months" | "all" | "custom";
+
+function periodRange(p: PeriodKey, customFrom?: Date, customTo?: Date): { from: Date; to: Date } | null {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  switch (p) {
+    case "this_month":
+      return { from: new Date(y, m, 1), to: endOfDay(new Date(y, m + 1, 0)) };
+    case "last_month":
+      return { from: new Date(y, m - 1, 1), to: endOfDay(new Date(y, m, 0)) };
+    case "last_3_months":
+      return { from: new Date(y, m - 2, 1), to: endOfDay(new Date(y, m + 1, 0)) };
+    case "custom":
+      if (!customFrom || !customTo) return null;
+      return { from: new Date(customFrom.getFullYear(), customFrom.getMonth(), customFrom.getDate()), to: endOfDay(customTo) };
+    case "all":
+    default:
+      return null;
+  }
+}
 
 const ALL = "__all__";
 
@@ -36,6 +64,11 @@ export default function RRPP() {
   const [respFilter, setRespFilter] = useState<string>(ALL);
   const [cityFilter, setCityFilter] = useState<string>("");
   const [showArchived, setShowArchived] = useState(false);
+
+  const [period, setPeriod] = useState<PeriodKey>("this_month");
+  const [customFrom, setCustomFrom] = useState<Date | undefined>();
+  const [customTo, setCustomTo] = useState<Date | undefined>();
+  const [collabContactDates, setCollabContactDates] = useState<Map<string, Date[]>>(new Map());
 
   const [typeOptions, setTypeOptions] = useState<{ value: string; label: string }[]>([]);
   const [cityOptions, setCityOptions] = useState<string[]>([]);
@@ -60,6 +93,32 @@ export default function RRPP() {
     fetchConfig("city").then((rows) => setCityOptions(rows.map((r) => r.value))).catch(() => {});
   }, []);
 
+  // Fetch collaboration activity dates for brand contacts (to filter "contacts collaborating in period")
+  useEffect(() => {
+    const ids = contacts.filter((c) => c.brand === brand).map((c) => c.id);
+    if (ids.length === 0) { setCollabContactDates(new Map()); return; }
+    let cancelled = false;
+    (supabase as any)
+      .from("rrpp_collaborations")
+      .select("contact_id, send_date, post_date, shipped_at, published_at, created_at")
+      .in("contact_id", ids)
+      .then(({ data }: any) => {
+        if (cancelled) return;
+        const map = new Map<string, Date[]>();
+        for (const row of data ?? []) {
+          const arr = map.get(row.contact_id) ?? [];
+          for (const v of [row.send_date, row.post_date, row.shipped_at, row.published_at, row.created_at]) {
+            if (!v) continue;
+            const d = typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? parseLocalDate(v) : new Date(v);
+            if (!isNaN(d.getTime())) arr.push(d);
+          }
+          map.set(row.contact_id, arr);
+        }
+        setCollabContactDates(map);
+      });
+    return () => { cancelled = true; };
+  }, [contacts, brand]);
+
   // Scope by brand first
   const brandContacts = useMemo(
     () => contacts.filter((c) => c.brand === brand),
@@ -70,6 +129,8 @@ export default function RRPP() {
     () => Array.from(new Set(brandContacts.map((c) => c.responsible).filter(Boolean))).sort(),
     [brandContacts]
   );
+
+  const dateRange = useMemo(() => periodRange(period, customFrom, customTo), [period, customFrom, customTo]);
 
   const filtered = useMemo(() => {
     return brandContacts.filter((c) => {
@@ -82,13 +143,21 @@ export default function RRPP() {
         const hay = `${c.name} ${c.alias} ${c.city}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      if (dateRange) {
+        const { from, to } = dateRange;
+        const created = c.created_at ? new Date(c.created_at) : null;
+        const createdInRange = !!(created && !isNaN(created.getTime()) && created >= from && created <= to);
+        const collabDates = collabContactDates.get(c.id) ?? [];
+        const collabInRange = collabDates.some((d) => d >= from && d <= to);
+        if (!createdInRange && !collabInRange) return false;
+      }
       return true;
     });
-  }, [brandContacts, search, typeFilter, relFilter, respFilter, cityFilter]);
+  }, [brandContacts, search, typeFilter, relFilter, respFilter, cityFilter, dateRange, collabContactDates]);
 
-  const hasFilters = search || typeFilter !== ALL || relFilter !== ALL || respFilter !== ALL || cityFilter;
+  const hasFilters = search || typeFilter !== ALL || relFilter !== ALL || respFilter !== ALL || cityFilter || period !== "all";
   const clearFilters = () => {
-    setSearch(""); setTypeFilter(ALL); setRelFilter(ALL); setRespFilter(ALL); setCityFilter("");
+    setSearch(""); setTypeFilter(ALL); setRelFilter(ALL); setRespFilter(ALL); setCityFilter(""); setPeriod("all");
   };
 
   const initialsOf = (name: string) =>
@@ -174,7 +243,7 @@ export default function RRPP() {
           </Select>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[200px] max-w-xs">
             <Input
               list="rrpp-city-filter"
@@ -188,11 +257,59 @@ export default function RRPP() {
             </datalist>
           </div>
 
+          <Select value={period} onValueChange={(v) => setPeriod(v as PeriodKey)}>
+            <SelectTrigger className="w-[200px]">
+              <CalendarIcon className="h-4 w-4 mr-1.5 text-muted-foreground" />
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="this_month">Este mes</SelectItem>
+              <SelectItem value="last_month">Mes pasado</SelectItem>
+              <SelectItem value="last_3_months">Últimos 3 meses</SelectItem>
+              <SelectItem value="custom">Rango personalizado…</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {period === "custom" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn("justify-start text-left font-normal", (!customFrom || !customTo) && "text-muted-foreground")}
+                >
+                  <CalendarIcon className="h-4 w-4 mr-2" />
+                  {customFrom && customTo
+                    ? `${formatDMY(customFrom)} → ${formatDMY(customTo)}`
+                    : "Elegir rango"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  selected={{ from: customFrom, to: customTo }}
+                  onSelect={(range: any) => {
+                    setCustomFrom(range?.from);
+                    setCustomTo(range?.to);
+                  }}
+                  numberOfMonths={2}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+
           <div className="flex items-center gap-2 ml-auto">
             <Switch id="archived" checked={showArchived} onCheckedChange={setShowArchived} />
             <Label htmlFor="archived" className="cursor-pointer text-sm">Ver archivados</Label>
           </div>
         </div>
+        {period !== "all" && dateRange && (
+          <p className="text-xs text-muted-foreground">
+            Mostrando contactos creados o con colaboración entre <span className="font-medium text-foreground">{formatDMY(dateRange.from)}</span> y <span className="font-medium text-foreground">{formatDMY(dateRange.to)}</span>.
+          </p>
+        )}
       </div>
 
       {/* Body */}
