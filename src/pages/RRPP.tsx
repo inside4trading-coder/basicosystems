@@ -65,6 +65,11 @@ export default function RRPP() {
   const [cityFilter, setCityFilter] = useState<string>("");
   const [showArchived, setShowArchived] = useState(false);
 
+  const [period, setPeriod] = useState<PeriodKey>("this_month");
+  const [customFrom, setCustomFrom] = useState<Date | undefined>();
+  const [customTo, setCustomTo] = useState<Date | undefined>();
+  const [collabContactDates, setCollabContactDates] = useState<Map<string, Date[]>>(new Map());
+
   const [typeOptions, setTypeOptions] = useState<{ value: string; label: string }[]>([]);
   const [cityOptions, setCityOptions] = useState<string[]>([]);
 
