@@ -243,7 +243,7 @@ export default function RRPP() {
           </Select>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[200px] max-w-xs">
             <Input
               list="rrpp-city-filter"
@@ -257,11 +257,59 @@ export default function RRPP() {
             </datalist>
           </div>
 
+          <Select value={period} onValueChange={(v) => setPeriod(v as PeriodKey)}>
+            <SelectTrigger className="w-[200px]">
+              <CalendarIcon className="h-4 w-4 mr-1.5 text-muted-foreground" />
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="this_month">Este mes</SelectItem>
+              <SelectItem value="last_month">Mes pasado</SelectItem>
+              <SelectItem value="last_3_months">Últimos 3 meses</SelectItem>
+              <SelectItem value="custom">Rango personalizado…</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {period === "custom" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn("justify-start text-left font-normal", (!customFrom || !customTo) && "text-muted-foreground")}
+                >
+                  <CalendarIcon className="h-4 w-4 mr-2" />
+                  {customFrom && customTo
+                    ? `${formatDMY(customFrom)} → ${formatDMY(customTo)}`
+                    : "Elegir rango"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  selected={{ from: customFrom, to: customTo }}
+                  onSelect={(range: any) => {
+                    setCustomFrom(range?.from);
+                    setCustomTo(range?.to);
+                  }}
+                  numberOfMonths={2}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+
           <div className="flex items-center gap-2 ml-auto">
             <Switch id="archived" checked={showArchived} onCheckedChange={setShowArchived} />
             <Label htmlFor="archived" className="cursor-pointer text-sm">Ver archivados</Label>
           </div>
         </div>
+        {period !== "all" && dateRange && (
+          <p className="text-xs text-muted-foreground">
+            Mostrando contactos creados o con colaboración entre <span className="font-medium text-foreground">{formatDMY(dateRange.from)}</span> y <span className="font-medium text-foreground">{formatDMY(dateRange.to)}</span>.
+          </p>
+        )}
       </div>
 
       {/* Body */}
