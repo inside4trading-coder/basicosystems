@@ -155,9 +155,9 @@ export default function RRPP() {
     });
   }, [brandContacts, search, typeFilter, relFilter, respFilter, cityFilter, dateRange, collabContactDates]);
 
-  const hasFilters = search || typeFilter !== ALL || relFilter !== ALL || respFilter !== ALL || cityFilter;
+  const hasFilters = search || typeFilter !== ALL || relFilter !== ALL || respFilter !== ALL || cityFilter || period !== "all";
   const clearFilters = () => {
-    setSearch(""); setTypeFilter(ALL); setRelFilter(ALL); setRespFilter(ALL); setCityFilter("");
+    setSearch(""); setTypeFilter(ALL); setRelFilter(ALL); setRespFilter(ALL); setCityFilter(""); setPeriod("all");
   };
 
   const initialsOf = (name: string) =>
