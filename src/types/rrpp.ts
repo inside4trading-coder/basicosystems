@@ -1,6 +1,8 @@
 export type RelationshipStatus =
   | "nuevo"
   | "contactado"
+  | "envio_requerido"
+  | "producto_listo_envio"
   | "producto_enviado"
   | "colaboracion_en_curso"
   | "colaboracion_exitosa"
@@ -70,6 +72,7 @@ export interface Collaboration {
   shipping_phone?: string;
   tracking_number?: string;
   shipped_at?: string | null;
+  packaged_at?: string | null;
   published_at?: string | null;
   post_url?: string;
 }

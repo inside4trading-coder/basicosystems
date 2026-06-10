@@ -10,7 +10,7 @@ import type { Contact, RelationshipStatus } from "@/types/rrpp";
 import { RELATIONSHIP_LABELS } from "./rrppConstants";
 
 const FLOW: RelationshipStatus[] = [
-  "nuevo", "contactado", "producto_enviado", "colaboracion_en_curso",
+  "nuevo", "contactado", "envio_requerido", "producto_listo_envio", "producto_enviado", "colaboracion_en_curso",
 ];
 
 const TERMINAL: RelationshipStatus[] = [
@@ -20,7 +20,9 @@ const TERMINAL: RelationshipStatus[] = [
 const DESCRIPTIONS: Record<RelationshipStatus, string> = {
   nuevo: "Contacto recién agregado. Aún no se ha realizado ninguna acción.",
   contactado: "Se inició el primer contacto vía mensaje, llamada o reunión.",
-  producto_enviado: "Se envió producto o regalo de cortesía como parte de la propuesta.",
+  envio_requerido: "Pedido registrado: se requiere preparar y empaquetar el producto.",
+  producto_listo_envio: "Producto empaquetado y listo para envío o entrega personal.",
+  producto_enviado: "Producto enviado con guía o entregado al contacto.",
   colaboracion_en_curso: "Hay una colaboración activa en ejecución.",
   colaboracion_exitosa: "La colaboración finalizó con éxito y generó valor.",
   no_colaboro: "El contacto no aceptó la propuesta o no respondió.",

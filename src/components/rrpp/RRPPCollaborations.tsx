@@ -31,8 +31,10 @@ const DEFAULT_NETWORKS = ["Instagram", "TikTok", "YouTube", "X", "Facebook", "Li
 const STATUS_RANK: Record<string, number> = {
   nuevo: 0,
   contactado: 1,
-  producto_enviado: 2,
-  colaboracion_en_curso: 3,
+  envio_requerido: 2,
+  producto_listo_envio: 3,
+  producto_enviado: 4,
+  colaboracion_en_curso: 5,
 };
 const TERMINAL_STATUSES = new Set(["colaboracion_exitosa", "no_colaboro", "descartado"]);
 
@@ -69,6 +71,7 @@ const emptyForm = () => ({
   // Step 2.1 - Confirmación de envío
   tracking_number: "",
   shipped_at: "",
+  packaged_at: "",
   received: false,
   // Cupón
   has_coupon: false,
@@ -167,6 +170,7 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
       no_shipping_method: ((c as any).no_shipping_method ?? "") as any,
       tracking_number: c.tracking_number ?? "",
       shipped_at: c.shipped_at ? c.shipped_at.slice(0, 10) : "",
+      packaged_at: c.packaged_at ? c.packaged_at.slice(0, 10) : "",
       received: !!c.received,
       has_coupon: !!c.has_coupon,
       coupon_code: c.coupon_code ?? "",
@@ -202,6 +206,7 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
         no_shipping_method: form.no_shipping_needed ? (form.no_shipping_method || null) : null,
         tracking_number: form.no_shipping_needed ? "" : form.tracking_number.trim(),
         shipped_at: form.no_shipping_needed ? null : (form.shipped_at || null),
+        packaged_at: form.packaged_at || null,
         received: form.received,
         collab_done: form.collab_done,
         has_coupon: form.has_coupon,
@@ -232,7 +237,9 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
         let target: RelationshipStatus | null = null;
         if (payload.published_at || (payload.collab_done && payload.post_date)) target = "colaboracion_exitosa" as any;
         else if (payload.collab_done) target = "colaboracion_en_curso";
-        else if (payload.shipped_at || payload.tracking_number || payload.received || payload.send_date) target = "producto_enviado";
+        else if (payload.shipped_at || payload.tracking_number || payload.received) target = "producto_enviado";
+        else if (payload.packaged_at || payload.no_shipping_needed) target = "producto_listo_envio";
+        else if (payload.send_date) target = "envio_requerido";
 
         if (target) {
           const { data: contactRow } = await db
@@ -449,11 +456,27 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                 </Button>
               </div>
 
+              {/* STEP 2.05 - Empaquetado */}
+              <div className="rounded-md border border-dashed p-3 space-y-2 mt-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wide bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded">Paso 2.05</span>
+                  <h5 className="text-sm font-semibold">Empaquetado (listo para envío / entrega)</h5>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Marca la fecha cuando el producto ya está empaquetado y listo. Útil cuando es entrega personal: el contacto sabrá que ya puede pasar a retirarlo.
+                </p>
+                <div>
+                  <Label>Fecha de empaquetado</Label>
+                  <Input type="date" value={form.packaged_at}
+                    onChange={(e) => setForm({ ...form, packaged_at: e.target.value })} className="mt-1" />
+                </div>
+              </div>
+
               {/* STEP 2.1 - Confirmación de envío */}
               <div className="rounded-md border border-dashed p-3 space-y-3 mt-2">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary px-2 py-0.5 rounded">Paso 2.1</span>
-                  <h5 className="text-sm font-semibold">Confirmación de envío (tienda / fábrica)</h5>
+                  <h5 className="text-sm font-semibold">Confirmación de envío (con guía / tracking)</h5>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>

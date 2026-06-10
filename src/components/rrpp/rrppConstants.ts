@@ -3,6 +3,8 @@ import type { ContactType, RelationshipStatus } from "@/types/rrpp";
 export const RELATIONSHIP_LABELS: Record<RelationshipStatus, string> = {
   nuevo: "Nuevo",
   contactado: "Contactado",
+  envio_requerido: "Envío requerido",
+  producto_listo_envio: "Listo para envío",
   producto_enviado: "Producto enviado",
   colaboracion_en_curso: "Colaboración en curso",
   colaboracion_exitosa: "Colaboración exitosa",
@@ -32,8 +34,12 @@ export function relationshipBadgeClass(status: RelationshipStatus): string {
     case "descartado":
       return "status-badge-inactive";
     case "contactado":
-    case "producto_enviado":
+    case "envio_requerido":
       return "status-badge-warning";
+    case "producto_listo_envio":
+      return "status-badge bg-amber-500/15 text-amber-700 dark:text-amber-400";
+    case "producto_enviado":
+      return "status-badge bg-sky-500/15 text-sky-700 dark:text-sky-400";
     case "colaboracion_en_curso":
       return "status-badge bg-blue-500/10 text-blue-600";
     case "colaboracion_exitosa":
