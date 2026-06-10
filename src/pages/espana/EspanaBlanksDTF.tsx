@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Shirt, Plus, Edit, Archive, Loader2, ArrowDownToLine, ArrowUpFromLine, Settings2, FlaskConical, Layers, Package, AlertTriangle } from "lucide-react";
+import { Shirt, Plus, Edit, Archive, Loader2, ArrowDownToLine, ArrowUpFromLine, Settings2, FlaskConical, Layers, Package, AlertTriangle, ChevronRight, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { formatDMY } from "@/lib/dateUtils";
 import { normalizeSize, MATERIAL_TYPE_LABEL, MATERIAL_UNIT_LABEL, MOVEMENT_TYPE_LABEL } from "@/lib/espMaterials";
@@ -78,6 +78,8 @@ export default function EspanaBlanksDTF() {
   const [movDlg, setMovDlg] = useState<{ open: boolean; type?: string; materialId?: string; locationId?: string }>({ open: false });
   const [recipeDlg, setRecipeDlg] = useState<{ open: boolean; recipe?: RecipeRow | null }>({ open: false });
   const [testDlg, setTestDlg] = useState<{ open: boolean; recipeId?: string }>({ open: false });
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const toggleGroup = (k: string) => setExpandedGroups(p => ({ ...p, [k]: !p[k] }));
 
   const load = async () => {
     setLoading(true);
@@ -237,37 +239,110 @@ export default function EspanaBlanksDTF() {
           <Card className="p-0 overflow-hidden">
             <Table>
               <TableHeader><TableRow>
+                <TableHead className="w-8"></TableHead>
                 <TableHead>Tipo</TableHead><TableHead>SKU</TableHead><TableHead>Nombre</TableHead>
                 <TableHead>Color</TableHead><TableHead>Talla</TableHead><TableHead>Unidad</TableHead>
                 <TableHead className="text-right">Costo €</TableHead><TableHead className="text-right">Stock</TableHead>
                 <TableHead>Estado</TableHead><TableHead>Acciones</TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {loading && <TableRow><TableCell colSpan={10} className="text-center py-6 text-sm text-muted-foreground">Cargando…</TableCell></TableRow>}
-                {!loading && filteredMaterials.length === 0 && <TableRow><TableCell colSpan={10} className="text-center py-6 text-sm text-muted-foreground">Sin materiales.</TableCell></TableRow>}
-                {filteredMaterials.map(m => {
-                  const stk = stockByMat.get(m.id) || 0;
-                  const low = stk <= Number(m.low_stock_threshold || 0);
-                  return (
-                    <TableRow key={m.id}>
-                      <TableCell><Badge variant="outline">{MATERIAL_TYPE_LABEL[m.material_type]}</Badge></TableCell>
-                      <TableCell className="text-xs font-mono">{m.sku || "—"}</TableCell>
-                      <TableCell className="font-medium text-sm">{m.name}</TableCell>
-                      <TableCell className="text-xs">{m.color || "—"}</TableCell>
-                      <TableCell className="text-xs">{m.size ? <span>{m.size}{m.normalized_size && m.normalized_size !== m.size && <span className="text-muted-foreground"> → {m.normalized_size}</span>}</span> : "—"}</TableCell>
-                      <TableCell className="text-xs">{MATERIAL_UNIT_LABEL[m.unit]}</TableCell>
-                      <TableCell className="text-right text-xs">{m.unit_cost_eur != null ? Number(m.unit_cost_eur).toFixed(2) : "—"}</TableCell>
-                      <TableCell className="text-right font-semibold"><span className={low ? "text-amber-600" : ""}>{stk}</span></TableCell>
-                      <TableCell><Badge variant={m.status === "active" ? "default" : "secondary"}>{m.status}</Badge></TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => setMatDlg({ open: true, item: m })}><Edit className="h-3 w-3" /></Button>
-                          {m.status !== "archived" && <Button size="sm" variant="ghost" onClick={async () => { const { error } = await supabase.from("esp_material_items").update({ status: "archived" }).eq("id", m.id); if (error) toast.error(error.message); else { toast.success("Archivado"); load(); } }}><Archive className="h-3 w-3" /></Button>}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {loading && <TableRow><TableCell colSpan={11} className="text-center py-6 text-sm text-muted-foreground">Cargando…</TableCell></TableRow>}
+                {!loading && filteredMaterials.length === 0 && <TableRow><TableCell colSpan={11} className="text-center py-6 text-sm text-muted-foreground">Sin materiales.</TableCell></TableRow>}
+                {(() => {
+                  // Group by material_type + name + color (a "main blank")
+                  const groups = new Map<string, { key: string; items: MaterialItem[] }>();
+                  filteredMaterials.forEach(m => {
+                    const k = `${m.material_type}::${m.name}::${m.color || ""}`;
+                    if (!groups.has(k)) groups.set(k, { key: k, items: [] });
+                    groups.get(k)!.items.push(m);
+                  });
+                  const rendered: JSX.Element[] = [];
+                  groups.forEach(({ key, items }) => {
+                    // Sort sizes
+                    const sizeOrder = ["XS","S","M","L","XL","XXL","XXXL"];
+                    items.sort((a, b) => {
+                      const ia = sizeOrder.indexOf((a.normalized_size || a.size || "").toUpperCase());
+                      const ib = sizeOrder.indexOf((b.normalized_size || b.size || "").toUpperCase());
+                      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+                    });
+                    const head = items[0];
+                    const totalStock = items.reduce((s, m) => s + (stockByMat.get(m.id) || 0), 0);
+                    const totalLow = items.filter(m => (stockByMat.get(m.id) || 0) <= Number(m.low_stock_threshold || 0)).length;
+                    const isGroup = items.length > 1;
+                    const expanded = !!expandedGroups[key];
+
+                    if (!isGroup) {
+                      const m = head;
+                      const stk = stockByMat.get(m.id) || 0;
+                      const low = stk <= Number(m.low_stock_threshold || 0);
+                      rendered.push(
+                        <TableRow key={m.id}>
+                          <TableCell></TableCell>
+                          <TableCell><Badge variant="outline">{MATERIAL_TYPE_LABEL[m.material_type]}</Badge></TableCell>
+                          <TableCell className="text-xs font-mono">{m.sku || "—"}</TableCell>
+                          <TableCell className="font-medium text-sm">{m.name}</TableCell>
+                          <TableCell className="text-xs">{m.color || "—"}</TableCell>
+                          <TableCell className="text-xs">{m.size || "—"}</TableCell>
+                          <TableCell className="text-xs">{MATERIAL_UNIT_LABEL[m.unit]}</TableCell>
+                          <TableCell className="text-right text-xs">{m.unit_cost_eur != null ? Number(m.unit_cost_eur).toFixed(2) : "—"}</TableCell>
+                          <TableCell className="text-right font-semibold"><span className={low ? "text-amber-600" : ""}>{stk}</span></TableCell>
+                          <TableCell><Badge variant={m.status === "active" ? "default" : "secondary"}>{m.status}</Badge></TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => setMatDlg({ open: true, item: m })}><Edit className="h-3 w-3" /></Button>
+                              {m.status !== "archived" && <Button size="sm" variant="ghost" onClick={async () => { const { error } = await supabase.from("esp_material_items").update({ status: "archived" }).eq("id", m.id); if (error) toast.error(error.message); else { toast.success("Archivado"); load(); } }}><Archive className="h-3 w-3" /></Button>}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                      return;
+                    }
+
+                    // Parent group row
+                    rendered.push(
+                      <TableRow key={key} className="bg-muted/40 cursor-pointer hover:bg-muted/60" onClick={() => toggleGroup(key)}>
+                        <TableCell>{expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</TableCell>
+                        <TableCell><Badge variant="outline">{MATERIAL_TYPE_LABEL[head.material_type]}</Badge></TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">{items.length} tallas</TableCell>
+                        <TableCell className="font-bold text-sm">{head.name}</TableCell>
+                        <TableCell className="text-xs">{head.color || "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{items.map(i => i.size).filter(Boolean).join(" · ")}</TableCell>
+                        <TableCell className="text-xs">{MATERIAL_UNIT_LABEL[head.unit]}</TableCell>
+                        <TableCell className="text-right text-xs">—</TableCell>
+                        <TableCell className="text-right font-bold"><span className={totalLow > 0 ? "text-amber-600" : ""}>{totalStock}</span></TableCell>
+                        <TableCell><Badge variant={head.status === "active" ? "default" : "secondary"}>{head.status}</Badge></TableCell>
+                        <TableCell></TableCell>
+                      </TableRow>
+                    );
+                    if (expanded) {
+                      items.forEach(m => {
+                        const stk = stockByMat.get(m.id) || 0;
+                        const low = stk <= Number(m.low_stock_threshold || 0);
+                        rendered.push(
+                          <TableRow key={m.id}>
+                            <TableCell></TableCell>
+                            <TableCell></TableCell>
+                            <TableCell className="text-xs font-mono pl-6">{m.sku || "—"}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground pl-4">↳ {m.name}</TableCell>
+                            <TableCell className="text-xs">{m.color || "—"}</TableCell>
+                            <TableCell className="text-xs font-semibold">{m.size || "—"}</TableCell>
+                            <TableCell className="text-xs">{MATERIAL_UNIT_LABEL[m.unit]}</TableCell>
+                            <TableCell className="text-right text-xs">{m.unit_cost_eur != null ? Number(m.unit_cost_eur).toFixed(2) : "—"}</TableCell>
+                            <TableCell className="text-right font-semibold"><span className={low ? "text-amber-600" : ""}>{stk}</span></TableCell>
+                            <TableCell><Badge variant={m.status === "active" ? "default" : "secondary"}>{m.status}</Badge></TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="ghost" onClick={() => setMatDlg({ open: true, item: m })}><Edit className="h-3 w-3" /></Button>
+                                {m.status !== "archived" && <Button size="sm" variant="ghost" onClick={async () => { const { error } = await supabase.from("esp_material_items").update({ status: "archived" }).eq("id", m.id); if (error) toast.error(error.message); else { toast.success("Archivado"); load(); } }}><Archive className="h-3 w-3" /></Button>}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      });
+                    }
+                  });
+                  return rendered;
+                })()}
               </TableBody>
             </Table>
           </Card>
