@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Plus, Star, Search, MapPin, User as UserIcon, Archive, BarChart3, Users, CalendarIcon } from "lucide-react";
 import { fetchContacts, fetchConfig } from "@/hooks/useRRPPData";
 import { supabase } from "@/integrations/supabase/client";
@@ -186,7 +186,15 @@ export default function RRPP() {
         <BrandSwitcher value={brand} onChange={setBrand} />
       </header>
 
-      <Tabs defaultValue="dashboard" className="space-y-5">
+      <Tabs
+        value={tab}
+        onValueChange={(v) => {
+          const next = new URLSearchParams(searchParams);
+          next.set("tab", v);
+          setSearchParams(next, { replace: true });
+        }}
+        className="space-y-5"
+      >
         <TabsList>
           <TabsTrigger value="dashboard"><BarChart3 className="h-4 w-4 mr-1.5" /> Dashboard</TabsTrigger>
           <TabsTrigger value="contacts"><Users className="h-4 w-4 mr-1.5" /> Contactos</TabsTrigger>
