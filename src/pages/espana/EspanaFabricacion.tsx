@@ -90,6 +90,34 @@ export default function EspanaFabricacion() {
     else { toast.success("Actualizado"); load(); }
   };
 
+  const openPreflight = async (r: FabRow) => {
+    setPreflight({ open: true, request: r, loading: true });
+    const { data, error } = await supabase.rpc("esp_resolve_fabrication_materials" as any, { p_request_id: r.id });
+    if (error) { toast.error(error.message); setPreflight({ open: false }); return; }
+    setPreflight({ open: true, request: r, data, loading: false });
+  };
+
+  const confirmConsume = async () => {
+    if (!preflight.request) return;
+    setPreflight(p => ({ ...p, loading: true }));
+    const { data, error } = await supabase.rpc("esp_consume_materials_for_fabrication_request" as any, {
+      p_request_id: preflight.request.id,
+    });
+    if (error) { toast.error(error.message); setPreflight(p => ({ ...p, loading: false })); return; }
+    toast.success(`Consumidos ${(data as any)?.materials_consumed || 0} materiales · solicitud en fabricación`);
+    setPreflight({ open: false });
+    load();
+  };
+
+  const markReady = async (id: string) => {
+    setBusyId(id);
+    const { error } = await supabase.rpc("esp_fabrication_request_mark_ready" as any, { p_request_id: id });
+    setBusyId(null);
+    if (error) toast.error(error.message);
+    else { toast.success("Solicitud lista"); load(); }
+  };
+
+
   // KPIs separados
   const kpis = useMemo(() => {
     const real = rows.filter(r => !r.is_legacy && !r.is_test);
