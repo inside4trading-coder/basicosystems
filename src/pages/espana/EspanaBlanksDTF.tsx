@@ -794,3 +794,151 @@ function RecipeTestDialog({ state, onClose, recipes, recipeItems, materials, sto
     </Dialog>
   );
 }
+
+/* ===================== GROUP SIZES DIALOG ===================== */
+function GroupSizesDialog({ state, onClose, onSaved, locations, stockByMatLoc }: any) {
+  const items: MaterialItem[] = state.items || [];
+  const [rows, setRows] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    if (!state.open) return;
+    const initial = items.map((m: MaterialItem) => {
+      const stocks: Record<string, number> = {};
+      (locations || []).forEach((l: LocationRow) => {
+        stocks[l.id] = Number(stockByMatLoc.get(`${m.id}::${l.id}`) || 0);
+      });
+      return {
+        id: m.id,
+        sku: m.sku || "",
+        size: m.size || "",
+        unit_cost_eur: m.unit_cost_eur ?? null,
+        low_stock_threshold: Number(m.low_stock_threshold || 0),
+        status: m.status,
+        stocks,
+        _origStocks: { ...stocks },
+        _origMeta: { sku: m.sku || "", size: m.size || "", unit_cost_eur: m.unit_cost_eur ?? null, low_stock_threshold: Number(m.low_stock_threshold || 0), status: m.status },
+      };
+    });
+    setRows(initial);
+    setReason("");
+  }, [state.open]);
+
+  const updateRow = (idx: number, patch: any) => {
+    const c = [...rows]; c[idx] = { ...c[idx], ...patch }; setRows(c);
+  };
+  const updateStock = (idx: number, locId: string, value: string) => {
+    const c = [...rows];
+    c[idx] = { ...c[idx], stocks: { ...c[idx].stocks, [locId]: value === "" ? 0 : Number(value) } };
+    setRows(c);
+  };
+
+  const save = async () => {
+    setBusy(true);
+    let metaUpdates = 0, stockUpdates = 0, errors = 0;
+    for (const r of rows) {
+      // Meta diff
+      const m = r._origMeta;
+      const metaDiff: any = {};
+      if (r.sku !== m.sku) metaDiff.sku = r.sku || null;
+      if (r.size !== m.size) { metaDiff.size = r.size || null; metaDiff.normalized_size = r.size ? normalizeSize(r.size) : null; }
+      if (Number(r.unit_cost_eur ?? 0) !== Number(m.unit_cost_eur ?? 0)) metaDiff.unit_cost_eur = r.unit_cost_eur === null || r.unit_cost_eur === "" ? null : Number(r.unit_cost_eur);
+      if (Number(r.low_stock_threshold) !== Number(m.low_stock_threshold)) metaDiff.low_stock_threshold = Number(r.low_stock_threshold);
+      if (r.status !== m.status) metaDiff.status = r.status;
+      if (Object.keys(metaDiff).length > 0) {
+        const { error } = await supabase.from("esp_material_items").update(metaDiff).eq("id", r.id);
+        if (error) { errors++; toast.error(`${r.size}: ${error.message}`); } else metaUpdates++;
+      }
+      // Stock diffs → adjustment per location
+      for (const locId of Object.keys(r.stocks)) {
+        const newVal = Number(r.stocks[locId] || 0);
+        const oldVal = Number(r._origStocks[locId] || 0);
+        if (newVal === oldVal) continue;
+        const { error } = await supabase.rpc("esp_apply_material_movement" as any, {
+          p_movement_type: "adjustment",
+          p_material_id: r.id,
+          p_quantity: newVal,
+          p_location_id: locId,
+          p_reason: reason || "Ajuste manual por talla",
+          p_notes: null,
+        });
+        if (error) { errors++; toast.error(`Stock ${r.size}: ${error.message}`); } else stockUpdates++;
+      }
+    }
+    setBusy(false);
+    if (errors === 0) toast.success(`Guardado: ${metaUpdates} cambios + ${stockUpdates} ajustes de stock`);
+    onClose(); onSaved();
+  };
+
+  const sizeOrder = ["XS","S","M","L","XL","XXL","XXXL"];
+  const sortedRows = [...rows].sort((a, b) => {
+    const ia = sizeOrder.indexOf((a.size || "").toUpperCase());
+    const ib = sizeOrder.indexOf((b.size || "").toUpperCase());
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+
+  return (
+    <Dialog open={state.open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Editar tallas · {state.title}</DialogTitle>
+          <p className="text-xs text-muted-foreground">Cambia tallas, SKU, costo, umbral y stock por sede. Los ajustes de stock quedan registrados como movimientos.</p>
+        </DialogHeader>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader><TableRow>
+              <TableHead className="text-xs">Talla</TableHead>
+              <TableHead className="text-xs">SKU</TableHead>
+              <TableHead className="text-xs text-right">Costo €</TableHead>
+              <TableHead className="text-xs text-right">Umbral</TableHead>
+              {(locations || []).map((l: LocationRow) => (
+                <TableHead key={l.id} className="text-xs text-right">{l.name}</TableHead>
+              ))}
+              <TableHead className="text-xs">Estado</TableHead>
+            </TableRow></TableHeader>
+            <TableBody>
+              {sortedRows.map((r) => {
+                const idx = rows.findIndex(x => x.id === r.id);
+                return (
+                  <TableRow key={r.id}>
+                    <TableCell><Input className="h-8 w-20" value={r.size} onChange={e => updateRow(idx, { size: e.target.value })} /></TableCell>
+                    <TableCell><Input className="h-8 w-36 font-mono text-xs" value={r.sku} onChange={e => updateRow(idx, { sku: e.target.value })} /></TableCell>
+                    <TableCell className="text-right"><Input className="h-8 w-24 text-right" type="number" step="0.01" value={r.unit_cost_eur ?? ""} onChange={e => updateRow(idx, { unit_cost_eur: e.target.value === "" ? null : Number(e.target.value) })} /></TableCell>
+                    <TableCell className="text-right"><Input className="h-8 w-20 text-right" type="number" step="1" value={r.low_stock_threshold} onChange={e => updateRow(idx, { low_stock_threshold: Number(e.target.value) })} /></TableCell>
+                    {(locations || []).map((l: LocationRow) => {
+                      const changed = Number(r.stocks[l.id] || 0) !== Number(r._origStocks[l.id] || 0);
+                      return (
+                        <TableCell key={l.id} className="text-right">
+                          <Input className={`h-8 w-20 text-right ${changed ? "border-amber-500 ring-1 ring-amber-500/40" : ""}`} type="number" step="1" value={r.stocks[l.id]} onChange={e => updateStock(idx, l.id, e.target.value)} />
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell>
+                      <Select value={r.status} onValueChange={v => updateRow(idx, { status: v })}>
+                        <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Activo</SelectItem>
+                          <SelectItem value="inactive">Inactivo</SelectItem>
+                          <SelectItem value="archived">Archivado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="mt-3">
+          <Label className="text-xs">Motivo del ajuste (queda en el historial)</Label>
+          <Input value={reason} onChange={e => setReason(e.target.value)} placeholder="Ej: Conteo físico semanal, llegada de mercancía..." />
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button onClick={save} disabled={busy}>{busy && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Guardar cambios</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
