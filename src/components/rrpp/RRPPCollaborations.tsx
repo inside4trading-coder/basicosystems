@@ -170,6 +170,7 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
       no_shipping_method: ((c as any).no_shipping_method ?? "") as any,
       tracking_number: c.tracking_number ?? "",
       shipped_at: c.shipped_at ? c.shipped_at.slice(0, 10) : "",
+      packaged_at: c.packaged_at ? c.packaged_at.slice(0, 10) : "",
       received: !!c.received,
       has_coupon: !!c.has_coupon,
       coupon_code: c.coupon_code ?? "",
