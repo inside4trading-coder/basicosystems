@@ -31,8 +31,10 @@ const DEFAULT_NETWORKS = ["Instagram", "TikTok", "YouTube", "X", "Facebook", "Li
 const STATUS_RANK: Record<string, number> = {
   nuevo: 0,
   contactado: 1,
-  producto_enviado: 2,
-  colaboracion_en_curso: 3,
+  envio_requerido: 2,
+  producto_listo_envio: 3,
+  producto_enviado: 4,
+  colaboracion_en_curso: 5,
 };
 const TERMINAL_STATUSES = new Set(["colaboracion_exitosa", "no_colaboro", "descartado"]);
 
