@@ -237,7 +237,9 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
         let target: RelationshipStatus | null = null;
         if (payload.published_at || (payload.collab_done && payload.post_date)) target = "colaboracion_exitosa" as any;
         else if (payload.collab_done) target = "colaboracion_en_curso";
-        else if (payload.shipped_at || payload.tracking_number || payload.received || payload.send_date) target = "producto_enviado";
+        else if (payload.shipped_at || payload.tracking_number || payload.received) target = "producto_enviado";
+        else if (payload.packaged_at || payload.no_shipping_needed) target = "producto_listo_envio";
+        else if (payload.send_date) target = "envio_requerido";
 
         if (target) {
           const { data: contactRow } = await db
