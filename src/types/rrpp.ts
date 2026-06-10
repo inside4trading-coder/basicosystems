@@ -1,6 +1,8 @@
 export type RelationshipStatus =
   | "nuevo"
   | "contactado"
+  | "envio_requerido"
+  | "producto_listo_envio"
   | "producto_enviado"
   | "colaboracion_en_curso"
   | "colaboracion_exitosa"
