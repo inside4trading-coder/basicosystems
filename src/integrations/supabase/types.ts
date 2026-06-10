@@ -5584,6 +5584,7 @@ export type Database = {
           no_shipping_needed: boolean
           observations: string | null
           order_details: string | null
+          packaged_at: string | null
           post_date: string | null
           post_observation: string | null
           post_url: string | null
@@ -5616,6 +5617,7 @@ export type Database = {
           no_shipping_needed?: boolean
           observations?: string | null
           order_details?: string | null
+          packaged_at?: string | null
           post_date?: string | null
           post_observation?: string | null
           post_url?: string | null
@@ -5648,6 +5650,7 @@ export type Database = {
           no_shipping_needed?: boolean
           observations?: string | null
           order_details?: string | null
+          packaged_at?: string | null
           post_date?: string | null
           post_observation?: string | null
           post_url?: string | null

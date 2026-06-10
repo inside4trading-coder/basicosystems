@@ -1,0 +1,1 @@
+ALTER TABLE public.rrpp_collaborations ADD COLUMN IF NOT EXISTS packaged_at timestamptz;
