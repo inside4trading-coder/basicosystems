@@ -138,6 +138,11 @@ export default function EspanaBlanksDTF() {
   const matsById = useMemo(() => new Map(materials.map(m => [m.id, m])), [materials]);
   const locById = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations]);
   const prodById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
+  const profilesById = useMemo(() => new Map(profiles.map(p => [p.id, p])), [profiles]);
+
+  const manualMovements = useMemo(() =>
+    movements.filter(m => ["manual_in", "manual_out", "adjustment", "correction"].includes(m.movement_type)).slice(0, 30)
+  , [movements]);
 
   const filteredMaterials = useMemo(() => {
     const q = matSearch.trim().toLowerCase();
