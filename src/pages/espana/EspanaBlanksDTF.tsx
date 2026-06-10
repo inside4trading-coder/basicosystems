@@ -368,6 +368,57 @@ export default function EspanaBlanksDTF() {
               </TableBody>
             </Table>
           </Card>
+
+          {/* Variaciones manuales recientes — alerta de modificaciones humanas */}
+          <Card className="p-4 border-l-4 border-l-amber-500">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <h3 className="font-bold text-sm">Variaciones manuales recientes ({manualMovements.length})</h3>
+              <span className="text-xs text-muted-foreground">— Entradas, salidas, ajustes y correcciones hechas a mano. Revisa si algo no cuadra.</span>
+            </div>
+            {manualMovements.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Sin movimientos manuales registrados.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead className="text-xs">Fecha</TableHead>
+                    <TableHead className="text-xs">Usuario</TableHead>
+                    <TableHead className="text-xs">Material</TableHead>
+                    <TableHead className="text-xs">Tipo</TableHead>
+                    <TableHead className="text-xs">Ubicación</TableHead>
+                    <TableHead className="text-right text-xs">Cant.</TableHead>
+                    <TableHead className="text-right text-xs">Antes → Después</TableHead>
+                    <TableHead className="text-xs">Motivo</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {manualMovements.map(m => {
+                      const mat = matsById.get(m.material_id);
+                      const prof = m.created_by ? profilesById.get(m.created_by) : null;
+                      const userLabel = prof?.full_name || prof?.email || (m.created_by ? `${m.created_by.slice(0, 8)}…` : "Sistema");
+                      const tone = m.movement_type === "manual_out" ? "text-red-600"
+                        : m.movement_type === "manual_in" ? "text-emerald-600"
+                        : "text-amber-700";
+                      return (
+                        <TableRow key={m.id}>
+                          <TableCell className="text-xs">{new Date(m.created_at).toLocaleString()}</TableCell>
+                          <TableCell className="text-xs font-medium">{userLabel}</TableCell>
+                          <TableCell className="text-xs">{mat ? `${mat.name}${mat.size ? ` · ${mat.size}` : ""}` : "—"}</TableCell>
+                          <TableCell><Badge variant="outline" className={tone}>{MOVEMENT_TYPE_LABEL[m.movement_type]}</Badge></TableCell>
+                          <TableCell className="text-xs">{m.location_id ? (locById.get(m.location_id)?.name || "—") : "—"}</TableCell>
+                          <TableCell className={`text-right text-xs font-mono ${tone}`}>{Number(m.quantity) > 0 ? "+" : ""}{Number(m.quantity).toFixed(2)}</TableCell>
+                          <TableCell className="text-right text-xs font-mono text-muted-foreground">
+                            {m.quantity_before != null ? Number(m.quantity_before).toFixed(2) : "—"} → {m.quantity_after != null ? Number(m.quantity_after).toFixed(2) : "—"}
+                          </TableCell>
+                          <TableCell className="text-xs">{m.reason || <span className="text-amber-600 italic">sin motivo</span>}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </Card>
         </TabsContent>
 
         {/* ============== STOCK MATRIX ============== */}
