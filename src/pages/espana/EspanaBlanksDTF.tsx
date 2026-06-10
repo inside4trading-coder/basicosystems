@@ -39,8 +39,9 @@ interface MovementRow {
   id: string; material_id: string; location_id: string | null;
   movement_type: string; quantity: number; quantity_before: number | null;
   quantity_after: number | null; reason: string | null; notes: string | null;
-  reference_type: string | null; created_at: string;
+  reference_type: string | null; created_at: string; created_by: string | null;
 }
+interface ProfileRow { id: string; full_name: string | null; email: string | null; }
 interface LocationRow { id: string; name: string; }
 interface RecipeRow { id: string; product_id: string; variant_id: string | null; name: string | null; status: string; }
 interface RecipeItemRow { id: string; recipe_id: string; material_id: string; quantity_per_unit: number; size_strategy: string; required: boolean; }
@@ -64,6 +65,7 @@ export default function EspanaBlanksDTF() {
   const [recipeItems, setRecipeItems] = useState<RecipeItemRow[]>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [testRequests, setTestRequests] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   // filters
@@ -79,6 +81,7 @@ export default function EspanaBlanksDTF() {
   const [recipeDlg, setRecipeDlg] = useState<{ open: boolean; recipe?: RecipeRow | null }>({ open: false });
   const [testDlg, setTestDlg] = useState<{ open: boolean; recipeId?: string }>({ open: false });
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [groupDlg, setGroupDlg] = useState<{ open: boolean; items?: MaterialItem[]; title?: string }>({ open: false });
   const toggleGroup = (k: string) => setExpandedGroups(p => ({ ...p, [k]: !p[k] }));
 
   const load = async () => {
@@ -102,6 +105,15 @@ export default function EspanaBlanksDTF() {
     setRecipeItems((recItems.data || []) as any);
     setProducts((prods.data || []) as any);
     setTestRequests((testReqs.data || []) as any);
+
+    // Load profiles for users that appear in movements
+    const userIds = Array.from(new Set((mvs.data || []).map((m: any) => m.created_by).filter(Boolean)));
+    if (userIds.length > 0) {
+      const { data: profs } = await supabase.from("profiles").select("id,full_name,email").in("id", userIds as string[]);
+      setProfiles((profs || []) as any);
+    } else {
+      setProfiles([]);
+    }
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -126,6 +138,11 @@ export default function EspanaBlanksDTF() {
   const matsById = useMemo(() => new Map(materials.map(m => [m.id, m])), [materials]);
   const locById = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations]);
   const prodById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
+  const profilesById = useMemo(() => new Map(profiles.map(p => [p.id, p])), [profiles]);
+
+  const manualMovements = useMemo(() =>
+    movements.filter(m => ["manual_in", "manual_out", "adjustment", "correction"].includes(m.movement_type)).slice(0, 30)
+  , [movements]);
 
   const filteredMaterials = useMemo(() => {
     const q = matSearch.trim().toLowerCase();
@@ -298,10 +315,13 @@ export default function EspanaBlanksDTF() {
                       return;
                     }
 
-                    // Parent group row
+                    // Parent group row — click opens the size editor dialog; chevron toggles inline expansion
                     rendered.push(
-                      <TableRow key={key} className="bg-muted/40 cursor-pointer hover:bg-muted/60" onClick={() => toggleGroup(key)}>
-                        <TableCell>{expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</TableCell>
+                      <TableRow key={key} className="bg-muted/40 cursor-pointer hover:bg-muted/60"
+                        onClick={() => setGroupDlg({ open: true, items, title: `${head.name}${head.color ? ` · ${head.color}` : ""}` })}>
+                        <TableCell onClick={(e) => { e.stopPropagation(); toggleGroup(key); }} className="cursor-pointer">
+                          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </TableCell>
                         <TableCell><Badge variant="outline">{MATERIAL_TYPE_LABEL[head.material_type]}</Badge></TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground">{items.length} tallas</TableCell>
                         <TableCell className="font-bold text-sm">{head.name}</TableCell>
@@ -311,7 +331,9 @@ export default function EspanaBlanksDTF() {
                         <TableCell className="text-right text-xs">—</TableCell>
                         <TableCell className="text-right font-bold"><span className={totalLow > 0 ? "text-amber-600" : ""}>{totalStock}</span></TableCell>
                         <TableCell><Badge variant={head.status === "active" ? "default" : "secondary"}>{head.status}</Badge></TableCell>
-                        <TableCell></TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="outline" onClick={() => setGroupDlg({ open: true, items, title: `${head.name}${head.color ? ` · ${head.color}` : ""}` })}><Edit className="h-3 w-3 mr-1" />Editar tallas</Button>
+                        </TableCell>
                       </TableRow>
                     );
                     if (expanded) {
@@ -345,6 +367,57 @@ export default function EspanaBlanksDTF() {
                 })()}
               </TableBody>
             </Table>
+          </Card>
+
+          {/* Variaciones manuales recientes — alerta de modificaciones humanas */}
+          <Card className="p-4 border-l-4 border-l-amber-500">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <h3 className="font-bold text-sm">Variaciones manuales recientes ({manualMovements.length})</h3>
+              <span className="text-xs text-muted-foreground">— Entradas, salidas, ajustes y correcciones hechas a mano. Revisa si algo no cuadra.</span>
+            </div>
+            {manualMovements.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Sin movimientos manuales registrados.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead className="text-xs">Fecha</TableHead>
+                    <TableHead className="text-xs">Usuario</TableHead>
+                    <TableHead className="text-xs">Material</TableHead>
+                    <TableHead className="text-xs">Tipo</TableHead>
+                    <TableHead className="text-xs">Ubicación</TableHead>
+                    <TableHead className="text-right text-xs">Cant.</TableHead>
+                    <TableHead className="text-right text-xs">Antes → Después</TableHead>
+                    <TableHead className="text-xs">Motivo</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {manualMovements.map(m => {
+                      const mat = matsById.get(m.material_id);
+                      const prof = m.created_by ? profilesById.get(m.created_by) : null;
+                      const userLabel = prof?.full_name || prof?.email || (m.created_by ? `${m.created_by.slice(0, 8)}…` : "Sistema");
+                      const tone = m.movement_type === "manual_out" ? "text-red-600"
+                        : m.movement_type === "manual_in" ? "text-emerald-600"
+                        : "text-amber-700";
+                      return (
+                        <TableRow key={m.id}>
+                          <TableCell className="text-xs">{new Date(m.created_at).toLocaleString()}</TableCell>
+                          <TableCell className="text-xs font-medium">{userLabel}</TableCell>
+                          <TableCell className="text-xs">{mat ? `${mat.name}${mat.size ? ` · ${mat.size}` : ""}` : "—"}</TableCell>
+                          <TableCell><Badge variant="outline" className={tone}>{MOVEMENT_TYPE_LABEL[m.movement_type]}</Badge></TableCell>
+                          <TableCell className="text-xs">{m.location_id ? (locById.get(m.location_id)?.name || "—") : "—"}</TableCell>
+                          <TableCell className={`text-right text-xs font-mono ${tone}`}>{Number(m.quantity) > 0 ? "+" : ""}{Number(m.quantity).toFixed(2)}</TableCell>
+                          <TableCell className="text-right text-xs font-mono text-muted-foreground">
+                            {m.quantity_before != null ? Number(m.quantity_before).toFixed(2) : "—"} → {m.quantity_after != null ? Number(m.quantity_after).toFixed(2) : "—"}
+                          </TableCell>
+                          <TableCell className="text-xs">{m.reason || <span className="text-amber-600 italic">sin motivo</span>}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </Card>
         </TabsContent>
 
@@ -477,6 +550,7 @@ export default function EspanaBlanksDTF() {
       <MovementDialog state={movDlg} onClose={() => setMovDlg({ open: false })} onSaved={load} materials={materials} locations={locations} />
       <RecipeDialog state={recipeDlg} onClose={() => setRecipeDlg({ open: false })} onSaved={load} products={products} materials={materials} recipeItems={recipeItems} />
       <RecipeTestDialog state={testDlg} onClose={() => setTestDlg({ open: false })} recipes={recipes} recipeItems={recipeItems} materials={materials} stockByMatLoc={stockByMatLoc} locations={locations} />
+      <GroupSizesDialog state={groupDlg} onClose={() => setGroupDlg({ open: false })} onSaved={load} locations={locations} stockByMatLoc={stockByMatLoc} />
     </div>
   );
 }
@@ -716,6 +790,154 @@ function RecipeTestDialog({ state, onClose, recipes, recipeItems, materials, sto
           </div>
         </div>
         <DialogFooter><Button onClick={onClose}>Cerrar</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ===================== GROUP SIZES DIALOG ===================== */
+function GroupSizesDialog({ state, onClose, onSaved, locations, stockByMatLoc }: any) {
+  const items: MaterialItem[] = state.items || [];
+  const [rows, setRows] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    if (!state.open) return;
+    const initial = items.map((m: MaterialItem) => {
+      const stocks: Record<string, number> = {};
+      (locations || []).forEach((l: LocationRow) => {
+        stocks[l.id] = Number(stockByMatLoc.get(`${m.id}::${l.id}`) || 0);
+      });
+      return {
+        id: m.id,
+        sku: m.sku || "",
+        size: m.size || "",
+        unit_cost_eur: m.unit_cost_eur ?? null,
+        low_stock_threshold: Number(m.low_stock_threshold || 0),
+        status: m.status,
+        stocks,
+        _origStocks: { ...stocks },
+        _origMeta: { sku: m.sku || "", size: m.size || "", unit_cost_eur: m.unit_cost_eur ?? null, low_stock_threshold: Number(m.low_stock_threshold || 0), status: m.status },
+      };
+    });
+    setRows(initial);
+    setReason("");
+  }, [state.open]);
+
+  const updateRow = (idx: number, patch: any) => {
+    const c = [...rows]; c[idx] = { ...c[idx], ...patch }; setRows(c);
+  };
+  const updateStock = (idx: number, locId: string, value: string) => {
+    const c = [...rows];
+    c[idx] = { ...c[idx], stocks: { ...c[idx].stocks, [locId]: value === "" ? 0 : Number(value) } };
+    setRows(c);
+  };
+
+  const save = async () => {
+    setBusy(true);
+    let metaUpdates = 0, stockUpdates = 0, errors = 0;
+    for (const r of rows) {
+      // Meta diff
+      const m = r._origMeta;
+      const metaDiff: any = {};
+      if (r.sku !== m.sku) metaDiff.sku = r.sku || null;
+      if (r.size !== m.size) { metaDiff.size = r.size || null; metaDiff.normalized_size = r.size ? normalizeSize(r.size) : null; }
+      if (Number(r.unit_cost_eur ?? 0) !== Number(m.unit_cost_eur ?? 0)) metaDiff.unit_cost_eur = r.unit_cost_eur === null || r.unit_cost_eur === "" ? null : Number(r.unit_cost_eur);
+      if (Number(r.low_stock_threshold) !== Number(m.low_stock_threshold)) metaDiff.low_stock_threshold = Number(r.low_stock_threshold);
+      if (r.status !== m.status) metaDiff.status = r.status;
+      if (Object.keys(metaDiff).length > 0) {
+        const { error } = await supabase.from("esp_material_items").update(metaDiff).eq("id", r.id);
+        if (error) { errors++; toast.error(`${r.size}: ${error.message}`); } else metaUpdates++;
+      }
+      // Stock diffs → adjustment per location
+      for (const locId of Object.keys(r.stocks)) {
+        const newVal = Number(r.stocks[locId] || 0);
+        const oldVal = Number(r._origStocks[locId] || 0);
+        if (newVal === oldVal) continue;
+        const { error } = await supabase.rpc("esp_apply_material_movement" as any, {
+          p_movement_type: "adjustment",
+          p_material_id: r.id,
+          p_quantity: newVal,
+          p_location_id: locId,
+          p_reason: reason || "Ajuste manual por talla",
+          p_notes: null,
+        });
+        if (error) { errors++; toast.error(`Stock ${r.size}: ${error.message}`); } else stockUpdates++;
+      }
+    }
+    setBusy(false);
+    if (errors === 0) toast.success(`Guardado: ${metaUpdates} cambios + ${stockUpdates} ajustes de stock`);
+    onClose(); onSaved();
+  };
+
+  const sizeOrder = ["XS","S","M","L","XL","XXL","XXXL"];
+  const sortedRows = [...rows].sort((a, b) => {
+    const ia = sizeOrder.indexOf((a.size || "").toUpperCase());
+    const ib = sizeOrder.indexOf((b.size || "").toUpperCase());
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+
+  return (
+    <Dialog open={state.open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Editar tallas · {state.title}</DialogTitle>
+          <p className="text-xs text-muted-foreground">Cambia tallas, SKU, costo, umbral y stock por sede. Los ajustes de stock quedan registrados como movimientos.</p>
+        </DialogHeader>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader><TableRow>
+              <TableHead className="text-xs">Talla</TableHead>
+              <TableHead className="text-xs">SKU</TableHead>
+              <TableHead className="text-xs text-right">Costo €</TableHead>
+              <TableHead className="text-xs text-right">Umbral</TableHead>
+              {(locations || []).map((l: LocationRow) => (
+                <TableHead key={l.id} className="text-xs text-right">{l.name}</TableHead>
+              ))}
+              <TableHead className="text-xs">Estado</TableHead>
+            </TableRow></TableHeader>
+            <TableBody>
+              {sortedRows.map((r) => {
+                const idx = rows.findIndex(x => x.id === r.id);
+                return (
+                  <TableRow key={r.id}>
+                    <TableCell><Input className="h-8 w-20" value={r.size} onChange={e => updateRow(idx, { size: e.target.value })} /></TableCell>
+                    <TableCell><Input className="h-8 w-36 font-mono text-xs" value={r.sku} onChange={e => updateRow(idx, { sku: e.target.value })} /></TableCell>
+                    <TableCell className="text-right"><Input className="h-8 w-24 text-right" type="number" step="0.01" value={r.unit_cost_eur ?? ""} onChange={e => updateRow(idx, { unit_cost_eur: e.target.value === "" ? null : Number(e.target.value) })} /></TableCell>
+                    <TableCell className="text-right"><Input className="h-8 w-20 text-right" type="number" step="1" value={r.low_stock_threshold} onChange={e => updateRow(idx, { low_stock_threshold: Number(e.target.value) })} /></TableCell>
+                    {(locations || []).map((l: LocationRow) => {
+                      const changed = Number(r.stocks[l.id] || 0) !== Number(r._origStocks[l.id] || 0);
+                      return (
+                        <TableCell key={l.id} className="text-right">
+                          <Input className={`h-8 w-20 text-right ${changed ? "border-amber-500 ring-1 ring-amber-500/40" : ""}`} type="number" step="1" value={r.stocks[l.id]} onChange={e => updateStock(idx, l.id, e.target.value)} />
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell>
+                      <Select value={r.status} onValueChange={v => updateRow(idx, { status: v })}>
+                        <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Activo</SelectItem>
+                          <SelectItem value="inactive">Inactivo</SelectItem>
+                          <SelectItem value="archived">Archivado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="mt-3">
+          <Label className="text-xs">Motivo del ajuste (queda en el historial)</Label>
+          <Input value={reason} onChange={e => setReason(e.target.value)} placeholder="Ej: Conteo físico semanal, llegada de mercancía..." />
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button onClick={save} disabled={busy}>{busy && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Guardar cambios</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
