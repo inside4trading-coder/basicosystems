@@ -65,6 +65,7 @@ export default function EspanaBlanksDTF() {
   const [recipeItems, setRecipeItems] = useState<RecipeItemRow[]>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [testRequests, setTestRequests] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   // filters
