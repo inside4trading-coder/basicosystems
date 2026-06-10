@@ -208,14 +208,97 @@ export default function EspanaBlanksDTF() {
             <Card className="p-4 border-l-4 border-l-blue-500"><p className="text-[10px] uppercase text-muted-foreground flex items-center gap-1"><FlaskConical className="h-3 w-3" />Solicitudes test listas</p><p className="text-3xl font-black">{kpis.testReady}</p><p className="text-[10px] text-muted-foreground">para BLOQUE 5B</p></Card>
           </div>
 
+          {/* Inventario por blank (matriz tipo + nombre + color × tallas) */}
+          {(() => {
+            const sizeOrder = ["XS","S","M","L","XL","XXL","XXXL"];
+            const groups = new Map<string, { type: string; name: string; color: string | null; items: MaterialItem[] }>();
+            materials.filter(m => m.status === "active").forEach(m => {
+              const k = `${m.material_type}::${m.name}::${m.color || ""}`;
+              if (!groups.has(k)) groups.set(k, { type: m.material_type, name: m.name, color: m.color, items: [] });
+              groups.get(k)!.items.push(m);
+            });
+            // Collect all sizes seen
+            const allSizes = new Set<string>();
+            groups.forEach(g => g.items.forEach(i => { if (i.size) allSizes.add(i.size.toUpperCase()); }));
+            const sizeCols = Array.from(allSizes).sort((a, b) => {
+              const ia = sizeOrder.indexOf(a); const ib = sizeOrder.indexOf(b);
+              return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+            });
+            const groupList = Array.from(groups.values()).sort((a, b) => (a.type + a.name).localeCompare(b.type + b.name));
+            if (groupList.length === 0) return null;
+            return (
+              <Card className="p-0 overflow-hidden">
+                <div className="p-4 pb-2">
+                  <h3 className="font-bold text-sm flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> Inventario por blank y talla</h3>
+                  <p className="text-xs text-muted-foreground">Stock total sumado de todas las sedes. Click en una fila abre el editor de tallas.</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader><TableRow>
+                      <TableHead className="text-xs">Tipo</TableHead>
+                      <TableHead className="text-xs">Material</TableHead>
+                      <TableHead className="text-xs">Color</TableHead>
+                      {sizeCols.map(s => <TableHead key={s} className="text-xs text-center">{s}</TableHead>)}
+                      <TableHead className="text-xs text-right">Total</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>
+                      {groupList.map(g => {
+                        const total = g.items.reduce((s, i) => s + (stockByMat.get(i.id) || 0), 0);
+                        const totalLow = total === 0 || g.items.some(i => (stockByMat.get(i.id) || 0) <= Number(i.low_stock_threshold || 0));
+                        return (
+                          <TableRow key={g.type + g.name + g.color}
+                            className="cursor-pointer hover:bg-muted/40"
+                            onClick={() => setGroupDlg({ open: true, items: g.items, title: `${g.name}${g.color ? ` · ${g.color}` : ""}` })}>
+                            <TableCell><Badge variant="outline" className="text-[10px]">{MATERIAL_TYPE_LABEL[g.type]}</Badge></TableCell>
+                            <TableCell className="text-xs font-medium">{g.name}</TableCell>
+                            <TableCell className="text-xs">{g.color || "—"}</TableCell>
+                            {sizeCols.map(s => {
+                              const it = g.items.find(i => (i.size || "").toUpperCase() === s);
+                              const stk = it ? (stockByMat.get(it.id) || 0) : null;
+                              const low = it ? stk! <= Number(it.low_stock_threshold || 0) : false;
+                              return (
+                                <TableCell key={s} className="text-center text-xs font-mono">
+                                  {it == null ? <span className="text-muted-foreground/40">—</span>
+                                    : <span className={low ? "text-amber-600 font-bold" : ""}>{stk}</span>}
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className={"text-right text-sm font-bold " + (totalLow ? "text-amber-600" : "")}>{total}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+            );
+          })()}
+
           {kpis.low > 0 && (
             <Card className="p-4">
-              <h3 className="font-bold mb-2 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-500" /> Materiales bajo stock</h3>
-              <ul className="text-sm space-y-1">
-                {lowStockMaterials.map(m => (
-                  <li key={m.id} className="flex justify-between"><span>{MATERIAL_TYPE_LABEL[m.material_type]} · {m.name}</span><span className="font-mono">{stockByMat.get(m.id) || 0} / umbral {m.low_stock_threshold}</span></li>
-                ))}
-              </ul>
+              <h3 className="font-bold mb-2 flex items-center gap-2 text-sm"><AlertTriangle className="h-4 w-4 text-amber-500" /> Materiales bajo stock ({kpis.low})</h3>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead className="text-xs">Tipo</TableHead>
+                    <TableHead className="text-xs">Material</TableHead>
+                    <TableHead className="text-xs">Talla</TableHead>
+                    <TableHead className="text-xs text-right">Stock</TableHead>
+                    <TableHead className="text-xs text-right">Umbral</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {lowStockMaterials.map(m => (
+                      <TableRow key={m.id}>
+                        <TableCell><Badge variant="outline" className="text-[10px]">{MATERIAL_TYPE_LABEL[m.material_type]}</Badge></TableCell>
+                        <TableCell className="text-xs">{m.name}{m.color ? ` · ${m.color}` : ""}</TableCell>
+                        <TableCell className="text-xs font-semibold">{m.size || "—"}</TableCell>
+                        <TableCell className="text-right text-xs font-mono text-amber-600 font-bold">{stockByMat.get(m.id) || 0}</TableCell>
+                        <TableCell className="text-right text-xs font-mono">{m.low_stock_threshold}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </Card>
           )}
 
