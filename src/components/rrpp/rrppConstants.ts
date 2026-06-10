@@ -3,6 +3,8 @@ import type { ContactType, RelationshipStatus } from "@/types/rrpp";
 export const RELATIONSHIP_LABELS: Record<RelationshipStatus, string> = {
   nuevo: "Nuevo",
   contactado: "Contactado",
+  envio_requerido: "Envío requerido",
+  producto_listo_envio: "Listo para envío",
   producto_enviado: "Producto enviado",
   colaboracion_en_curso: "Colaboración en curso",
   colaboracion_exitosa: "Colaboración exitosa",
