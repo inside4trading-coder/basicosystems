@@ -71,6 +71,7 @@ const emptyForm = () => ({
   // Step 2.1 - Confirmación de envío
   tracking_number: "",
   shipped_at: "",
+  packaged_at: "",
   received: false,
   // Cupón
   has_coupon: false,
