@@ -550,6 +550,7 @@ export default function EspanaBlanksDTF() {
       <MovementDialog state={movDlg} onClose={() => setMovDlg({ open: false })} onSaved={load} materials={materials} locations={locations} />
       <RecipeDialog state={recipeDlg} onClose={() => setRecipeDlg({ open: false })} onSaved={load} products={products} materials={materials} recipeItems={recipeItems} />
       <RecipeTestDialog state={testDlg} onClose={() => setTestDlg({ open: false })} recipes={recipes} recipeItems={recipeItems} materials={materials} stockByMatLoc={stockByMatLoc} locations={locations} />
+      <GroupSizesDialog state={groupDlg} onClose={() => setGroupDlg({ open: false })} onSaved={load} locations={locations} stockByMatLoc={stockByMatLoc} />
     </div>
   );
 }
