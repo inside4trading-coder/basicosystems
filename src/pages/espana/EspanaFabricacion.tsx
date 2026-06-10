@@ -61,6 +61,7 @@ export default function EspanaFabricacion() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<ViewFilter>("real");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [preflight, setPreflight] = useState<{ open: boolean; request?: FabRow; data?: any; loading?: boolean }>({ open: false });
 
   const load = async () => {
     setLoading(true);
