@@ -248,12 +248,26 @@ export default function EspanaFabricacion() {
                     {!r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">Real</span>}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
                       {busyId === r.id && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {r.status === "pending" && <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "in_progress")}><Play className="h-3 w-3 mr-1" />Fabricar</Button>}
-                      {r.status === "in_progress" && <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "ready")}><Check className="h-3 w-3 mr-1" />Listo</Button>}
-                      {r.status === "ready" && <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "delivered_to_shipping")}><Check className="h-3 w-3 mr-1" />Entregar</Button>}
-                      {!["cancelled","delivered_to_shipping"].includes(r.status) && <Button size="sm" variant="ghost" onClick={() => setStatus(r.id, "cancelled")}><X className="h-3 w-3" /></Button>}
+                      {r.status === "pending" && !r.is_legacy && (
+                        <Button size="sm" variant="outline" onClick={() => openPreflight(r)}>
+                          <Play className="h-3 w-3 mr-1" />Fabricar
+                        </Button>
+                      )}
+                      {r.status === "in_progress" && !r.is_legacy && (
+                        <Button size="sm" variant="outline" onClick={() => markReady(r.id)}>
+                          <Check className="h-3 w-3 mr-1" />Marcar listo
+                        </Button>
+                      )}
+                      {r.status === "ready" && !r.is_legacy && (
+                        <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "delivered_to_shipping")}>
+                          <Check className="h-3 w-3 mr-1" />Entregar
+                        </Button>
+                      )}
+                      {!["cancelled","delivered_to_shipping"].includes(r.status) && !r.is_legacy && (
+                        <Button size="sm" variant="ghost" onClick={() => setStatus(r.id, "cancelled")}><X className="h-3 w-3" /></Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -262,6 +276,93 @@ export default function EspanaFabricacion() {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Preflight modal */}
+      <Dialog open={preflight.open} onOpenChange={(o) => !o && setPreflight({ open: false })}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-primary" /> Fabricar solicitud</DialogTitle>
+          </DialogHeader>
+          {preflight.loading && !preflight.data && <div className="flex items-center gap-2 text-sm text-muted-foreground py-4"><Loader2 className="h-4 w-4 animate-spin" /> Resolviendo receta...</div>}
+          {preflight.data && (
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-2 text-xs bg-muted/40 p-3 rounded">
+                <div><span className="text-muted-foreground">Pedido:</span> <span className="font-mono">#{preflight.request?.esp_woo_orders?.order_number || preflight.request?.woo_order_id || "—"}</span></div>
+                <div><span className="text-muted-foreground">Producto:</span> <span className="font-semibold">{preflight.request?.product_name}</span></div>
+                <div><span className="text-muted-foreground">Talla raw:</span> {preflight.request?.variant_label || "—"}</div>
+                <div><span className="text-muted-foreground">Talla normalizada:</span> <span className="font-bold">{preflight.data.normalized_size || "—"}</span></div>
+                <div><span className="text-muted-foreground">Cantidad:</span> {preflight.request?.quantity}</div>
+                <div><span className="text-muted-foreground">Receta:</span> {preflight.data.recipe_id ? <span className="text-emerald-600">✓ encontrada</span> : <span className="text-amber-600">no encontrada</span>}</div>
+              </div>
+
+              {!preflight.data.ok && preflight.data.reason === "no_recipe" && (
+                <Card className="p-3 border-l-4 border-l-amber-500 bg-amber-500/5 text-xs">
+                  <p className="font-bold flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> Producto sin receta activa</p>
+                  <p className="text-muted-foreground mt-1">No se puede fabricar automáticamente. Crea una receta en Blanks / DTF → Recetas.</p>
+                </Card>
+              )}
+
+              {preflight.data.materials && (preflight.data.materials as any[]).length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Materiales requeridos</p>
+                  <div className="border rounded overflow-hidden">
+                    <Table>
+                      <TableHeader><TableRow>
+                        <TableHead className="text-xs">Material</TableHead>
+                        <TableHead className="text-xs">Estrategia</TableHead>
+                        <TableHead className="text-xs text-right">Requerido</TableHead>
+                        <TableHead className="text-xs text-right">Disponible</TableHead>
+                        <TableHead className="text-xs text-center">OK</TableHead>
+                      </TableRow></TableHeader>
+                      <TableBody>
+                        {(preflight.data.materials as any[]).map((m, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-xs">
+                              {m.material_name ? (
+                                <>
+                                  <span className="font-medium">{m.material_name}</span>
+                                  {m.material_size && <span className="text-muted-foreground"> · talla {m.material_size}</span>}
+                                  {m.material_sku && <div className="font-mono text-[10px] text-muted-foreground">{m.material_sku}</div>}
+                                </>
+                              ) : <span className="text-amber-600 italic">No resuelto · {m.reason || "—"}</span>}
+                            </TableCell>
+                            <TableCell className="text-xs">{m.size_strategy}</TableCell>
+                            <TableCell className="text-right text-xs font-mono">{Number(m.planned_quantity).toFixed(2)}</TableCell>
+                            <TableCell className="text-right text-xs font-mono">{Number(m.available).toFixed(2)}</TableCell>
+                            <TableCell className="text-center">
+                              {m.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600 inline" /> : <AlertTriangle className="h-4 w-4 text-amber-600 inline" />}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {preflight.data.already_consumed > 0 && (
+                <p className="text-xs text-amber-600">⚠ Esta solicitud ya tiene materiales consumidos. No se puede volver a consumir.</p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPreflight({ open: false })}>Cancelar</Button>
+            <Button
+              onClick={confirmConsume}
+              disabled={
+                preflight.loading
+                || !preflight.data
+                || !preflight.data.recipe_id
+                || !preflight.data.all_ok
+                || preflight.data.already_consumed > 0
+              }
+            >
+              {preflight.loading && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Consumir materiales y fabricar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
