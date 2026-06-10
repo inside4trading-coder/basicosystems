@@ -105,6 +105,15 @@ export default function EspanaBlanksDTF() {
     setRecipeItems((recItems.data || []) as any);
     setProducts((prods.data || []) as any);
     setTestRequests((testReqs.data || []) as any);
+
+    // Load profiles for users that appear in movements
+    const userIds = Array.from(new Set((mvs.data || []).map((m: any) => m.created_by).filter(Boolean)));
+    if (userIds.length > 0) {
+      const { data: profs } = await supabase.from("profiles").select("id,full_name,email").in("id", userIds as string[]);
+      setProfiles((profs || []) as any);
+    } else {
+      setProfiles([]);
+    }
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
