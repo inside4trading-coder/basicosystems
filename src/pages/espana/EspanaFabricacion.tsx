@@ -162,8 +162,8 @@ export default function EspanaFabricacion() {
         </div>
         <a href="/espana/blanks-dtf" className="text-sm text-primary font-semibold underline-offset-2 hover:underline">Blanks / DTF →</a>
       </div>
-      <Card className="p-3 border-l-4 border-l-blue-500 text-xs">
-        <span className="font-semibold">Blanks / DTF disponible</span> para configurar materiales y recetas. El consumo desde fabricación se activará en el BLOQUE 5B.
+      <Card className="p-3 border-l-4 border-l-emerald-500 text-xs">
+        <span className="font-semibold">BLOQUE 5B activo:</span> al pulsar <span className="font-semibold">Fabricar</span> se valida la receta, se calcula el stock requerido y se consumen los materiales atómicamente. No se toca WooCommerce, ni inventario físico, ni POS.
       </Card>
 
       {/* KPIs separados: real / pruebas / legacy */}
