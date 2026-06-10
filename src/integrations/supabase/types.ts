@@ -3485,6 +3485,97 @@ export type Database = {
         }
         Relationships: []
       }
+      esp_fabrication_material_consumptions: {
+        Row: {
+          consumed_quantity: number
+          created_at: string
+          created_by: string | null
+          fabrication_request_id: string
+          id: string
+          location_id: string | null
+          material_id: string
+          material_movement_id: string | null
+          notes: string | null
+          planned_quantity: number
+          recipe_id: string | null
+          recipe_item_id: string | null
+          size_strategy: string | null
+        }
+        Insert: {
+          consumed_quantity: number
+          created_at?: string
+          created_by?: string | null
+          fabrication_request_id: string
+          id?: string
+          location_id?: string | null
+          material_id: string
+          material_movement_id?: string | null
+          notes?: string | null
+          planned_quantity: number
+          recipe_id?: string | null
+          recipe_item_id?: string | null
+          size_strategy?: string | null
+        }
+        Update: {
+          consumed_quantity?: number
+          created_at?: string
+          created_by?: string | null
+          fabrication_request_id?: string
+          id?: string
+          location_id?: string | null
+          material_id?: string
+          material_movement_id?: string | null
+          notes?: string | null
+          planned_quantity?: number
+          recipe_id?: string | null
+          recipe_item_id?: string | null
+          size_strategy?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_fabrication_material_consumptio_fabrication_request_id_fkey"
+            columns: ["fabrication_request_id"]
+            isOneToOne: false
+            referencedRelation: "esp_fabrication_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_fabrication_material_consumptions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_fabrication_material_consumptions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "esp_material_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_fabrication_material_consumptions_material_movement_id_fkey"
+            columns: ["material_movement_id"]
+            isOneToOne: false
+            referencedRelation: "esp_material_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_fabrication_material_consumptions_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "esp_product_material_recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_fabrication_material_consumptions_recipe_item_id_fkey"
+            columns: ["recipe_item_id"]
+            isOneToOne: false
+            referencedRelation: "esp_product_material_recipe_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       esp_fabrication_requests: {
         Row: {
           cancel_reason: string | null
@@ -6658,6 +6749,15 @@ export type Database = {
         }
         Returns: Json
       }
+      esp_consume_materials_for_fabrication_request: {
+        Args: { p_location_id?: string; p_notes?: string; p_request_id: string }
+        Returns: Json
+      }
+      esp_fabrication_request_mark_ready: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
+      esp_normalize_size: { Args: { p_label: string }; Returns: string }
       esp_register_pos_sale: {
         Args: {
           p_allow_negative?: boolean
@@ -6668,6 +6768,10 @@ export type Database = {
           p_payment_method_id: string
           p_payment_reference?: string
         }
+        Returns: Json
+      }
+      esp_resolve_fabrication_materials: {
+        Args: { p_location_id?: string; p_request_id: string }
         Returns: Json
       }
       get_crew_employees: {
