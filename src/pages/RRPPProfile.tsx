@@ -133,7 +133,7 @@ export default function RRPPProfile() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Link to="/rrpp"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />RRPP</Button></Link>
+        <Link to="/rrpp?tab=contacts"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />RRPP</Button></Link>
         <ProfileHeaderSkeleton />
         <TabContentSkeleton />
       </div>
@@ -155,7 +155,7 @@ export default function RRPPProfile() {
   if (!contact) {
     return (
       <div className="space-y-4">
-        <Link to="/rrpp"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />RRPP</Button></Link>
+        <Link to="/rrpp?tab=contacts"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />RRPP</Button></Link>
         <div className="kpi-card text-center py-16 text-muted-foreground">Contacto no encontrado.</div>
       </div>
     );
@@ -165,7 +165,7 @@ export default function RRPPProfile() {
 
   return (
     <div className="space-y-6">
-      <Link to="/rrpp">
+      <Link to="/rrpp?tab=contacts">
         <Button variant="ghost" size="sm">
           <ArrowLeft className="h-4 w-4 mr-2" /> RRPP
         </Button>
