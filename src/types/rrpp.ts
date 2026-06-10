@@ -72,6 +72,7 @@ export interface Collaboration {
   shipping_phone?: string;
   tracking_number?: string;
   shipped_at?: string | null;
+  packaged_at?: string | null;
   published_at?: string | null;
   post_url?: string;
 }
