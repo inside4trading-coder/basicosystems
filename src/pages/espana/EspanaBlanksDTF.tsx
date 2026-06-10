@@ -78,6 +78,8 @@ export default function EspanaBlanksDTF() {
   const [movDlg, setMovDlg] = useState<{ open: boolean; type?: string; materialId?: string; locationId?: string }>({ open: false });
   const [recipeDlg, setRecipeDlg] = useState<{ open: boolean; recipe?: RecipeRow | null }>({ open: false });
   const [testDlg, setTestDlg] = useState<{ open: boolean; recipeId?: string }>({ open: false });
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const toggleGroup = (k: string) => setExpandedGroups(p => ({ ...p, [k]: !p[k] }));
 
   const load = async () => {
     setLoading(true);
