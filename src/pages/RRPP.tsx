@@ -53,6 +53,8 @@ const ALL = "__all__";
 
 export default function RRPP() {
   const [brand, setBrand] = useRRPPBrand();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") === "contacts" ? "contacts" : "dashboard";
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
