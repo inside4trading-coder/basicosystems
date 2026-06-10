@@ -315,10 +315,13 @@ export default function EspanaBlanksDTF() {
                       return;
                     }
 
-                    // Parent group row
+                    // Parent group row — click opens the size editor dialog; chevron toggles inline expansion
                     rendered.push(
-                      <TableRow key={key} className="bg-muted/40 cursor-pointer hover:bg-muted/60" onClick={() => toggleGroup(key)}>
-                        <TableCell>{expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</TableCell>
+                      <TableRow key={key} className="bg-muted/40 cursor-pointer hover:bg-muted/60"
+                        onClick={() => setGroupDlg({ open: true, items, title: `${head.name}${head.color ? ` · ${head.color}` : ""}` })}>
+                        <TableCell onClick={(e) => { e.stopPropagation(); toggleGroup(key); }} className="cursor-pointer">
+                          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </TableCell>
                         <TableCell><Badge variant="outline">{MATERIAL_TYPE_LABEL[head.material_type]}</Badge></TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground">{items.length} tallas</TableCell>
                         <TableCell className="font-bold text-sm">{head.name}</TableCell>
@@ -328,7 +331,9 @@ export default function EspanaBlanksDTF() {
                         <TableCell className="text-right text-xs">—</TableCell>
                         <TableCell className="text-right font-bold"><span className={totalLow > 0 ? "text-amber-600" : ""}>{totalStock}</span></TableCell>
                         <TableCell><Badge variant={head.status === "active" ? "default" : "secondary"}>{head.status}</Badge></TableCell>
-                        <TableCell></TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="outline" onClick={() => setGroupDlg({ open: true, items, title: `${head.name}${head.color ? ` · ${head.color}` : ""}` })}><Edit className="h-3 w-3 mr-1" />Editar tallas</Button>
+                        </TableCell>
                       </TableRow>
                     );
                     if (expanded) {
