@@ -456,11 +456,27 @@ export function RRPPCollaborations({ contactId, brand = "basico_ve", contactName
                 </Button>
               </div>
 
+              {/* STEP 2.05 - Empaquetado */}
+              <div className="rounded-md border border-dashed p-3 space-y-2 mt-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wide bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded">Paso 2.05</span>
+                  <h5 className="text-sm font-semibold">Empaquetado (listo para envío / entrega)</h5>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Marca la fecha cuando el producto ya está empaquetado y listo. Útil cuando es entrega personal: el contacto sabrá que ya puede pasar a retirarlo.
+                </p>
+                <div>
+                  <Label>Fecha de empaquetado</Label>
+                  <Input type="date" value={form.packaged_at}
+                    onChange={(e) => setForm({ ...form, packaged_at: e.target.value })} className="mt-1" />
+                </div>
+              </div>
+
               {/* STEP 2.1 - Confirmación de envío */}
               <div className="rounded-md border border-dashed p-3 space-y-3 mt-2">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary px-2 py-0.5 rounded">Paso 2.1</span>
-                  <h5 className="text-sm font-semibold">Confirmación de envío (tienda / fábrica)</h5>
+                  <h5 className="text-sm font-semibold">Confirmación de envío (con guía / tracking)</h5>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
