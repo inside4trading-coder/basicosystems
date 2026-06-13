@@ -422,10 +422,32 @@ export default function RRPP() {
                     )}
                   </div>
 
-                  <div className="mt-3">
+                  <div className="mt-3 flex items-center justify-between gap-2">
                     <span className={relationshipBadgeClass(c.relationship_status)}>
                       {RELATIONSHIP_LABELS[c.relationship_status] ?? c.relationship_status}
                     </span>
+                    {latestCollabByContact.has(c.id) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const collab = latestCollabByContact.get(c.id);
+                          if (collab) {
+                            generateShippingPdf({
+                              collab,
+                              brand,
+                              contactName: c.name,
+                              contactAlias: c.alias ?? undefined,
+                            });
+                          }
+                        }}
+                      >
+                        <FileText className="h-3.5 w-3.5 mr-1" /> Ver pedido
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Link>
