@@ -31,6 +31,7 @@ export function useRRPPPermissions(): RRPPPermissions {
     r === "admin" ? "admin"
     : r === "rrpp" ? "rrpp"
     : r === "marketing" ? "marketing"
+    : r === "partner" ? "rrpp"
     : r === "limited" ? "limited"
     : "other";
 
