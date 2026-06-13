@@ -72,6 +72,7 @@ export default function RRPP() {
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
   const [collabContactDates, setCollabContactDates] = useState<Map<string, Date[]>>(new Map());
+  const [latestCollabByContact, setLatestCollabByContact] = useState<Map<string, Collaboration>>(new Map());
 
   const [typeOptions, setTypeOptions] = useState<{ value: string; label: string }[]>([]);
   const [cityOptions, setCityOptions] = useState<string[]>([]);
