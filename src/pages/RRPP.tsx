@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Plus, Star, Search, MapPin, User as UserIcon, Archive, BarChart3, Users, CalendarIcon } from "lucide-react";
+import { Plus, Star, Search, MapPin, User as UserIcon, Archive, BarChart3, Users, CalendarIcon, FileText } from "lucide-react";
 import { fetchContacts, fetchConfig } from "@/hooks/useRRPPData";
 import { supabase } from "@/integrations/supabase/client";
-import type { Contact, ContactType, RelationshipStatus } from "@/types/rrpp";
+import type { Contact, ContactType, RelationshipStatus, Collaboration } from "@/types/rrpp";
 import { useRRPPBrand, RRPP_BRAND_LABELS } from "@/hooks/useRRPPBrand";
+import { generateShippingPdf } from "@/lib/rrppShippingPdf";
 import { BrandSwitcher } from "@/components/rrpp/BrandSwitcher";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
