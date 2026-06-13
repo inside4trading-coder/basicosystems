@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Plus, Star, Search, MapPin, User as UserIcon, Archive, BarChart3, Users, CalendarIcon } from "lucide-react";
+import { Plus, Star, Search, MapPin, User as UserIcon, Archive, BarChart3, Users, CalendarIcon, FileText } from "lucide-react";
 import { fetchContacts, fetchConfig } from "@/hooks/useRRPPData";
 import { supabase } from "@/integrations/supabase/client";
-import type { Contact, ContactType, RelationshipStatus } from "@/types/rrpp";
+import type { Contact, ContactType, RelationshipStatus, Collaboration } from "@/types/rrpp";
 import { useRRPPBrand, RRPP_BRAND_LABELS } from "@/hooks/useRRPPBrand";
+import { generateShippingPdf } from "@/lib/rrppShippingPdf";
 import { BrandSwitcher } from "@/components/rrpp/BrandSwitcher";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ export default function RRPP() {
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
   const [collabContactDates, setCollabContactDates] = useState<Map<string, Date[]>>(new Map());
+  const [latestCollabByContact, setLatestCollabByContact] = useState<Map<string, Collaboration>>(new Map());
 
   const [typeOptions, setTypeOptions] = useState<{ value: string; label: string }[]>([]);
   const [cityOptions, setCityOptions] = useState<string[]>([]);
@@ -98,25 +100,37 @@ export default function RRPP() {
   // Fetch collaboration activity dates for brand contacts (to filter "contacts collaborating in period")
   useEffect(() => {
     const ids = contacts.filter((c) => c.brand === brand).map((c) => c.id);
-    if (ids.length === 0) { setCollabContactDates(new Map()); return; }
+    if (ids.length === 0) { setCollabContactDates(new Map()); setLatestCollabByContact(new Map()); return; }
     let cancelled = false;
     (supabase as any)
       .from("rrpp_collaborations")
-      .select("contact_id, send_date, post_date, shipped_at, published_at, created_at")
+      .select("*")
       .in("contact_id", ids)
       .then(({ data }: any) => {
         if (cancelled) return;
-        const map = new Map<string, Date[]>();
+        const dateMap = new Map<string, Date[]>();
+        const latestMap = new Map<string, Collaboration>();
+        const latestTs = new Map<string, number>();
         for (const row of data ?? []) {
-          const arr = map.get(row.contact_id) ?? [];
+          const arr = dateMap.get(row.contact_id) ?? [];
+          let bestTs = 0;
           for (const v of [row.send_date, row.post_date, row.shipped_at, row.published_at, row.created_at]) {
             if (!v) continue;
             const d = typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? parseLocalDate(v) : new Date(v);
-            if (!isNaN(d.getTime())) arr.push(d);
+            if (!isNaN(d.getTime())) {
+              arr.push(d);
+              if (d.getTime() > bestTs) bestTs = d.getTime();
+            }
           }
-          map.set(row.contact_id, arr);
+          dateMap.set(row.contact_id, arr);
+          const prevTs = latestTs.get(row.contact_id) ?? -1;
+          if (bestTs > prevTs) {
+            latestTs.set(row.contact_id, bestTs);
+            latestMap.set(row.contact_id, row as Collaboration);
+          }
         }
-        setCollabContactDates(map);
+        setCollabContactDates(dateMap);
+        setLatestCollabByContact(latestMap);
       });
     return () => { cancelled = true; };
   }, [contacts, brand]);
@@ -408,10 +422,32 @@ export default function RRPP() {
                     )}
                   </div>
 
-                  <div className="mt-3">
+                  <div className="mt-3 flex items-center justify-between gap-2">
                     <span className={relationshipBadgeClass(c.relationship_status)}>
                       {RELATIONSHIP_LABELS[c.relationship_status] ?? c.relationship_status}
                     </span>
+                    {latestCollabByContact.has(c.id) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const collab = latestCollabByContact.get(c.id);
+                          if (collab) {
+                            generateShippingPdf({
+                              collab,
+                              brand,
+                              contactName: c.name,
+                              contactAlias: c.alias ?? undefined,
+                            });
+                          }
+                        }}
+                      >
+                        <FileText className="h-3.5 w-3.5 mr-1" /> Ver pedido
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Link>
