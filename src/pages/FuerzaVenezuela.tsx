@@ -123,10 +123,10 @@ export default function FuerzaVenezuela() {
     document.title = "fuerza venezuela — [BASICO]";
     (async () => {
       const [tRes, aRes, eRes, cRes] = await Promise.all([
-        supabase.from("fondo_public_totales").select("*").single(),
-        supabase.from("fondo_public_aportes").select("*").order("fecha_confirmada", { ascending: false }).limit(500),
-        supabase.from("fondo_public_egresos").select("*").order("fecha_ejecucion", { ascending: false }).limit(500),
-        supabase.from("fondo_configuracion").select("titulo_publico, subtitulo_publico, disclaimer").single(),
+        supabase.from("fondo_public_totales").select("*").maybeSingle(),
+        supabase.rpc("fondo_public_aportes_list"),
+        supabase.rpc("fondo_public_egresos_list"),
+        supabase.from("fondo_configuracion").select("titulo_publico, subtitulo_publico, disclaimer").maybeSingle(),
       ]);
       if (tRes.data) setT(tRes.data as any);
       if (aRes.data) {

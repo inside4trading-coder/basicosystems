@@ -7184,6 +7184,39 @@ export type Database = {
         }
         Returns: Json
       }
+      fondo_public_aportes_list: {
+        Args: never
+        Returns: {
+          donante_publico: string
+          equivalente_usd: number
+          estado: Database["public"]["Enums"]["fondo_aporte_estado"]
+          fecha_confirmada: string
+          fecha_reportada: string
+          id: string
+          metodo: Database["public"]["Enums"]["fondo_metodo"]
+          moneda_original: Database["public"]["Enums"]["fondo_moneda"]
+          monto_original: number
+          nota_publica: string
+          referencia_publica_enmascarada: string
+        }[]
+      }
+      fondo_public_egresos_list: {
+        Args: never
+        Returns: {
+          categoria: Database["public"]["Enums"]["fondo_egreso_categoria"]
+          comprobante_publico_url: string
+          descripcion: string
+          equivalente_usd: number
+          estado: Database["public"]["Enums"]["fondo_egreso_estado"]
+          fecha_ejecucion: string
+          fecha_gasto: string
+          id: string
+          moneda_original: Database["public"]["Enums"]["fondo_moneda"]
+          monto_original: number
+          nota_publica: string
+          proveedor: string
+        }[]
+      }
       get_crew_employees: {
         Args: never
         Returns: {
