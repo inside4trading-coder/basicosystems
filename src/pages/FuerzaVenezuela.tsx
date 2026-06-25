@@ -566,6 +566,12 @@ export default function FuerzaVenezuela() {
           100% { transform: translateY(40vh); opacity: 0; }
         }
       `}</style>
+
+      <AporteDialog
+        metodo={aporteMetodo}
+        open={aporteMetodo !== null}
+        onOpenChange={(o) => !o && setAporteMetodo(null)}
+      />
     </div>
   );
 }
