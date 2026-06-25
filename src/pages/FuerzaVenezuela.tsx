@@ -126,7 +126,7 @@ export default function FuerzaVenezuela() {
             {config?.titulo_publico ?? "fuerza venezuela"}
           </h1>
           <p className="mt-3 text-lg md:text-2xl font-medium lowercase text-neutral-700 max-w-3xl">
-            {config?.subitulo_publico ?? "fondo transparente de ayuda por [BASICO]"}
+            {config?.subtitulo_publico ?? "fondo transparente de ayuda por [BASICO]"}
           </p>
           <p className="mt-4 text-sm md:text-base text-muted-foreground max-w-2xl leading-relaxed">
             cada aporte confirmado, cada gasto ejecutado y cada saldo disponible se publica de forma transparente.
