@@ -7192,6 +7192,7 @@ export type Database = {
         Returns: {
           donante_publico: string
           equivalente_usd: number
+          es_anonimo: boolean
           estado: Database["public"]["Enums"]["fondo_aporte_estado"]
           fecha_confirmada: string
           fecha_reportada: string
@@ -7201,6 +7202,7 @@ export type Database = {
           monto_original: number
           nota_publica: string
           referencia_publica_enmascarada: string
+          telefono_publico: string
         }[]
       }
       fondo_public_egresos_list: {
