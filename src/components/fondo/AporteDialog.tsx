@@ -156,7 +156,7 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
         });
       if (upErr) throw upErr;
 
-      const monto = Number(values.monto.replace(",", "."));
+      const monto = parseMonto(values.monto);
       const { data, error } = await supabase.rpc("fondo_registrar_aporte_publico", {
         p_metodo: canal.metodo,
         p_nombre: values.nombre,
