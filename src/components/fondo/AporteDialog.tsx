@@ -318,23 +318,29 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
                 </Field>
               </FieldRow>
 
-              <FieldRow cols={2}>
-                <Field label="correo" error={errors.email?.message}>
-                  <Input
-                    {...register("email")}
-                    type="email"
-                    placeholder="correo@ejemplo.com"
-                    className="bg-white/5 border-white/10 text-white"
-                  />
-                </Field>
-                <Field label="teléfono" error={errors.telefono?.message}>
-                  <Input
-                    {...register("telefono")}
-                    placeholder="0414-1234567"
-                    className="bg-white/5 border-white/10 text-white"
-                  />
-                </Field>
-              </FieldRow>
+              {(canal.fields.email || canal.fields.telefono) && (
+                <FieldRow cols={canal.fields.email && canal.fields.telefono ? 2 : 1}>
+                  {canal.fields.email && (
+                    <Field label="correo" error={errors.email?.message}>
+                      <Input
+                        {...register("email")}
+                        type="email"
+                        placeholder="correo@ejemplo.com"
+                        className="bg-white/5 border-white/10 text-white"
+                      />
+                    </Field>
+                  )}
+                  {canal.fields.telefono && (
+                    <Field label="teléfono" error={errors.telefono?.message}>
+                      <Input
+                        {...register("telefono")}
+                        placeholder="0414-1234567"
+                        className="bg-white/5 border-white/10 text-white"
+                      />
+                    </Field>
+                  )}
+                </FieldRow>
+              )}
 
               <FieldRow cols={2}>
                 <Field label="fecha de pago" error={errors.fecha_pago?.message}>
@@ -361,18 +367,35 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
 
               </FieldRow>
 
-              <FieldRow>
-                <Field
-                  label="referencia / nº de operación"
-                  error={errors.referencia?.message}
-                >
-                  <Input
-                    {...register("referencia")}
-                    placeholder="ej. 123456789"
-                    className="bg-white/5 border-white/10 text-white"
-                  />
-                </Field>
-              </FieldRow>
+              {canal.fields.senderName && (
+                <FieldRow>
+                  <Field
+                    label="nombre de quien envía"
+                    error={errors.sender_name?.message}
+                  >
+                    <Input
+                      {...register("sender_name")}
+                      placeholder="nombre que aparece en el envío"
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </Field>
+                </FieldRow>
+              )}
+
+              {canal.fields.referencia && (
+                <FieldRow>
+                  <Field
+                    label="referencia / nº de operación"
+                    error={errors.referencia?.message}
+                  >
+                    <Input
+                      {...register("referencia")}
+                      placeholder="ej. 123456789"
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </Field>
+                </FieldRow>
+              )}
 
               <FieldRow>
                 <Field label="comprobante de pago" error={fileError ?? undefined}>
