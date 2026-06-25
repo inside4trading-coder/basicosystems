@@ -5249,7 +5249,12 @@ export type Database = {
           disclaimer: string
           id: boolean
           subtitulo_publico: string
+          tasa_actualizada_at: string | null
+          tasa_actualizada_por: string | null
+          tasa_fecha: string | null
+          tasa_fuente: string | null
           tasa_sugerida: number | null
+          tasa_ves_usd: number | null
           titulo_publico: string
           updated_at: string
           updated_by: string | null
@@ -5258,7 +5263,12 @@ export type Database = {
           disclaimer?: string
           id?: boolean
           subtitulo_publico?: string
+          tasa_actualizada_at?: string | null
+          tasa_actualizada_por?: string | null
+          tasa_fecha?: string | null
+          tasa_fuente?: string | null
           tasa_sugerida?: number | null
+          tasa_ves_usd?: number | null
           titulo_publico?: string
           updated_at?: string
           updated_by?: string | null
@@ -5267,7 +5277,12 @@ export type Database = {
           disclaimer?: string
           id?: boolean
           subtitulo_publico?: string
+          tasa_actualizada_at?: string | null
+          tasa_actualizada_por?: string | null
+          tasa_fecha?: string | null
+          tasa_fuente?: string | null
           tasa_sugerida?: number | null
+          tasa_ves_usd?: number | null
           titulo_publico?: string
           updated_at?: string
           updated_by?: string | null
@@ -7036,11 +7051,23 @@ export type Database = {
         Row: {
           aportes_confirmados_count: number | null
           aportes_pendientes_count: number | null
-          saldo_disponible_usd: number | null
-          total_confirmado_usd: number | null
-          total_egresos_usd: number | null
-          total_por_verificar_aprox: number | null
+          tasa_actualizada_at: string | null
+          tasa_fecha: string | null
+          tasa_fuente: string | null
+          tasa_ves_usd: number | null
           ultima_actualizacion: string | null
+          usd_confirmado: number | null
+          usd_egresos: number | null
+          usd_por_verificar: number | null
+          usd_saldo: number | null
+          usdt_confirmado: number | null
+          usdt_egresos: number | null
+          usdt_por_verificar: number | null
+          usdt_saldo: number | null
+          ves_confirmado: number | null
+          ves_egresos: number | null
+          ves_por_verificar: number | null
+          ves_saldo: number | null
         }
         Relationships: []
       }
@@ -7207,7 +7234,7 @@ export type Database = {
         | "refugio"
         | "otro"
       fondo_egreso_estado: "pendiente" | "aprobado" | "ejecutado" | "anulado"
-      fondo_metodo: "pago_movil" | "binance" | "zelle"
+      fondo_metodo: "pago_movil" | "binance" | "zelle" | "efectivo_sublime"
       fondo_moneda: "VES" | "USD" | "USDT"
       fondo_movimiento_estado:
         | "sin_conciliar"
@@ -7361,7 +7388,7 @@ export const Constants = {
         "otro",
       ],
       fondo_egreso_estado: ["pendiente", "aprobado", "ejecutado", "anulado"],
-      fondo_metodo: ["pago_movil", "binance", "zelle"],
+      fondo_metodo: ["pago_movil", "binance", "zelle", "efectivo_sublime"],
       fondo_moneda: ["VES", "USD", "USDT"],
       fondo_movimiento_estado: [
         "sin_conciliar",

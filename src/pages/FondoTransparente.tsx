@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-type Metodo = "pago_movil" | "binance" | "zelle";
+type Metodo = "pago_movil" | "binance" | "zelle" | "efectivo_sublime";
 type Moneda = "VES" | "USD" | "USDT";
 type AporteEstado =
   | "por_verificar" | "coincidencia_encontrada" | "confirmado"
@@ -91,11 +91,19 @@ const ESTADO_BADGE: Record<AporteEstado, { label: string; variant: any }> = {
   monto_incorrecto: { label: "Monto incorrecto", variant: "destructive" },
 };
 
-const fmtUSD = (n?: number | null) =>
-  n == null ? "—" : `US$ ${Number(n).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmtMonto = (n: number, m: string) =>
-  `${Number(n).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${m}`;
+const nfmt = (n?: number | null) =>
+  n == null ? "—" : Number(n).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtUSD = (n?: number | null) => (n == null ? "—" : `US$ ${nfmt(n)}`);
+const fmtBs = (n?: number | null) => (n == null ? "—" : `Bs ${nfmt(n)}`);
+const fmtUSDT = (n?: number | null) => (n == null ? "—" : `${nfmt(n)} USDT`);
+const fmtMonto = (n: number, m: string) => {
+  if (m === "VES") return fmtBs(n);
+  if (m === "USD") return fmtUSD(n);
+  if (m === "USDT") return fmtUSDT(n);
+  return `${nfmt(n)} ${m}`;
+};
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleString("es-VE") : "—");
+const fmtDateOrNone = (d?: string | null) => (d ? new Date(d).toLocaleString("es-VE") : "sin actualizaciones todavía");
 
 function maskRef(metodo: Metodo, raw: string): string {
   const v = (raw || "").trim();
@@ -196,6 +204,10 @@ function DashboardTab() {
   };
   useEffect(() => { load(); }, []);
 
+  const tasa = t?.tasa_ves_usd && Number(t.tasa_ves_usd) > 0 ? Number(t.tasa_ves_usd) : null;
+  const vesSaldoUsd = tasa && t?.ves_saldo != null ? Number(t.ves_saldo) / tasa : null;
+  const totalRefUsd = (vesSaldoUsd ?? 0) + Number(t?.usd_saldo ?? 0) + Number(t?.usdt_saldo ?? 0);
+
   return (
     <div className="space-y-4 mt-4">
       <div className="flex justify-end">
@@ -203,23 +215,73 @@ function DashboardTab() {
           <RefreshCw className="h-4 w-4 mr-2" /> Refrescar
         </Button>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KCard label="Total confirmado" value={fmtUSD(t?.total_confirmado_usd ?? 0)} accent="primary" />
-        <KCard label="Por verificar" value={fmtUSD(t?.total_por_verificar_aprox ?? 0)} />
-        <KCard label="Gastos ejecutados" value={fmtUSD(t?.total_egresos_usd ?? 0)} />
-        <KCard label="Saldo disponible" value={fmtUSD(t?.saldo_disponible_usd ?? 0)} accent="success" />
-        <KCard label="Aportes confirmados" value={String(t?.aportes_confirmados_count ?? 0)} />
-        <KCard label="Aportes pendientes" value={String(t?.aportes_pendientes_count ?? 0)} />
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Última actualización: {fmtDate(t?.ultima_actualizacion)} {loading && "· cargando…"}
-      </p>
+
       <Card>
-        <CardHeader><CardTitle className="text-sm">Fórmula</CardTitle></CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          <code>saldo_disponible = sum(aportes.equivalente_usd where estado='confirmado') − sum(egresos.equivalente_usd where estado='ejecutado')</code>
-          <br />
-          Los aportes <strong>por verificar NO</strong> se suman al saldo disponible.
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Pago Móvil / Bolívares</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KCard label="Confirmado" value={fmtBs(t?.ves_confirmado ?? 0)} accent="primary" />
+          <KCard label="Por verificar" value={fmtBs(t?.ves_por_verificar ?? 0)} />
+          <KCard label="Egresos" value={fmtBs(t?.ves_egresos ?? 0)} />
+          <KCard label="Saldo disponible" value={fmtBs(t?.ves_saldo ?? 0)} accent="success" />
+        </CardContent>
+        <CardContent className="pt-0 text-xs text-muted-foreground">
+          {tasa ? (
+            <>Equivalente USD del saldo: <strong>{fmtUSD(vesSaldoUsd)}</strong> · Tasa: 1 USD = {nfmt(tasa)} Bs
+            {t?.tasa_fecha ? ` · ${new Date(t.tasa_fecha).toLocaleDateString("es-VE")}` : ""}
+            {t?.tasa_fuente ? ` · ${t.tasa_fuente}` : ""}</>
+          ) : (
+            <>Tasa del día no configurada (Configuración → Tasa del día).</>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Zelle + Efectivo Sublime / USD</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KCard label="Confirmado" value={fmtUSD(t?.usd_confirmado ?? 0)} accent="primary" />
+          <KCard label="Por verificar" value={fmtUSD(t?.usd_por_verificar ?? 0)} />
+          <KCard label="Egresos" value={fmtUSD(t?.usd_egresos ?? 0)} />
+          <KCard label="Saldo disponible" value={fmtUSD(t?.usd_saldo ?? 0)} accent="success" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Binance / USDT</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KCard label="Confirmado" value={fmtUSDT(t?.usdt_confirmado ?? 0)} accent="primary" />
+          <KCard label="Por verificar" value={fmtUSDT(t?.usdt_por_verificar ?? 0)} />
+          <KCard label="Egresos" value={fmtUSDT(t?.usdt_egresos ?? 0)} />
+          <KCard label="Saldo disponible" value={fmtUSDT(t?.usdt_saldo ?? 0)} accent="success" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Resumen general (referencial)</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <KCard label="Saldo Bs" value={fmtBs(t?.ves_saldo ?? 0)} />
+          <KCard label="Equiv USD de Bs" value={fmtUSD(vesSaldoUsd)} />
+          <KCard label="Saldo USD" value={fmtUSD(t?.usd_saldo ?? 0)} />
+          <KCard label="Saldo USDT" value={fmtUSDT(t?.usdt_saldo ?? 0)} />
+          <KCard label="Total aprox USD" value={fmtUSD(totalRefUsd)} accent="success" />
+        </CardContent>
+        <CardContent className="pt-0 text-xs text-muted-foreground">
+          Cifra referencial. Cada moneda se gasta por separado; no hay conversión automática entre saldos.
+        </CardContent>
+      </Card>
+
+      <p className="text-xs text-muted-foreground">
+        {t?.ultima_actualizacion
+          ? <>Última actualización: {fmtDate(t.ultima_actualizacion)} · {t?.aportes_confirmados_count ?? 0} confirmados · {t?.aportes_pendientes_count ?? 0} pendientes</>
+          : <>sin actualizaciones todavía</>}
+        {loading && " · cargando…"}
+      </p>
+
+      <Card>
+        <CardHeader><CardTitle className="text-sm">Reglas contables</CardTitle></CardHeader>
+        <CardContent className="text-xs text-muted-foreground space-y-1">
+          <div>· Pago Móvil → VES · Zelle → USD · Efectivo Sublime → USD · Binance → USDT</div>
+          <div>· Los egresos descuentan saldo de la misma moneda usada para pagar.</div>
+          <div>· No se mezclan monedas automáticamente. Las conversiones deben registrarse como movimiento de conversión.</div>
         </CardContent>
       </Card>
     </div>
@@ -333,9 +395,10 @@ function AportesTab() {
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="pago_movil">Pago Móvil</SelectItem>
-              <SelectItem value="binance">Binance</SelectItem>
-              <SelectItem value="zelle">Zelle</SelectItem>
+              <SelectItem value="pago_movil">Pago Móvil (Bs)</SelectItem>
+              <SelectItem value="zelle">Zelle (USD)</SelectItem>
+              <SelectItem value="efectivo_sublime">Efectivo Sublime (USD)</SelectItem>
+              <SelectItem value="binance">Binance (USDT)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -505,25 +568,32 @@ function AporteFormDialog({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <Label>Método</Label>
-            <Select value={f.metodo} onValueChange={(v) => setF({ ...f, metodo: v as Metodo })}>
+            <Select
+              value={f.metodo}
+              onValueChange={(v) => {
+                const metodo = v as Metodo;
+                const monedaForzada: Moneda =
+                  metodo === "pago_movil" ? "VES"
+                  : metodo === "binance" ? "USDT"
+                  : "USD";
+                setF({ ...f, metodo, moneda_original: monedaForzada });
+              }}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="pago_movil">Pago Móvil</SelectItem>
-                <SelectItem value="binance">Binance / USDT</SelectItem>
-                <SelectItem value="zelle">Zelle</SelectItem>
+                <SelectItem value="pago_movil">Pago Móvil (Bs)</SelectItem>
+                <SelectItem value="zelle">Zelle (USD)</SelectItem>
+                <SelectItem value="efectivo_sublime">Efectivo Sublime (USD)</SelectItem>
+                <SelectItem value="binance">Binance (USDT)</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label>Moneda</Label>
-            <Select value={f.moneda_original} onValueChange={(v) => setF({ ...f, moneda_original: v as Moneda })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="VES">VES</SelectItem>
-                <SelectItem value="USD">USD</SelectItem>
-                <SelectItem value="USDT">USDT</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input value={f.moneda_original} disabled />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Determinada por el método. No se mezclan monedas automáticamente.
+            </p>
           </div>
           <div>
             <Label>Monto</Label>
@@ -860,7 +930,7 @@ function CargaMasivaTab() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Encabezado esperado: <code>fecha,metodo,referencia,monto,moneda,origen,nota</code> · Métodos: pago_movil/binance/zelle · Monedas: VES/USD/USDT.
+            Encabezado esperado: <code>fecha,metodo,referencia,monto,moneda,origen,nota</code> · Métodos: pago_movil/zelle/efectivo_sublime/binance · Monedas: VES/USD/USDT.
           </p>
           <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} className="font-mono text-xs" />
           <div className="flex gap-2">
@@ -1185,6 +1255,25 @@ function ConfiguracionTab() {
     if (error) return toast.error(error.message);
     toast.success("Configuración guardada");
   };
+
+  const guardarTasa = async () => {
+    const t = c.tasa_ves_usd ? parseFloat(c.tasa_ves_usd) : null;
+    if (!t || t <= 0) return toast.error("Tasa inválida");
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("fondo_configuracion").update({
+      tasa_ves_usd: t,
+      tasa_fecha: c.tasa_fecha || new Date().toISOString().slice(0, 10),
+      tasa_fuente: c.tasa_fuente || null,
+      tasa_actualizada_at: new Date().toISOString(),
+      tasa_actualizada_por: user?.id ?? null,
+    }).eq("id", true);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Tasa del día actualizada");
+    supabase.from("fondo_configuracion").select("*").single().then(({ data }) => setC(data));
+  };
+
   return (
     <div className="space-y-4 mt-4">
       <Card>
@@ -1203,10 +1292,51 @@ function ConfiguracionTab() {
             <Textarea rows={5} value={c.disclaimer ?? ""} onChange={(e) => setC({ ...c, disclaimer: e.target.value })} />
           </div>
           <div>
-            <Label>Tasa sugerida (VES/USD)</Label>
+            <Label>Tasa sugerida — uso histórico (VES/USD)</Label>
             <Input type="number" step="0.01" value={c.tasa_sugerida ?? ""} onChange={(e) => setC({ ...c, tasa_sugerida: e.target.value })} />
           </div>
           <Button onClick={save} disabled={saving}>Guardar</Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2"><SettingsIcon className="h-4 w-4" /> Tasa del día (Bs por USD)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Esta tasa se usa solo para mostrar el equivalente referencial en USD del saldo en Bolívares. No convierte saldos
+            automáticamente: cada moneda (VES, USD, USDT) se gasta por separado.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <Label>Tasa VES → USD</Label>
+              <Input
+                type="number" step="0.01"
+                placeholder="ej: 40.50"
+                value={c.tasa_ves_usd ?? ""}
+                onChange={(e) => setC({ ...c, tasa_ves_usd: e.target.value })}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">1 USD = X Bs</p>
+            </div>
+            <div>
+              <Label>Fecha de la tasa</Label>
+              <Input type="date" value={c.tasa_fecha ?? ""} onChange={(e) => setC({ ...c, tasa_fecha: e.target.value })} />
+            </div>
+            <div>
+              <Label>Fuente / nota</Label>
+              <Input
+                placeholder="BCV / Monitor / nota interna"
+                value={c.tasa_fuente ?? ""}
+                onChange={(e) => setC({ ...c, tasa_fuente: e.target.value })}
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Última actualización de la tasa:{" "}
+            {c.tasa_actualizada_at ? new Date(c.tasa_actualizada_at).toLocaleString("es-VE") : "sin actualizaciones todavía"}
+          </p>
+          <Button onClick={guardarTasa} disabled={saving}>Guardar tasa del día</Button>
         </CardContent>
       </Card>
     </div>

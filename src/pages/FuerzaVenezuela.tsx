@@ -5,10 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Totales = {
-  total_confirmado_usd: number;
-  total_por_verificar_aprox: number;
-  total_egresos_usd: number;
-  saldo_disponible_usd: number;
+  ves_confirmado: number; ves_por_verificar: number; ves_egresos: number; ves_saldo: number;
+  usd_confirmado: number; usd_por_verificar: number; usd_egresos: number; usd_saldo: number;
+  usdt_confirmado: number; usdt_por_verificar: number; usdt_egresos: number; usdt_saldo: number;
+  tasa_ves_usd: number | null;
+  tasa_fecha: string | null;
+  tasa_fuente: string | null;
+  tasa_actualizada_at: string | null;
   aportes_confirmados_count: number;
   aportes_pendientes_count: number;
   ultima_actualizacion: string | null;
@@ -49,14 +52,23 @@ type Config = {
   disclaimer: string;
 };
 
-const fmtUSD = (n: number | null | undefined) =>
-  n == null ? "—" : `US$ ${Number(n).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmtMonto = (n: number | null | undefined, m: string) =>
-  n == null ? "—" : `${Number(n).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${m}`;
-const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleString("es-VE") : "—");
+const nfmt = (n: number | null | undefined, dec = 2) =>
+  n == null ? "—" : Number(n).toLocaleString("es-VE", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const fmtBs = (n: number | null | undefined) => (n == null ? "—" : `Bs ${nfmt(n)}`);
+const fmtUSD = (n: number | null | undefined) => (n == null ? "—" : `US$ ${nfmt(n)}`);
+const fmtUSDT = (n: number | null | undefined) => (n == null ? "—" : `${nfmt(n)} USDT`);
+const fmtMonto = (n: number | null | undefined, m: string) => {
+  if (n == null) return "—";
+  if (m === "VES") return fmtBs(n);
+  if (m === "USD") return fmtUSD(n);
+  if (m === "USDT") return fmtUSDT(n);
+  return `${nfmt(n)} ${m}`;
+};
+const fmtDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleString("es-VE") : null);
+const fmtDateOnly = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString("es-VE") : null);
 
 export default function FuerzaVenezuela() {
-  const [totales, setTotales] = useState<Totales | null>(null);
+  const [t, setT] = useState<Totales | null>(null);
   const [confirmados, setConfirmados] = useState<AporteRow[]>([]);
   const [porVerificar, setPorVerificar] = useState<AporteRow[]>([]);
   const [egresos, setEgresos] = useState<EgresoRow[]>([]);
@@ -71,7 +83,7 @@ export default function FuerzaVenezuela() {
         supabase.from("fondo_public_egresos").select("*").order("fecha_ejecucion", { ascending: false }).limit(500),
         supabase.from("fondo_configuracion").select("titulo_publico, subtitulo_publico, disclaimer").single(),
       ]);
-      if (tRes.data) setTotales(tRes.data as any);
+      if (tRes.data) setT(tRes.data as any);
       if (aRes.data) {
         const rows = aRes.data as AporteRow[];
         setConfirmados(rows.filter((r) => r.estado === "confirmado"));
@@ -81,6 +93,12 @@ export default function FuerzaVenezuela() {
       if (cRes.data) setConfig(cRes.data as any);
     })();
   }, []);
+
+  const tasa = t?.tasa_ves_usd && t.tasa_ves_usd > 0 ? Number(t.tasa_ves_usd) : null;
+  const vesSaldoUsd = tasa && t?.ves_saldo != null ? t.ves_saldo / tasa : null;
+  const totalRefUsd =
+    (vesSaldoUsd ?? 0) + Number(t?.usd_saldo ?? 0) + Number(t?.usdt_saldo ?? 0);
+  const ultimaAct = fmtDate(t?.ultima_actualizacion ?? null);
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -94,16 +112,71 @@ export default function FuerzaVenezuela() {
           </p>
         </header>
 
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
-          <KPI label="Total confirmado" value={fmtUSD(totales?.total_confirmado_usd ?? 0)} />
-          <KPI label="Por verificar" value={fmtUSD(totales?.total_por_verificar_aprox ?? 0)} subtle />
-          <KPI label="Gastos ejecutados" value={fmtUSD(totales?.total_egresos_usd ?? 0)} />
-          <KPI label="Saldo disponible" value={fmtUSD(totales?.saldo_disponible_usd ?? 0)} highlight />
-        </section>
+        {/* Bloque 1 — Pago Móvil / Bs */}
+        <BlockCard title="pago móvil / bolívares" subtitle="aportes recibidos en Bs por Pago Móvil">
+          <KPIGrid>
+            <KPI label="Total confirmado" value={fmtBs(t?.ves_confirmado)} />
+            <KPI label="Por verificar" value={fmtBs(t?.ves_por_verificar)} subtle />
+            <KPI label="Gastos ejecutados" value={fmtBs(t?.ves_egresos)} />
+            <KPI label="Saldo disponible" value={fmtBs(t?.ves_saldo)} highlight />
+          </KPIGrid>
+          <TasaNote
+            tasa={tasa}
+            fecha={t?.tasa_fecha ?? null}
+            fuente={t?.tasa_fuente ?? null}
+            equiv={vesSaldoUsd}
+          />
+        </BlockCard>
+
+        {/* Bloque 2 — Zelle + Efectivo Sublime / USD */}
+        <BlockCard title="zelle + efectivo sublime / usd" subtitle="aportes en US$ por Zelle o efectivo recibido en Sublime">
+          <KPIGrid>
+            <KPI label="Total confirmado" value={fmtUSD(t?.usd_confirmado)} />
+            <KPI label="Por verificar" value={fmtUSD(t?.usd_por_verificar)} subtle />
+            <KPI label="Gastos ejecutados" value={fmtUSD(t?.usd_egresos)} />
+            <KPI label="Saldo disponible" value={fmtUSD(t?.usd_saldo)} highlight />
+          </KPIGrid>
+        </BlockCard>
+
+        {/* Bloque 3 — Binance / USDT */}
+        <BlockCard title="binance / usdt" subtitle="aportes en USDT recibidos por Binance">
+          <KPIGrid>
+            <KPI label="Total confirmado" value={fmtUSDT(t?.usdt_confirmado)} />
+            <KPI label="Por verificar" value={fmtUSDT(t?.usdt_por_verificar)} subtle />
+            <KPI label="Gastos ejecutados" value={fmtUSDT(t?.usdt_egresos)} />
+            <KPI label="Saldo disponible" value={fmtUSDT(t?.usdt_saldo)} highlight />
+          </KPIGrid>
+        </BlockCard>
+
+        {/* Bloque resumen general */}
+        <BlockCard title="resumen general" subtitle="visión consolidada — cifras referenciales, no representan un único saldo bancario">
+          <KPIGrid cols={5}>
+            <KPI label="Saldo Bs" value={fmtBs(t?.ves_saldo)} />
+            <KPI label="Equiv. USD de Bs" value={fmtUSD(vesSaldoUsd)} subtle />
+            <KPI label="Saldo USD" value={fmtUSD(t?.usd_saldo)} />
+            <KPI label="Saldo USDT" value={fmtUSDT(t?.usdt_saldo)} />
+            <KPI
+              label="Total aprox. en USD"
+              value={fmtUSD(totalRefUsd)}
+              highlight
+            />
+          </KPIGrid>
+          <p className="text-xs text-neutral-500 mt-3 leading-relaxed">
+            <strong>Cifra referencial.</strong> Calculada como{" "}
+            <code className="text-[11px]">equiv USD de Bs + saldo USD + saldo USDT</code>. Cada moneda se gasta
+            por separado; no hay conversión automática entre saldos.
+            {tasa ? (
+              <> Tasa usada: 1 USD = {nfmt(tasa)} Bs{t?.tasa_fecha ? ` · ${fmtDateOnly(t.tasa_fecha)}` : ""}.</>
+            ) : (
+              <> Aún no se ha configurado la tasa del día; el equivalente USD de Bs no se puede calcular.</>
+            )}
+          </p>
+        </BlockCard>
 
         <p className="text-xs text-neutral-500 mb-10">
-          Última actualización: {fmtDate(totales?.ultima_actualizacion ?? null)} · {totales?.aportes_confirmados_count ?? 0} aportes confirmados ·{" "}
-          {totales?.aportes_pendientes_count ?? 0} pendientes
+          {ultimaAct
+            ? <>Última actualización: {ultimaAct} · {t?.aportes_confirmados_count ?? 0} aportes confirmados · {t?.aportes_pendientes_count ?? 0} pendientes</>
+            : <>sin actualizaciones todavía</>}
         </p>
 
         <Section title="ingresos confirmados">
@@ -111,13 +184,12 @@ export default function FuerzaVenezuela() {
             <Empty msg="Aún no hay aportes confirmados." />
           ) : (
             <DataTable
-              cols={["Fecha", "Donante", "Método", "Monto", "USD", "Ref.", "Estado"]}
+              cols={["Fecha", "Donante", "Método", "Monto", "Ref.", "Estado"]}
               rows={confirmados.map((r) => [
-                fmtDate(r.fecha_confirmada),
+                fmtDate(r.fecha_confirmada) ?? "—",
                 r.donante_publico,
                 r.metodo,
                 fmtMonto(r.monto_original, r.moneda_original),
-                fmtUSD(r.equivalente_usd),
                 r.referencia_publica_enmascarada ?? "—",
                 <Badge key="b" variant="outline" className="border-black text-black">confirmado</Badge>,
               ])}
@@ -146,14 +218,13 @@ export default function FuerzaVenezuela() {
             <Empty msg="Aún no se han ejecutado gastos." />
           ) : (
             <DataTable
-              cols={["Fecha", "Categoría", "Descripción", "Beneficiario", "Monto", "USD", "Comprobante"]}
+              cols={["Fecha", "Categoría", "Descripción", "Beneficiario", "Monto", "Comprobante"]}
               rows={egresos.map((r) => [
-                fmtDate(r.fecha_ejecucion ?? r.fecha_gasto),
+                fmtDate(r.fecha_ejecucion ?? r.fecha_gasto) ?? "—",
                 r.categoria,
                 r.descripcion ?? "—",
                 r.proveedor ?? "—",
                 fmtMonto(r.monto_original, r.moneda_original),
-                fmtUSD(r.equivalente_usd),
                 r.comprobante_publico_url ? (
                   <a key="l" href={r.comprobante_publico_url} target="_blank" rel="noreferrer" className="underline">
                     ver
@@ -175,18 +246,57 @@ export default function FuerzaVenezuela() {
   );
 }
 
+function BlockCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-8 border border-black/15 rounded-lg p-4 md:p-6">
+      <div className="mb-4">
+        <h2 className="text-lg md:text-xl font-semibold lowercase">{title}</h2>
+        {subtitle && <p className="text-xs md:text-sm text-neutral-500 lowercase mt-1">{subtitle}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function KPIGrid({ children, cols = 4 }: { children: React.ReactNode; cols?: 4 | 5 }) {
+  const c = cols === 5 ? "md:grid-cols-5" : "md:grid-cols-4";
+  return <div className={`grid grid-cols-2 ${c} gap-3`}>{children}</div>;
+}
+
 function KPI({ label, value, highlight, subtle }: { label: string; value: string; highlight?: boolean; subtle?: boolean }) {
   return (
     <Card className={`border-black/20 ${highlight ? "bg-black text-white" : subtle ? "bg-neutral-50" : ""}`}>
       <CardHeader className="pb-2">
-        <CardTitle className={`text-xs font-medium uppercase tracking-wider ${highlight ? "text-white/70" : "text-neutral-500"}`}>
+        <CardTitle className={`text-[10px] md:text-xs font-medium uppercase tracking-wider ${highlight ? "text-white/70" : "text-neutral-500"}`}>
           {label}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-xl md:text-2xl font-semibold tabular-nums">{value}</div>
+        <div className="text-lg md:text-2xl font-semibold tabular-nums">{value}</div>
       </CardContent>
     </Card>
+  );
+}
+
+function TasaNote({
+  tasa, fecha, fuente, equiv,
+}: { tasa: number | null; fecha: string | null; fuente: string | null; equiv: number | null }) {
+  if (!tasa) {
+    return (
+      <p className="text-xs text-neutral-500 mt-3">
+        Tasa del día no configurada. El equivalente en USD no se puede calcular todavía.
+      </p>
+    );
+  }
+  return (
+    <div className="text-xs text-neutral-600 mt-3 space-y-1">
+      <div>Equivalente USD del saldo: <strong>{fmtUSD(equiv)}</strong> (referencial)</div>
+      <div className="text-neutral-500">
+        Tasa usada: 1 USD = {nfmt(tasa)} Bs
+        {fecha ? ` · ${fmtDateOnly(fecha)}` : ""}
+        {fuente ? ` · ${fuente}` : ""}
+      </div>
+    </div>
   );
 }
 
