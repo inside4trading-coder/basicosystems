@@ -436,3 +436,22 @@ function DataTable({ cols, rows }: { cols: string[]; rows: React.ReactNode[][] }
   );
 }
 
+function AporteMethod({
+  title,
+  currency,
+  description,
+}: {
+  title: string;
+  currency: string;
+  description: string;
+}) {
+  return (
+    <div className="bg-card border border-foreground/10 rounded-lg p-5">
+      <h3 className="text-sm md:text-base font-bold lowercase tracking-tight mb-1">{title}</h3>
+      <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">{currency}</p>
+      <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+
