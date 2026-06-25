@@ -465,7 +465,7 @@ export default function FuerzaVenezuela() {
         </section>
 
         {/* TABLAS */}
-        <section className="animate-fade-in">
+        <section id="registro" className="animate-fade-in">
           <SectionHeader
             eyebrow="registro público"
             title="ingresos confirmados"
