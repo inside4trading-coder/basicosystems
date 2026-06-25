@@ -1,106 +1,63 @@
 
-# Fondo Transparente / Fuerza Venezuela — Fase 1
+# Cómo aportar → modal con formulario y comprobante
 
-Construcción por fases. Esta es **Fase 1**: cimientos completos + lo mínimo operativo end-to-end (registrar aportes, confirmar/rechazar, y página pública leyendo datos reales). Conciliación, carga masiva CSV, egresos, auditoría enriquecida y export quedan para Fases 2 y 3.
+Activamos el botón "usar este método" de cada canal en `/fuerza-venezuela` para que abra un **modal en la misma página** (mejor conversión, mantiene el contexto del fondo). Arrancamos con Pago Móvil completo; Zelle y Binance quedan listos en estructura para llenar sus datos en un paso siguiente. Quitamos "efectivo sublime" del listado de canales activos según indicación.
 
-Acceso privado: **admin + manager**. Página pública `/fuerza-venezuela`: abierta e indexable. Tasa VES→USD: **manual por aporte** (sin API externa).
+## Flujo del usuario
 
----
+1. Click en "usar este método" en la tarjeta del canal.
+2. Se abre un modal con dos zonas:
+   - **Datos del canal** (a quién pagar). Para Pago Móvil: `04245957541 · Banco de Venezuela · V-26.007.816` con botones de copiar.
+   - **Formulario de registro del aporte**.
+3. El usuario completa, adjunta comprobante (obligatorio), envía.
+4. El aporte queda como `por_verificar`. Mostramos pantalla de "¡gracias! revisaremos tu aporte y aparecerá publicado en breve" con un enlace para ver la tabla pública.
 
-## 1. Base de datos (nuevas tablas, aisladas)
+## Formulario (campos)
 
-Prefijo `fondo_` para no tocar nada existente.
+- nombre (texto, requerido) — se publica como `donante_publico` salvo que marque "aportar como anónimo".
+- correo (email, requerido, privado, solo interno)
+- teléfono (texto, requerido, privado, solo interno)
+- fecha de pago (date, requerido)
+- monto (numérico, requerido) — en Bs para pago móvil, en USD para Zelle, en USDT para Binance
+- referencia (texto, requerido) — número de operación / hash / referencia bancaria
+- comprobante de pago (file, **obligatorio**) — imagen o PDF, máx 5 MB
+- checkbox opcional "publicar como anónimo"
 
-- **`fondo_aportes`** — donaciones reportadas
-  - Datos donante: `nombre_donante`, `nombre_publico`, `es_anonimo`, `email_contacto` (privado)
-  - Movimiento: `metodo` (`pago_movil`/`binance`/`zelle`), `moneda_original` (`VES`/`USD`/`USDT`), `monto_original`, `tasa_usada`, `equivalente_usd`
-  - Referencias: `referencia_privada`, `referencia_publica_enmascarada`, `comprobante_privado_url`
-  - Fechas: `fecha_reportada`, `fecha_confirmada`, `created_at`, `updated_at`
-  - Estado: `por_verificar` / `coincidencia_encontrada` / `confirmado` / `rechazado` / `duplicado` / `monto_incorrecto`
-  - Notas: `nota_publica`, `nota_interna`
-  - Auditoría inline: `verificado_por`, `fecha_verificacion`, `created_by`
+Validación cliente con zod (longitudes, formato email, file size/mime) y revalidación en el RPC.
 
-- **`fondo_movimientos_cargados`** (Fase 2, creada vacía ahora) — movimientos bancarios importados por CSV
+## Comportamiento por canal
 
-- **`fondo_egresos`** (Fase 3, creada vacía ahora) — gastos
+- **Pago Móvil** → activo, formulario completo + datos arriba.
+- **Zelle** → modal abre, datos del canal en placeholder ("próximamente, contáctanos") hasta que pases los datos definitivos. El formulario funciona igual.
+- **Binance** → idem Zelle.
+- **Efectivo Sublime** → se elimina de las tarjetas públicas.
 
-- **`fondo_audit_log`** — registro de cambios (usuario, acción, tabla, record_id, valor_anterior jsonb, valor_nuevo jsonb)
+## Tras enviar
 
-- **`fondo_configuracion`** — singleton: textos públicos, título, disclaimer, tasa sugerida del día (opcional, no obliga)
+- Insert en `fondo_aportes` con `estado='por_verificar'`, `fecha_reportada = fecha_pago`, datos privados (email, teléfono, nombre completo) en columnas existentes.
+- Subida del comprobante a bucket privado, ruta guardada en el aporte para que admin lo revise en `FondoTransparente.tsx`.
+- Aparece en la tabla pública en la fila "por verificar" (ya soportado por el RPC público actual) y en el dashboard privado para confirmación manual.
 
-### Seguridad
-- RLS activado en todas
-- Privadas (`fondo_aportes` con datos sensibles, `fondo_movimientos_cargados`, `fondo_egresos`, `fondo_audit_log`, `fondo_configuracion` escritura): solo `admin` y `manager`
-- Lectura pública anónima vía **vistas seguras** (`fondo_public_aportes`, `fondo_public_egresos`, `fondo_public_totales`) que solo exponen columnas seguras y filas con estado apto (confirmados / ejecutados / por verificar para el contador). Sin emails, sin referencias completas, sin comprobantes privados.
-- GRANTs explícitos: `authenticated` (admin/manager via RLS) + `anon` solo sobre las vistas públicas
-- Storage buckets:
-  - `fondo-comprobantes-privados` (privado, solo admin/manager)
-  - `fondo-comprobantes-publicos` (público, versiones censuradas)
+## Detalles técnicos
 
-### RPCs (`SECURITY DEFINER`)
-- `fondo_confirmar_aporte(id, tasa, equivalente_usd, nota_publica)` — valida rol, cambia estado, registra auditoría
-- `fondo_rechazar_aporte(id, motivo, nuevo_estado)` — para rechazado/duplicado/monto_incorrecto
-- `fondo_confirmar_lote(ids[])` — confirma varios con coincidencia exacta (Fase 2; en Fase 1 dejamos el RPC creado pero solo confirma de uno en uno hasta tener conciliación)
+**Backend**
 
----
+- Bucket privado nuevo `fondo-comprobantes` con políticas en `storage.objects`:
+  - `INSERT` permitido a `anon` y `authenticated` sólo bajo el prefijo `aportes/`.
+  - `SELECT` solo para `admin` y `manager` (vía `has_role`).
+- Campos nuevos en `fondo_aportes` si faltan: `donante_email`, `donante_telefono`, `comprobante_path` (revisar antes de migrar; reutilizamos los existentes si ya están).
+- RPC `public.fondo_registrar_aporte_publico(p_metodo, p_nombre, p_email, p_telefono, p_fecha_pago, p_monto, p_moneda, p_referencia, p_comprobante_path, p_es_anonimo)` con `SECURITY DEFINER`, `GRANT EXECUTE TO anon, authenticated`. Valida tipos, longitudes, monto > 0, método permitido, inserta con `estado='por_verificar'` y devuelve `{ok, id}`. No expone los campos privados a la vista pública (siguen filtrados por `fondo_public_aportes_list`).
+- Rate-limit blando: rechaza si ya existe un aporte con misma `referencia + metodo` en las últimas 24h.
 
-## 2. Rutas y navegación
+**Frontend**
 
-- **Privado** (dentro de AppLayout/sidebar):
-  - `/fondo-transparente` → layout con tabs/subnav
-    - Dashboard (Fase 1 ✅)
-    - Aportes reportados (Fase 1 ✅)
-    - Conciliación (Fase 2 — placeholder "Próximamente")
-    - Carga masiva (Fase 2 — placeholder)
-    - Egresos (Fase 3 — placeholder)
-    - Auditoría (Fase 1 ✅ lectura básica)
-    - Configuración pública (Fase 1 ✅ editar título/disclaimer)
-- **Público**: `/fuerza-venezuela` (Fase 1 ✅) — ruta fuera de `ProtectedRoute`, sin sidebar
-- Sidebar: nuevo ítem "Fondo Transparente" visible solo para admin/manager
-- `role_routes`: añadir `/fondo-transparente` a admin y manager
+- Nuevo componente `src/components/fondo/AporteDialog.tsx` (Dialog shadcn): recibe `metodo`, renderiza datos del canal + formulario con `react-hook-form` + `zod`. Sube el archivo a Storage con el cliente anon (`supabase.storage.from('fondo-comprobantes').upload(...)`) y luego llama al RPC.
+- Mapa de datos por método en `src/components/fondo/canales.ts` (pago móvil completo; zelle/binance con `pendiente=true`).
+- En `src/pages/FuerzaVenezuela.tsx`: el botón "usar este método" abre el dialog del canal correspondiente; remover la tarjeta de "efectivo sublime".
+- Estado de éxito dentro del modal (no navega), con CTA "ver tabla en vivo" que hace scroll a la sección de aportes.
 
----
+## Fuera de alcance (siguiente iteración)
 
-## 3. UI Fase 1
-
-### Privado `/fondo-transparente`
-- **Dashboard**: 6 cards (total confirmado USD, por verificar, gastos ejecutados [0 en F1], saldo disponible, # confirmados, # pendientes) + última actualización
-- **Aportes reportados**: tabla con filtros (estado, método, moneda, fecha, monto), botón "Nuevo aporte" (sheet con formulario completo), acciones por fila: Confirmar (dialog con tasa/USD), Rechazar, Marcar duplicado, Marcar monto incorrecto, editar notas
-- **Configuración pública**: form simple para título, subtítulo, disclaimer, tasa sugerida
-- **Auditoría**: tabla read-only con últimos 200 eventos
-
-### Público `/fuerza-venezuela`
-- Diseño sobrio b/n, mobile-first, tipografía editorial consistente con el HUB
-- Hero: "fuerza venezuela" + subtítulo + última actualización
-- 4 cards de totales (leyendo `fondo_public_totales`)
-- Tabla "ingresos confirmados" (de `fondo_public_aportes` filtrando confirmados)
-- Tabla "aportes por verificar" (mínima: fecha, método, monto)
-- Tabla "egresos ejecutados" (vacía en F1)
-- Disclaimer legal al pie
-- SEO: `<title>`, meta description, OG tags, H1 único, JSON-LD `Organization`
-- Sin login, sin sidebar, sin acciones
-
----
-
-## 4. Detalles técnicos
-
-- Hook `useFondoData` con React Query: aportes, totales, config
-- Enmascaramiento de referencias hecho en SQL dentro de la vista (`****` + últimos 4)
-- Sin tocar: `esp_*`, `core_*`, `orders`, WooCommerce, inventario, fabricación, caja, RRPP, Crew
-- Tipos TS regenerados después de la migración
-- Sitemap: añadir `/fuerza-venezuela`
-
----
-
-## 5. Entregable Fase 1
-
-Al terminar Fase 1, el equipo puede:
-1. Crear aportes manualmente (mientras llegan reportes por WhatsApp/form externo)
-2. Confirmar/rechazar cada uno con tasa manual
-3. Ver totales en dashboard
-4. Compartir `/fuerza-venezuela` públicamente con datos reales
-
-**Fase 2** (siguiente turno tras aprobar F1): conciliación + carga masiva CSV + confirmación por lote.
-**Fase 3**: egresos completos con comprobantes + export CSV + auditoría enriquecida.
-
-¿Apruebas Fase 1 para empezar la migración?
+- Datos reales de Zelle y Binance (los pasas y los cargo).
+- Notificación por email al donante.
+- Aparición instantánea en la tabla pública sin pasar por "por verificar".
