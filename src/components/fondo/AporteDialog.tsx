@@ -43,18 +43,33 @@ function formatMontoInput(raw: string): string {
   return `${intFmt || "0"},${decPart.slice(0, 2)}`;
 }
 
-const schema = z.object({
-  nombre: z.string().trim().min(2, "Mínimo 2 caracteres").max(120),
-  email: z.string().trim().email("Correo inválido").max(200),
-  telefono: z.string().trim().min(6, "Teléfono inválido").max(40),
-  fecha_pago: z.string().min(1, "Requerido"),
-  monto: z
-    .string()
-    .min(1, "Requerido")
-    .refine((v) => parseMonto(v) > 0, "Monto inválido"),
-  referencia: z.string().trim().min(3, "Mínimo 3 caracteres").max(120),
-  es_anonimo: z.boolean().default(false),
-});
+function buildSchema(canal: CanalConfig | null) {
+  const needsEmail = !!canal?.fields.email;
+  const needsTel = !!canal?.fields.telefono;
+  const needsRef = !!canal?.fields.referencia;
+  const needsSender = !!canal?.fields.senderName;
+  return z.object({
+    nombre: z.string().trim().min(2, "Mínimo 2 caracteres").max(120),
+    email: needsEmail
+      ? z.string().trim().email("Correo inválido").max(200)
+      : z.string().trim().max(200).optional().or(z.literal("")),
+    telefono: needsTel
+      ? z.string().trim().min(6, "Teléfono inválido").max(40)
+      : z.string().trim().max(40).optional().or(z.literal("")),
+    fecha_pago: z.string().min(1, "Requerido"),
+    monto: z
+      .string()
+      .min(1, "Requerido")
+      .refine((v) => parseMonto(v) > 0, "Monto inválido"),
+    referencia: needsRef
+      ? z.string().trim().min(3, "Mínimo 3 caracteres").max(120)
+      : z.string().trim().max(120).optional().or(z.literal("")),
+    sender_name: needsSender
+      ? z.string().trim().min(2, "Mínimo 2 caracteres").max(120)
+      : z.string().trim().max(120).optional().or(z.literal("")),
+    es_anonimo: z.boolean().default(false),
+  });
+}
 
 
 type FormValues = z.infer<typeof schema>;
