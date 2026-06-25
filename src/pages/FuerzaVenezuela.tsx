@@ -12,6 +12,11 @@ import {
   ShieldCheck,
   Activity,
   ChevronDown,
+  Heart,
+  CheckCircle2,
+  Receipt,
+  HandHeart,
+  Eye,
 } from "lucide-react";
 import heroImg from "@/assets/fuerza-venezuela-hero.jpg";
 
