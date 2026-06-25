@@ -277,7 +277,7 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
             {/* Datos del canal */}
             <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#E3001B] mb-3">
-                datos para pagar
+                datos para donar
               </p>
               {canal.datosPendientes ? (
                 <div className="flex items-start gap-2 text-sm text-amber-300/90">
