@@ -395,9 +395,10 @@ function AportesTab() {
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="pago_movil">Pago Móvil</SelectItem>
-              <SelectItem value="binance">Binance</SelectItem>
-              <SelectItem value="zelle">Zelle</SelectItem>
+              <SelectItem value="pago_movil">Pago Móvil (Bs)</SelectItem>
+              <SelectItem value="zelle">Zelle (USD)</SelectItem>
+              <SelectItem value="efectivo_sublime">Efectivo Sublime (USD)</SelectItem>
+              <SelectItem value="binance">Binance (USDT)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -570,9 +571,10 @@ function AporteFormDialog({ onClose }: { onClose: () => void }) {
             <Select value={f.metodo} onValueChange={(v) => setF({ ...f, metodo: v as Metodo })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="pago_movil">Pago Móvil</SelectItem>
-                <SelectItem value="binance">Binance / USDT</SelectItem>
-                <SelectItem value="zelle">Zelle</SelectItem>
+                <SelectItem value="pago_movil">Pago Móvil (Bs)</SelectItem>
+                <SelectItem value="zelle">Zelle (USD)</SelectItem>
+                <SelectItem value="efectivo_sublime">Efectivo Sublime (USD)</SelectItem>
+                <SelectItem value="binance">Binance (USDT)</SelectItem>
               </SelectContent>
             </Select>
           </div>
