@@ -43,21 +43,44 @@ function formatMontoInput(raw: string): string {
   return `${intFmt || "0"},${decPart.slice(0, 2)}`;
 }
 
-const schema = z.object({
-  nombre: z.string().trim().min(2, "Mínimo 2 caracteres").max(120),
-  email: z.string().trim().email("Correo inválido").max(200),
-  telefono: z.string().trim().min(6, "Teléfono inválido").max(40),
-  fecha_pago: z.string().min(1, "Requerido"),
-  monto: z
-    .string()
-    .min(1, "Requerido")
-    .refine((v) => parseMonto(v) > 0, "Monto inválido"),
-  referencia: z.string().trim().min(3, "Mínimo 3 caracteres").max(120),
-  es_anonimo: z.boolean().default(false),
-});
+function buildSchema(canal: CanalConfig | null) {
+  const needsEmail = !!canal?.fields.email;
+  const needsTel = !!canal?.fields.telefono;
+  const needsRef = !!canal?.fields.referencia;
+  const needsSender = !!canal?.fields.senderName;
+  return z.object({
+    nombre: z.string().trim().min(2, "Mínimo 2 caracteres").max(120),
+    email: needsEmail
+      ? z.string().trim().email("Correo inválido").max(200)
+      : z.string().trim().max(200).optional().or(z.literal("")),
+    telefono: needsTel
+      ? z.string().trim().min(6, "Teléfono inválido").max(40)
+      : z.string().trim().max(40).optional().or(z.literal("")),
+    fecha_pago: z.string().min(1, "Requerido"),
+    monto: z
+      .string()
+      .min(1, "Requerido")
+      .refine((v) => parseMonto(v) > 0, "Monto inválido"),
+    referencia: needsRef
+      ? z.string().trim().min(3, "Mínimo 3 caracteres").max(120)
+      : z.string().trim().max(120).optional().or(z.literal("")),
+    sender_name: needsSender
+      ? z.string().trim().min(2, "Mínimo 2 caracteres").max(120)
+      : z.string().trim().max(120).optional().or(z.literal("")),
+    es_anonimo: z.boolean().default(false),
+  });
+}
 
-
-type FormValues = z.infer<typeof schema>;
+interface FormValues {
+  nombre: string;
+  email?: string;
+  telefono?: string;
+  fecha_pago: string;
+  monto: string;
+  referencia?: string;
+  sender_name?: string;
+  es_anonimo: boolean;
+}
 
 interface Props {
   metodo: MetodoAporte | null;
@@ -83,7 +106,7 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
     watch,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(buildSchema(canal)) as any,
     defaultValues: {
       nombre: "",
       email: "",
@@ -91,6 +114,7 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
       fecha_pago: today,
       monto: "",
       referencia: "",
+      sender_name: "",
       es_anonimo: false,
     },
   });
@@ -160,15 +184,16 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
       const { data, error } = await supabase.rpc("fondo_registrar_aporte_publico", {
         p_metodo: canal.metodo,
         p_nombre: values.nombre,
-        p_email: values.email,
-        p_telefono: values.telefono,
+        p_email: values.email || null,
+        p_telefono: values.telefono || null,
         p_fecha_pago: values.fecha_pago,
         p_monto: monto,
         p_moneda: canal.moneda,
-        p_referencia: values.referencia,
+        p_referencia: values.referencia || null,
         p_comprobante_path: path,
         p_es_anonimo: values.es_anonimo,
-      });
+        p_sender_name: values.sender_name || null,
+      } as any);
       if (error) throw error;
       if (data && typeof data === "object" && "ok" in data && !(data as any).ok) {
         throw new Error("No se pudo registrar el aporte");
@@ -293,23 +318,29 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
                 </Field>
               </FieldRow>
 
-              <FieldRow cols={2}>
-                <Field label="correo" error={errors.email?.message}>
-                  <Input
-                    {...register("email")}
-                    type="email"
-                    placeholder="correo@ejemplo.com"
-                    className="bg-white/5 border-white/10 text-white"
-                  />
-                </Field>
-                <Field label="teléfono" error={errors.telefono?.message}>
-                  <Input
-                    {...register("telefono")}
-                    placeholder="0414-1234567"
-                    className="bg-white/5 border-white/10 text-white"
-                  />
-                </Field>
-              </FieldRow>
+              {(canal.fields.email || canal.fields.telefono) && (
+                <FieldRow cols={canal.fields.email && canal.fields.telefono ? 2 : 1}>
+                  {canal.fields.email && (
+                    <Field label="correo" error={errors.email?.message}>
+                      <Input
+                        {...register("email")}
+                        type="email"
+                        placeholder="correo@ejemplo.com"
+                        className="bg-white/5 border-white/10 text-white"
+                      />
+                    </Field>
+                  )}
+                  {canal.fields.telefono && (
+                    <Field label="teléfono" error={errors.telefono?.message}>
+                      <Input
+                        {...register("telefono")}
+                        placeholder="0414-1234567"
+                        className="bg-white/5 border-white/10 text-white"
+                      />
+                    </Field>
+                  )}
+                </FieldRow>
+              )}
 
               <FieldRow cols={2}>
                 <Field label="fecha de pago" error={errors.fecha_pago?.message}>
@@ -336,18 +367,35 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
 
               </FieldRow>
 
-              <FieldRow>
-                <Field
-                  label="referencia / nº de operación"
-                  error={errors.referencia?.message}
-                >
-                  <Input
-                    {...register("referencia")}
-                    placeholder="ej. 123456789"
-                    className="bg-white/5 border-white/10 text-white"
-                  />
-                </Field>
-              </FieldRow>
+              {canal.fields.senderName && (
+                <FieldRow>
+                  <Field
+                    label="nombre de quien envía"
+                    error={errors.sender_name?.message}
+                  >
+                    <Input
+                      {...register("sender_name")}
+                      placeholder="nombre que aparece en el envío"
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </Field>
+                </FieldRow>
+              )}
+
+              {canal.fields.referencia && (
+                <FieldRow>
+                  <Field
+                    label="referencia / nº de operación"
+                    error={errors.referencia?.message}
+                  >
+                    <Input
+                      {...register("referencia")}
+                      placeholder="ej. 123456789"
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </Field>
+                </FieldRow>
+              )}
 
               <FieldRow>
                 <Field label="comprobante de pago" error={fileError ?? undefined}>
