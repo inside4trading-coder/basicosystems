@@ -68,6 +68,10 @@ const fmtMonto = (n: number | null | undefined, m: string) => {
 };
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleString("es-VE") : null);
 const fmtDateOnly = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString("es-VE") : null);
+const scrollToId = (id: string) => {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+};
 
 export default function FuerzaVenezuela() {
   const [t, setT] = useState<Totales | null>(null);
