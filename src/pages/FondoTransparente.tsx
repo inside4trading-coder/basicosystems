@@ -634,6 +634,17 @@ function AporteGestionDialog({ aporte, onClose }: { aporte: Aporte; onClose: () 
   const [notaPub, setNotaPub] = useState(aporte.nota_publica ?? "");
   const [notaInt, setNotaInt] = useState(aporte.nota_interna ?? "");
   const [saving, setSaving] = useState(false);
+  const [bcv, setBcv] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (aporte.moneda_original !== "VES") return;
+    supabase.rpc("fondo_get_active_bcv_rate").then(({ data }) => {
+      const r = Array.isArray(data) && data.length > 0 ? Number(data[0].rate) : null;
+      setBcv(r);
+      if (r && !tasa) setTasa(r.toString());
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aporte.id]);
 
   const confirmar = async () => {
     setSaving(true);
