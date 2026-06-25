@@ -930,7 +930,7 @@ function CargaMasivaTab() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Encabezado esperado: <code>fecha,metodo,referencia,monto,moneda,origen,nota</code> · Métodos: pago_movil/binance/zelle · Monedas: VES/USD/USDT.
+            Encabezado esperado: <code>fecha,metodo,referencia,monto,moneda,origen,nota</code> · Métodos: pago_movil/zelle/efectivo_sublime/binance · Monedas: VES/USD/USDT.
           </p>
           <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} className="font-mono text-xs" />
           <div className="flex gap-2">
