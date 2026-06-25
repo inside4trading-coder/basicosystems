@@ -651,14 +651,20 @@ function MethodCard({
   title,
   currency,
   description,
+  onClick,
 }: {
   icon: React.ReactNode;
   title: string;
   currency: string;
   description: string;
+  onClick?: () => void;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#E3001B]/40 hover:bg-white/[0.04]">
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#E3001B]/40 hover:bg-white/[0.04] text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E3001B]/60"
+    >
       <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-[#E3001B]/0 to-transparent transition-all duration-500 group-hover:via-[#E3001B]" />
       <div className="flex items-center justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-200 transition-colors group-hover:border-[#E3001B]/40 group-hover:text-[#ff6e7e]">
@@ -677,7 +683,7 @@ function MethodCard({
         usar este método
         <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
       </div>
-    </div>
+    </button>
   );
 }
 
