@@ -846,7 +846,7 @@ function CargaMasivaTab() {
     loadMovs();
   };
 
-  const marcar = async (id: string, estado: string) => {
+  const marcar = async (id: string, estado: "duplicado" | "ignorado") => {
     const { error } = await supabase.from("fondo_movimientos_cargados").update({ estado }).eq("id", id);
     if (error) return toast.error(error.message);
     loadMovs();
