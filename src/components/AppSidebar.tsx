@@ -31,6 +31,7 @@ const mainItems = [
   { title: "Sublime", url: "/sublime", icon: Store },
   { title: "Basico Core", url: "/core", icon: Factory },
   { title: "Basico España", url: "/espana", icon: Flag },
+  { title: "Fondo Transparente", url: "/fondo-transparente", icon: HeartHandshake },
 ];
 
 const adminItems = [
