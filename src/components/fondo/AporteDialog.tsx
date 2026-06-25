@@ -21,6 +21,28 @@ import { CANALES, type CanalConfig, type MetodoAporte } from "./canales";
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
+// Convierte "1.234,56" → 1234.56  |  "1234.56" → 1234.56
+function parseMonto(raw: string): number {
+  if (!raw) return NaN;
+  const cleaned = raw.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
+  return Number(cleaned);
+}
+
+// Formatea mientras el usuario escribe: separador miles "." y decimales ","
+function formatMontoInput(raw: string): string {
+  let v = raw.replace(/[^\d,]/g, "");
+  // sólo una coma
+  const firstComma = v.indexOf(",");
+  if (firstComma !== -1) {
+    v = v.slice(0, firstComma + 1) + v.slice(firstComma + 1).replace(/,/g, "");
+  }
+  const [intPart, decPart] = v.split(",");
+  const intClean = (intPart || "").replace(/^0+(?=\d)/, "");
+  const intFmt = intClean ? Number(intClean).toLocaleString("es-VE") : "";
+  if (decPart === undefined) return intFmt;
+  return `${intFmt || "0"},${decPart.slice(0, 2)}`;
+}
+
 const schema = z.object({
   nombre: z.string().trim().min(2, "Mínimo 2 caracteres").max(120),
   email: z.string().trim().email("Correo inválido").max(200),
@@ -29,10 +51,11 @@ const schema = z.object({
   monto: z
     .string()
     .min(1, "Requerido")
-    .refine((v) => Number(v.replace(",", ".")) > 0, "Monto inválido"),
+    .refine((v) => parseMonto(v) > 0, "Monto inválido"),
   referencia: z.string().trim().min(3, "Mínimo 3 caracteres").max(120),
   es_anonimo: z.boolean().default(false),
 });
+
 
 type FormValues = z.infer<typeof schema>;
 
@@ -133,7 +156,7 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
         });
       if (upErr) throw upErr;
 
-      const monto = Number(values.monto.replace(",", "."));
+      const monto = parseMonto(values.monto);
       const { data, error } = await supabase.rpc("fondo_registrar_aporte_publico", {
         p_metodo: canal.metodo,
         p_nombre: values.nombre,
@@ -300,12 +323,18 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
                 </Field>
                 <Field label={canal.montoLabel} error={errors.monto?.message}>
                   <Input
-                    {...register("monto")}
+                    value={watch("monto")}
+                    onChange={(e) =>
+                      setValue("monto", formatMontoInput(e.target.value), {
+                        shouldValidate: true,
+                      })
+                    }
                     inputMode="decimal"
                     placeholder={canal.montoPlaceholder}
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-white/5 border-white/10 text-white font-mono"
                   />
                 </Field>
+
               </FieldRow>
 
               <FieldRow>
