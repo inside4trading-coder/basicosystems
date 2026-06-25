@@ -7353,7 +7353,12 @@ export type Database = {
         | "refugio"
         | "otro"
       fondo_egreso_estado: "pendiente" | "aprobado" | "ejecutado" | "anulado"
-      fondo_metodo: "pago_movil" | "binance" | "zelle" | "efectivo_sublime"
+      fondo_metodo:
+        | "pago_movil"
+        | "binance"
+        | "zelle"
+        | "efectivo_sublime"
+        | "bizum"
       fondo_moneda: "VES" | "USD" | "USDT"
       fondo_movimiento_estado:
         | "sin_conciliar"
@@ -7507,7 +7512,13 @@ export const Constants = {
         "otro",
       ],
       fondo_egreso_estado: ["pendiente", "aprobado", "ejecutado", "anulado"],
-      fondo_metodo: ["pago_movil", "binance", "zelle", "efectivo_sublime"],
+      fondo_metodo: [
+        "pago_movil",
+        "binance",
+        "zelle",
+        "efectivo_sublime",
+        "bizum",
+      ],
       fondo_moneda: ["VES", "USD", "USDT"],
       fondo_movimiento_estado: [
         "sin_conciliar",
