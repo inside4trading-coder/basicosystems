@@ -225,17 +225,33 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
         </DialogHeader>
 
         {success ? (
-          <div className="py-8 text-center space-y-4">
+          <div className="py-8 text-center space-y-5">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/30">
               <CheckCircle2 className="h-7 w-7 text-emerald-400" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-bold lowercase">¡gracias por aportar!</h3>
-              <p className="text-sm text-zinc-400 max-w-sm mx-auto">
-                Estamos verificando tu aporte. En cuanto lo confirmemos aparecerá
-                publicado en la tabla pública del fondo.
+              <h3 className="text-lg font-bold lowercase">¡gracias por donar!</h3>
+              <p className="text-sm text-zinc-400 max-w-sm mx-auto leading-relaxed">
+                Tu aporte fue registrado exitosamente. Ahora será verificado por el equipo de [BASICO].
+                Por algunas horas aparecerá en la sección{" "}
+                <span className="text-white font-medium">aportes por verificar</span>. Una vez confirmado,
+                pasará a <span className="text-white font-medium">ingresos confirmados</span> y se sumará
+                al dinero disponible para ayudar a las personas afectadas por el terremoto en Venezuela.
               </p>
             </div>
+
+            <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/30 bg-[#E3001B]/[0.06] p-5 backdrop-blur-sm text-left">
+              <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#E3001B]/20 blur-2xl" />
+              <div className="absolute -left-6 -bottom-6 h-20 w-20 rounded-full bg-[#E3001B]/15 blur-2xl" />
+              <p className="relative text-sm font-medium text-zinc-200 lowercase leading-relaxed">
+                “Tu aporte es un latido. Cada bolívar, cada dólar y cada cripto se convierte en un gesto concreto
+                para quienes lo perdieron todo. Comparte esta captura. Tu red también puede ser parte de la red de ayuda.”
+              </p>
+              <p className="relative mt-3 text-xs text-zinc-500 uppercase tracking-wider">
+                #FuerzaVenezuela · fundacionbasico.com
+              </p>
+            </div>
+
             <div className="flex gap-2 justify-center pt-2">
               <Button
                 variant="outline"
@@ -261,7 +277,7 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
             {/* Datos del canal */}
             <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#E3001B] mb-3">
-                datos para pagar
+                datos para donar
               </p>
               {canal.datosPendientes ? (
                 <div className="flex items-start gap-2 text-sm text-amber-300/90">

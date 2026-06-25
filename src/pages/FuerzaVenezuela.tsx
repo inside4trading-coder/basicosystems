@@ -17,6 +17,7 @@ import {
   Receipt,
   HandHeart,
   Eye,
+  ExternalLink,
 } from "lucide-react";
 import heroImg from "@/assets/fuerza-venezuela-hero.jpg";
 import basicoLogoAsset from "@/assets/basico-box-logo.png.asset.json";
@@ -322,6 +323,15 @@ export default function FuerzaVenezuela() {
               <p className="relative mt-2 text-xs md:text-sm text-zinc-300 lowercase">
                 cada ingreso, cada gasto y cada saldo publicado en esta página.
               </p>
+              <a
+                href="https://fundacionbasico.com"
+                target="_blank"
+                rel="noreferrer"
+                className="relative mt-4 inline-flex items-center gap-2 rounded-full border border-[#E3001B]/40 bg-[#E3001B]/10 px-4 py-2 text-sm font-semibold text-[#ff6e7e] hover:bg-[#E3001B]/20 hover:text-white transition-colors"
+              >
+                <Radio className="h-3.5 w-3.5" />
+                fundacionbasico.com
+              </a>
             </div>
           </div>
 
@@ -561,13 +571,22 @@ export default function FuerzaVenezuela() {
                   "[BASICO] publica este registro para mostrar de forma transparente los aportes recibidos y los gastos ejecutados. Los aportes se verifican manualmente antes de sumarse al total confirmado. Los datos sensibles serán protegidos. Este fondo no garantiza deducción fiscal."}
               </p>
             </div>
-            <div className="shrink-0">
+            <div className="shrink-0 text-right">
               <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-600">respaldado por</p>
               <img
                 src={basicoLogoAsset.url}
                 alt="BASICO"
                 className="h-10 w-auto rounded-sm border border-white/10 bg-[#E3001B] object-contain"
               />
+              <a
+                href="https://fundacionbasico.com"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[#ff6e7e] hover:text-white transition-colors"
+              >
+                fundacionbasico.com
+                <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
           </div>
         </footer>
