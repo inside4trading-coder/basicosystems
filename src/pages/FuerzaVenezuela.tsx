@@ -186,9 +186,32 @@ export default function FuerzaVenezuela() {
         {/* scanline */}
         <div className="pointer-events-none absolute inset-x-0 -z-10 h-px top-1/3 bg-gradient-to-r from-transparent via-[#E3001B]/60 to-transparent animate-[scan_6s_linear_infinite]" />
 
-        <div className="mx-auto max-w-6xl px-5 pt-16 pb-16 md:pt-28 md:pb-24">
+        <div className="mx-auto max-w-6xl px-5 pt-12 pb-16 md:pt-20 md:pb-24">
+          {/* alerta de contexto: terremoto */}
+          <div
+            className="animate-fade-in"
+            style={{ animationDelay: "0s" }}
+          >
+            <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/50 bg-gradient-to-r from-[#E3001B]/15 via-[#E3001B]/10 to-[#E3001B]/[0.03] p-4 backdrop-blur-sm">
+              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[#E3001B]/25 blur-2xl" />
+              <div className="absolute -left-8 -bottom-8 h-20 w-20 rounded-full bg-[#E3001B]/15 blur-2xl" />
+              <div className="relative flex items-start gap-3">
+                <span className="relative flex h-2.5 w-2.5 shrink-0 mt-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff4d63] opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E3001B]" />
+                </span>
+                <p className="text-sm md:text-base font-semibold lowercase leading-snug text-zinc-100">
+                  respuesta de ayuda por el terremoto ocurrido en venezuela
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* live tag */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 backdrop-blur-sm animate-fade-in">
+          <div
+            className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 backdrop-blur-sm animate-fade-in"
+            style={{ animationDelay: "0.05s" }}
+          >
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E3001B] opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E3001B]" />
@@ -200,23 +223,30 @@ export default function FuerzaVenezuela() {
 
           <h1
             className="mt-7 font-black lowercase tracking-tight text-white animate-fade-in"
-            style={{ fontSize: "clamp(2.75rem, 9vw, 7rem)", lineHeight: 0.95, animationDelay: "0.05s" }}
+            style={{ fontSize: "clamp(2.75rem, 9vw, 7rem)", lineHeight: 0.95, animationDelay: "0.1s" }}
           >
             fuerza<br />venezuela
           </h1>
 
           <p
             className="mt-5 text-xl md:text-3xl font-semibold lowercase text-zinc-200 animate-fade-in"
-            style={{ animationDelay: "0.1s" }}
+            style={{ animationDelay: "0.15s" }}
           >
             una nueva forma de ayudar.
+          </p>
+
+          <p
+            className="mt-4 max-w-2xl text-sm md:text-base leading-relaxed lowercase text-zinc-400 animate-fade-in"
+            style={{ animationDelay: "0.18s" }}
+          >
+            tras el terremoto que afectó a venezuela, abrimos este fondo transparente para canalizar aportes y convertirlos en ayuda visible.
           </p>
 
           {/* RESUMEN EN HERO — primero, para impacto inmediato */}
           <div
             id="resumen"
             className="mt-10 animate-fade-in"
-            style={{ animationDelay: "0.12s" }}
+            style={{ animationDelay: "0.2s" }}
           >
             <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -258,11 +288,9 @@ export default function FuerzaVenezuela() {
             )}
           </div>
 
-
-
           <div
             className="mt-6 max-w-2xl space-y-2 text-sm md:text-base leading-relaxed text-zinc-400 lowercase animate-fade-in"
-            style={{ animationDelay: "0.15s" }}
+            style={{ animationDelay: "0.23s" }}
           >
             <p>aquí no solo donas. aquí puedes ver qué pasa con tu aporte.</p>
             <p>
@@ -275,7 +303,7 @@ export default function FuerzaVenezuela() {
 
           <div
             className="mt-8 max-w-3xl animate-fade-in"
-            style={{ animationDelay: "0.2s" }}
+            style={{ animationDelay: "0.28s" }}
           >
             <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/40 bg-[#E3001B]/[0.07] p-5 md:p-6 backdrop-blur-sm">
               <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#E3001B]/20 blur-3xl" />
@@ -292,7 +320,7 @@ export default function FuerzaVenezuela() {
 
           <div
             className="mt-8 flex flex-col sm:flex-row gap-3 animate-fade-in"
-            style={{ animationDelay: "0.25s" }}
+            style={{ animationDelay: "0.33s" }}
           >
             <button
               onClick={() => scrollToId("aportar")}
@@ -314,7 +342,7 @@ export default function FuerzaVenezuela() {
           {/* mini flow */}
           <div
             className="mt-14 animate-fade-in"
-            style={{ animationDelay: "0.3s" }}
+            style={{ animationDelay: "0.38s" }}
           >
             <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
               cómo funciona
