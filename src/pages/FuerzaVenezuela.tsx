@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -67,6 +68,10 @@ const fmtMonto = (n: number | null | undefined, m: string) => {
 };
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleString("es-VE") : null);
 const fmtDateOnly = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString("es-VE") : null);
+const scrollToId = (id: string) => {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+};
 
 export default function FuerzaVenezuela() {
   const [t, setT] = useState<Totales | null>(null);
@@ -118,23 +123,52 @@ export default function FuerzaVenezuela() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-6xl px-4 py-10 md:py-16">
         {/* Hero */}
-        <header className="mb-8 md:mb-12 animate-fade-in">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+        <header className="mb-10 md:mb-16 animate-fade-in">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
             fondo transparente de ayuda
           </p>
-          <h1 className="text-4xl md:text-7xl font-black lowercase tracking-tight text-secondary">
-            {config?.titulo_publico ?? "fuerza venezuela"}
+          <h1 className="text-5xl md:text-8xl font-black lowercase tracking-tight text-foreground">
+            fuerza venezuela
           </h1>
-          <p className="mt-3 text-lg md:text-2xl font-medium lowercase text-muted-foreground max-w-3xl">
-            {config?.subtitulo_publico ?? "fondo transparente de ayuda por [BASICO]"}
+          <p className="mt-5 text-lg md:text-2xl font-medium lowercase text-muted-foreground max-w-3xl leading-relaxed">
+            somos [BASICO], una marca nacida en venezuela. hoy estamos usando nuestra comunidad para canalizar ayuda de forma transparente y verificable.
           </p>
-          <p className="mt-4 text-sm md:text-base text-muted-foreground max-w-2xl leading-relaxed">
-            cada aporte confirmado, cada gasto ejecutado y cada saldo disponible se publica de forma transparente.
-          </p>
+          <div className="mt-8 md:mt-10">
+            <p className="text-2xl md:text-4xl font-black lowercase text-foreground max-w-3xl">
+              no nos creas. míralo.
+            </p>
+            <p className="mt-2 text-sm md:text-base text-muted-foreground max-w-2xl leading-relaxed">
+              cada aporte confirmado, cada gasto ejecutado y cada saldo disponible se publica aquí.
+            </p>
+          </div>
+          <div className="mt-8 md:mt-10 flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <Button size="lg" className="w-full sm:w-auto" onClick={() => scrollToId("aportar")}>
+              dona ahora
+            </Button>
+            <Button size="lg" variant="outline" className="w-full sm:w-auto" onClick={() => scrollToId("resumen")}>
+              ver transparencia
+            </Button>
+          </div>
         </header>
 
+        {/* Cómo aportar */}
+        <section id="aportar" className="mb-12 md:mb-16 animate-fade-in" style={{ animationDelay: "0.05s" }}>
+          <div className="mb-5">
+            <h2 className="text-xl md:text-2xl font-black lowercase tracking-tight">cómo aportar</h2>
+            <p className="text-sm text-muted-foreground lowercase mt-1">
+              elige un canal, confirma tu aporte y lo publicamos aquí
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <AporteMethod title="pago móvil" currency="Bs" description="transferencia o pago móvil en bolívares." />
+            <AporteMethod title="zelle" currency="US$" description="transferencia Zelle en dólares." />
+            <AporteMethod title="efectivo sublime" currency="US$" description="entrega de efectivo en USD." />
+            <AporteMethod title="binance" currency="USDT" description="transferencia de USDT por Binance Pay." />
+          </div>
+        </section>
+
         {/* Resumen principal — 3 cards grandes */}
-        <section className="mb-12 md:mb-16 animate-fade-in" style={{ animationDelay: "0.05s" }}>
+        <section id="resumen" className="mb-12 md:mb-16 animate-fade-in" style={{ animationDelay: "0.1s" }}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             <HeroCard
               label="disponible total aprox."
@@ -401,4 +435,23 @@ function DataTable({ cols, rows }: { cols: string[]; rows: React.ReactNode[][] }
     </div>
   );
 }
+
+function AporteMethod({
+  title,
+  currency,
+  description,
+}: {
+  title: string;
+  currency: string;
+  description: string;
+}) {
+  return (
+    <div className="bg-card border border-foreground/10 rounded-lg p-5">
+      <h3 className="text-sm md:text-base font-bold lowercase tracking-tight mb-1">{title}</h3>
+      <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">{currency}</p>
+      <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
 
