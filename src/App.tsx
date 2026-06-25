@@ -72,6 +72,10 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const FUNDACION_HOSTS = new Set(["fundacionbasico.com", "www.fundacionbasico.com"]);
+const isFundacionHost =
+  typeof window !== "undefined" && FUNDACION_HOSTS.has(window.location.hostname);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -80,7 +84,10 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Landing />} />
+            <Route
+              path="/"
+              element={isFundacionHost ? <FuerzaVenezuela /> : <Landing />}
+            />
             <Route path="/login" element={<Login />} />
             <Route
               element={
