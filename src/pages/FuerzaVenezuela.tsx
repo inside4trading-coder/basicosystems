@@ -19,6 +19,7 @@ import {
   Eye,
 } from "lucide-react";
 import heroImg from "@/assets/fuerza-venezuela-hero.jpg";
+import basicoLogoAsset from "@/assets/basico-box-logo.png.asset.json";
 
 type Totales = {
   ves_confirmado: number; ves_por_verificar: number; ves_egresos: number; ves_saldo: number;
@@ -537,12 +538,22 @@ export default function FuerzaVenezuela() {
 
         {/* FOOTER */}
         <footer className="border-t border-white/10 pt-8 pb-2">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-zinc-500 leading-relaxed">
-              {config?.disclaimer ??
-                "[BASICO] publica este registro para mostrar de forma transparente los aportes recibidos y los gastos ejecutados. Los aportes se verifican manualmente antes de sumarse al total confirmado. Los datos sensibles serán protegidos. Este fondo no garantiza deducción fiscal."}
-            </p>
+          <div className="flex flex-col md:flex-row md:items-start gap-6">
+            <div className="flex items-start gap-3 flex-1">
+              <ShieldCheck className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                {config?.disclaimer ??
+                  "[BASICO] publica este registro para mostrar de forma transparente los aportes recibidos y los gastos ejecutados. Los aportes se verifican manualmente antes de sumarse al total confirmado. Los datos sensibles serán protegidos. Este fondo no garantiza deducción fiscal."}
+              </p>
+            </div>
+            <div className="shrink-0">
+              <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-600">respaldado por</p>
+              <img
+                src={basicoLogoAsset.url}
+                alt="BASICO"
+                className="h-10 w-auto rounded-sm border border-white/10 bg-[#E3001B] object-contain"
+              />
+            </div>
           </div>
         </footer>
       </main>
