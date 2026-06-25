@@ -17,6 +17,7 @@ import {
   Receipt,
   HandHeart,
   Eye,
+  ExternalLink,
 } from "lucide-react";
 import heroImg from "@/assets/fuerza-venezuela-hero.jpg";
 import basicoLogoAsset from "@/assets/basico-box-logo.png.asset.json";
