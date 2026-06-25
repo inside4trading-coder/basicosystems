@@ -5139,6 +5139,7 @@ export type Database = {
           equivalente_usd: number | null
           es_anonimo: boolean
           estado: Database["public"]["Enums"]["fondo_aporte_estado"]
+          exchange_rate_id: string | null
           fecha_confirmada: string | null
           fecha_reportada: string | null
           fecha_verificacion: string | null
@@ -5150,6 +5151,7 @@ export type Database = {
           nombre_publico: string | null
           nota_interna: string | null
           nota_publica: string | null
+          rate_source: string | null
           referencia_privada: string | null
           referencia_publica_enmascarada: string | null
           tasa_usada: number | null
@@ -5165,6 +5167,7 @@ export type Database = {
           equivalente_usd?: number | null
           es_anonimo?: boolean
           estado?: Database["public"]["Enums"]["fondo_aporte_estado"]
+          exchange_rate_id?: string | null
           fecha_confirmada?: string | null
           fecha_reportada?: string | null
           fecha_verificacion?: string | null
@@ -5176,6 +5179,7 @@ export type Database = {
           nombre_publico?: string | null
           nota_interna?: string | null
           nota_publica?: string | null
+          rate_source?: string | null
           referencia_privada?: string | null
           referencia_publica_enmascarada?: string | null
           tasa_usada?: number | null
@@ -5191,6 +5195,7 @@ export type Database = {
           equivalente_usd?: number | null
           es_anonimo?: boolean
           estado?: Database["public"]["Enums"]["fondo_aporte_estado"]
+          exchange_rate_id?: string | null
           fecha_confirmada?: string | null
           fecha_reportada?: string | null
           fecha_verificacion?: string | null
@@ -5202,6 +5207,7 @@ export type Database = {
           nombre_publico?: string | null
           nota_interna?: string | null
           nota_publica?: string | null
+          rate_source?: string | null
           referencia_privada?: string | null
           referencia_publica_enmascarada?: string | null
           tasa_usada?: number | null
@@ -5209,7 +5215,15 @@ export type Database = {
           updated_at?: string
           verificado_por?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fondo_aportes_exchange_rate_id_fkey"
+            columns: ["exchange_rate_id"]
+            isOneToOne: false
+            referencedRelation: "fondo_exchange_rates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fondo_audit_log: {
         Row: {
@@ -5355,6 +5369,48 @@ export type Database = {
           proveedor?: string | null
           tasa_usada?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      fondo_exchange_rates: {
+        Row: {
+          base_currency: string
+          created_at: string
+          fetched_at: string
+          id: string
+          is_active: boolean
+          provider_updated_at: string | null
+          quote_currency: string
+          rate: number
+          raw_payload: Json | null
+          source: string
+          updated_by: string | null
+        }
+        Insert: {
+          base_currency?: string
+          created_at?: string
+          fetched_at?: string
+          id?: string
+          is_active?: boolean
+          provider_updated_at?: string | null
+          quote_currency?: string
+          rate: number
+          raw_payload?: Json | null
+          source?: string
+          updated_by?: string | null
+        }
+        Update: {
+          base_currency?: string
+          created_at?: string
+          fetched_at?: string
+          id?: string
+          is_active?: boolean
+          provider_updated_at?: string | null
+          quote_currency?: string
+          rate?: number
+          raw_payload?: Json | null
+          source?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -7186,6 +7242,16 @@ export type Database = {
           p_tasa?: number
         }
         Returns: Json
+      }
+      fondo_get_active_bcv_rate: {
+        Args: never
+        Returns: {
+          fetched_at: string
+          id: string
+          provider_updated_at: string
+          rate: number
+          source: string
+        }[]
       }
       fondo_public_aportes_list: {
         Args: never
