@@ -1,63 +1,78 @@
 
-# Cómo aportar → modal con formulario y comprobante
+# Plan: Conectar `fundacionbasico.com` a Fuerza Venezuela
 
-Activamos el botón "usar este método" de cada canal en `/fuerza-venezuela` para que abra un **modal en la misma página** (mejor conversión, mantiene el contexto del fondo). Arrancamos con Pago Móvil completo; Zelle y Binance quedan listos en estructura para llenar sus datos en un paso siguiente. Quitamos "efectivo sublime" del listado de canales activos según indicación.
+## Objetivo
+Cuando alguien entre a `fundacionbasico.com` (o `www.fundacionbasico.com`), debe ver directamente la landing pública de **Fuerza Venezuela**, sin tocar el HUB privado ni los demás módulos.
 
-## Flujo del usuario
+---
 
-1. Click en "usar este método" en la tarjeta del canal.
-2. Se abre un modal con dos zonas:
-   - **Datos del canal** (a quién pagar). Para Pago Móvil: `04245957541 · Banco de Venezuela · V-26.007.816` con botones de copiar.
-   - **Formulario de registro del aporte**.
-3. El usuario completa, adjunta comprobante (obligatorio), envía.
-4. El aporte queda como `por_verificar`. Mostramos pantalla de "¡gracias! revisaremos tu aporte y aparecerá publicado en breve" con un enlace para ver la tabla pública.
+## Parte 1 — Cambios en la app (código)
 
-## Formulario (campos)
+Hoy `/` muestra `Landing` (la landing corporativa de BASICO) y `/fuerza-venezuela` muestra la página pública del fondo. Necesitamos que en el dominio nuevo la raíz `/` muestre Fuerza Venezuela, pero en el dominio principal del HUB siga mostrando la Landing actual.
 
-- nombre (texto, requerido) — se publica como `donante_publico` salvo que marque "aportar como anónimo".
-- correo (email, requerido, privado, solo interno)
-- teléfono (texto, requerido, privado, solo interno)
-- fecha de pago (date, requerido)
-- monto (numérico, requerido) — en Bs para pago móvil, en USD para Zelle, en USDT para Binance
-- referencia (texto, requerido) — número de operación / hash / referencia bancaria
-- comprobante de pago (file, **obligatorio**) — imagen o PDF, máx 5 MB
-- checkbox opcional "publicar como anónimo"
+Cambios:
 
-Validación cliente con zod (longitudes, formato email, file size/mime) y revalidación en el RPC.
+1. **`src/App.tsx`** — detectar el host:
+   - Si `window.location.hostname` es `fundacionbasico.com` o `www.fundacionbasico.com`:
+     - `/` → `<FuerzaVenezuela />`
+     - `/fuerza-venezuela` → `<Navigate to="/" replace />` (alias / redirect)
+     - El resto de rutas privadas del HUB siguen montadas pero quedan protegidas por `ProtectedRoute` (no se exponen visualmente; cualquier intento de entrar desde ese dominio sigue requiriendo login, no hay riesgo de fuga de datos).
+   - Si el host es cualquier otro (`*.lovable.app`, dominio del HUB, localhost):
+     - `/` → `<Landing />` (sin cambios)
+     - `/fuerza-venezuela` → `<FuerzaVenezuela />` (sin cambios)
 
-## Comportamiento por canal
+2. **SEO de Fuerza Venezuela** (`src/pages/FuerzaVenezuela.tsx`): asegurar `<title>`, `meta description`, OG y canonical apuntando a `https://fundacionbasico.com/`.
 
-- **Pago Móvil** → activo, formulario completo + datos arriba.
-- **Zelle** → modal abre, datos del canal en placeholder ("próximamente, contáctanos") hasta que pases los datos definitivos. El formulario funciona igual.
-- **Binance** → idem Zelle.
-- **Efectivo Sublime** → se elimina de las tarjetas públicas.
+3. **`index.html`**: revisar que no haya tags estáticos que sobrescriban el SEO específico de Fuerza Venezuela cuando se sirve desde el dominio nuevo.
 
-## Tras enviar
+No se tocan: HUB, login, ventas, inventario, fabricación, WooCommerce, RRPP, Crew, Sublime, Core, España, ni el módulo privado `/fondo-transparente`.
 
-- Insert en `fondo_aportes` con `estado='por_verificar'`, `fecha_reportada = fecha_pago`, datos privados (email, teléfono, nombre completo) en columnas existentes.
-- Subida del comprobante a bucket privado, ruta guardada en el aporte para que admin lo revise en `FondoTransparente.tsx`.
-- Aparece en la tabla pública en la fila "por verificar" (ya soportado por el RPC público actual) y en el dashboard privado para confirmación manual.
+---
+
+## Parte 2 — Conectar el dominio en Lovable
+
+Pasos que harás tú en la UI de Lovable (no se hace por código):
+
+1. **Project Settings → Domains → Connect Domain**.
+2. Añadir **`fundacionbasico.com`** → marcar como **Primary**.
+3. Añadir **`www.fundacionbasico.com`** como segundo dominio (Lovable redirige automáticamente al Primary).
+4. Esperar verificación (TXT) y emisión de SSL automática (puede tardar hasta 72 h, normalmente minutos).
+
+---
+
+## Parte 3 — Registros DNS en BanaHosting
+
+Antes de crearlos, **elimina cualquier registro A, AAAA o CNAME existente** para `@` y `www` que apunte a la IP vieja de BanaHosting, o se quedará el hosting actual respondiendo.
+
+| Tipo  | Host / Name | Value / Target          | TTL  | Notas                              |
+|-------|-------------|-------------------------|------|------------------------------------|
+| A     | `@`         | `185.158.133.1`         | 3600 | Raíz `fundacionbasico.com`         |
+| A     | `www`       | `185.158.133.1`         | 3600 | Subdominio `www`                   |
+| TXT   | `_lovable`  | (el valor exacto que muestre la UI de Lovable al añadir el dominio, formato `lovable_verify=XXXX`) | 3600 | Verificación de propiedad |
+
+Notas importantes:
+- **No usar CNAME** en `@`; debe ser A.
+- Si BanaHosting tiene activado **Cloudflare/proxy**, hay que desactivar el "nube naranja" o usar el modo proxy en Lovable (Connect Domain → Advanced → "Domain uses Cloudflare or a similar proxy"). Si BanaHosting no es proxy, ignorar.
+- **MX, SPF, DKIM, DMARC**: si usas correo `@fundacionbasico.com`, **no toques** esos registros (déjalos como están en BanaHosting).
+- Eliminar registros viejos `A @ → IP_BanaHosting` y `A www → IP_BanaHosting`.
+
+---
+
+## Parte 4 — Verificación
+
+1. Esperar propagación DNS (chequear en https://dnschecker.org).
+2. En Lovable, el estado del dominio pasará por: *Verifying → Setting up → Active*.
+3. Probar:
+   - `https://fundacionbasico.com/` → debe abrir Fuerza Venezuela.
+   - `https://www.fundacionbasico.com/` → debe redirigir a `https://fundacionbasico.com/`.
+   - `https://fundacionbasico.com/fuerza-venezuela` → debe redirigir a `/`.
+   - El HUB sigue accesible solo por la URL antigua de Lovable / dominio interno, y `/fondo-transparente` sigue protegido por login.
+
+---
 
 ## Detalles técnicos
 
-**Backend**
-
-- Bucket privado nuevo `fondo-comprobantes` con políticas en `storage.objects`:
-  - `INSERT` permitido a `anon` y `authenticated` sólo bajo el prefijo `aportes/`.
-  - `SELECT` solo para `admin` y `manager` (vía `has_role`).
-- Campos nuevos en `fondo_aportes` si faltan: `donante_email`, `donante_telefono`, `comprobante_path` (revisar antes de migrar; reutilizamos los existentes si ya están).
-- RPC `public.fondo_registrar_aporte_publico(p_metodo, p_nombre, p_email, p_telefono, p_fecha_pago, p_monto, p_moneda, p_referencia, p_comprobante_path, p_es_anonimo)` con `SECURITY DEFINER`, `GRANT EXECUTE TO anon, authenticated`. Valida tipos, longitudes, monto > 0, método permitido, inserta con `estado='por_verificar'` y devuelve `{ok, id}`. No expone los campos privados a la vista pública (siguen filtrados por `fondo_public_aportes_list`).
-- Rate-limit blando: rechaza si ya existe un aporte con misma `referencia + metodo` en las últimas 24h.
-
-**Frontend**
-
-- Nuevo componente `src/components/fondo/AporteDialog.tsx` (Dialog shadcn): recibe `metodo`, renderiza datos del canal + formulario con `react-hook-form` + `zod`. Sube el archivo a Storage con el cliente anon (`supabase.storage.from('fondo-comprobantes').upload(...)`) y luego llama al RPC.
-- Mapa de datos por método en `src/components/fondo/canales.ts` (pago móvil completo; zelle/binance con `pendiente=true`).
-- En `src/pages/FuerzaVenezuela.tsx`: el botón "usar este método" abre el dialog del canal correspondiente; remover la tarjeta de "efectivo sublime".
-- Estado de éxito dentro del modal (no navega), con CTA "ver tabla en vivo" que hace scroll a la sección de aportes.
-
-## Fuera de alcance (siguiente iteración)
-
-- Datos reales de Zelle y Binance (los pasas y los cargo).
-- Notificación por email al donante.
-- Aparición instantánea en la tabla pública sin pasar por "por verificar".
+- El switch por hostname se hace al montar `<App />`, leyendo `window.location.hostname` una sola vez (no reactivo, no hay cambios de host en runtime).
+- `ProtectedRoute` y RLS siguen siendo la barrera real de seguridad para el HUB; el hostname switch es solo presentación.
+- No se requieren cambios en Supabase, edge functions, ni storage.
+- Publicación: tras aprobar el plan e implementar, **debes hacer Publish** para que el cambio de routing por hostname llegue al dominio nuevo.
