@@ -128,7 +128,7 @@ export default function FuerzaVenezuela() {
             fondo transparente de ayuda
           </p>
           <h1 className="text-5xl md:text-8xl font-black lowercase tracking-tight text-foreground">
-            {config?.titulo_publico ?? "fuerza venezuela"}
+            fuerza venezuela
           </h1>
           <p className="mt-5 text-lg md:text-2xl font-medium lowercase text-muted-foreground max-w-3xl leading-relaxed">
             somos [BASICO], una marca nacida en venezuela. hoy estamos usando nuestra comunidad para canalizar ayuda de forma transparente y verificable.
