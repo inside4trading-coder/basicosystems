@@ -1,9 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  ArrowRight,
+  Radio,
+  Smartphone,
+  DollarSign,
+  Wallet,
+  Bitcoin,
+  ShieldCheck,
+  Activity,
+  ChevronDown,
+} from "lucide-react";
+import heroImg from "@/assets/fuerza-venezuela-hero.jpg";
 
 type Totales = {
   ves_confirmado: number; ves_por_verificar: number; ves_egresos: number; ves_saldo: number;
@@ -54,11 +64,12 @@ type Config = {
 };
 
 const nfmt = (n: number | null | undefined, dec = 2) =>
-  n == null || Number.isNaN(n) ? "—" : Number(n).toLocaleString("es-VE", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  n == null || Number.isNaN(n)
+    ? "—"
+    : Number(n).toLocaleString("es-VE", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const fmtBs = (n: number | null | undefined) => (n == null ? "—" : `Bs ${nfmt(n)}`);
 const fmtUSD = (n: number | null | undefined) => (n == null ? "—" : `US$ ${nfmt(n)}`);
 const fmtUSDT = (n: number | null | undefined) => (n == null ? "—" : `${nfmt(n)} USDT`);
-const fmtApproxUSD = (n: number | null | undefined) => (n == null ? "—" : `~ US$ ${nfmt(n)}`);
 const fmtMonto = (n: number | null | undefined, m: string) => {
   if (n == null) return "—";
   if (m === "VES") return fmtBs(n);
@@ -72,6 +83,29 @@ const scrollToId = (id: string) => {
   const el = document.getElementById(id);
   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
 };
+
+// Animated counter
+function useCountUp(target: number, duration = 1400) {
+  const [val, setVal] = useState(0);
+  const startRef = useRef<number | null>(null);
+  const fromRef = useRef(0);
+  useEffect(() => {
+    fromRef.current = val;
+    startRef.current = null;
+    let raf = 0;
+    const step = (ts: number) => {
+      if (startRef.current == null) startRef.current = ts;
+      const p = Math.min(1, (ts - startRef.current) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setVal(fromRef.current + (target - fromRef.current) * eased);
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target]);
+  return val;
+}
 
 export default function FuerzaVenezuela() {
   const [t, setT] = useState<Totales | null>(null);
@@ -101,9 +135,7 @@ export default function FuerzaVenezuela() {
   }, []);
 
   const tasa = t?.tasa_ves_usd && t.tasa_ves_usd > 0 ? Number(t.tasa_ves_usd) : null;
-
-  const vesToUsd = (ves: number | null | undefined) =>
-    tasa && ves != null ? ves / tasa : null;
+  const vesToUsd = (ves: number | null | undefined) => (tasa && ves != null ? ves / tasa : null);
 
   const disponibleTotalUsd =
     (vesToUsd(t?.ves_saldo) ?? 0) + Number(t?.usd_saldo ?? 0) + Number(t?.usdt_saldo ?? 0);
@@ -119,272 +151,481 @@ export default function FuerzaVenezuela() {
     (t?.ves_egresos ?? 0) !== 0 ||
     (t?.ves_por_verificar ?? 0) !== 0;
 
+  const disp = useCountUp(disponibleTotalUsd);
+  const ing = useCountUp(ingresadoTotalUsd);
+  const gas = useCountUp(gastadoTotalUsd);
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-6xl px-4 py-10 md:py-16">
-        {/* Hero */}
-        <header className="mb-10 md:mb-16 animate-fade-in">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-            fondo transparente de ayuda
-          </p>
-          <h1 className="text-5xl md:text-8xl font-black lowercase tracking-tight text-foreground">
-            fuerza venezuela
+    <div className="min-h-screen bg-[#070708] text-zinc-100 antialiased selection:bg-[#E3001B]/40">
+      {/* HERO */}
+      <header className="relative isolate overflow-hidden">
+        {/* background image */}
+        <div
+          className="absolute inset-0 -z-20 bg-cover bg-center"
+          style={{ backgroundImage: `url(${heroImg})` }}
+        />
+        {/* gradients overlay */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/80 via-black/85 to-[#070708]" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,rgba(227,0,27,0.18),transparent_55%)]" />
+        {/* tech grid */}
+        <div
+          className="absolute inset-0 -z-10 opacity-[0.18] mix-blend-screen"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+            maskImage:
+              "radial-gradient(ellipse at center, black 40%, transparent 80%)",
+          }}
+        />
+        {/* scanline */}
+        <div className="pointer-events-none absolute inset-x-0 -z-10 h-px top-1/3 bg-gradient-to-r from-transparent via-[#E3001B]/60 to-transparent animate-[scan_6s_linear_infinite]" />
+
+        <div className="mx-auto max-w-6xl px-5 pt-16 pb-20 md:pt-28 md:pb-32">
+          {/* live tag */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 backdrop-blur-sm animate-fade-in">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E3001B] opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E3001B]" />
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-300">
+              live relief platform · venezuela
+            </span>
+          </div>
+
+          <h1
+            className="mt-7 font-black lowercase tracking-tight text-white animate-fade-in"
+            style={{ fontSize: "clamp(2.75rem, 9vw, 7rem)", lineHeight: 0.95, animationDelay: "0.05s" }}
+          >
+            fuerza<br />venezuela
           </h1>
-          <p className="mt-5 text-lg md:text-2xl font-medium lowercase text-muted-foreground max-w-3xl leading-relaxed">
-            somos [BASICO], una marca nacida en venezuela. hoy estamos usando nuestra comunidad para canalizar ayuda de forma transparente y verificable.
+
+          <p
+            className="mt-5 text-xl md:text-3xl font-semibold lowercase text-zinc-200 animate-fade-in"
+            style={{ animationDelay: "0.1s" }}
+          >
+            una nueva forma de ayudar.
           </p>
-          <div className="mt-8 md:mt-10">
-            <p className="text-2xl md:text-4xl font-black lowercase text-foreground max-w-3xl">
-              no nos creas. míralo.
-            </p>
-            <p className="mt-2 text-sm md:text-base text-muted-foreground max-w-2xl leading-relaxed">
-              cada aporte confirmado, cada gasto ejecutado y cada saldo disponible se publica aquí.
-            </p>
-          </div>
-          <div className="mt-8 md:mt-10 flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <Button size="lg" className="w-full sm:w-auto" onClick={() => scrollToId("aportar")}>
-              dona ahora
-            </Button>
-            <Button size="lg" variant="outline" className="w-full sm:w-auto" onClick={() => scrollToId("resumen")}>
-              ver transparencia
-            </Button>
-          </div>
-        </header>
 
-        {/* Cómo aportar */}
-        <section id="aportar" className="mb-12 md:mb-16 animate-fade-in" style={{ animationDelay: "0.05s" }}>
-          <div className="mb-5">
-            <h2 className="text-xl md:text-2xl font-black lowercase tracking-tight">cómo aportar</h2>
-            <p className="text-sm text-muted-foreground lowercase mt-1">
-              elige un canal, confirma tu aporte y lo publicamos aquí
+          <p
+            className="mt-5 max-w-2xl text-sm md:text-base leading-relaxed text-zinc-400 lowercase animate-fade-in"
+            style={{ animationDelay: "0.15s" }}
+          >
+            somos [basico], una marca nacida en venezuela. hoy estamos usando nuestra comunidad y esta
+            plataforma para convertir aportes en ayuda visible, verificable y transparente.
+          </p>
+
+          <div
+            className="mt-10 max-w-2xl border-l-2 border-[#E3001B] pl-5 animate-fade-in"
+            style={{ animationDelay: "0.2s" }}
+          >
+            <p className="text-2xl md:text-4xl font-black lowercase text-white tracking-tight">
+              no nos creas. míralo en vivo.
+            </p>
+            <p className="mt-2 text-xs md:text-sm text-zinc-400 lowercase leading-relaxed">
+              cada ingreso confirmado, cada gasto ejecutado y cada saldo disponible se publica aquí.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <AporteMethod title="pago móvil" currency="Bs" description="transferencia o pago móvil en bolívares." />
-            <AporteMethod title="zelle" currency="US$" description="transferencia Zelle en dólares." />
-            <AporteMethod title="efectivo sublime" currency="US$" description="entrega de efectivo en USD." />
-            <AporteMethod title="binance" currency="USDT" description="transferencia de USDT por Binance Pay." />
-          </div>
-        </section>
 
-        {/* Resumen principal — 3 cards grandes */}
-        <section id="resumen" className="mb-12 md:mb-16 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-            <HeroCard
+          <div
+            className="mt-10 flex flex-col sm:flex-row gap-3 animate-fade-in"
+            style={{ animationDelay: "0.25s" }}
+          >
+            <button
+              onClick={() => scrollToId("aportar")}
+              className="group relative inline-flex items-center justify-center gap-2 rounded-md bg-[#E3001B] px-7 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_0_0_rgba(227,0,27,0.6)] transition-all duration-300 hover:bg-[#ff1a36] hover:shadow-[0_0_40px_-5px_rgba(227,0,27,0.8)] hover:-translate-y-0.5"
+            >
+              <span className="absolute inset-0 -z-10 rounded-md bg-[#E3001B] opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-60" />
+              donar ahora
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </button>
+            <button
+              onClick={() => scrollToId("resumen")}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-white/20 bg-white/[0.03] px-7 py-4 text-sm font-semibold uppercase tracking-wider text-zinc-200 backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/[0.06] hover:text-white"
+            >
+              <Activity className="h-4 w-4" />
+              ver fondo en vivo
+            </button>
+          </div>
+
+          <button
+            onClick={() => scrollToId("resumen")}
+            className="mt-16 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-300 transition-colors animate-pulse"
+          >
+            <ChevronDown className="h-3 w-3" />
+            scroll
+          </button>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-5 py-16 md:py-24 space-y-20 md:space-y-28">
+        {/* RESUMEN — 3 cards */}
+        <section id="resumen" className="animate-fade-in">
+          <SectionHeader
+            eyebrow="estado del fondo · en vivo"
+            title="resumen general"
+            subtitle="cifras aproximadas en us$ convertidas con la tasa del día"
+          />
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <BigStat
               label="disponible total aprox."
-              value={fmtApproxUSD(disponibleTotalUsd)}
-              variant="primary"
-              description="suma aproximada en US$ de Bs + US$ + USDT disponibles"
+              value={disp}
+              primary
+              tag="balance neto"
+              hint="bs + us$ + usdt convertidos"
             />
-            <HeroCard
-              label="ingresado confirmado"
-              value={fmtApproxUSD(ingresadoTotalUsd)}
-              variant="secondary"
-              description="total aproximado de aportes ya confirmados"
-            />
-            <HeroCard
-              label="gastado"
-              value={fmtApproxUSD(gastadoTotalUsd)}
-              variant="secondary"
-              description="total aproximado de egresos ejecutados"
-            />
+            <BigStat label="ingresado confirmado" value={ing} tag="ingresos" hint="aportes verificados" />
+            <BigStat label="gastado" value={gas} tag="egresos" hint="ya ejecutado" />
           </div>
 
-          <p className="mt-4 text-xs md:text-sm text-muted-foreground leading-relaxed">
-            monto aproximado calculado con la tasa del día para bolívares. los saldos reales se mantienen separados por moneda.
-            {!tasa && hasAnyVes && (
-              <span className="block mt-1 text-status-error">
-                aún no hay tasa del día configurada; el equivalente USD de bolívares no se puede calcular.
-              </span>
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] uppercase tracking-wider text-zinc-500">
+            {ultimaAct ? (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  última sync: {ultimaAct}
+                </span>
+                <span>· {t?.aportes_confirmados_count ?? 0} aportes confirmados</span>
+                <span>· {t?.aportes_pendientes_count ?? 0} pendientes</span>
+              </>
+            ) : (
+              <span>sin actualizaciones todavía</span>
             )}
-            {tasa && (
-              <span className="block mt-1">
-                tasa usada: 1 USD = {nfmt(tasa)} Bs
-                {t?.tasa_fecha ? ` · ${fmtDateOnly(t.tasa_fecha)}` : ""}
-                {t?.tasa_fuente ? ` · ${t.tasa_fuente}` : ""}
-              </span>
-            )}
-          </p>
+          </div>
+          {!tasa && hasAnyVes && (
+            <p className="mt-3 text-xs text-orange-400/90">
+              · aún no hay tasa del día configurada; el equivalente usd de bolívares no se puede calcular.
+            </p>
+          )}
+          {tasa && (
+            <p className="mt-3 text-[11px] text-zinc-500 lowercase">
+              tasa usada: 1 usd = {nfmt(tasa)} bs
+              {t?.tasa_fecha ? ` · ${fmtDateOnly(t.tasa_fecha)}` : ""}
+              {t?.tasa_fuente ? ` · ${t.tasa_fuente}` : ""}
+            </p>
+          )}
         </section>
 
-        {/* Detalle por moneda */}
-        <section className="mb-12 md:mb-16 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-          <div className="mb-5">
-            <h2 className="text-xl md:text-2xl font-black lowercase tracking-tight">detalle del fondo</h2>
-            <p className="text-sm text-muted-foreground lowercase mt-1">
-              transparencia por moneda — los saldos reales se mantienen independientes
+        {/* CÓMO APORTAR */}
+        <section id="aportar" className="animate-fade-in">
+          <SectionHeader
+            eyebrow="canales activos"
+            title="cómo aportar"
+            subtitle="elige un canal, confirma tu aporte y lo publicamos aquí"
+          />
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MethodCard
+              icon={<Smartphone className="h-5 w-5" />}
+              title="pago móvil"
+              currency="BS · venezuela"
+              description="transferencia o pago móvil en bolívares."
+            />
+            <MethodCard
+              icon={<DollarSign className="h-5 w-5" />}
+              title="zelle"
+              currency="US$ · estados unidos"
+              description="transferencia zelle en dólares."
+            />
+            <MethodCard
+              icon={<Wallet className="h-5 w-5" />}
+              title="efectivo sublime"
+              currency="US$ · entrega en tienda"
+              description="entrega de efectivo en usd en sublime."
+            />
+            <MethodCard
+              icon={<Bitcoin className="h-5 w-5" />}
+              title="binance"
+              currency="USDT · cripto"
+              description="transferencia de usdt por binance pay."
+            />
+          </div>
+        </section>
+
+        {/* DETALLE POR MONEDA */}
+        <section className="animate-fade-in">
+          <SectionHeader
+            eyebrow="transparencia por moneda"
+            title="detalle del fondo"
+            subtitle="los saldos reales se mantienen independientes por canal"
+          />
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <DetailBlock
+              tag="bolívares"
+              title="pago móvil"
+              accent="#E3001B"
+              rows={[
+                { label: "disponible", value: fmtBs(t?.ves_saldo), strong: true },
+                { label: "equivalente usd", value: vesToUsd(t?.ves_saldo) == null ? "—" : `~ ${fmtUSD(vesToUsd(t?.ves_saldo))}`, subtle: true },
+                { label: "ingresado", value: fmtBs(t?.ves_confirmado) },
+                { label: "gastado", value: fmtBs(t?.ves_egresos) },
+                { label: "por verificar", value: fmtBs(t?.ves_por_verificar), faint: true },
+              ]}
+            />
+            <DetailBlock
+              tag="dólares"
+              title="zelle + efectivo"
+              accent="#22d3ee"
+              rows={[
+                { label: "disponible", value: fmtUSD(t?.usd_saldo), strong: true },
+                { label: "ingresado", value: fmtUSD(t?.usd_confirmado) },
+                { label: "gastado", value: fmtUSD(t?.usd_egresos) },
+                { label: "por verificar", value: fmtUSD(t?.usd_por_verificar), faint: true },
+              ]}
+            />
+            <DetailBlock
+              tag="cripto"
+              title="binance"
+              accent="#f59e0b"
+              rows={[
+                { label: "disponible", value: fmtUSDT(t?.usdt_saldo), strong: true },
+                { label: "ingresado", value: fmtUSDT(t?.usdt_confirmado) },
+                { label: "gastado", value: fmtUSDT(t?.usdt_egresos) },
+                { label: "por verificar", value: fmtUSDT(t?.usdt_por_verificar), faint: true },
+              ]}
+            />
+          </div>
+        </section>
+
+        {/* TABLAS */}
+        <section className="animate-fade-in">
+          <SectionHeader
+            eyebrow="registro público"
+            title="ingresos confirmados"
+            subtitle="cada aporte verificado manualmente antes de sumarse"
+          />
+          <div className="mt-6">
+            {confirmados.length === 0 ? (
+              <Empty msg="aún no hay aportes confirmados." />
+            ) : (
+              <DataTable
+                cols={["fecha", "donante", "método", "monto", "ref.", "estado"]}
+                rows={confirmados.map((r) => [
+                  fmtDate(r.fecha_confirmada) ?? "—",
+                  r.donante_publico,
+                  r.metodo,
+                  fmtMonto(r.monto_original, r.moneda_original),
+                  r.referencia_publica_enmascarada ?? "—",
+                  <StatusBadge key="b" tone="ok">confirmado</StatusBadge>,
+                ])}
+              />
+            )}
+          </div>
+        </section>
+
+        <section className="animate-fade-in">
+          <SectionHeader eyebrow="cola" title="aportes por verificar" subtitle="reportados, en proceso de validación" />
+          <div className="mt-6">
+            {porVerificar.length === 0 ? (
+              <Empty msg="sin aportes pendientes." />
+            ) : (
+              <DataTable
+                cols={["reportado", "método", "monto", "estado"]}
+                rows={porVerificar.map((r) => [
+                  r.fecha_reportada ?? "—",
+                  r.metodo,
+                  fmtMonto(r.monto_original, r.moneda_original),
+                  <StatusBadge key="b" tone="warn">{r.estado}</StatusBadge>,
+                ])}
+              />
+            )}
+          </div>
+        </section>
+
+        <section className="animate-fade-in">
+          <SectionHeader eyebrow="salidas" title="egresos ejecutados" subtitle="adónde va el dinero" />
+          <div className="mt-6">
+            {egresos.length === 0 ? (
+              <Empty msg="aún no se han ejecutado gastos." />
+            ) : (
+              <DataTable
+                cols={["fecha", "categoría", "descripción", "beneficiario", "monto", "comprobante"]}
+                rows={egresos.map((r) => [
+                  fmtDate(r.fecha_ejecucion ?? r.fecha_gasto) ?? "—",
+                  r.categoria,
+                  r.descripcion ?? "—",
+                  r.proveedor ?? "—",
+                  fmtMonto(r.monto_original, r.moneda_original),
+                  r.comprobante_publico_url ? (
+                    <a key="l" href={r.comprobante_publico_url} target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:underline">
+                      ver
+                    </a>
+                  ) : (
+                    "—"
+                  ),
+                ])}
+              />
+            )}
+          </div>
+        </section>
+
+        {/* FOOTER */}
+        <footer className="border-t border-white/10 pt-8 pb-2">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              {config?.disclaimer ??
+                "[BASICO] publica este registro para mostrar de forma transparente los aportes recibidos y los gastos ejecutados. Los aportes se verifican manualmente antes de sumarse al total confirmado. Los datos sensibles serán protegidos. Este fondo no garantiza deducción fiscal."}
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-            <DetailBlock
-              title="pago móvil / bolívares"
-              rows={[
-                { label: "disponible en Bs", value: fmtBs(t?.ves_saldo) },
-                { label: "equivalente USD aprox.", value: fmtApproxUSD(vesToUsd(t?.ves_saldo)), subtle: true },
-                { label: "ingresado en Bs", value: fmtBs(t?.ves_confirmado) },
-                { label: "gastado en Bs", value: fmtBs(t?.ves_egresos) },
-                { label: "por verificar en Bs", value: fmtBs(t?.ves_por_verificar), faint: true },
-              ]}
-            />
-            <DetailBlock
-              title="zelle + efectivo sublime / USD"
-              rows={[
-                { label: "disponible USD", value: fmtUSD(t?.usd_saldo) },
-                { label: "ingresado USD", value: fmtUSD(t?.usd_confirmado) },
-                { label: "gastado USD", value: fmtUSD(t?.usd_egresos) },
-                { label: "por verificar USD", value: fmtUSD(t?.usd_por_verificar), faint: true },
-              ]}
-            />
-            <DetailBlock
-              title="binance / USDT"
-              rows={[
-                { label: "disponible USDT", value: fmtUSDT(t?.usdt_saldo) },
-                { label: "ingresado USDT", value: fmtUSDT(t?.usdt_confirmado) },
-                { label: "gastado USDT", value: fmtUSDT(t?.usdt_egresos) },
-                { label: "por verificar USDT", value: fmtUSDT(t?.usdt_por_verificar), faint: true },
-              ]}
-            />
-          </div>
-        </section>
-
-        <p className="text-xs text-muted-foreground mb-10">
-          {ultimaAct
-            ? <>última actualización: {ultimaAct} · {t?.aportes_confirmados_count ?? 0} aportes confirmados · {t?.aportes_pendientes_count ?? 0} pendientes</>
-            : <>sin actualizaciones todavía</>}
-        </p>
-
-        <Section title="ingresos confirmados">
-          {confirmados.length === 0 ? (
-            <Empty msg="Aún no hay aportes confirmados." />
-          ) : (
-            <DataTable
-              cols={["Fecha", "Donante", "Método", "Monto", "Ref.", "Estado"]}
-              rows={confirmados.map((r) => [
-                fmtDate(r.fecha_confirmada) ?? "—",
-                r.donante_publico,
-                r.metodo,
-                fmtMonto(r.monto_original, r.moneda_original),
-                r.referencia_publica_enmascarada ?? "—",
-                <Badge key="b" variant="outline" className="border-foreground text-foreground">confirmado</Badge>,
-              ])}
-            />
-          )}
-        </Section>
-
-        <Section title="aportes por verificar">
-          {porVerificar.length === 0 ? (
-            <Empty msg="Sin aportes pendientes." />
-          ) : (
-            <DataTable
-              cols={["Reportado", "Método", "Monto", "Estado"]}
-              rows={porVerificar.map((r) => [
-                r.fecha_reportada ?? "—",
-                r.metodo,
-                fmtMonto(r.monto_original, r.moneda_original),
-                <Badge key="b" variant="secondary">{r.estado}</Badge>,
-              ])}
-            />
-          )}
-        </Section>
-
-        <Section title="egresos ejecutados">
-          {egresos.length === 0 ? (
-            <Empty msg="Aún no se han ejecutado gastos." />
-          ) : (
-            <DataTable
-              cols={["Fecha", "Categoría", "Descripción", "Beneficiario", "Monto", "Comprobante"]}
-              rows={egresos.map((r) => [
-                fmtDate(r.fecha_ejecucion ?? r.fecha_gasto) ?? "—",
-                r.categoria,
-                r.descripcion ?? "—",
-                r.proveedor ?? "—",
-                fmtMonto(r.monto_original, r.moneda_original),
-                r.comprobante_publico_url ? (
-                  <a key="l" href={r.comprobante_publico_url} target="_blank" rel="noreferrer" className="underline">
-                    ver
-                  </a>
-                ) : (
-                  "—"
-                ),
-              ])}
-            />
-          )}
-        </Section>
-
-        <footer className="mt-16 border-t border-foreground/10 pt-6 text-xs text-muted-foreground leading-relaxed">
-          {config?.disclaimer ??
-            "[BASICO] publica este registro para mostrar de forma transparente los aportes recibidos y los gastos ejecutados. Los aportes se verifican manualmente antes de sumarse al total confirmado. Los datos sensibles serán protegidos. Este fondo no garantiza deducción fiscal."}
         </footer>
+      </main>
+
+      <style>{`
+        @keyframes scan {
+          0% { transform: translateY(-40vh); opacity: 0; }
+          15% { opacity: 1; }
+          85% { opacity: 1; }
+          100% { transform: translateY(40vh); opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/* ---------- subcomponents ---------- */
+
+function SectionHeader({
+  eyebrow,
+  title,
+  subtitle,
+}: {
+  eyebrow: string;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div>
+      <div className="inline-flex items-center gap-2">
+        <span className="h-px w-8 bg-[#E3001B]" />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
+          {eyebrow}
+        </span>
+      </div>
+      <h2 className="mt-3 text-3xl md:text-5xl font-black lowercase tracking-tight text-white">
+        {title}
+      </h2>
+      {subtitle && (
+        <p className="mt-2 text-sm md:text-base text-zinc-400 lowercase">{subtitle}</p>
+      )}
+    </div>
+  );
+}
+
+function BigStat({
+  label,
+  value,
+  tag,
+  hint,
+  primary,
+}: {
+  label: string;
+  value: number;
+  tag: string;
+  hint: string;
+  primary?: boolean;
+}) {
+  const display = `~ US$ ${value.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return (
+    <div
+      className={`group relative overflow-hidden rounded-xl border p-6 transition-all duration-300 hover:-translate-y-0.5 ${
+        primary
+          ? "border-[#E3001B]/40 bg-gradient-to-br from-[#1a0205] via-[#0e0103] to-[#070708] hover:border-[#E3001B]/70 hover:shadow-[0_0_40px_-10px_rgba(227,0,27,0.5)]"
+          : "border-white/10 bg-white/[0.02] backdrop-blur-sm hover:border-white/25 hover:bg-white/[0.04]"
+      }`}
+    >
+      {primary && (
+        <div className="absolute -top-20 -right-20 h-48 w-48 rounded-full bg-[#E3001B]/20 blur-3xl" />
+      )}
+      <div className="relative flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+          {tag}
+        </span>
+        <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          <Radio className="h-3 w-3 text-emerald-400 animate-pulse" />
+          live
+        </span>
+      </div>
+      <p className={`relative mt-4 text-xs uppercase tracking-widest ${primary ? "text-[#ff6e7e]" : "text-zinc-400"}`}>
+        {label}
+      </p>
+      <div className={`relative mt-3 font-black tabular-nums tracking-tight ${primary ? "text-white" : "text-zinc-100"}`}
+        style={{ fontSize: primary ? "clamp(2rem, 5vw, 3.25rem)" : "clamp(1.6rem, 4vw, 2.5rem)", lineHeight: 1 }}
+      >
+        {display}
+      </div>
+      <p className="relative mt-3 text-xs text-zinc-500 lowercase">{hint}</p>
+    </div>
+  );
+}
+
+function MethodCard({
+  icon,
+  title,
+  currency,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  currency: string;
+  description: string;
+}) {
+  return (
+    <div className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#E3001B]/40 hover:bg-white/[0.04]">
+      <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-[#E3001B]/0 to-transparent transition-all duration-500 group-hover:via-[#E3001B]" />
+      <div className="flex items-center justify-between">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-200 transition-colors group-hover:border-[#E3001B]/40 group-hover:text-[#ff6e7e]">
+          {icon}
+        </div>
+        <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          activo
+        </span>
+      </div>
+      <h3 className="mt-5 text-lg font-bold lowercase tracking-tight text-white">{title}</h3>
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#E3001B]">
+        {currency}
+      </p>
+      <p className="mt-3 text-xs text-zinc-400 leading-relaxed lowercase">{description}</p>
+      <div className="mt-5 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-300 transition-colors group-hover:text-white">
+        usar este método
+        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
       </div>
     </div>
   );
 }
 
-function HeroCard({
-  label,
-  value,
-  description,
-  variant,
-}: {
-  label: string;
-  value: string;
-  description: string;
-  variant: "primary" | "secondary";
-}) {
-  const isPrimary = variant === "primary";
-  return (
-    <Card
-      className={`overflow-hidden border-0 shadow-sm ${
-        isPrimary
-          ? "bg-primary text-primary-foreground"
-          : "bg-card border border-foreground/10 text-card-foreground"
-      }`}
-    >
-      <CardContent className="p-5 md:p-7">
-        <p
-          className={`text-[11px] md:text-xs font-semibold uppercase tracking-widest mb-3 ${
-            isPrimary ? "text-primary-foreground/80" : "text-muted-foreground"
-          }`}
-        >
-          {label}
-        </p>
-        <div className="text-3xl md:text-5xl font-black tabular-nums tracking-tight">{value}</div>
-        <p
-          className={`mt-3 text-xs md:text-sm leading-relaxed ${
-            isPrimary ? "text-primary-foreground/80" : "text-muted-foreground"
-          }`}
-        >
-          {description}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
 function DetailBlock({
+  tag,
   title,
+  accent,
   rows,
 }: {
+  tag: string;
   title: string;
-  rows: { label: string; value: string; subtle?: boolean; faint?: boolean }[];
+  accent: string;
+  rows: { label: string; value: string; subtle?: boolean; faint?: boolean; strong?: boolean }[];
 }) {
   return (
-    <div className="bg-card border border-foreground/10 rounded-lg p-5">
-      <h3 className="text-sm md:text-base font-bold lowercase tracking-tight mb-4">{title}</h3>
-      <div className="space-y-3">
+    <div className="relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-white/[0.01] p-6 backdrop-blur-sm transition-colors hover:border-white/20">
+      <div className="absolute left-0 top-0 h-full w-0.5" style={{ background: accent }} />
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: accent }}>
+        {tag}
+      </p>
+      <h3 className="mt-2 text-xl font-bold lowercase tracking-tight text-white">{title}</h3>
+      <div className="mt-5 space-y-3">
         {rows.map((r, i) => (
-          <div key={i} className="flex items-baseline justify-between gap-3">
-            <span
-              className={`text-xs ${
-                r.faint ? "text-muted-foreground/70" : r.subtle ? "text-muted-foreground" : "text-muted-foreground"
-              }`}
-            >
+          <div key={i} className="flex items-baseline justify-between gap-3 border-b border-white/5 pb-2 last:border-0">
+            <span className={`text-[11px] uppercase tracking-wider ${r.faint ? "text-zinc-600" : "text-zinc-500"}`}>
               {r.label}
             </span>
             <span
-              className={`text-sm md:text-base font-semibold tabular-nums text-right ${
-                r.faint ? "text-muted-foreground" : r.subtle ? "text-foreground/80" : "text-foreground"
+              className={`tabular-nums text-right ${
+                r.strong
+                  ? "text-white text-lg font-bold"
+                  : r.faint
+                  ? "text-zinc-500 text-sm"
+                  : r.subtle
+                  ? "text-zinc-400 text-sm"
+                  : "text-zinc-200 text-sm font-semibold"
               }`}
             >
               {r.value}
@@ -396,37 +637,46 @@ function DetailBlock({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function StatusBadge({ children, tone }: { children: React.ReactNode; tone: "ok" | "warn" }) {
+  const cls =
+    tone === "ok"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+      : "border-orange-500/30 bg-orange-500/10 text-orange-300";
   return (
-    <section className="mb-10">
-      <h2 className="text-lg md:text-xl font-black lowercase tracking-tight mb-3 border-b border-foreground/10 pb-2">
-        {title}
-      </h2>
+    <Badge variant="outline" className={`${cls} text-[10px] uppercase tracking-wider`}>
       {children}
-    </section>
+    </Badge>
   );
 }
 
 function Empty({ msg }: { msg: string }) {
-  return <p className="text-sm text-muted-foreground py-6">{msg}</p>;
+  return (
+    <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] py-10 text-center text-sm text-zinc-500 lowercase">
+      {msg}
+    </div>
+  );
 }
 
 function DataTable({ cols, rows }: { cols: string[]; rows: React.ReactNode[][] }) {
   return (
-    <div className="overflow-x-auto border border-foreground/10 rounded-md">
+    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-sm">
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="border-white/10 hover:bg-transparent">
             {cols.map((c) => (
-              <TableHead key={c} className="text-xs uppercase tracking-wider">{c}</TableHead>
+              <TableHead key={c} className="text-[10px] uppercase tracking-[0.15em] text-zinc-500">
+                {c}
+              </TableHead>
             ))}
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.map((r, i) => (
-            <TableRow key={i}>
+            <TableRow key={i} className="border-white/5 hover:bg-white/[0.03] transition-colors">
               {r.map((cell, j) => (
-                <TableCell key={j} className="text-sm">{cell}</TableCell>
+                <TableCell key={j} className="text-sm text-zinc-300">
+                  {cell}
+                </TableCell>
               ))}
             </TableRow>
           ))}
@@ -435,23 +685,3 @@ function DataTable({ cols, rows }: { cols: string[]; rows: React.ReactNode[][] }
     </div>
   );
 }
-
-function AporteMethod({
-  title,
-  currency,
-  description,
-}: {
-  title: string;
-  currency: string;
-  description: string;
-}) {
-  return (
-    <div className="bg-card border border-foreground/10 rounded-lg p-5">
-      <h3 className="text-sm md:text-base font-bold lowercase tracking-tight mb-1">{title}</h3>
-      <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">{currency}</p>
-      <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">{description}</p>
-    </div>
-  );
-}
-
-
