@@ -353,52 +353,7 @@ export default function FuerzaVenezuela() {
       </header>
 
       <main className="mx-auto max-w-6xl px-5 py-16 md:py-24 space-y-20 md:space-y-28">
-        {/* RESUMEN — 3 cards */}
-        <section id="resumen" className="animate-fade-in">
-          <SectionHeader
-            eyebrow="estado del fondo · en vivo"
-            title="resumen general"
-            subtitle="cifras aproximadas en us$ convertidas con la tasa del día"
-          />
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <BigStat
-              label="disponible total aprox."
-              value={disp}
-              primary
-              tag="balance neto"
-              hint="bs + us$ + usdt convertidos"
-            />
-            <BigStat label="ingresado confirmado" value={ing} tag="ingresos" hint="aportes verificados" />
-            <BigStat label="gastado" value={gas} tag="egresos" hint="ya ejecutado" />
-          </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] uppercase tracking-wider text-zinc-500">
-            {ultimaAct ? (
-              <>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  última sync: {ultimaAct}
-                </span>
-                <span>· {t?.aportes_confirmados_count ?? 0} aportes confirmados</span>
-                <span>· {t?.aportes_pendientes_count ?? 0} pendientes</span>
-              </>
-            ) : (
-              <span>sin actualizaciones todavía</span>
-            )}
-          </div>
-          {!tasa && hasAnyVes && (
-            <p className="mt-3 text-xs text-orange-400/90">
-              · aún no hay tasa del día configurada; el equivalente usd de bolívares no se puede calcular.
-            </p>
-          )}
-          {tasa && (
-            <p className="mt-3 text-[11px] text-zinc-500 lowercase">
-              tasa usada: 1 usd = {nfmt(tasa)} bs
-              {t?.tasa_fecha ? ` · ${fmtDateOnly(t.tasa_fecha)}` : ""}
-              {t?.tasa_fuente ? ` · ${t.tasa_fuente}` : ""}
-            </p>
-          )}
-        </section>
 
         {/* CÓMO APORTAR */}
         <section id="aportar" className="animate-fade-in">
