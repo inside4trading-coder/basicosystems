@@ -1,59 +1,106 @@
-## Causa raíz
 
-Las dos partidas de CAN0001 (M y XL) **sí se generaron** en `core_fabrication_fund_movements`, pero quedaron con `core_variant_id = NULL`.
+# Fondo Transparente / Fuerza Venezuela — Fase 1
 
-Datos verificados en BD:
+Construcción por fases. Esta es **Fase 1**: cimientos completos + lo mínimo operativo end-to-end (registrar aportes, confirmar/rechazar, y página pública leyendo datos reales). Conciliación, carga masiva CSV, egresos, auditoría enriquecida y export quedan para Fases 2 y 3.
 
-- Producto Core `1bb588d0…` (Basico T-Shirt Canserbero) solo tiene **1 variante** en `core_product_variants`: la **L** (woo_variation_id 32302).
-- Las variantes **M (32301)** y **XL (32303)** existen en WooCommerce pero **no fueron creadas como Core variants**.
-- Movimientos afectados:
-  - `CAN0001 M` (#32802) → woo_variation_id 32301 → core_variant_id = NULL
-  - `CAN0001 XL` (#32803) → woo_variation_id 32303 → core_variant_id = NULL
+Acceso privado: **admin + manager**. Página pública `/fuerza-venezuela`: abierta e indexable. Tasa VES→USD: **manual por aporte** (sin API externa).
 
-`core-process-fabrication-funds` encontró el **producto** (por SKU / woo_product_id) y posteó el movimiento igual, pero sin variante. Luego `core-generate-production-needs` filtra explícitamente:
+---
 
-```ts
-if (!m.core_variant_id || !m.core_product_id) { skipReason("missing_core_ids"); continue; }
-```
+## 1. Base de datos (nuevas tablas, aisladas)
 
-Por eso JGM43 L/XL sí entraron como necesidades (tienen core_variant_id) y los dos CAN0001 fueron silenciosamente descartados, sin aparecer en pendientes tampoco (porque el producto fue resuelto).
+Prefijo `fondo_` para no tocar nada existente.
 
-CAN0001 L (#32782) no aparece como necesidad porque ya fue absorbida por OP-000001 — correcto.
+- **`fondo_aportes`** — donaciones reportadas
+  - Datos donante: `nombre_donante`, `nombre_publico`, `es_anonimo`, `email_contacto` (privado)
+  - Movimiento: `metodo` (`pago_movil`/`binance`/`zelle`), `moneda_original` (`VES`/`USD`/`USDT`), `monto_original`, `tasa_usada`, `equivalente_usd`
+  - Referencias: `referencia_privada`, `referencia_publica_enmascarada`, `comprobante_privado_url`
+  - Fechas: `fecha_reportada`, `fecha_confirmada`, `created_at`, `updated_at`
+  - Estado: `por_verificar` / `coincidencia_encontrada` / `confirmado` / `rechazado` / `duplicado` / `monto_incorrecto`
+  - Notas: `nota_publica`, `nota_interna`
+  - Auditoría inline: `verificado_por`, `fecha_verificacion`, `created_by`
 
-## Plan
+- **`fondo_movimientos_cargados`** (Fase 2, creada vacía ahora) — movimientos bancarios importados por CSV
 
-### 1. Backfill de variantes CAN0001 M y XL (data fix puntual)
+- **`fondo_egresos`** (Fase 3, creada vacía ahora) — gastos
 
-Migración para:
+- **`fondo_audit_log`** — registro de cambios (usuario, acción, tabla, record_id, valor_anterior jsonb, valor_nuevo jsonb)
 
-- Insertar las dos variantes faltantes en `core_product_variants` clonando los campos canónicos de la variante L existente (mismo `core_product_id`, status, etc.), con:
-  - M → size `M`, variant_label `M`, variant_sku `CAN0001-M`, woo_sku `CAN0001 M`, woo_variation_id 32301
-  - XL → size `XL`, variant_label `XL`, variant_sku `CAN0001-XL`, woo_sku `CAN0001 XL`, woo_variation_id 32303
-- Actualizar los dos movimientos existentes (`CAN0001 M` y `CAN0001 XL`) para setearles el `core_variant_id` recién creado.
-- No tocar costos, stock, ni WooCommerce.
+- **`fondo_configuracion`** — singleton: textos públicos, título, disclaimer, tasa sugerida del día (opcional, no obliga)
 
-### 2. Volver a correr generación de necesidades
+### Seguridad
+- RLS activado en todas
+- Privadas (`fondo_aportes` con datos sensibles, `fondo_movimientos_cargados`, `fondo_egresos`, `fondo_audit_log`, `fondo_configuracion` escritura): solo `admin` y `manager`
+- Lectura pública anónima vía **vistas seguras** (`fondo_public_aportes`, `fondo_public_egresos`, `fondo_public_totales`) que solo exponen columnas seguras y filas con estado apto (confirmados / ejecutados / por verificar para el contador). Sin emails, sin referencias completas, sin comprobantes privados.
+- GRANTs explícitos: `authenticated` (admin/manager via RLS) + `anon` solo sobre las vistas públicas
+- Storage buckets:
+  - `fondo-comprobantes-privados` (privado, solo admin/manager)
+  - `fondo-comprobantes-publicos` (público, versiones censuradas)
 
-Después del backfill, ejecutar **"Generar necesidades"** (botón existente) y validar que aparezcan:
+### RPCs (`SECURITY DEFINER`)
+- `fondo_confirmar_aporte(id, tasa, equivalente_usd, nota_publica)` — valida rol, cambia estado, registra auditoría
+- `fondo_rechazar_aporte(id, motivo, nuevo_estado)` — para rechazado/duplicado/monto_incorrecto
+- `fondo_confirmar_lote(ids[])` — confirma varios con coincidencia exacta (Fase 2; en Fase 1 dejamos el RPC creado pero solo confirma de uno en uno hasta tener conciliación)
 
-- CAN0001 M × 1 (pedido #32802)
-- CAN0001 XL × 1 (pedido #32803)
+---
 
-Sin tocar las necesidades ya generadas de JGM43.
+## 2. Rutas y navegación
 
-### 3. Prevención (cambio mínimo en `core-process-fabrication-funds`)
+- **Privado** (dentro de AppLayout/sidebar):
+  - `/fondo-transparente` → layout con tabs/subnav
+    - Dashboard (Fase 1 ✅)
+    - Aportes reportados (Fase 1 ✅)
+    - Conciliación (Fase 2 — placeholder "Próximamente")
+    - Carga masiva (Fase 2 — placeholder)
+    - Egresos (Fase 3 — placeholder)
+    - Auditoría (Fase 1 ✅ lectura básica)
+    - Configuración pública (Fase 1 ✅ editar título/disclaimer)
+- **Público**: `/fuerza-venezuela` (Fase 1 ✅) — ruta fuera de `ProtectedRoute`, sin sidebar
+- Sidebar: nuevo ítem "Fondo Transparente" visible solo para admin/manager
+- `role_routes`: añadir `/fondo-transparente` a admin y manager
 
-Para que esto no se repita silenciosamente cuando un producto Core existe pero la variante Woo no está mapeada: cuando `product` se resuelve pero `variant` queda `null` y hay `wooVarId`, encolar un pendiente `variation_not_mapped` además de postear el movimiento (o, alternativamente, **no** postear el movimiento y solo crear el pendiente — preferible para mantener "no fund sin variant" y forzar mapeo).
+---
 
-Propuesta: **encolar pendiente `variation_not_mapped` y NO crear el movimiento** cuando product existe + wooVarId presente + variant null. Esto evita movimientos huérfanos sin variante que luego se pierden en la generación de necesidades.
+## 3. UI Fase 1
 
-### Archivos a tocar
+### Privado `/fondo-transparente`
+- **Dashboard**: 6 cards (total confirmado USD, por verificar, gastos ejecutados [0 en F1], saldo disponible, # confirmados, # pendientes) + última actualización
+- **Aportes reportados**: tabla con filtros (estado, método, moneda, fecha, monto), botón "Nuevo aporte" (sheet con formulario completo), acciones por fila: Confirmar (dialog con tasa/USD), Rechazar, Marcar duplicado, Marcar monto incorrecto, editar notas
+- **Configuración pública**: form simple para título, subtítulo, disclaimer, tasa sugerida
+- **Auditoría**: tabla read-only con últimos 200 eventos
 
-- Nueva migración SQL: insert de 2 variantes + update de 2 movimientos por id.
-- `supabase/functions/core-process-fabrication-funds/index.ts`: rama "producto sí, variante no" → encolar pending `variation_not_mapped` en lugar de postear movimiento sin variante (líneas ~237-275).
+### Público `/fuerza-venezuela`
+- Diseño sobrio b/n, mobile-first, tipografía editorial consistente con el HUB
+- Hero: "fuerza venezuela" + subtítulo + última actualización
+- 4 cards de totales (leyendo `fondo_public_totales`)
+- Tabla "ingresos confirmados" (de `fondo_public_aportes` filtrando confirmados)
+- Tabla "aportes por verificar" (mínima: fecha, método, monto)
+- Tabla "egresos ejecutados" (vacía en F1)
+- Disclaimer legal al pie
+- SEO: `<title>`, meta description, OG tags, H1 único, JSON-LD `Organization`
+- Sin login, sin sidebar, sin acciones
 
-### Fuera de alcance
+---
 
-- No tocar OP-000001 ni CAN0001 L (#32782).
-- No tocar costos, inventario, ni WooCommerce.
-- No cambiar lógica de filtrado del generador de necesidades.
+## 4. Detalles técnicos
+
+- Hook `useFondoData` con React Query: aportes, totales, config
+- Enmascaramiento de referencias hecho en SQL dentro de la vista (`****` + últimos 4)
+- Sin tocar: `esp_*`, `core_*`, `orders`, WooCommerce, inventario, fabricación, caja, RRPP, Crew
+- Tipos TS regenerados después de la migración
+- Sitemap: añadir `/fuerza-venezuela`
+
+---
+
+## 5. Entregable Fase 1
+
+Al terminar Fase 1, el equipo puede:
+1. Crear aportes manualmente (mientras llegan reportes por WhatsApp/form externo)
+2. Confirmar/rechazar cada uno con tasa manual
+3. Ver totales en dashboard
+4. Compartir `/fuerza-venezuela` públicamente con datos reales
+
+**Fase 2** (siguiente turno tras aprobar F1): conciliación + carga masiva CSV + confirmación por lote.
+**Fase 3**: egresos completos con comprobantes + export CSV + auditoría enriquecida.
+
+¿Apruebas Fase 1 para empezar la migración?
