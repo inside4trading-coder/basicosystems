@@ -568,7 +568,17 @@ function AporteFormDialog({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <Label>Método</Label>
-            <Select value={f.metodo} onValueChange={(v) => setF({ ...f, metodo: v as Metodo })}>
+            <Select
+              value={f.metodo}
+              onValueChange={(v) => {
+                const metodo = v as Metodo;
+                const monedaForzada: Moneda =
+                  metodo === "pago_movil" ? "VES"
+                  : metodo === "binance" ? "USDT"
+                  : "USD";
+                setF({ ...f, metodo, moneda_original: monedaForzada });
+              }}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="pago_movil">Pago Móvil (Bs)</SelectItem>
@@ -580,14 +590,10 @@ function AporteFormDialog({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <Label>Moneda</Label>
-            <Select value={f.moneda_original} onValueChange={(v) => setF({ ...f, moneda_original: v as Moneda })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="VES">VES</SelectItem>
-                <SelectItem value="USD">USD</SelectItem>
-                <SelectItem value="USDT">USDT</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input value={f.moneda_original} disabled />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Determinada por el método. No se mezclan monedas automáticamente.
+            </p>
           </div>
           <div>
             <Label>Monto</Label>
