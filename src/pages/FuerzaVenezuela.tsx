@@ -186,7 +186,7 @@ export default function FuerzaVenezuela() {
         {/* scanline */}
         <div className="pointer-events-none absolute inset-x-0 -z-10 h-px top-1/3 bg-gradient-to-r from-transparent via-[#E3001B]/60 to-transparent animate-[scan_6s_linear_infinite]" />
 
-        <div className="mx-auto max-w-6xl px-5 pt-16 pb-20 md:pt-28 md:pb-32">
+        <div className="mx-auto max-w-6xl px-5 pt-16 pb-16 md:pt-28 md:pb-24">
           {/* live tag */}
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 backdrop-blur-sm animate-fade-in">
             <span className="relative flex h-2 w-2">
@@ -194,7 +194,7 @@ export default function FuerzaVenezuela() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E3001B]" />
             </span>
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-300">
-              live relief platform · venezuela
+              en vivo · transparente · venezuela
             </span>
           </div>
 
@@ -212,28 +212,38 @@ export default function FuerzaVenezuela() {
             una nueva forma de ayudar.
           </p>
 
-          <p
-            className="mt-5 max-w-2xl text-sm md:text-base leading-relaxed text-zinc-400 lowercase animate-fade-in"
+          <div
+            className="mt-6 max-w-2xl space-y-2 text-sm md:text-base leading-relaxed text-zinc-400 lowercase animate-fade-in"
             style={{ animationDelay: "0.15s" }}
           >
-            somos [basico], una marca nacida en venezuela. hoy estamos usando nuestra comunidad y esta
-            plataforma para convertir aportes en ayuda visible, verificable y transparente.
-          </p>
-
-          <div
-            className="mt-10 max-w-2xl border-l-2 border-[#E3001B] pl-5 animate-fade-in"
-            style={{ animationDelay: "0.2s" }}
-          >
-            <p className="text-2xl md:text-4xl font-black lowercase text-white tracking-tight">
-              no nos creas. míralo en vivo.
+            <p>aquí no solo donas. aquí puedes ver qué pasa con tu aporte.</p>
+            <p>
+              cuando donas, tu aporte se registra. cuando se confirma, entra al dinero disponible.
+              cuando se usa, publicamos el monto, el gasto y el comprobante. cuando es posible,
+              también mostramos contenido de la entrega o la acción realizada.
             </p>
-            <p className="mt-2 text-xs md:text-sm text-zinc-400 lowercase leading-relaxed">
-              cada ingreso confirmado, cada gasto ejecutado y cada saldo disponible se publica aquí.
-            </p>
+            <p>ingresos visibles. gastos con soporte. saldo disponible en vivo.</p>
           </div>
 
           <div
-            className="mt-10 flex flex-col sm:flex-row gap-3 animate-fade-in"
+            className="mt-8 max-w-3xl animate-fade-in"
+            style={{ animationDelay: "0.2s" }}
+          >
+            <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/40 bg-[#E3001B]/[0.07] p-5 md:p-6 backdrop-blur-sm">
+              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#E3001B]/20 blur-3xl" />
+              <div className="absolute -left-10 -bottom-10 h-28 w-28 rounded-full bg-[#E3001B]/15 blur-3xl" />
+              <p className="relative text-3xl md:text-5xl font-black lowercase tracking-tight text-white">
+                no nos creas.
+                <span className="text-[#E3001B]"> míralo.</span>
+              </p>
+              <p className="relative mt-2 text-xs md:text-sm text-zinc-300 lowercase">
+                cada ingreso, cada gasto y cada saldo publicado en esta página.
+              </p>
+            </div>
+          </div>
+
+          <div
+            className="mt-8 flex flex-col sm:flex-row gap-3 animate-fade-in"
             style={{ animationDelay: "0.25s" }}
           >
             <button
@@ -253,9 +263,40 @@ export default function FuerzaVenezuela() {
             </button>
           </div>
 
+          {/* mini flow */}
+          <div
+            className="mt-14 animate-fade-in"
+            style={{ animationDelay: "0.3s" }}
+          >
+            <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+              cómo funciona
+            </p>
+            <div className="flex flex-wrap items-stretch gap-3">
+              {[
+                { icon: Heart, label: "donar" },
+                { icon: CheckCircle2, label: "confirmar" },
+                { icon: Wallet, label: "disponible" },
+                { icon: Receipt, label: "gasto con comprobante" },
+                { icon: HandHeart, label: "ayuda visible" },
+              ].map((step, i, arr) => (
+                <div key={step.label} className="flex items-center gap-3">
+                  <div className="group relative flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 backdrop-blur-sm transition-all hover:border-[#E3001B]/40 hover:bg-white/[0.06]">
+                    <step.icon className="h-4 w-4 text-[#E3001B]" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                      {step.label}
+                    </span>
+                  </div>
+                  {i < arr.length - 1 && (
+                    <ArrowRight className="h-3.5 w-3.5 text-zinc-600" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
           <button
             onClick={() => scrollToId("resumen")}
-            className="mt-16 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-300 transition-colors animate-pulse"
+            className="mt-14 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-300 transition-colors animate-pulse"
           >
             <ChevronDown className="h-3 w-3" />
             scroll
