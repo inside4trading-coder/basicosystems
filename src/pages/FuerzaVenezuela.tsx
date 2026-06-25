@@ -394,30 +394,27 @@ export default function FuerzaVenezuela() {
             title="cómo aportar"
             subtitle="elige un canal, confirma tu aporte y lo publicamos aquí"
           />
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <MethodCard
               icon={<Smartphone className="h-5 w-5" />}
               title="pago móvil"
               currency="BS · venezuela"
               description="transferencia o pago móvil en bolívares."
+              onClick={() => setAporteMetodo("pago_movil")}
             />
             <MethodCard
               icon={<DollarSign className="h-5 w-5" />}
               title="zelle"
               currency="US$ · estados unidos"
               description="transferencia zelle en dólares."
-            />
-            <MethodCard
-              icon={<Wallet className="h-5 w-5" />}
-              title="efectivo sublime"
-              currency="US$ · entrega en tienda"
-              description="entrega de efectivo en usd en sublime."
+              onClick={() => setAporteMetodo("zelle")}
             />
             <MethodCard
               icon={<Bitcoin className="h-5 w-5" />}
               title="binance"
               currency="USDT · cripto"
               description="transferencia de usdt por binance pay."
+              onClick={() => setAporteMetodo("binance")}
             />
           </div>
         </section>
