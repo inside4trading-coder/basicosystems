@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Landing from "./pages/Landing";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -72,6 +72,10 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const FUNDACION_HOSTS = new Set(["fundacionbasico.com", "www.fundacionbasico.com"]);
+const isFundacionHost =
+  typeof window !== "undefined" && FUNDACION_HOSTS.has(window.location.hostname);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -80,7 +84,10 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Landing />} />
+            <Route
+              path="/"
+              element={isFundacionHost ? <FuerzaVenezuela /> : <Landing />}
+            />
             <Route path="/login" element={<Login />} />
             <Route
               element={
@@ -168,7 +175,10 @@ const App = () => (
             </Route>
             <Route path="/crew/incidencias" element={<CrewIncidencias />} />
             <Route path="/sublime/fichaje" element={<SublimeFichajePublico />} />
-            <Route path="/fuerza-venezuela" element={<FuerzaVenezuela />} />
+            <Route
+              path="/fuerza-venezuela"
+              element={isFundacionHost ? <Navigate to="/" replace /> : <FuerzaVenezuela />}
+            />
             <Route path="*" element={<NotFound />} />
 
           </Routes>

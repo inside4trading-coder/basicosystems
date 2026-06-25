@@ -128,7 +128,39 @@ export default function FuerzaVenezuela() {
   const [aporteMetodo, setAporteMetodo] = useState<MetodoAporte | null>(null);
 
   useEffect(() => {
-    document.title = "fuerza venezuela — [BASICO]";
+    document.title = "Fuerza Venezuela — Fondo Transparente | fundacionbasico.com";
+
+    const ensureMeta = (selector: string, attrs: Record<string, string>) => {
+      let el = document.head.querySelector<HTMLMetaElement>(selector);
+      if (!el) {
+        el = document.createElement("meta");
+        Object.entries(attrs).forEach(([k, v]) => {
+          if (k !== "content") el!.setAttribute(k, v);
+        });
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", attrs.content);
+    };
+    const ensureCanonical = (href: string) => {
+      let el = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+      if (!el) {
+        el = document.createElement("link");
+        el.setAttribute("rel", "canonical");
+        document.head.appendChild(el);
+      }
+      el.setAttribute("href", href);
+    };
+
+    const desc =
+      "Fondo Transparente Fuerza Venezuela: cada aporte verificable, cada gasto público. Ayuda a las víctimas del terremoto en Venezuela.";
+    ensureMeta('meta[name="description"]', { name: "description", content: desc });
+    ensureMeta('meta[property="og:title"]', { property: "og:title", content: "Fuerza Venezuela — Fondo Transparente" });
+    ensureMeta('meta[property="og:description"]', { property: "og:description", content: desc });
+    ensureMeta('meta[property="og:url"]', { property: "og:url", content: "https://fundacionbasico.com/" });
+    ensureMeta('meta[name="twitter:title"]', { name: "twitter:title", content: "Fuerza Venezuela — Fondo Transparente" });
+    ensureMeta('meta[name="twitter:description"]', { name: "twitter:description", content: desc });
+    ensureCanonical("https://fundacionbasico.com/");
+
     (async () => {
       const [tRes, aRes, eRes, cRes] = await Promise.all([
         supabase.from("fondo_public_totales").select("*").maybeSingle(),
