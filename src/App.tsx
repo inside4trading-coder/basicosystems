@@ -164,10 +164,13 @@ const App = () => (
                 <Route path="fabricacion" element={<EspanaFabricacion />} />
                 <Route path="blanks-dtf" element={<EspanaBlanksDTF />} />
               </Route>
+              <Route path="/fondo-transparente" element={<FondoTransparente />} />
             </Route>
             <Route path="/crew/incidencias" element={<CrewIncidencias />} />
             <Route path="/sublime/fichaje" element={<SublimeFichajePublico />} />
+            <Route path="/fuerza-venezuela" element={<FuerzaVenezuela />} />
             <Route path="*" element={<NotFound />} />
+
           </Routes>
         </AuthProvider>
       </BrowserRouter>
