@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-type Metodo = "pago_movil" | "binance" | "zelle";
+type Metodo = "pago_movil" | "binance" | "zelle" | "efectivo_sublime";
 type Moneda = "VES" | "USD" | "USDT";
 type AporteEstado =
   | "por_verificar" | "coincidencia_encontrada" | "confirmado"
@@ -91,11 +91,19 @@ const ESTADO_BADGE: Record<AporteEstado, { label: string; variant: any }> = {
   monto_incorrecto: { label: "Monto incorrecto", variant: "destructive" },
 };
 
-const fmtUSD = (n?: number | null) =>
-  n == null ? "—" : `US$ ${Number(n).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmtMonto = (n: number, m: string) =>
-  `${Number(n).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${m}`;
+const nfmt = (n?: number | null) =>
+  n == null ? "—" : Number(n).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtUSD = (n?: number | null) => (n == null ? "—" : `US$ ${nfmt(n)}`);
+const fmtBs = (n?: number | null) => (n == null ? "—" : `Bs ${nfmt(n)}`);
+const fmtUSDT = (n?: number | null) => (n == null ? "—" : `${nfmt(n)} USDT`);
+const fmtMonto = (n: number, m: string) => {
+  if (m === "VES") return fmtBs(n);
+  if (m === "USD") return fmtUSD(n);
+  if (m === "USDT") return fmtUSDT(n);
+  return `${nfmt(n)} ${m}`;
+};
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleString("es-VE") : "—");
+const fmtDateOrNone = (d?: string | null) => (d ? new Date(d).toLocaleString("es-VE") : "sin actualizaciones todavía");
 
 function maskRef(metodo: Metodo, raw: string): string {
   const v = (raw || "").trim();
