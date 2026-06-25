@@ -419,6 +419,13 @@ export default function FuerzaVenezuela() {
               description="transferencia de usdt por binance pay."
               onClick={() => setAporteMetodo("binance")}
             />
+            <MethodCard
+              icon={<DollarSign className="h-5 w-5" />}
+              title="bizum"
+              currency="€ · españa"
+              description="bizum en euros (se contabilizan como us$ 1:1 por ahora)."
+              onClick={() => setAporteMetodo("bizum")}
+            />
           </div>
         </section>
 
