@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -53,10 +53,11 @@ type Config = {
 };
 
 const nfmt = (n: number | null | undefined, dec = 2) =>
-  n == null ? "—" : Number(n).toLocaleString("es-VE", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  n == null || Number.isNaN(n) ? "—" : Number(n).toLocaleString("es-VE", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const fmtBs = (n: number | null | undefined) => (n == null ? "—" : `Bs ${nfmt(n)}`);
 const fmtUSD = (n: number | null | undefined) => (n == null ? "—" : `US$ ${nfmt(n)}`);
 const fmtUSDT = (n: number | null | undefined) => (n == null ? "—" : `${nfmt(n)} USDT`);
+const fmtApproxUSD = (n: number | null | undefined) => (n == null ? "—" : `~ US$ ${nfmt(n)}`);
 const fmtMonto = (n: number | null | undefined, m: string) => {
   if (n == null) return "—";
   if (m === "VES") return fmtBs(n);
@@ -95,87 +96,127 @@ export default function FuerzaVenezuela() {
   }, []);
 
   const tasa = t?.tasa_ves_usd && t.tasa_ves_usd > 0 ? Number(t.tasa_ves_usd) : null;
-  const vesSaldoUsd = tasa && t?.ves_saldo != null ? t.ves_saldo / tasa : null;
-  const totalRefUsd =
-    (vesSaldoUsd ?? 0) + Number(t?.usd_saldo ?? 0) + Number(t?.usdt_saldo ?? 0);
+
+  const vesToUsd = (ves: number | null | undefined) =>
+    tasa && ves != null ? ves / tasa : null;
+
+  const disponibleTotalUsd =
+    (vesToUsd(t?.ves_saldo) ?? 0) + Number(t?.usd_saldo ?? 0) + Number(t?.usdt_saldo ?? 0);
+  const ingresadoTotalUsd =
+    (vesToUsd(t?.ves_confirmado) ?? 0) + Number(t?.usd_confirmado ?? 0) + Number(t?.usdt_confirmado ?? 0);
+  const gastadoTotalUsd =
+    (vesToUsd(t?.ves_egresos) ?? 0) + Number(t?.usd_egresos ?? 0) + Number(t?.usdt_egresos ?? 0);
+
   const ultimaAct = fmtDate(t?.ultima_actualizacion ?? null);
+  const hasAnyVes =
+    (t?.ves_saldo ?? 0) !== 0 ||
+    (t?.ves_confirmado ?? 0) !== 0 ||
+    (t?.ves_egresos ?? 0) !== 0 ||
+    (t?.ves_por_verificar ?? 0) !== 0;
 
   return (
-    <div className="min-h-screen bg-white text-black">
-      <div className="mx-auto max-w-5xl px-4 py-10 md:py-16">
-        <header className="mb-10">
-          <h1 className="text-4xl md:text-6xl font-bold lowercase tracking-tight">
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-6xl px-4 py-10 md:py-16">
+        {/* Hero */}
+        <header className="mb-8 md:mb-12 animate-fade-in">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+            fondo transparente de ayuda
+          </p>
+          <h1 className="text-4xl md:text-7xl font-black lowercase tracking-tight text-secondary">
             {config?.titulo_publico ?? "fuerza venezuela"}
           </h1>
-          <p className="mt-2 text-base md:text-lg text-neutral-600 lowercase">
-            {config?.subtitulo_publico ?? "fondo transparente de ayuda por [basico]"}
+          <p className="mt-3 text-lg md:text-2xl font-medium lowercase text-muted-foreground max-w-3xl">
+            {config?.subtitulo_publico ?? "fondo transparente de ayuda por [BASICO]"}
+          </p>
+          <p className="mt-4 text-sm md:text-base text-muted-foreground max-w-2xl leading-relaxed">
+            cada aporte confirmado, cada gasto ejecutado y cada saldo disponible se publica de forma transparente.
           </p>
         </header>
 
-        {/* Bloque 1 — Pago Móvil / Bs */}
-        <BlockCard title="pago móvil / bolívares" subtitle="aportes recibidos en Bs por Pago Móvil">
-          <KPIGrid>
-            <KPI label="Total confirmado" value={fmtBs(t?.ves_confirmado)} />
-            <KPI label="Por verificar" value={fmtBs(t?.ves_por_verificar)} subtle />
-            <KPI label="Gastos ejecutados" value={fmtBs(t?.ves_egresos)} />
-            <KPI label="Saldo disponible" value={fmtBs(t?.ves_saldo)} highlight />
-          </KPIGrid>
-          <TasaNote
-            tasa={tasa}
-            fecha={t?.tasa_fecha ?? null}
-            fuente={t?.tasa_fuente ?? null}
-            equiv={vesSaldoUsd}
-          />
-        </BlockCard>
-
-        {/* Bloque 2 — Zelle + Efectivo Sublime / USD */}
-        <BlockCard title="zelle + efectivo sublime / usd" subtitle="aportes en US$ por Zelle o efectivo recibido en Sublime">
-          <KPIGrid>
-            <KPI label="Total confirmado" value={fmtUSD(t?.usd_confirmado)} />
-            <KPI label="Por verificar" value={fmtUSD(t?.usd_por_verificar)} subtle />
-            <KPI label="Gastos ejecutados" value={fmtUSD(t?.usd_egresos)} />
-            <KPI label="Saldo disponible" value={fmtUSD(t?.usd_saldo)} highlight />
-          </KPIGrid>
-        </BlockCard>
-
-        {/* Bloque 3 — Binance / USDT */}
-        <BlockCard title="binance / usdt" subtitle="aportes en USDT recibidos por Binance">
-          <KPIGrid>
-            <KPI label="Total confirmado" value={fmtUSDT(t?.usdt_confirmado)} />
-            <KPI label="Por verificar" value={fmtUSDT(t?.usdt_por_verificar)} subtle />
-            <KPI label="Gastos ejecutados" value={fmtUSDT(t?.usdt_egresos)} />
-            <KPI label="Saldo disponible" value={fmtUSDT(t?.usdt_saldo)} highlight />
-          </KPIGrid>
-        </BlockCard>
-
-        {/* Bloque resumen general */}
-        <BlockCard title="resumen general" subtitle="visión consolidada — cifras referenciales, no representan un único saldo bancario">
-          <KPIGrid cols={5}>
-            <KPI label="Saldo Bs" value={fmtBs(t?.ves_saldo)} />
-            <KPI label="Equiv. USD de Bs" value={fmtUSD(vesSaldoUsd)} subtle />
-            <KPI label="Saldo USD" value={fmtUSD(t?.usd_saldo)} />
-            <KPI label="Saldo USDT" value={fmtUSDT(t?.usdt_saldo)} />
-            <KPI
-              label="Total aprox. en USD"
-              value={fmtUSD(totalRefUsd)}
-              highlight
+        {/* Resumen principal — 3 cards grandes */}
+        <section className="mb-12 md:mb-16 animate-fade-in" style={{ animationDelay: "0.05s" }}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+            <HeroCard
+              label="disponible total aprox."
+              value={fmtApproxUSD(disponibleTotalUsd)}
+              variant="primary"
+              description="suma aproximada en US$ de Bs + US$ + USDT disponibles"
             />
-          </KPIGrid>
-          <p className="text-xs text-neutral-500 mt-3 leading-relaxed">
-            <strong>Cifra referencial.</strong> Calculada como{" "}
-            <code className="text-[11px]">equiv USD de Bs + saldo USD + saldo USDT</code>. Cada moneda se gasta
-            por separado; no hay conversión automática entre saldos.
-            {tasa ? (
-              <> Tasa usada: 1 USD = {nfmt(tasa)} Bs{t?.tasa_fecha ? ` · ${fmtDateOnly(t.tasa_fecha)}` : ""}.</>
-            ) : (
-              <> Aún no se ha configurado la tasa del día; el equivalente USD de Bs no se puede calcular.</>
+            <HeroCard
+              label="ingresado confirmado"
+              value={fmtApproxUSD(ingresadoTotalUsd)}
+              variant="secondary"
+              description="total aproximado de aportes ya confirmados"
+            />
+            <HeroCard
+              label="gastado"
+              value={fmtApproxUSD(gastadoTotalUsd)}
+              variant="secondary"
+              description="total aproximado de egresos ejecutados"
+            />
+          </div>
+
+          <p className="mt-4 text-xs md:text-sm text-muted-foreground leading-relaxed">
+            monto aproximado calculado con la tasa del día para bolívares. los saldos reales se mantienen separados por moneda.
+            {!tasa && hasAnyVes && (
+              <span className="block mt-1 text-status-error">
+                aún no hay tasa del día configurada; el equivalente USD de bolívares no se puede calcular.
+              </span>
+            )}
+            {tasa && (
+              <span className="block mt-1">
+                tasa usada: 1 USD = {nfmt(tasa)} Bs
+                {t?.tasa_fecha ? ` · ${fmtDateOnly(t.tasa_fecha)}` : ""}
+                {t?.tasa_fuente ? ` · ${t.tasa_fuente}` : ""}
+              </span>
             )}
           </p>
-        </BlockCard>
+        </section>
 
-        <p className="text-xs text-neutral-500 mb-10">
+        {/* Detalle por moneda */}
+        <section className="mb-12 md:mb-16 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+          <div className="mb-5">
+            <h2 className="text-xl md:text-2xl font-black lowercase tracking-tight">detalle del fondo</h2>
+            <p className="text-sm text-muted-foreground lowercase mt-1">
+              transparencia por moneda — los saldos reales se mantienen independientes
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+            <DetailBlock
+              title="pago móvil / bolívares"
+              rows={[
+                { label: "disponible en Bs", value: fmtBs(t?.ves_saldo) },
+                { label: "equivalente USD aprox.", value: fmtApproxUSD(vesToUsd(t?.ves_saldo)), subtle: true },
+                { label: "ingresado en Bs", value: fmtBs(t?.ves_confirmado) },
+                { label: "gastado en Bs", value: fmtBs(t?.ves_egresos) },
+                { label: "por verificar en Bs", value: fmtBs(t?.ves_por_verificar), faint: true },
+              ]}
+            />
+            <DetailBlock
+              title="zelle + efectivo sublime / USD"
+              rows={[
+                { label: "disponible USD", value: fmtUSD(t?.usd_saldo) },
+                { label: "ingresado USD", value: fmtUSD(t?.usd_confirmado) },
+                { label: "gastado USD", value: fmtUSD(t?.usd_egresos) },
+                { label: "por verificar USD", value: fmtUSD(t?.usd_por_verificar), faint: true },
+              ]}
+            />
+            <DetailBlock
+              title="binance / USDT"
+              rows={[
+                { label: "disponible USDT", value: fmtUSDT(t?.usdt_saldo) },
+                { label: "ingresado USDT", value: fmtUSDT(t?.usdt_confirmado) },
+                { label: "gastado USDT", value: fmtUSDT(t?.usdt_egresos) },
+                { label: "por verificar USDT", value: fmtUSDT(t?.usdt_por_verificar), faint: true },
+              ]}
+            />
+          </div>
+        </section>
+
+        <p className="text-xs text-muted-foreground mb-10">
           {ultimaAct
-            ? <>Última actualización: {ultimaAct} · {t?.aportes_confirmados_count ?? 0} aportes confirmados · {t?.aportes_pendientes_count ?? 0} pendientes</>
+            ? <>última actualización: {ultimaAct} · {t?.aportes_confirmados_count ?? 0} aportes confirmados · {t?.aportes_pendientes_count ?? 0} pendientes</>
             : <>sin actualizaciones todavía</>}
         </p>
 
@@ -191,7 +232,7 @@ export default function FuerzaVenezuela() {
                 r.metodo,
                 fmtMonto(r.monto_original, r.moneda_original),
                 r.referencia_publica_enmascarada ?? "—",
-                <Badge key="b" variant="outline" className="border-black text-black">confirmado</Badge>,
+                <Badge key="b" variant="outline" className="border-foreground text-foreground">confirmado</Badge>,
               ])}
             />
           )}
@@ -237,7 +278,7 @@ export default function FuerzaVenezuela() {
           )}
         </Section>
 
-        <footer className="mt-16 border-t border-black/20 pt-6 text-xs text-neutral-600 leading-relaxed">
+        <footer className="mt-16 border-t border-foreground/10 pt-6 text-xs text-muted-foreground leading-relaxed">
           {config?.disclaimer ??
             "[BASICO] publica este registro para mostrar de forma transparente los aportes recibidos y los gastos ejecutados. Los aportes se verifican manualmente antes de sumarse al total confirmado. Los datos sensibles serán protegidos. Este fondo no garantiza deducción fiscal."}
         </footer>
@@ -246,55 +287,76 @@ export default function FuerzaVenezuela() {
   );
 }
 
-function BlockCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function HeroCard({
+  label,
+  value,
+  description,
+  variant,
+}: {
+  label: string;
+  value: string;
+  description: string;
+  variant: "primary" | "secondary";
+}) {
+  const isPrimary = variant === "primary";
   return (
-    <section className="mb-8 border border-black/15 rounded-lg p-4 md:p-6">
-      <div className="mb-4">
-        <h2 className="text-lg md:text-xl font-semibold lowercase">{title}</h2>
-        {subtitle && <p className="text-xs md:text-sm text-neutral-500 lowercase mt-1">{subtitle}</p>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function KPIGrid({ children, cols = 4 }: { children: React.ReactNode; cols?: 4 | 5 }) {
-  const c = cols === 5 ? "md:grid-cols-5" : "md:grid-cols-4";
-  return <div className={`grid grid-cols-2 ${c} gap-3`}>{children}</div>;
-}
-
-function KPI({ label, value, highlight, subtle }: { label: string; value: string; highlight?: boolean; subtle?: boolean }) {
-  return (
-    <Card className={`border-black/20 ${highlight ? "bg-black text-white" : subtle ? "bg-neutral-50" : ""}`}>
-      <CardHeader className="pb-2">
-        <CardTitle className={`text-[10px] md:text-xs font-medium uppercase tracking-wider ${highlight ? "text-white/70" : "text-neutral-500"}`}>
+    <Card
+      className={`overflow-hidden border-0 shadow-sm ${
+        isPrimary
+          ? "bg-primary text-primary-foreground"
+          : "bg-card border border-foreground/10 text-card-foreground"
+      }`}
+    >
+      <CardContent className="p-5 md:p-7">
+        <p
+          className={`text-[11px] md:text-xs font-semibold uppercase tracking-widest mb-3 ${
+            isPrimary ? "text-primary-foreground/80" : "text-muted-foreground"
+          }`}
+        >
           {label}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-lg md:text-2xl font-semibold tabular-nums">{value}</div>
+        </p>
+        <div className="text-3xl md:text-5xl font-black tabular-nums tracking-tight">{value}</div>
+        <p
+          className={`mt-3 text-xs md:text-sm leading-relaxed ${
+            isPrimary ? "text-primary-foreground/80" : "text-muted-foreground"
+          }`}
+        >
+          {description}
+        </p>
       </CardContent>
     </Card>
   );
 }
 
-function TasaNote({
-  tasa, fecha, fuente, equiv,
-}: { tasa: number | null; fecha: string | null; fuente: string | null; equiv: number | null }) {
-  if (!tasa) {
-    return (
-      <p className="text-xs text-neutral-500 mt-3">
-        Tasa del día no configurada. El equivalente en USD no se puede calcular todavía.
-      </p>
-    );
-  }
+function DetailBlock({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: { label: string; value: string; subtle?: boolean; faint?: boolean }[];
+}) {
   return (
-    <div className="text-xs text-neutral-600 mt-3 space-y-1">
-      <div>Equivalente USD del saldo: <strong>{fmtUSD(equiv)}</strong> (referencial)</div>
-      <div className="text-neutral-500">
-        Tasa usada: 1 USD = {nfmt(tasa)} Bs
-        {fecha ? ` · ${fmtDateOnly(fecha)}` : ""}
-        {fuente ? ` · ${fuente}` : ""}
+    <div className="bg-card border border-foreground/10 rounded-lg p-5">
+      <h3 className="text-sm md:text-base font-bold lowercase tracking-tight mb-4">{title}</h3>
+      <div className="space-y-3">
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-baseline justify-between gap-3">
+            <span
+              className={`text-xs ${
+                r.faint ? "text-muted-foreground/70" : r.subtle ? "text-muted-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {r.label}
+            </span>
+            <span
+              className={`text-sm md:text-base font-semibold tabular-nums text-right ${
+                r.faint ? "text-muted-foreground" : r.subtle ? "text-foreground/80" : "text-foreground"
+              }`}
+            >
+              {r.value}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -303,19 +365,21 @@ function TasaNote({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-10">
-      <h2 className="text-lg md:text-xl font-semibold lowercase mb-3 border-b border-black/20 pb-1">{title}</h2>
+      <h2 className="text-lg md:text-xl font-black lowercase tracking-tight mb-3 border-b border-foreground/10 pb-2">
+        {title}
+      </h2>
       {children}
     </section>
   );
 }
 
 function Empty({ msg }: { msg: string }) {
-  return <p className="text-sm text-neutral-500 py-6">{msg}</p>;
+  return <p className="text-sm text-muted-foreground py-6">{msg}</p>;
 }
 
 function DataTable({ cols, rows }: { cols: string[]; rows: React.ReactNode[][] }) {
   return (
-    <div className="overflow-x-auto border border-black/10 rounded-md">
+    <div className="overflow-x-auto border border-foreground/10 rounded-md">
       <Table>
         <TableHeader>
           <TableRow>
@@ -337,3 +401,4 @@ function DataTable({ cols, rows }: { cols: string[]; rows: React.ReactNode[][] }
     </div>
   );
 }
+
