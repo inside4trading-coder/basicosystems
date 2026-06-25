@@ -204,6 +204,10 @@ function DashboardTab() {
   };
   useEffect(() => { load(); }, []);
 
+  const tasa = t?.tasa_ves_usd && Number(t.tasa_ves_usd) > 0 ? Number(t.tasa_ves_usd) : null;
+  const vesSaldoUsd = tasa && t?.ves_saldo != null ? Number(t.ves_saldo) / tasa : null;
+  const totalRefUsd = (vesSaldoUsd ?? 0) + Number(t?.usd_saldo ?? 0) + Number(t?.usdt_saldo ?? 0);
+
   return (
     <div className="space-y-4 mt-4">
       <div className="flex justify-end">
@@ -211,23 +215,73 @@ function DashboardTab() {
           <RefreshCw className="h-4 w-4 mr-2" /> Refrescar
         </Button>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KCard label="Total confirmado" value={fmtUSD(t?.total_confirmado_usd ?? 0)} accent="primary" />
-        <KCard label="Por verificar" value={fmtUSD(t?.total_por_verificar_aprox ?? 0)} />
-        <KCard label="Gastos ejecutados" value={fmtUSD(t?.total_egresos_usd ?? 0)} />
-        <KCard label="Saldo disponible" value={fmtUSD(t?.saldo_disponible_usd ?? 0)} accent="success" />
-        <KCard label="Aportes confirmados" value={String(t?.aportes_confirmados_count ?? 0)} />
-        <KCard label="Aportes pendientes" value={String(t?.aportes_pendientes_count ?? 0)} />
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Última actualización: {fmtDate(t?.ultima_actualizacion)} {loading && "· cargando…"}
-      </p>
+
       <Card>
-        <CardHeader><CardTitle className="text-sm">Fórmula</CardTitle></CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          <code>saldo_disponible = sum(aportes.equivalente_usd where estado='confirmado') − sum(egresos.equivalente_usd where estado='ejecutado')</code>
-          <br />
-          Los aportes <strong>por verificar NO</strong> se suman al saldo disponible.
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Pago Móvil / Bolívares</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KCard label="Confirmado" value={fmtBs(t?.ves_confirmado ?? 0)} accent="primary" />
+          <KCard label="Por verificar" value={fmtBs(t?.ves_por_verificar ?? 0)} />
+          <KCard label="Egresos" value={fmtBs(t?.ves_egresos ?? 0)} />
+          <KCard label="Saldo disponible" value={fmtBs(t?.ves_saldo ?? 0)} accent="success" />
+        </CardContent>
+        <CardContent className="pt-0 text-xs text-muted-foreground">
+          {tasa ? (
+            <>Equivalente USD del saldo: <strong>{fmtUSD(vesSaldoUsd)}</strong> · Tasa: 1 USD = {nfmt(tasa)} Bs
+            {t?.tasa_fecha ? ` · ${new Date(t.tasa_fecha).toLocaleDateString("es-VE")}` : ""}
+            {t?.tasa_fuente ? ` · ${t.tasa_fuente}` : ""}</>
+          ) : (
+            <>Tasa del día no configurada (Configuración → Tasa del día).</>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Zelle + Efectivo Sublime / USD</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KCard label="Confirmado" value={fmtUSD(t?.usd_confirmado ?? 0)} accent="primary" />
+          <KCard label="Por verificar" value={fmtUSD(t?.usd_por_verificar ?? 0)} />
+          <KCard label="Egresos" value={fmtUSD(t?.usd_egresos ?? 0)} />
+          <KCard label="Saldo disponible" value={fmtUSD(t?.usd_saldo ?? 0)} accent="success" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Binance / USDT</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KCard label="Confirmado" value={fmtUSDT(t?.usdt_confirmado ?? 0)} accent="primary" />
+          <KCard label="Por verificar" value={fmtUSDT(t?.usdt_por_verificar ?? 0)} />
+          <KCard label="Egresos" value={fmtUSDT(t?.usdt_egresos ?? 0)} />
+          <KCard label="Saldo disponible" value={fmtUSDT(t?.usdt_saldo ?? 0)} accent="success" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Resumen general (referencial)</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <KCard label="Saldo Bs" value={fmtBs(t?.ves_saldo ?? 0)} />
+          <KCard label="Equiv USD de Bs" value={fmtUSD(vesSaldoUsd)} />
+          <KCard label="Saldo USD" value={fmtUSD(t?.usd_saldo ?? 0)} />
+          <KCard label="Saldo USDT" value={fmtUSDT(t?.usdt_saldo ?? 0)} />
+          <KCard label="Total aprox USD" value={fmtUSD(totalRefUsd)} accent="success" />
+        </CardContent>
+        <CardContent className="pt-0 text-xs text-muted-foreground">
+          Cifra referencial. Cada moneda se gasta por separado; no hay conversión automática entre saldos.
+        </CardContent>
+      </Card>
+
+      <p className="text-xs text-muted-foreground">
+        {t?.ultima_actualizacion
+          ? <>Última actualización: {fmtDate(t.ultima_actualizacion)} · {t?.aportes_confirmados_count ?? 0} confirmados · {t?.aportes_pendientes_count ?? 0} pendientes</>
+          : <>sin actualizaciones todavía</>}
+        {loading && " · cargando…"}
+      </p>
+
+      <Card>
+        <CardHeader><CardTitle className="text-sm">Reglas contables</CardTitle></CardHeader>
+        <CardContent className="text-xs text-muted-foreground space-y-1">
+          <div>· Pago Móvil → VES · Zelle → USD · Efectivo Sublime → USD · Binance → USDT</div>
+          <div>· Los egresos descuentan saldo de la misma moneda usada para pagar.</div>
+          <div>· No se mezclan monedas automáticamente. Las conversiones deben registrarse como movimiento de conversión.</div>
         </CardContent>
       </Card>
     </div>
