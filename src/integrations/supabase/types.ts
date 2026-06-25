@@ -7288,21 +7288,38 @@ export type Database = {
           proveedor: string
         }[]
       }
-      fondo_registrar_aporte_publico: {
-        Args: {
-          p_comprobante_path: string
-          p_email: string
-          p_es_anonimo?: boolean
-          p_fecha_pago: string
-          p_metodo: Database["public"]["Enums"]["fondo_metodo"]
-          p_moneda: Database["public"]["Enums"]["fondo_moneda"]
-          p_monto: number
-          p_nombre: string
-          p_referencia: string
-          p_telefono: string
-        }
-        Returns: Json
-      }
+      fondo_registrar_aporte_publico:
+        | {
+            Args: {
+              p_comprobante_path: string
+              p_email: string
+              p_es_anonimo?: boolean
+              p_fecha_pago: string
+              p_metodo: Database["public"]["Enums"]["fondo_metodo"]
+              p_moneda: Database["public"]["Enums"]["fondo_moneda"]
+              p_monto: number
+              p_nombre: string
+              p_referencia: string
+              p_telefono: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_comprobante_path: string
+              p_email: string
+              p_es_anonimo?: boolean
+              p_fecha_pago: string
+              p_metodo: Database["public"]["Enums"]["fondo_metodo"]
+              p_moneda: Database["public"]["Enums"]["fondo_moneda"]
+              p_monto: number
+              p_nombre: string
+              p_referencia: string
+              p_sender_name?: string
+              p_telefono: string
+            }
+            Returns: Json
+          }
       get_crew_employees: {
         Args: never
         Returns: {
