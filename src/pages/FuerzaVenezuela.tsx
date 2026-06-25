@@ -115,7 +115,7 @@ export default function FuerzaVenezuela() {
     (t?.ves_por_verificar ?? 0) !== 0;
 
   return (
-    <div className="min-h-screen bg-white text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-6xl px-4 py-10 md:py-16">
         {/* Hero */}
         <header className="mb-8 md:mb-12 animate-fade-in">
@@ -125,7 +125,7 @@ export default function FuerzaVenezuela() {
           <h1 className="text-4xl md:text-7xl font-black lowercase tracking-tight text-secondary">
             {config?.titulo_publico ?? "fuerza venezuela"}
           </h1>
-          <p className="mt-3 text-lg md:text-2xl font-medium lowercase text-neutral-700 max-w-3xl">
+          <p className="mt-3 text-lg md:text-2xl font-medium lowercase text-muted-foreground max-w-3xl">
             {config?.subtitulo_publico ?? "fondo transparente de ayuda por [BASICO]"}
           </p>
           <p className="mt-4 text-sm md:text-base text-muted-foreground max-w-2xl leading-relaxed">
@@ -232,7 +232,7 @@ export default function FuerzaVenezuela() {
                 r.metodo,
                 fmtMonto(r.monto_original, r.moneda_original),
                 r.referencia_publica_enmascarada ?? "—",
-                <Badge key="b" variant="outline" className="border-black text-black">confirmado</Badge>,
+                <Badge key="b" variant="outline" className="border-foreground text-foreground">confirmado</Badge>,
               ])}
             />
           )}
@@ -278,7 +278,7 @@ export default function FuerzaVenezuela() {
           )}
         </Section>
 
-        <footer className="mt-16 border-t border-black/10 pt-6 text-xs text-muted-foreground leading-relaxed">
+        <footer className="mt-16 border-t border-foreground/10 pt-6 text-xs text-muted-foreground leading-relaxed">
           {config?.disclaimer ??
             "[BASICO] publica este registro para mostrar de forma transparente los aportes recibidos y los gastos ejecutados. Los aportes se verifican manualmente antes de sumarse al total confirmado. Los datos sensibles serán protegidos. Este fondo no garantiza deducción fiscal."}
         </footer>
@@ -304,7 +304,7 @@ function HeroCard({
       className={`overflow-hidden border-0 shadow-sm ${
         isPrimary
           ? "bg-primary text-primary-foreground"
-          : "bg-white border border-black/10 text-foreground"
+          : "bg-card border border-foreground/10 text-card-foreground"
       }`}
     >
       <CardContent className="p-5 md:p-7">
@@ -336,7 +336,7 @@ function DetailBlock({
   rows: { label: string; value: string; subtle?: boolean; faint?: boolean }[];
 }) {
   return (
-    <div className="bg-white border border-black/10 rounded-lg p-5">
+    <div className="bg-card border border-foreground/10 rounded-lg p-5">
       <h3 className="text-sm md:text-base font-bold lowercase tracking-tight mb-4">{title}</h3>
       <div className="space-y-3">
         {rows.map((r, i) => (
@@ -365,7 +365,7 @@ function DetailBlock({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-10">
-      <h2 className="text-lg md:text-xl font-black lowercase tracking-tight mb-3 border-b border-black/10 pb-2">
+      <h2 className="text-lg md:text-xl font-black lowercase tracking-tight mb-3 border-b border-foreground/10 pb-2">
         {title}
       </h2>
       {children}
@@ -379,7 +379,7 @@ function Empty({ msg }: { msg: string }) {
 
 function DataTable({ cols, rows }: { cols: string[]; rows: React.ReactNode[][] }) {
   return (
-    <div className="overflow-x-auto border border-black/10 rounded-md">
+    <div className="overflow-x-auto border border-foreground/10 rounded-md">
       <Table>
         <TableHeader>
           <TableRow>
@@ -401,3 +401,4 @@ function DataTable({ cols, rows }: { cols: string[]; rows: React.ReactNode[][] }
     </div>
   );
 }
+
