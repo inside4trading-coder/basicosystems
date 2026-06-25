@@ -71,8 +71,16 @@ function buildSchema(canal: CanalConfig | null) {
   });
 }
 
-
-type FormValues = z.infer<typeof schema>;
+interface FormValues {
+  nombre: string;
+  email?: string;
+  telefono?: string;
+  fecha_pago: string;
+  monto: string;
+  referencia?: string;
+  sender_name?: string;
+  es_anonimo: boolean;
+}
 
 interface Props {
   metodo: MetodoAporte | null;
@@ -98,7 +106,7 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
     watch,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(buildSchema(canal)) as any,
     defaultValues: {
       nombre: "",
       email: "",
@@ -106,6 +114,7 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
       fecha_pago: today,
       monto: "",
       referencia: "",
+      sender_name: "",
       es_anonimo: false,
     },
   });
