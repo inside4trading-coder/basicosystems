@@ -142,10 +142,10 @@ export default function FuerzaVenezuela() {
             </p>
           </div>
           <div className="mt-8 md:mt-10 flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <Button size="lg" className="w-full sm:w-auto" onClick={() => scrollTo("aportar")}>
+            <Button size="lg" className="w-full sm:w-auto" onClick={() => scrollToId("aportar")}>
               dona ahora
             </Button>
-            <Button size="lg" variant="outline" className="w-full sm:w-auto" onClick={() => scrollTo("resumen")}>
+            <Button size="lg" variant="outline" className="w-full sm:w-auto" onClick={() => scrollToId("resumen")}>
               ver transparencia
             </Button>
           </div>
