@@ -5130,6 +5130,267 @@ export type Database = {
         }
         Relationships: []
       }
+      fondo_aportes: {
+        Row: {
+          comprobante_privado_url: string | null
+          created_at: string
+          created_by: string | null
+          email_contacto: string | null
+          equivalente_usd: number | null
+          es_anonimo: boolean
+          estado: Database["public"]["Enums"]["fondo_aporte_estado"]
+          fecha_confirmada: string | null
+          fecha_reportada: string | null
+          fecha_verificacion: string | null
+          id: string
+          metodo: Database["public"]["Enums"]["fondo_metodo"]
+          moneda_original: Database["public"]["Enums"]["fondo_moneda"]
+          monto_original: number
+          nombre_donante: string | null
+          nombre_publico: string | null
+          nota_interna: string | null
+          nota_publica: string | null
+          referencia_privada: string | null
+          referencia_publica_enmascarada: string | null
+          tasa_usada: number | null
+          updated_at: string
+          verificado_por: string | null
+        }
+        Insert: {
+          comprobante_privado_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          email_contacto?: string | null
+          equivalente_usd?: number | null
+          es_anonimo?: boolean
+          estado?: Database["public"]["Enums"]["fondo_aporte_estado"]
+          fecha_confirmada?: string | null
+          fecha_reportada?: string | null
+          fecha_verificacion?: string | null
+          id?: string
+          metodo: Database["public"]["Enums"]["fondo_metodo"]
+          moneda_original: Database["public"]["Enums"]["fondo_moneda"]
+          monto_original: number
+          nombre_donante?: string | null
+          nombre_publico?: string | null
+          nota_interna?: string | null
+          nota_publica?: string | null
+          referencia_privada?: string | null
+          referencia_publica_enmascarada?: string | null
+          tasa_usada?: number | null
+          updated_at?: string
+          verificado_por?: string | null
+        }
+        Update: {
+          comprobante_privado_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          email_contacto?: string | null
+          equivalente_usd?: number | null
+          es_anonimo?: boolean
+          estado?: Database["public"]["Enums"]["fondo_aporte_estado"]
+          fecha_confirmada?: string | null
+          fecha_reportada?: string | null
+          fecha_verificacion?: string | null
+          id?: string
+          metodo?: Database["public"]["Enums"]["fondo_metodo"]
+          moneda_original?: Database["public"]["Enums"]["fondo_moneda"]
+          monto_original?: number
+          nombre_donante?: string | null
+          nombre_publico?: string | null
+          nota_interna?: string | null
+          nota_publica?: string | null
+          referencia_privada?: string | null
+          referencia_publica_enmascarada?: string | null
+          tasa_usada?: number | null
+          updated_at?: string
+          verificado_por?: string | null
+        }
+        Relationships: []
+      }
+      fondo_audit_log: {
+        Row: {
+          accion: string
+          created_at: string
+          id: string
+          record_id: string | null
+          tabla: string
+          user_email: string | null
+          user_id: string | null
+          valor_anterior: Json | null
+          valor_nuevo: Json | null
+        }
+        Insert: {
+          accion: string
+          created_at?: string
+          id?: string
+          record_id?: string | null
+          tabla: string
+          user_email?: string | null
+          user_id?: string | null
+          valor_anterior?: Json | null
+          valor_nuevo?: Json | null
+        }
+        Update: {
+          accion?: string
+          created_at?: string
+          id?: string
+          record_id?: string | null
+          tabla?: string
+          user_email?: string | null
+          user_id?: string | null
+          valor_anterior?: Json | null
+          valor_nuevo?: Json | null
+        }
+        Relationships: []
+      }
+      fondo_configuracion: {
+        Row: {
+          disclaimer: string
+          id: boolean
+          subtitulo_publico: string
+          tasa_sugerida: number | null
+          titulo_publico: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          disclaimer?: string
+          id?: boolean
+          subtitulo_publico?: string
+          tasa_sugerida?: number | null
+          titulo_publico?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          disclaimer?: string
+          id?: boolean
+          subtitulo_publico?: string
+          tasa_sugerida?: number | null
+          titulo_publico?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      fondo_egresos: {
+        Row: {
+          aprobado_por: string | null
+          categoria: Database["public"]["Enums"]["fondo_egreso_categoria"]
+          comprobante_privado_url: string | null
+          comprobante_publico_url: string | null
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          equivalente_usd: number | null
+          estado: Database["public"]["Enums"]["fondo_egreso_estado"]
+          fecha_ejecucion: string | null
+          fecha_gasto: string | null
+          id: string
+          moneda_original: Database["public"]["Enums"]["fondo_moneda"]
+          monto_original: number
+          nota_interna: string | null
+          nota_publica: string | null
+          proveedor: string | null
+          tasa_usada: number | null
+          updated_at: string
+        }
+        Insert: {
+          aprobado_por?: string | null
+          categoria?: Database["public"]["Enums"]["fondo_egreso_categoria"]
+          comprobante_privado_url?: string | null
+          comprobante_publico_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          equivalente_usd?: number | null
+          estado?: Database["public"]["Enums"]["fondo_egreso_estado"]
+          fecha_ejecucion?: string | null
+          fecha_gasto?: string | null
+          id?: string
+          moneda_original: Database["public"]["Enums"]["fondo_moneda"]
+          monto_original: number
+          nota_interna?: string | null
+          nota_publica?: string | null
+          proveedor?: string | null
+          tasa_usada?: number | null
+          updated_at?: string
+        }
+        Update: {
+          aprobado_por?: string | null
+          categoria?: Database["public"]["Enums"]["fondo_egreso_categoria"]
+          comprobante_privado_url?: string | null
+          comprobante_publico_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          equivalente_usd?: number | null
+          estado?: Database["public"]["Enums"]["fondo_egreso_estado"]
+          fecha_ejecucion?: string | null
+          fecha_gasto?: string | null
+          id?: string
+          moneda_original?: Database["public"]["Enums"]["fondo_moneda"]
+          monto_original?: number
+          nota_interna?: string | null
+          nota_publica?: string | null
+          proveedor?: string | null
+          tasa_usada?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fondo_movimientos_cargados: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          created_by: string | null
+          estado: Database["public"]["Enums"]["fondo_movimiento_estado"]
+          fecha: string
+          id: string
+          metodo: Database["public"]["Enums"]["fondo_metodo"]
+          moneda: Database["public"]["Enums"]["fondo_moneda"]
+          monto: number
+          nota: string | null
+          origen: string | null
+          raw_data: Json | null
+          referencia: string | null
+          updated_at: string
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: Database["public"]["Enums"]["fondo_movimiento_estado"]
+          fecha: string
+          id?: string
+          metodo: Database["public"]["Enums"]["fondo_metodo"]
+          moneda: Database["public"]["Enums"]["fondo_moneda"]
+          monto: number
+          nota?: string | null
+          origen?: string | null
+          raw_data?: Json | null
+          referencia?: string | null
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: Database["public"]["Enums"]["fondo_movimiento_estado"]
+          fecha?: string
+          id?: string
+          metodo?: Database["public"]["Enums"]["fondo_metodo"]
+          moneda?: Database["public"]["Enums"]["fondo_moneda"]
+          monto?: number
+          nota?: string | null
+          origen?: string | null
+          raw_data?: Json | null
+          referencia?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       incidents: {
         Row: {
           category: string
@@ -6678,6 +6939,111 @@ export type Database = {
           },
         ]
       }
+      fondo_public_aportes: {
+        Row: {
+          donante_publico: string | null
+          equivalente_usd: number | null
+          estado: Database["public"]["Enums"]["fondo_aporte_estado"] | null
+          fecha_confirmada: string | null
+          fecha_reportada: string | null
+          id: string | null
+          metodo: Database["public"]["Enums"]["fondo_metodo"] | null
+          moneda_original: Database["public"]["Enums"]["fondo_moneda"] | null
+          monto_original: number | null
+          nota_publica: string | null
+          referencia_publica_enmascarada: string | null
+        }
+        Insert: {
+          donante_publico?: never
+          equivalente_usd?: number | null
+          estado?: Database["public"]["Enums"]["fondo_aporte_estado"] | null
+          fecha_confirmada?: string | null
+          fecha_reportada?: string | null
+          id?: string | null
+          metodo?: Database["public"]["Enums"]["fondo_metodo"] | null
+          moneda_original?: Database["public"]["Enums"]["fondo_moneda"] | null
+          monto_original?: number | null
+          nota_publica?: string | null
+          referencia_publica_enmascarada?: string | null
+        }
+        Update: {
+          donante_publico?: never
+          equivalente_usd?: number | null
+          estado?: Database["public"]["Enums"]["fondo_aporte_estado"] | null
+          fecha_confirmada?: string | null
+          fecha_reportada?: string | null
+          id?: string | null
+          metodo?: Database["public"]["Enums"]["fondo_metodo"] | null
+          moneda_original?: Database["public"]["Enums"]["fondo_moneda"] | null
+          monto_original?: number | null
+          nota_publica?: string | null
+          referencia_publica_enmascarada?: string | null
+        }
+        Relationships: []
+      }
+      fondo_public_egresos: {
+        Row: {
+          categoria:
+            | Database["public"]["Enums"]["fondo_egreso_categoria"]
+            | null
+          comprobante_publico_url: string | null
+          descripcion: string | null
+          equivalente_usd: number | null
+          estado: Database["public"]["Enums"]["fondo_egreso_estado"] | null
+          fecha_ejecucion: string | null
+          fecha_gasto: string | null
+          id: string | null
+          moneda_original: Database["public"]["Enums"]["fondo_moneda"] | null
+          monto_original: number | null
+          nota_publica: string | null
+          proveedor: string | null
+        }
+        Insert: {
+          categoria?:
+            | Database["public"]["Enums"]["fondo_egreso_categoria"]
+            | null
+          comprobante_publico_url?: string | null
+          descripcion?: string | null
+          equivalente_usd?: number | null
+          estado?: Database["public"]["Enums"]["fondo_egreso_estado"] | null
+          fecha_ejecucion?: string | null
+          fecha_gasto?: string | null
+          id?: string | null
+          moneda_original?: Database["public"]["Enums"]["fondo_moneda"] | null
+          monto_original?: number | null
+          nota_publica?: string | null
+          proveedor?: string | null
+        }
+        Update: {
+          categoria?:
+            | Database["public"]["Enums"]["fondo_egreso_categoria"]
+            | null
+          comprobante_publico_url?: string | null
+          descripcion?: string | null
+          equivalente_usd?: number | null
+          estado?: Database["public"]["Enums"]["fondo_egreso_estado"] | null
+          fecha_ejecucion?: string | null
+          fecha_gasto?: string | null
+          id?: string | null
+          moneda_original?: Database["public"]["Enums"]["fondo_moneda"] | null
+          monto_original?: number | null
+          nota_publica?: string | null
+          proveedor?: string | null
+        }
+        Relationships: []
+      }
+      fondo_public_totales: {
+        Row: {
+          aportes_confirmados_count: number | null
+          aportes_pendientes_count: number | null
+          saldo_disponible_usd: number | null
+          total_confirmado_usd: number | null
+          total_egresos_usd: number | null
+          total_por_verificar_aprox: number | null
+          ultima_actualizacion: string | null
+        }
+        Relationships: []
+      }
       sublime_admin_instances_view: {
         Row: {
           amount: number | null
@@ -6774,6 +7140,23 @@ export type Database = {
         Args: { p_location_id?: string; p_request_id: string }
         Returns: Json
       }
+      fondo_cambiar_estado_aporte: {
+        Args: {
+          p_id: string
+          p_nota_interna?: string
+          p_nuevo_estado: Database["public"]["Enums"]["fondo_aporte_estado"]
+        }
+        Returns: Json
+      }
+      fondo_confirmar_aporte: {
+        Args: {
+          p_equivalente_usd?: number
+          p_id: string
+          p_nota_publica?: string
+          p_tasa?: number
+        }
+        Returns: Json
+      }
       get_crew_employees: {
         Args: never
         Returns: {
@@ -6808,6 +7191,30 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "manager" | "partner" | "rrpp" | "marketing"
+      fondo_aporte_estado:
+        | "por_verificar"
+        | "coincidencia_encontrada"
+        | "confirmado"
+        | "rechazado"
+        | "duplicado"
+        | "monto_incorrecto"
+      fondo_egreso_categoria:
+        | "comida"
+        | "agua"
+        | "medicina"
+        | "transporte"
+        | "logistica"
+        | "refugio"
+        | "otro"
+      fondo_egreso_estado: "pendiente" | "aprobado" | "ejecutado" | "anulado"
+      fondo_metodo: "pago_movil" | "binance" | "zelle"
+      fondo_moneda: "VES" | "USD" | "USDT"
+      fondo_movimiento_estado:
+        | "sin_conciliar"
+        | "conciliado"
+        | "usado_en_confirmacion"
+        | "duplicado"
+        | "ignorado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -6936,6 +7343,33 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "manager", "partner", "rrpp", "marketing"],
+      fondo_aporte_estado: [
+        "por_verificar",
+        "coincidencia_encontrada",
+        "confirmado",
+        "rechazado",
+        "duplicado",
+        "monto_incorrecto",
+      ],
+      fondo_egreso_categoria: [
+        "comida",
+        "agua",
+        "medicina",
+        "transporte",
+        "logistica",
+        "refugio",
+        "otro",
+      ],
+      fondo_egreso_estado: ["pendiente", "aprobado", "ejecutado", "anulado"],
+      fondo_metodo: ["pago_movil", "binance", "zelle"],
+      fondo_moneda: ["VES", "USD", "USDT"],
+      fondo_movimiento_estado: [
+        "sin_conciliar",
+        "conciliado",
+        "usado_en_confirmacion",
+        "duplicado",
+        "ignorado",
+      ],
     },
   },
 } as const
