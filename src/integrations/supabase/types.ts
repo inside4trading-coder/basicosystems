@@ -5153,6 +5153,7 @@ export type Database = {
           referencia_privada: string | null
           referencia_publica_enmascarada: string | null
           tasa_usada: number | null
+          telefono_contacto: string | null
           updated_at: string
           verificado_por: string | null
         }
@@ -5178,6 +5179,7 @@ export type Database = {
           referencia_privada?: string | null
           referencia_publica_enmascarada?: string | null
           tasa_usada?: number | null
+          telefono_contacto?: string | null
           updated_at?: string
           verificado_por?: string | null
         }
@@ -5203,6 +5205,7 @@ export type Database = {
           referencia_privada?: string | null
           referencia_publica_enmascarada?: string | null
           tasa_usada?: number | null
+          telefono_contacto?: string | null
           updated_at?: string
           verificado_por?: string | null
         }
@@ -7216,6 +7219,21 @@ export type Database = {
           nota_publica: string
           proveedor: string
         }[]
+      }
+      fondo_registrar_aporte_publico: {
+        Args: {
+          p_comprobante_path: string
+          p_email: string
+          p_es_anonimo?: boolean
+          p_fecha_pago: string
+          p_metodo: Database["public"]["Enums"]["fondo_metodo"]
+          p_moneda: Database["public"]["Enums"]["fondo_moneda"]
+          p_monto: number
+          p_nombre: string
+          p_referencia: string
+          p_telefono: string
+        }
+        Returns: Json
       }
       get_crew_employees: {
         Args: never

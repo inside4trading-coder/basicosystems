@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import heroImg from "@/assets/fuerza-venezuela-hero.jpg";
 import basicoLogoAsset from "@/assets/basico-box-logo.png.asset.json";
+import { AporteDialog } from "@/components/fondo/AporteDialog";
+import type { MetodoAporte } from "@/components/fondo/canales";
 
 type Totales = {
   ves_confirmado: number; ves_por_verificar: number; ves_egresos: number; ves_saldo: number;
@@ -119,6 +121,7 @@ export default function FuerzaVenezuela() {
   const [porVerificar, setPorVerificar] = useState<AporteRow[]>([]);
   const [egresos, setEgresos] = useState<EgresoRow[]>([]);
   const [config, setConfig] = useState<Config | null>(null);
+  const [aporteMetodo, setAporteMetodo] = useState<MetodoAporte | null>(null);
 
   useEffect(() => {
     document.title = "fuerza venezuela — [BASICO]";
@@ -391,30 +394,27 @@ export default function FuerzaVenezuela() {
             title="cómo aportar"
             subtitle="elige un canal, confirma tu aporte y lo publicamos aquí"
           />
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <MethodCard
               icon={<Smartphone className="h-5 w-5" />}
               title="pago móvil"
               currency="BS · venezuela"
               description="transferencia o pago móvil en bolívares."
+              onClick={() => setAporteMetodo("pago_movil")}
             />
             <MethodCard
               icon={<DollarSign className="h-5 w-5" />}
               title="zelle"
               currency="US$ · estados unidos"
               description="transferencia zelle en dólares."
-            />
-            <MethodCard
-              icon={<Wallet className="h-5 w-5" />}
-              title="efectivo sublime"
-              currency="US$ · entrega en tienda"
-              description="entrega de efectivo en usd en sublime."
+              onClick={() => setAporteMetodo("zelle")}
             />
             <MethodCard
               icon={<Bitcoin className="h-5 w-5" />}
               title="binance"
               currency="USDT · cripto"
               description="transferencia de usdt por binance pay."
+              onClick={() => setAporteMetodo("binance")}
             />
           </div>
         </section>
@@ -465,7 +465,7 @@ export default function FuerzaVenezuela() {
         </section>
 
         {/* TABLAS */}
-        <section className="animate-fade-in">
+        <section id="registro" className="animate-fade-in">
           <SectionHeader
             eyebrow="registro público"
             title="ingresos confirmados"
@@ -566,6 +566,12 @@ export default function FuerzaVenezuela() {
           100% { transform: translateY(40vh); opacity: 0; }
         }
       `}</style>
+
+      <AporteDialog
+        metodo={aporteMetodo}
+        open={aporteMetodo !== null}
+        onOpenChange={(o) => !o && setAporteMetodo(null)}
+      />
     </div>
   );
 }
@@ -651,14 +657,20 @@ function MethodCard({
   title,
   currency,
   description,
+  onClick,
 }: {
   icon: React.ReactNode;
   title: string;
   currency: string;
   description: string;
+  onClick?: () => void;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#E3001B]/40 hover:bg-white/[0.04]">
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#E3001B]/40 hover:bg-white/[0.04] text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E3001B]/60"
+    >
       <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-[#E3001B]/0 to-transparent transition-all duration-500 group-hover:via-[#E3001B]" />
       <div className="flex items-center justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-200 transition-colors group-hover:border-[#E3001B]/40 group-hover:text-[#ff6e7e]">
@@ -677,7 +689,7 @@ function MethodCard({
         usar este método
         <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
       </div>
-    </div>
+    </button>
   );
 }
 
