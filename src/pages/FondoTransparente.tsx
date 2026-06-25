@@ -1299,14 +1299,17 @@ function ConfiguracionTab() {
         </CardContent>
       </Card>
 
+      <BcvAutoRateCard onRateApplied={() => {
+        supabase.from("fondo_configuracion").select("*").single().then(({ data }) => setC(data));
+      }} />
+
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2"><SettingsIcon className="h-4 w-4" /> Tasa del día (Bs por USD)</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><SettingsIcon className="h-4 w-4" /> Tasa manual (fallback)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Esta tasa se usa solo para mostrar el equivalente referencial en USD del saldo en Bolívares. No convierte saldos
-            automáticamente: cada moneda (VES, USD, USDT) se gasta por separado.
+            Úsala solo si DolarApi falla. Solo aplica para aportes en VES / Pago Móvil. Zelle (USD), efectivo Sublime (USD) y Binance (USDT) no usan tasa.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
@@ -1336,9 +1339,75 @@ function ConfiguracionTab() {
             Última actualización de la tasa:{" "}
             {c.tasa_actualizada_at ? new Date(c.tasa_actualizada_at).toLocaleString("es-VE") : "sin actualizaciones todavía"}
           </p>
-          <Button onClick={guardarTasa} disabled={saving}>Guardar tasa del día</Button>
+          <Button onClick={guardarTasa} disabled={saving}>Guardar tasa manual</Button>
         </CardContent>
       </Card>
     </div>
   );
 }
+
+function BcvAutoRateCard({ onRateApplied }: { onRateApplied: () => void }) {
+  const [active, setActive] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.rpc("fondo_get_active_bcv_rate");
+    setActive(Array.isArray(data) && data.length > 0 ? data[0] : null);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const forzar = async () => {
+    setRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-bcv-rate", { body: {} });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error ?? "Error desconocido");
+      toast.success(`Tasa BCV actualizada: Bs ${Number(data.rate).toLocaleString("es-VE", { maximumFractionDigits: 4 })} / US$`);
+      await load();
+      onRateApplied();
+    } catch (e: any) {
+      toast.error(`No se pudo actualizar: ${e.message ?? e}`);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm flex items-center gap-2"><RefreshCw className="h-4 w-4" /> Tasa BCV automática (DolarApi)</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Se actualiza automáticamente de lunes a viernes a las 12:30 (hora Venezuela) desde <code>ve.dolarapi.com/v1/dolares/oficial</code>.
+          También puedes forzar la actualización manualmente.
+        </p>
+        <div className="rounded-md border bg-muted/30 p-3 text-sm">
+          {loading ? (
+            <span className="text-muted-foreground">Cargando…</span>
+          ) : active ? (
+            <div className="space-y-1">
+              <div className="font-mono text-base">
+                Bs {Number(active.rate).toLocaleString("es-VE", { maximumFractionDigits: 4 })} / US$
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Fuente: {active.source} · Tomada: {new Date(active.fetched_at).toLocaleString("es-VE")}
+                {active.provider_updated_at ? ` · BCV: ${new Date(active.provider_updated_at).toLocaleString("es-VE")}` : ""}
+              </div>
+            </div>
+          ) : (
+            <span className="text-muted-foreground">Tasa BCV no configurada todavía</span>
+          )}
+        </div>
+        <Button onClick={forzar} disabled={running}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${running ? "animate-spin" : ""}`} />
+          Forzar actualización BCV
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
