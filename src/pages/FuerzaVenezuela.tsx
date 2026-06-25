@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import heroImg from "@/assets/fuerza-venezuela-hero.jpg";
 import basicoLogoAsset from "@/assets/basico-box-logo.png.asset.json";
+import { AporteDialog } from "@/components/fondo/AporteDialog";
+import type { MetodoAporte } from "@/components/fondo/canales";
 
 type Totales = {
   ves_confirmado: number; ves_por_verificar: number; ves_egresos: number; ves_saldo: number;
