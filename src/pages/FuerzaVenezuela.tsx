@@ -479,10 +479,11 @@ export default function FuerzaVenezuela() {
               <Empty msg="aún no hay aportes confirmados." />
             ) : (
               <DataTable
-                cols={["fecha", "donante", "método", "monto", "ref.", "estado"]}
+                cols={["fecha", "donante", "teléfono", "método", "monto", "ref.", "estado"]}
                 rows={confirmados.map((r) => [
                   fmtDate(r.fecha_confirmada) ?? "—",
                   r.donante_publico,
+                  r.telefono_publico ?? "—",
                   r.metodo,
                   fmtMonto(r.monto_original, r.moneda_original),
                   r.referencia_publica_enmascarada ?? "—",
@@ -493,24 +494,28 @@ export default function FuerzaVenezuela() {
           </div>
         </section>
 
-        <section className="animate-fade-in">
+        <section id="por-verificar" className="animate-fade-in">
           <SectionHeader eyebrow="cola" title="aportes por verificar" subtitle="reportados, en proceso de validación" />
           <div className="mt-6">
             {porVerificar.length === 0 ? (
               <Empty msg="sin aportes pendientes." />
             ) : (
               <DataTable
-                cols={["reportado", "método", "monto", "estado"]}
+                cols={["reportado", "donante", "teléfono", "método", "monto", "ref.", "estado"]}
                 rows={porVerificar.map((r) => [
                   r.fecha_reportada ?? "—",
+                  r.donante_publico,
+                  r.telefono_publico ?? "—",
                   r.metodo,
                   fmtMonto(r.monto_original, r.moneda_original),
+                  r.referencia_publica_enmascarada ?? "—",
                   <StatusBadge key="b" tone="warn">{r.estado}</StatusBadge>,
                 ])}
               />
             )}
           </div>
         </section>
+
 
         <section className="animate-fade-in">
           <SectionHeader eyebrow="salidas" title="egresos ejecutados" subtitle="adónde va el dinero" />
