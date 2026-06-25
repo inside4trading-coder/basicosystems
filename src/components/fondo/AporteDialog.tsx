@@ -184,15 +184,16 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
       const { data, error } = await supabase.rpc("fondo_registrar_aporte_publico", {
         p_metodo: canal.metodo,
         p_nombre: values.nombre,
-        p_email: values.email,
-        p_telefono: values.telefono,
+        p_email: values.email || null,
+        p_telefono: values.telefono || null,
         p_fecha_pago: values.fecha_pago,
         p_monto: monto,
         p_moneda: canal.moneda,
-        p_referencia: values.referencia,
+        p_referencia: values.referencia || null,
         p_comprobante_path: path,
         p_es_anonimo: values.es_anonimo,
-      });
+        p_sender_name: values.sender_name || null,
+      } as any);
       if (error) throw error;
       if (data && typeof data === "object" && "ok" in data && !(data as any).ok) {
         throw new Error("No se pudo registrar el aporte");
