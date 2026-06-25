@@ -121,6 +121,7 @@ export default function FuerzaVenezuela() {
   const [porVerificar, setPorVerificar] = useState<AporteRow[]>([]);
   const [egresos, setEgresos] = useState<EgresoRow[]>([]);
   const [config, setConfig] = useState<Config | null>(null);
+  const [aporteMetodo, setAporteMetodo] = useState<MetodoAporte | null>(null);
 
   useEffect(() => {
     document.title = "fuerza venezuela — [BASICO]";
