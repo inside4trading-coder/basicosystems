@@ -41,6 +41,7 @@ type AporteRow = {
   fecha_reportada: string | null;
   fecha_confirmada: string | null;
   donante_publico: string;
+  telefono_publico: string | null;
   metodo: string;
   moneda_original: string;
   monto_original: number;
@@ -48,7 +49,9 @@ type AporteRow = {
   referencia_publica_enmascarada: string | null;
   estado: string;
   nota_publica: string | null;
+  es_anonimo: boolean;
 };
+
 
 type EgresoRow = {
   id: string;
