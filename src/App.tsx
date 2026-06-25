@@ -175,7 +175,10 @@ const App = () => (
             </Route>
             <Route path="/crew/incidencias" element={<CrewIncidencias />} />
             <Route path="/sublime/fichaje" element={<SublimeFichajePublico />} />
-            <Route path="/fuerza-venezuela" element={<FuerzaVenezuela />} />
+            <Route
+              path="/fuerza-venezuela"
+              element={isFundacionHost ? <Navigate to="/" replace /> : <FuerzaVenezuela />}
+            />
             <Route path="*" element={<NotFound />} />
 
           </Routes>
