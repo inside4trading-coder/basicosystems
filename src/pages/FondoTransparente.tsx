@@ -1255,6 +1255,25 @@ function ConfiguracionTab() {
     if (error) return toast.error(error.message);
     toast.success("Configuración guardada");
   };
+
+  const guardarTasa = async () => {
+    const t = c.tasa_ves_usd ? parseFloat(c.tasa_ves_usd) : null;
+    if (!t || t <= 0) return toast.error("Tasa inválida");
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("fondo_configuracion").update({
+      tasa_ves_usd: t,
+      tasa_fecha: c.tasa_fecha || new Date().toISOString().slice(0, 10),
+      tasa_fuente: c.tasa_fuente || null,
+      tasa_actualizada_at: new Date().toISOString(),
+      tasa_actualizada_por: user?.id ?? null,
+    }).eq("id", true);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Tasa del día actualizada");
+    supabase.from("fondo_configuracion").select("*").single().then(({ data }) => setC(data));
+  };
+
   return (
     <div className="space-y-4 mt-4">
       <Card>
@@ -1273,10 +1292,51 @@ function ConfiguracionTab() {
             <Textarea rows={5} value={c.disclaimer ?? ""} onChange={(e) => setC({ ...c, disclaimer: e.target.value })} />
           </div>
           <div>
-            <Label>Tasa sugerida (VES/USD)</Label>
+            <Label>Tasa sugerida — uso histórico (VES/USD)</Label>
             <Input type="number" step="0.01" value={c.tasa_sugerida ?? ""} onChange={(e) => setC({ ...c, tasa_sugerida: e.target.value })} />
           </div>
           <Button onClick={save} disabled={saving}>Guardar</Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2"><SettingsIcon className="h-4 w-4" /> Tasa del día (Bs por USD)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Esta tasa se usa solo para mostrar el equivalente referencial en USD del saldo en Bolívares. No convierte saldos
+            automáticamente: cada moneda (VES, USD, USDT) se gasta por separado.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <Label>Tasa VES → USD</Label>
+              <Input
+                type="number" step="0.01"
+                placeholder="ej: 40.50"
+                value={c.tasa_ves_usd ?? ""}
+                onChange={(e) => setC({ ...c, tasa_ves_usd: e.target.value })}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">1 USD = X Bs</p>
+            </div>
+            <div>
+              <Label>Fecha de la tasa</Label>
+              <Input type="date" value={c.tasa_fecha ?? ""} onChange={(e) => setC({ ...c, tasa_fecha: e.target.value })} />
+            </div>
+            <div>
+              <Label>Fuente / nota</Label>
+              <Input
+                placeholder="BCV / Monitor / nota interna"
+                value={c.tasa_fuente ?? ""}
+                onChange={(e) => setC({ ...c, tasa_fuente: e.target.value })}
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Última actualización de la tasa:{" "}
+            {c.tasa_actualizada_at ? new Date(c.tasa_actualizada_at).toLocaleString("es-VE") : "sin actualizaciones todavía"}
+          </p>
+          <Button onClick={guardarTasa} disabled={saving}>Guardar tasa del día</Button>
         </CardContent>
       </Card>
     </div>
