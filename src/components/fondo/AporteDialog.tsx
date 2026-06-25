@@ -223,13 +223,12 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
                 className="bg-[#E3001B] hover:bg-[#c30017] text-white"
                 onClick={() => {
                   handleClose(false);
-                  // Recargar la página apuntando a "aportes por verificar"
-                  window.location.assign("/fuerza-venezuela#por-verificar");
+                  window.location.href = "/fuerza-venezuela#por-verificar";
+                  window.location.reload();
                 }}
               >
                 ver mi aporte en la cola
               </Button>
-
             </div>
           </div>
         ) : (
