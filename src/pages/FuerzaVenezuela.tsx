@@ -570,13 +570,22 @@ export default function FuerzaVenezuela() {
                   "[BASICO] publica este registro para mostrar de forma transparente los aportes recibidos y los gastos ejecutados. Los aportes se verifican manualmente antes de sumarse al total confirmado. Los datos sensibles serán protegidos. Este fondo no garantiza deducción fiscal."}
               </p>
             </div>
-            <div className="shrink-0">
+            <div className="shrink-0 text-right">
               <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-600">respaldado por</p>
               <img
                 src={basicoLogoAsset.url}
                 alt="BASICO"
                 className="h-10 w-auto rounded-sm border border-white/10 bg-[#E3001B] object-contain"
               />
+              <a
+                href="https://fundacionbasico.com"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[#ff6e7e] hover:text-white transition-colors"
+              >
+                fundacionbasico.com
+                <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
           </div>
         </footer>
