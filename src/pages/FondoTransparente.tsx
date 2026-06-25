@@ -708,14 +708,25 @@ function AporteGestionDialog({ aporte, onClose }: { aporte: Aporte; onClose: () 
             <Info label="Ref. privada" value={aporte.referencia_privada ?? "—"} />
           </div>
           {aporte.estado !== "confirmado" && (
-            <div className="grid grid-cols-2 gap-3 border-t pt-3">
-              <div>
-                <Label>Tasa VES/USD</Label>
-                <Input type="number" step="0.01" value={tasa} onChange={(e) => setTasa(e.target.value)} />
-              </div>
-              <div>
-                <Label>Equivalente USD</Label>
-                <Input type="number" step="0.01" value={equiv} onChange={(e) => setEquiv(e.target.value)} placeholder={equivCalc ? equivCalc.toFixed(2) : ""} />
+            <div className="space-y-2 border-t pt-3">
+              {aporte.moneda_original === "VES" && (
+                <div className="text-xs text-muted-foreground">
+                  {bcv ? (
+                    <>Tasa BCV activa: <strong>Bs {bcv.toLocaleString("es-VE", { maximumFractionDigits: 4 })} / US$</strong> — aplicada por defecto.</>
+                  ) : (
+                    <>No hay tasa BCV activa. Ingresa una tasa manual o ejecuta "Forzar actualización BCV" en Configuración.</>
+                  )}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Tasa VES/USD</Label>
+                  <Input type="number" step="0.01" value={tasa} onChange={(e) => setTasa(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Equivalente USD</Label>
+                  <Input type="number" step="0.01" value={equiv} onChange={(e) => setEquiv(e.target.value)} placeholder={equivCalc ? equivCalc.toFixed(2) : ""} />
+                </div>
               </div>
             </div>
           )}
