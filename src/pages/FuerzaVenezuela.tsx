@@ -322,6 +322,15 @@ export default function FuerzaVenezuela() {
               <p className="relative mt-2 text-xs md:text-sm text-zinc-300 lowercase">
                 cada ingreso, cada gasto y cada saldo publicado en esta página.
               </p>
+              <a
+                href="https://fundacionbasico.com"
+                target="_blank"
+                rel="noreferrer"
+                className="relative mt-4 inline-flex items-center gap-2 rounded-full border border-[#E3001B]/40 bg-[#E3001B]/10 px-4 py-2 text-sm font-semibold text-[#ff6e7e] hover:bg-[#E3001B]/20 hover:text-white transition-colors"
+              >
+                <Radio className="h-3.5 w-3.5" />
+                fundacionbasico.com
+              </a>
             </div>
           </div>
 
