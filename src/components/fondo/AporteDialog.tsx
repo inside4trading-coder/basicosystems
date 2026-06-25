@@ -323,12 +323,18 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
                 </Field>
                 <Field label={canal.montoLabel} error={errors.monto?.message}>
                   <Input
-                    {...register("monto")}
+                    value={watch("monto")}
+                    onChange={(e) =>
+                      setValue("monto", formatMontoInput(e.target.value), {
+                        shouldValidate: true,
+                      })
+                    }
                     inputMode="decimal"
                     placeholder={canal.montoPlaceholder}
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-white/5 border-white/10 text-white font-mono"
                   />
                 </Field>
+
               </FieldRow>
 
               <FieldRow>
