@@ -303,6 +303,66 @@ function KCard({ label, value, accent }: { label: string; value: string; accent?
   );
 }
 
+function ExplicacionBlock({
+  icon: Icon,
+  title,
+  children,
+  variant = "info",
+}: {
+  icon: React.ElementType;
+  title: string;
+  children: React.ReactNode;
+  variant?: "info" | "warning" | "success";
+}) {
+  const variantClasses = {
+    info: "bg-primary/5 border-primary/20",
+    warning: "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40",
+    success: "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900/40",
+  };
+  return (
+    <Card className={`border ${variantClasses[variant]}`}>
+      <CardContent className="py-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 rounded-full bg-background p-2 border shadow-sm">
+            <Icon className="h-5 w-5 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold leading-tight">{title}</h3>
+            <div className="text-sm text-muted-foreground leading-relaxed">{children}</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AportesExplicacion({ filtroEstado }: { filtroEstado: string }) {
+  return (
+    <div className="space-y-3">
+      <ExplicacionBlock icon={HandCoins} title="Cada ingreso queda registrado para siempre">
+        Esta es la parte importante: <strong>cada movimiento</strong>. Cuando alguien dona, el dinero entra al fondo y se queda aquí de forma visible.
+        No podemos quitarlo, no podemos obviarlo: cada aporte que se agrega aparece en el saldo disponible y en el registro público.
+      </ExplicacionBlock>
+
+      {filtroEstado === "por_verificar" && (
+        <ExplicacionBlock icon={InfoIcon} title="Aportes por verificar" variant="warning">
+          Nuestro equipo de humanos revisa y confirma cada aporte manualmente. Todavía no tenemos los ingresos conectados en tiempo real,
+          pero estamos trabajando para automatizarlo. Mientras tanto, cada donación pasa por una revisión de seguridad antes de aparecer como confirmada.
+        </ExplicacionBlock>
+      )}
+    </div>
+  );
+}
+
+function EgresosExplicacion() {
+  return (
+    <ExplicacionBlock icon={ArrowRightLeft} title="Cada egreso también queda registrado para siempre">
+      Igual que los ingresos, <strong>cada egreso es un movimiento público</strong>. Cuando el fondo gasta dinero, ese gasto queda registrado para siempre.
+      No podemos borrarlo ni esconderlo: cada compra, transferencia o ayuda ejecutada se puede rastrear en el registro.
+    </ExplicacionBlock>
+  );
+}
+
 /* ---------------- APORTES ---------------- */
 function AportesTab() {
   const [rows, setRows] = useState<Aporte[]>([]);
