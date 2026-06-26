@@ -681,31 +681,29 @@ export default function FuerzaVenezuela() {
         </section>
 
         {/* FOOTER */}
-        <footer className="border-t border-white/10 pt-10 md:pt-12 pb-6">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10 items-start">
+        <footer className="border-t border-white/10 pt-8 md:pt-12 pb-6">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 md:items-start">
             {/* Project identity */}
-            <div className="md:col-span-3 flex flex-col gap-3">
+            <div className="md:col-span-3 flex flex-col items-center md:items-start gap-2 text-center md:text-left">
               <img
                 src={fondoLogoAsset.url}
                 alt="Fondo Transparente"
-                className="h-7 w-auto"
+                className="h-6 md:h-7 w-auto"
               />
-              <p className="text-xs text-zinc-500 leading-relaxed lowercase">
+              <p className="text-[11px] md:text-xs text-zinc-500 leading-relaxed lowercase max-w-[260px]">
                 cada aporte verificable, cada gasto público.
               </p>
             </div>
 
             {/* Trust & disclosure */}
-            <div className="md:col-span-6">
-              <div className="rounded-lg border border-white/10 bg-white/[0.03] p-5 flex gap-3">
-                <div className="flex-shrink-0 mt-0.5">
-                  <ShieldCheck className="h-5 w-5 text-[#E3001B]" />
-                </div>
-                <div className="space-y-2">
-                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-zinc-200">
+            <div className="md:col-span-6 order-3 md:order-none">
+              <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4 md:p-5 flex gap-3">
+                <ShieldCheck className="h-4 w-4 md:h-5 md:w-5 text-[#E3001B] flex-shrink-0 mt-0.5" />
+                <div className="space-y-1.5 min-w-0">
+                  <h4 className="text-[10px] md:text-[11px] font-bold uppercase tracking-widest text-zinc-200">
                     declaración de transparencia
                   </h4>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+                  <p className="text-[11px] md:text-xs text-zinc-400 leading-relaxed">
                     {config?.disclaimer ??
                       "[BASICO] publica este registro para mostrar de forma transparente los aportes recibidos y los gastos ejecutados. Los aportes se verifican manualmente antes de sumarse al total confirmado. Los datos sensibles serán protegidos. Este fondo no garantiza deducción fiscal."}
                   </p>
@@ -714,40 +712,41 @@ export default function FuerzaVenezuela() {
             </div>
 
             {/* Backing & link */}
-            <div className="md:col-span-3 flex flex-col md:items-end gap-4">
-              <div className="space-y-2 md:text-right">
-                <span className="block text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
+            <div className="md:col-span-3 flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-3 md:gap-4">
+              <div className="flex items-center gap-2 md:flex-col md:items-end md:gap-2">
+                <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-600 md:text-right">
                   respaldado por
                 </span>
                 <img
                   src={basicoLogoAsset.url}
                   alt="BASICO"
-                  className="h-10 w-auto rounded-sm border border-white/10 bg-[#E3001B] object-contain"
+                  className="h-7 md:h-10 w-auto rounded-sm border border-white/10 bg-[#E3001B] object-contain"
                 />
               </div>
               <a
                 href="https://fundacionbasico.com"
                 target="_blank"
                 rel="noreferrer"
-                className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[#ff6e7e] hover:text-white transition-colors"
+                className="group inline-flex items-center gap-1.5 text-[11px] md:text-xs font-semibold text-[#ff6e7e] hover:text-white transition-colors"
               >
                 <span className="font-mono tracking-tight">fundacionbasico.com</span>
-                <ExternalLink className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 transition-opacity" />
+                <ExternalLink className="h-3 w-3 md:h-3.5 md:w-3.5 opacity-50 group-hover:opacity-100 transition-opacity" />
               </a>
             </div>
           </div>
 
-          <div className="mt-10 pt-6 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-[10px] uppercase tracking-wider text-zinc-600">
+          <div className="mt-8 md:mt-10 pt-5 md:pt-6 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4">
+            <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-zinc-600 text-center md:text-left">
               © {new Date().getFullYear()} Fondo Transparente · fundacionbasico.com
             </p>
-            <nav className="flex flex-wrap justify-center gap-4 text-[10px] uppercase tracking-wider text-zinc-600">
+            <nav className="flex flex-wrap justify-center gap-3 md:gap-4 text-[9px] md:text-[10px] uppercase tracking-wider text-zinc-600">
               <a href="#resumen" className="hover:text-[#ff6e7e] transition-colors">resumen</a>
               <a href="#registro" className="hover:text-[#ff6e7e] transition-colors">registro</a>
               <a href="#aportar" className="hover:text-[#ff6e7e] transition-colors">donar</a>
             </nav>
           </div>
         </footer>
+
       </main>
 
       <style>{`
