@@ -402,13 +402,13 @@ export default function FuerzaVenezuela() {
             className="mt-8 max-w-3xl animate-fade-in"
             style={{ animationDelay: "0.28s" }}
           >
-            <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/40 bg-[#E3001B]/[0.07] p-5 md:p-6 backdrop-blur-sm">
-              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#E3001B]/20 blur-3xl" />
-              <div className="absolute -left-10 -bottom-10 h-28 w-28 rounded-full bg-[#E3001B]/15 blur-3xl" />
+            <div className="relative overflow-hidden rounded-xl border border-[#ff8a5c]/30 bg-[#3a1a14]/40 p-5 md:p-6 backdrop-blur-sm">
+              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#ff8a5c]/20 blur-3xl" />
+              <div className="absolute -left-10 -bottom-10 h-28 w-28 rounded-full bg-[#c44a5a]/20 blur-3xl" />
               <p className="relative text-3xl md:text-5xl font-black lowercase tracking-tight text-white leading-[0.95]">
                 no nos creas.
                 <br />
-                <span className="text-[#E3001B]">míralo.</span>
+                <span className="bg-gradient-to-r from-[#ff8a5c] to-[#ffb38a] bg-clip-text text-transparent">míralo.</span>
               </p>
               <p className="relative mt-3 text-xs md:text-sm text-zinc-300 lowercase">
                 cada ingreso, cada gasto y cada saldo publicado en esta página.
@@ -417,7 +417,7 @@ export default function FuerzaVenezuela() {
                 href="https://fundacionbasico.com"
                 target="_blank"
                 rel="noreferrer"
-                className="relative mt-4 inline-flex items-center gap-2 rounded-full border border-[#E3001B]/40 bg-[#E3001B]/10 px-4 py-2 text-sm font-semibold text-[#ff6e7e] hover:bg-[#E3001B]/20 hover:text-white transition-colors"
+                className="relative mt-4 inline-flex items-center gap-2 rounded-full border border-[#ff8a5c]/40 bg-[#ff8a5c]/10 px-4 py-2 text-sm font-semibold text-[#ffb38a] hover:bg-[#ff8a5c]/20 hover:text-white transition-colors"
               >
                 <Radio className="h-3.5 w-3.5" />
                 fundacionbasico.com
@@ -431,12 +431,13 @@ export default function FuerzaVenezuela() {
           >
             <button
               onClick={() => scrollToId("aportar")}
-              className="group relative inline-flex items-center justify-center gap-2 rounded-md bg-[#E3001B] px-7 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_0_0_rgba(227,0,27,0.6)] transition-all duration-300 hover:bg-[#ff1a36] hover:shadow-[0_0_40px_-5px_rgba(227,0,27,0.8)] hover:-translate-y-0.5"
+              className="group relative inline-flex items-center justify-center gap-2 rounded-md bg-gradient-to-r from-[#ff7a4c] to-[#ff5a6e] px-7 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-[0_8px_30px_-8px_rgba(255,122,76,0.6)] transition-all duration-300 hover:shadow-[0_12px_40px_-6px_rgba(255,122,76,0.8)] hover:-translate-y-0.5"
             >
-              <span className="absolute inset-0 -z-10 rounded-md bg-[#E3001B] opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-60" />
+              <span className="absolute inset-0 -z-10 rounded-md bg-[#ff7a4c] opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-60" />
               donar ahora
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </button>
+
             <button
               onClick={() => scrollToId("resumen")}
               className="inline-flex items-center justify-center gap-2 rounded-md border border-white/20 bg-white/[0.03] px-7 py-4 text-sm font-semibold uppercase tracking-wider text-zinc-200 backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/[0.06] hover:text-white"
