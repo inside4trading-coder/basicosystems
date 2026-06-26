@@ -381,17 +381,87 @@ export default function FuerzaVenezuela() {
           </div>
 
           <div
-            className="mt-6 max-w-2xl space-y-2 text-sm md:text-base leading-relaxed text-zinc-400 lowercase animate-fade-in"
+            className="mt-10 animate-fade-in"
             style={{ animationDelay: "0.23s" }}
           >
-            <p>
-              cuando donas, tu aporte se registra. cuando se confirma, aparece en la lista de donantes y entra al dinero disponible.
-            </p>
-            <p>
-              cuando usamos el dinero, publicamos el monto, el gasto y el comprobante. cuando es posible, también mostramos contenido de la entrega o de la acción realizada.
-            </p>
-            <p className="text-zinc-300">ingresos visibles. gastos con soporte. saldo disponible.</p>
+            <div className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+              <span className="h-px w-8 bg-gradient-to-r from-transparent to-[#ff8a5c]/60" />
+              así funciona tu aporte
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+              {[
+                {
+                  num: "01",
+                  Icon: HandHeart,
+                  title: "donas",
+                  desc: "tu aporte queda registrado al instante.",
+                },
+                {
+                  num: "02",
+                  Icon: CheckCircle2,
+                  title: "confirmamos",
+                  desc: "aparece en la lista de donantes y entra al dinero disponible.",
+                },
+                {
+                  num: "03",
+                  Icon: Receipt,
+                  title: "ejecutamos",
+                  desc: "publicamos el monto, el gasto y el comprobante.",
+                },
+                {
+                  num: "04",
+                  Icon: Eye,
+                  title: "mostramos",
+                  desc: "cuando es posible, también el contenido de la entrega o la acción realizada.",
+                },
+              ].map(({ num, Icon, title, desc }, i) => (
+                <div
+                  key={num}
+                  className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.025] p-4 md:p-5 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#ff8a5c]/40 hover:bg-white/[0.05] animate-fade-in"
+                  style={{ animationDelay: `${0.26 + i * 0.05}s` }}
+                >
+                  <div className="absolute -top-px left-4 right-4 h-px bg-gradient-to-r from-transparent via-[#ff8a5c]/0 to-transparent transition-all duration-500 group-hover:via-[#ff8a5c]/80" />
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#ff8a5c]/25 bg-gradient-to-br from-[#ff8a5c]/15 to-[#c44a5a]/10 text-[#ffb38a] transition-colors group-hover:text-white group-hover:border-[#ff8a5c]/60">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-[10px] font-mono tracking-wider text-[#ff8a5c]/70">{num}</span>
+                        <h3 className="text-base md:text-lg font-bold lowercase tracking-tight text-white">
+                          {title}
+                        </h3>
+                      </div>
+                      <p className="mt-1.5 text-xs md:text-sm leading-snug lowercase text-zinc-400">
+                        {desc}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* sealed promise band */}
+            <div className="mt-4 relative overflow-hidden rounded-xl border border-[#ff8a5c]/25 bg-gradient-to-r from-[#ff8a5c]/[0.08] via-[#c44a5a]/[0.06] to-[#ff8a5c]/[0.08] px-4 py-3.5 md:py-4 backdrop-blur-sm">
+              <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-[#ff8a5c] to-[#c44a5a]" />
+              <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-center text-sm md:text-base font-semibold lowercase">
+                <span className="flex items-center gap-1.5 text-zinc-100">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#ff8a5c]" />
+                  ingresos visibles
+                </span>
+                <span className="flex items-center gap-1.5 text-zinc-100">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#ffb38a]" />
+                  gastos con soporte
+                </span>
+                <span className="flex items-center gap-1.5 text-zinc-100">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#ffc9a8]" />
+                  saldo disponible
+                </span>
+              </div>
+            </div>
           </div>
+
 
           <div
             className="mt-8 max-w-3xl animate-fade-in"
