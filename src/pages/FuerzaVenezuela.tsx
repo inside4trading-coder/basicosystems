@@ -812,7 +812,16 @@ export default function FuerzaVenezuela() {
 
         <section className="animate-fade-in">
           <SectionHeader eyebrow="salidas" title="egresos ejecutados" subtitle="adónde va el dinero" />
+          <ExplanationCallout
+            icon={ArrowUpCircle}
+            eyebrow="cada gasto deja rastro"
+            title="cuando el fondo gasta, también queda registrado para siempre"
+          >
+            todo egreso aparece aquí con fecha, categoría, beneficiario, monto y comprobante. no podemos esconderlo ni borrarlo del registro público.
+            si entra un dólar, lo ves entrar; si sale un dólar, lo ves salir y por qué. esa resta —ingresos menos egresos— es el saldo real disponible.
+          </ExplanationCallout>
           <div className="mt-6">
+
             {egresos.length === 0 ? (
               <Empty msg="aún no se han ejecutado gastos." />
             ) : (
