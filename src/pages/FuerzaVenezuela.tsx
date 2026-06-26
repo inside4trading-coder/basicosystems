@@ -206,9 +206,10 @@ export default function FuerzaVenezuela() {
   const gas = useCountUp(gastadoTotalUsd);
 
   return (
-    <div className="min-h-screen bg-[#070708] text-zinc-100 antialiased selection:bg-[#E3001B]/40">
+    <div className="min-h-screen bg-[#070b18] text-zinc-100 antialiased selection:bg-[#ff7a4c]/40">
       {/* STICKY TOP NAV */}
-      <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#070708]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[#070708]/60">
+      <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#070b18]/85 backdrop-blur-md supports-[backdrop-filter]:bg-[#070b18]/65">
+
         <div className="mx-auto max-w-6xl px-4 py-2.5 md:py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <img
