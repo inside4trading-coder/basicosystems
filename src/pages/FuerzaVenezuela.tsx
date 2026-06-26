@@ -247,17 +247,24 @@ export default function FuerzaVenezuela() {
 
       {/* HERO */}
       <header className="relative isolate overflow-hidden">
-        {/* background image */}
-        <div
-          className="absolute inset-0 -z-20 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroImg})` }}
-        />
-        {/* gradients overlay */}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/80 via-black/85 to-[#070708]" />
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,rgba(227,0,27,0.18),transparent_55%)]" />
+        {/* background image — responsive: mobile portrait / desktop landscape */}
+        <picture aria-hidden="true">
+          <source media="(min-width: 768px)" srcSet={amanecerDesktop.url} />
+          <img
+            src={amanecerMobile.url}
+            alt=""
+            className="absolute inset-0 -z-20 h-full w-full object-cover object-[center_30%] md:object-center"
+          />
+        </picture>
+        {/* navy + burdeos overlays — oscurece sin matar el amanecer */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-[#0a1428]/85 via-[#0a1428]/75 to-[#0a1428]" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_bottom_right,rgba(255,140,90,0.18),transparent_55%)]" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,rgba(140,30,60,0.22),transparent_60%)]" />
+        {/* extra darkening band behind text — más fuerte en mobile */}
+        <div className="absolute inset-x-0 top-0 -z-10 h-[70%] bg-gradient-to-b from-[#070b18]/70 via-[#070b18]/40 to-transparent md:from-[#070b18]/55 md:via-[#070b18]/25" />
         {/* tech grid */}
         <div
-          className="absolute inset-0 -z-10 opacity-[0.18] mix-blend-screen"
+          className="absolute inset-0 -z-10 opacity-[0.12] mix-blend-screen"
           style={{
             backgroundImage:
               "linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)",
@@ -266,8 +273,9 @@ export default function FuerzaVenezuela() {
               "radial-gradient(ellipse at center, black 40%, transparent 80%)",
           }}
         />
-        {/* scanline */}
-        <div className="pointer-events-none absolute inset-x-0 -z-10 h-px top-1/3 bg-gradient-to-r from-transparent via-[#E3001B]/60 to-transparent animate-[scan_6s_linear_infinite]" />
+        {/* scanline — coral cálido */}
+        <div className="pointer-events-none absolute inset-x-0 -z-10 h-px top-1/3 bg-gradient-to-r from-transparent via-[#ff8a5c]/40 to-transparent animate-[scan_6s_linear_infinite]" />
+
 
         <div className="mx-auto max-w-6xl px-5 pt-8 pb-16 md:pt-12 md:pb-24">
           {/* slim context band */}
