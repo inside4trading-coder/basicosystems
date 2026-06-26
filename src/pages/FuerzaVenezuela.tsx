@@ -17,6 +17,10 @@ import {
   Receipt,
   Eye,
   ExternalLink,
+  Lock,
+  Users,
+  ArrowDownCircle,
+  ArrowUpCircle,
 } from "lucide-react";
 import amanecerDesktop from "@/assets/amanecer-desktop.jpg.asset.json";
 import amanecerMobile from "@/assets/amanecer-mobile.jpg.asset.json";
