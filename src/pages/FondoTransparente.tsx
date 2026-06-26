@@ -1324,6 +1324,41 @@ function AuditoriaTab() {
   );
 }
 
+/* ---------------- MÉTODOS DE APORTE ---------------- */
+function MetodosAporteCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm flex items-center gap-2"><Receipt className="h-4 w-4" /> Métodos de aporte activos</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          Estos son los canales habilitados para recibir aportes. Cada método va a su saldo correspondiente y se publica en la página de transparencia.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Object.values(CANALES).map((canal) => (
+            <div key={canal.metodo} className="rounded-lg border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm capitalize">{canal.titulo}</span>
+                <Badge variant="outline">{canal.monedaLabel}</Badge>
+              </div>
+              <div className="space-y-1">
+                {canal.datos.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{d.label}</span>
+                    <span className="font-mono">{d.value}</span>
+                  </div>
+                ))}
+              </div>
+              {canal.notaCanal && <p className="text-[10px] text-muted-foreground leading-tight">{canal.notaCanal}</p>}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ---------------- CONFIGURACIÓN ---------------- */
 function ConfiguracionTab() {
   const [c, setC] = useState<any>(null);
