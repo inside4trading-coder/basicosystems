@@ -278,14 +278,14 @@ export default function FuerzaVenezuela() {
 
 
         <div className="mx-auto max-w-6xl px-5 pt-8 pb-16 md:pt-12 md:pb-24">
-          {/* slim context band */}
+          {/* slim context band — más editorial, burdeos apagado */}
           <div
-            className="animate-fade-in flex items-start gap-3 rounded-md border-l-2 border-[#E3001B] bg-[#E3001B]/[0.06] px-4 py-3"
+            className="animate-fade-in flex items-start gap-3 rounded-md border-l-2 border-[#c44a5a] bg-[#c44a5a]/[0.08] px-4 py-3 backdrop-blur-sm"
             style={{ animationDelay: "0s" }}
           >
             <span className="relative flex h-2 w-2 shrink-0 mt-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff4d63] opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E3001B]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff7a8a] opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#c44a5a]" />
             </span>
             <div className="min-w-0">
               <p className="text-sm md:text-[15px] font-semibold lowercase leading-snug text-zinc-100">
@@ -302,28 +302,37 @@ export default function FuerzaVenezuela() {
             className="mt-7 animate-fade-in"
             style={{ animationDelay: "0.1s" }}
           >
-            <span className="sr-only">Fondo Transparente</span>
+            <span className="sr-only">Fondo Transparente · fuerza venezuela</span>
             <img
               src={fondoLogoAsset.url}
               alt=""
               aria-hidden="true"
-              className="h-auto w-full max-w-[340px] md:max-w-[460px]"
+              className="h-auto w-full max-w-[340px] md:max-w-[460px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]"
             />
           </h1>
 
           <p
-            className="mt-5 text-xl md:text-3xl font-semibold lowercase text-zinc-200 animate-fade-in"
+            className="mt-5 text-xl md:text-3xl font-semibold lowercase text-zinc-100 animate-fade-in"
             style={{ animationDelay: "0.15s" }}
           >
             una nueva forma de ayudar.
           </p>
 
+          {/* frase emocional — amanecer */}
           <p
-            className="mt-4 max-w-2xl text-sm md:text-base leading-relaxed lowercase text-zinc-400 animate-fade-in"
-            style={{ animationDelay: "0.18s" }}
+            className="mt-3 text-lg md:text-2xl font-medium lowercase italic animate-fade-in bg-gradient-to-r from-[#ff9a6c] via-[#ffb38a] to-[#ffc9a8] bg-clip-text text-transparent"
+            style={{ animationDelay: "0.17s" }}
+          >
+            cada aporte acerca el amanecer.
+          </p>
+
+          <p
+            className="mt-4 max-w-2xl text-sm md:text-base leading-relaxed lowercase text-zinc-300 animate-fade-in"
+            style={{ animationDelay: "0.2s" }}
           >
             aquí no solo donas. aquí puedes ver qué pasa con tu aporte.
           </p>
+
 
 
           {/* RESUMEN EN HERO — primero, para impacto inmediato */}
