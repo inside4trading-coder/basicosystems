@@ -15,7 +15,6 @@ import {
   Heart,
   CheckCircle2,
   Receipt,
-  HandHeart,
   Eye,
   ExternalLink,
 } from "lucide-react";
