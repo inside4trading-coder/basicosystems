@@ -778,7 +778,18 @@ export default function FuerzaVenezuela() {
 
         <section id="por-verificar" className="animate-fade-in scroll-mt-24">
           <SectionHeader eyebrow="cola" title="aportes por verificar" subtitle="reportados, en proceso de validación" />
+          <ExplanationCallout
+            icon={Users}
+            eyebrow="confirmación humana"
+            title="hay un equipo de personas confirmando cada movimiento"
+            tone="warn"
+          >
+            por ahora los ingresos no están conectados en tiempo real con los bancos. estamos trabajando para automatizarlo.
+            mientras tanto, cada aporte reportado pasa por una revisión manual de nuestro equipo: comparamos la referencia con el comprobante recibido y, cuando coincide, lo movemos a “ingresos confirmados”.
+            si ves tu aporte aquí, ya lo recibimos y está en cola de verificación.
+          </ExplanationCallout>
           <div className="mt-6">
+
             {porVerificar.length === 0 ? (
               <Empty msg="sin aportes pendientes." />
             ) : (
