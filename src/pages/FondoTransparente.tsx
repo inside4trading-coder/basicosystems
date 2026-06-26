@@ -394,13 +394,14 @@ function AportesTab() {
         <div>
           <Label className="text-xs">Método</Label>
           <Select value={filtroMetodo} onValueChange={setFiltroMetodo}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="pago_movil">Pago Móvil (Bs)</SelectItem>
               <SelectItem value="zelle">Zelle (USD)</SelectItem>
               <SelectItem value="efectivo_sublime">Efectivo Sublime (USD)</SelectItem>
               <SelectItem value="binance">Binance (USDT)</SelectItem>
+              <SelectItem value="bizum">Bizum (€ → USD)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -410,6 +411,8 @@ function AportesTab() {
           <Button size="sm" onClick={() => setOpenNew(true)}><Plus className="h-4 w-4 mr-2" /> Reportar aporte</Button>
         </div>
       </div>
+
+      <AportesExplicacion filtroEstado={filtroEstado} />
 
       {exactosSelCount > 0 && (
         <Card className="border-primary">
