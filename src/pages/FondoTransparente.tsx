@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
-  HeartHandshake, Plus, RefreshCw, ExternalLink, CheckCircle2, XCircle, Copy, Upload, Receipt, History, Settings as SettingsIcon, Download, Info, HandCoins, ArrowRightLeft, Eye,
+  HeartHandshake, Plus, RefreshCw, ExternalLink, CheckCircle2, XCircle, Copy, Upload, Receipt, History, Settings as SettingsIcon, Download, Info as InfoIcon, HandCoins, ArrowRightLeft, Eye,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { CANALES } from "@/components/fondo/canales";
