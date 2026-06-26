@@ -19,7 +19,8 @@ import {
   Eye,
   ExternalLink,
 } from "lucide-react";
-import heroImg from "@/assets/fuerza-venezuela-hero.jpg";
+import amanecerDesktop from "@/assets/amanecer-desktop.jpg.asset.json";
+import amanecerMobile from "@/assets/amanecer-mobile.jpg.asset.json";
 import basicoLogoAsset from "@/assets/basico-box-logo.png.asset.json";
 import fondoLogoAsset from "@/assets/logo-fondo-transparente-v2.png.asset.json";
 import { AporteDialog } from "@/components/fondo/AporteDialog";
