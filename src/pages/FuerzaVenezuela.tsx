@@ -368,13 +368,13 @@ export default function FuerzaVenezuela() {
             className="mt-6 max-w-2xl space-y-2 text-sm md:text-base leading-relaxed text-zinc-400 lowercase animate-fade-in"
             style={{ animationDelay: "0.23s" }}
           >
-            <p>aquí no solo donas. aquí puedes ver qué pasa con tu aporte.</p>
             <p>
-              cuando donas, tu aporte se registra. cuando se confirma, entra al dinero disponible.
-              cuando se usa, publicamos el monto, el gasto y el comprobante. cuando es posible,
-              también mostramos contenido de la entrega o la acción realizada.
+              cuando donas, tu aporte se registra. cuando se confirma, aparece en la lista de donantes y entra al dinero disponible.
             </p>
-            <p>ingresos visibles. gastos con soporte. saldo disponible en vivo.</p>
+            <p>
+              cuando usamos el dinero, publicamos el monto, el gasto y el comprobante. cuando es posible, también mostramos contenido de la entrega o de la acción realizada.
+            </p>
+            <p className="text-zinc-300">ingresos visibles. gastos con soporte. saldo disponible.</p>
           </div>
 
           <div
@@ -384,11 +384,12 @@ export default function FuerzaVenezuela() {
             <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/40 bg-[#E3001B]/[0.07] p-5 md:p-6 backdrop-blur-sm">
               <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#E3001B]/20 blur-3xl" />
               <div className="absolute -left-10 -bottom-10 h-28 w-28 rounded-full bg-[#E3001B]/15 blur-3xl" />
-              <p className="relative text-3xl md:text-5xl font-black lowercase tracking-tight text-white">
+              <p className="relative text-3xl md:text-5xl font-black lowercase tracking-tight text-white leading-[0.95]">
                 no nos creas.
-                <span className="text-[#E3001B]"> míralo.</span>
+                <br />
+                <span className="text-[#E3001B]">míralo.</span>
               </p>
-              <p className="relative mt-2 text-xs md:text-sm text-zinc-300 lowercase">
+              <p className="relative mt-3 text-xs md:text-sm text-zinc-300 lowercase">
                 cada ingreso, cada gasto y cada saldo publicado en esta página.
               </p>
               <a
@@ -420,40 +421,90 @@ export default function FuerzaVenezuela() {
               className="inline-flex items-center justify-center gap-2 rounded-md border border-white/20 bg-white/[0.03] px-7 py-4 text-sm font-semibold uppercase tracking-wider text-zinc-200 backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/[0.06] hover:text-white"
             >
               <Activity className="h-4 w-4" />
-              ver fondo en vivo
+              ver fondo
             </button>
           </div>
 
-          {/* mini flow */}
+          {/* CÓMO FUNCIONA — 5 pasos responsive */}
           <div
-            className="mt-14 animate-fade-in"
+            className="mt-16 animate-fade-in"
             style={{ animationDelay: "0.38s" }}
           >
-            <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+            <p className="mb-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
               cómo funciona
             </p>
-            <div className="flex flex-wrap items-stretch gap-3">
-              {[
-                { icon: Heart, label: "donar" },
-                { icon: CheckCircle2, label: "confirmar" },
-                { icon: Wallet, label: "disponible" },
-                { icon: Receipt, label: "gasto con comprobante" },
-                { icon: HandHeart, label: "ayuda visible" },
-              ].map((step, i, arr) => (
-                <div key={step.label} className="flex items-center gap-3">
-                  <div className="group relative flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 backdrop-blur-sm transition-all hover:border-[#E3001B]/40 hover:bg-white/[0.06]">
-                    <step.icon className="h-4 w-4 text-[#E3001B]" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                      {step.label}
-                    </span>
+
+            {(() => {
+              const steps = [
+                { icon: Heart, title: "donas", desc: "eliges pago móvil, zelle, binance o efectivo sublime." },
+                { icon: CheckCircle2, title: "verificamos", desc: "conciliamos manualmente el aporte antes de sumarlo." },
+                { icon: Eye, title: "publicamos", desc: "tu aporte confirmado aparece en el registro público." },
+                { icon: Receipt, title: "ejecutamos", desc: "cuando usamos el dinero, registramos monto, gasto y comprobante." },
+                { icon: HandHeart, title: "mostramos", desc: "el saldo disponible y la ayuda entregada quedan visibles." },
+              ];
+              return (
+                <>
+                  {/* DESKTOP: horizontal */}
+                  <div className="hidden md:flex items-stretch gap-2">
+                    {steps.map((s, i) => (
+                      <div key={s.title} className="flex items-stretch gap-2 flex-1">
+                        <div className="group relative flex-1 rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm transition-all hover:border-[#E3001B]/40 hover:bg-white/[0.06]">
+                          <div className="flex items-center gap-2">
+                            <s.icon className="h-4 w-4 text-[#E3001B]" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-zinc-200">
+                              {s.title}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-[11px] leading-snug lowercase text-zinc-500">
+                            {s.desc}
+                          </p>
+                        </div>
+                        {i < steps.length - 1 && (
+                          <div className="flex items-center">
+                            <ArrowRight className="h-4 w-4 text-zinc-600" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  {i < arr.length - 1 && (
-                    <ArrowRight className="h-3.5 w-3.5 text-zinc-600" />
-                  )}
-                </div>
-              ))}
-            </div>
+
+                  {/* MOBILE: vertical timeline */}
+                  <div className="md:hidden flex flex-col gap-0">
+                    {steps.map((s, i) => (
+                      <div key={s.title} className="flex flex-col">
+                        <div className="relative rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#E3001B]/40 bg-[#E3001B]/10 text-[10px] font-bold text-[#ff6e7e]">
+                              {i + 1}
+                            </span>
+                            <s.icon className="h-4 w-4 text-[#E3001B]" />
+                            <span className="text-sm font-bold uppercase tracking-wider text-zinc-100">
+                              {s.title}
+                            </span>
+                          </div>
+                          <p className="mt-2 pl-[38px] text-[12px] leading-snug lowercase text-zinc-400">
+                            {s.desc}
+                          </p>
+                        </div>
+                        {i < steps.length - 1 && (
+                          <div className="flex flex-col items-center py-2">
+                            <span className="h-4 w-px bg-white/10" />
+                            <ChevronDown className="h-3.5 w-3.5 text-zinc-600" />
+                            <span className="h-4 w-px bg-white/10" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+
+            <p className="mt-6 text-xs md:text-sm lowercase text-zinc-500 max-w-2xl">
+              no es una promesa de transparencia. es una plataforma para verla.
+            </p>
           </div>
+
 
           <button
             onClick={() => scrollToId("resumen")}
