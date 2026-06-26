@@ -470,95 +470,9 @@ export default function FuerzaVenezuela() {
               fundacionbasico.com
             </a>
           </div>
-
-
-          <div
-            className="mt-8 max-w-3xl animate-fade-in"
-            style={{ animationDelay: "0.28s" }}
-          >
-            <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/40 bg-[#E3001B]/[0.07] p-5 md:p-6 backdrop-blur-sm">
-              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#E3001B]/20 blur-3xl" />
-              <div className="absolute -left-10 -bottom-10 h-28 w-28 rounded-full bg-[#E3001B]/15 blur-3xl" />
-              <p className="relative text-3xl md:text-5xl font-black lowercase tracking-tight text-white">
-                no nos creas.
-                <span className="text-[#E3001B]"> míralo.</span>
-              </p>
-              <p className="relative mt-2 text-xs md:text-sm text-zinc-300 lowercase">
-                cada ingreso, cada gasto y cada saldo publicado en esta página.
-              </p>
-              <a
-                href="https://fundacionbasico.com"
-                target="_blank"
-                rel="noreferrer"
-                className="relative mt-4 inline-flex items-center gap-2 rounded-full border border-[#E3001B]/40 bg-[#E3001B]/10 px-4 py-2 text-sm font-semibold text-[#ff6e7e] hover:bg-[#E3001B]/20 hover:text-white transition-colors"
-              >
-                <Radio className="h-3.5 w-3.5" />
-                fundacionbasico.com
-              </a>
-            </div>
-          </div>
-
-          <div
-            className="mt-8 flex flex-col sm:flex-row gap-3 animate-fade-in"
-            style={{ animationDelay: "0.33s" }}
-          >
-            <button
-              onClick={() => scrollToId("aportar")}
-              className="group relative inline-flex items-center justify-center gap-2 rounded-md bg-[#E3001B] px-7 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_0_0_rgba(227,0,27,0.6)] transition-all duration-300 hover:bg-[#ff1a36] hover:shadow-[0_0_40px_-5px_rgba(227,0,27,0.8)] hover:-translate-y-0.5"
-            >
-              <span className="absolute inset-0 -z-10 rounded-md bg-[#E3001B] opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-60" />
-              donar ahora
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </button>
-            <button
-              onClick={() => scrollToId("resumen")}
-              className="inline-flex items-center justify-center gap-2 rounded-md border border-white/20 bg-white/[0.03] px-7 py-4 text-sm font-semibold uppercase tracking-wider text-zinc-200 backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/[0.06] hover:text-white"
-            >
-              <Activity className="h-4 w-4" />
-              ver fondo en vivo
-            </button>
-          </div>
-
-          {/* mini flow */}
-          <div
-            className="mt-14 animate-fade-in"
-            style={{ animationDelay: "0.38s" }}
-          >
-            <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-              cómo funciona
-            </p>
-            <div className="flex flex-wrap items-stretch gap-3">
-              {[
-                { icon: Heart, label: "donar" },
-                { icon: CheckCircle2, label: "confirmar" },
-                { icon: Wallet, label: "disponible" },
-                { icon: Receipt, label: "gasto con comprobante" },
-                { icon: HandHeart, label: "ayuda visible" },
-              ].map((step, i, arr) => (
-                <div key={step.label} className="flex items-center gap-3">
-                  <div className="group relative flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 backdrop-blur-sm transition-all hover:border-[#E3001B]/40 hover:bg-white/[0.06]">
-                    <step.icon className="h-4 w-4 text-[#E3001B]" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                      {step.label}
-                    </span>
-                  </div>
-                  {i < arr.length - 1 && (
-                    <ArrowRight className="h-3.5 w-3.5 text-zinc-600" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <button
-            onClick={() => scrollToId("resumen")}
-            className="mt-14 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-300 transition-colors animate-pulse"
-          >
-            <ChevronDown className="h-3 w-3" />
-            scroll
-          </button>
         </div>
       </header>
+
 
       <main className="mx-auto max-w-6xl px-5 py-16 md:py-24 space-y-20 md:space-y-28">
 
