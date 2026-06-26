@@ -320,12 +320,22 @@ export default function FuerzaVenezuela() {
             cada aporte acerca el amanecer.
           </p>
 
-          <p
-            className="mt-4 max-w-2xl text-base md:text-lg leading-relaxed lowercase text-zinc-200 animate-fade-in"
+          <div
+            className="mt-4 max-w-2xl space-y-3 animate-fade-in"
             style={{ animationDelay: "0.2s" }}
           >
-            aquí no solo donas. <span className="text-white font-medium">aquí puedes ver qué pasa con tu aporte.</span>
-          </p>
+            <p className="text-base md:text-lg leading-relaxed lowercase text-zinc-200">
+              creamos un fondo abierto para responder al terremoto ocurrido en venezuela.
+              aquí puedes ver <span className="text-white font-medium">qué dinero entra, qué dinero se usa, en qué se usa y cuánto queda disponible.</span>
+            </p>
+            <p className="text-sm md:text-base leading-relaxed lowercase text-zinc-400">
+              cada ingreso confirmado se publica. cada gasto se muestra con monto y soporte. cada saldo queda visible.
+            </p>
+            <p className="text-xl md:text-2xl font-black lowercase tracking-tight text-white leading-tight">
+              no nos creas.{" "}
+              <span className="bg-gradient-to-r from-[#ff8a5c] to-[#ffb38a] bg-clip-text text-transparent">revísalo.</span>
+            </p>
+          </div>
 
 
 
