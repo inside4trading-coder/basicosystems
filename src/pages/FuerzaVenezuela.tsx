@@ -574,83 +574,67 @@ export default function FuerzaVenezuela() {
             </button>
           </div>
 
-          {/* CÓMO FUNCIONA — 5 pasos responsive */}
+          {/* ASÍ SE RASTREA EL FONDO */}
           <div
-            className="mt-16 animate-fade-in"
+            id="trazabilidad"
+            className="mt-16 animate-fade-in scroll-mt-24"
             style={{ animationDelay: "0.38s" }}
           >
-            <p className="mb-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-              cómo funciona
-            </p>
+            <div className="mb-5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+              <span className="h-px w-8 bg-gradient-to-r from-transparent to-[#ff8a5c]/60" />
+              así se rastrea el fondo
+            </div>
 
-            {(() => {
-              const steps = [
-                { icon: Heart, title: "donas", desc: "eliges pago móvil, zelle, binance o efectivo sublime." },
-                { icon: CheckCircle2, title: "verificamos", desc: "conciliamos manualmente el aporte antes de sumarlo." },
-                { icon: Eye, title: "publicamos", desc: "tu aporte confirmado aparece en el registro público." },
-                { icon: Receipt, title: "ejecutamos", desc: "cuando usamos el dinero, registramos monto, gasto y comprobante." },
-                { icon: HandHeart, title: "mostramos", desc: "el saldo disponible y la ayuda entregada quedan visibles." },
-              ];
-              return (
-                <>
-                  {/* DESKTOP: horizontal */}
-                  <div className="hidden md:flex items-stretch gap-2">
-                    {steps.map((s, i) => (
-                      <div key={s.title} className="flex items-stretch gap-2 flex-1">
-                        <div className="group relative flex-1 rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm transition-all hover:border-[#E3001B]/40 hover:bg-white/[0.06]">
-                          <div className="flex items-center gap-2">
-                            <s.icon className="h-4 w-4 text-[#E3001B]" />
-                            <span className="text-xs font-bold uppercase tracking-wider text-zinc-200">
-                              {s.title}
-                            </span>
-                          </div>
-                          <p className="mt-2 text-[11px] leading-snug lowercase text-zinc-500">
-                            {s.desc}
-                          </p>
-                        </div>
-                        {i < steps.length - 1 && (
-                          <div className="flex items-center">
-                            <ArrowRight className="h-4 w-4 text-zinc-600" />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[
+                { n: "01", t: "entra un aporte", d: "la persona dona por pago móvil, zelle, binance o efectivo." },
+                { n: "02", t: "se verifica", d: "el equipo confirma manualmente el pago antes de sumarlo." },
+                { n: "03", t: "se publica", d: "el aporte confirmado aparece en el registro público." },
+                { n: "04", t: "se ejecuta un gasto", d: "cuando usamos el dinero, registramos concepto, monto y moneda." },
+                { n: "05", t: "se adjunta soporte", d: "subimos factura, comprobante o evidencia disponible." },
+                { n: "06", t: "cambia el saldo", d: "el sistema resta el egreso y muestra cuánto queda." },
+              ].map((s) => (
+                <div
+                  key={s.n}
+                  className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.025] p-4 backdrop-blur-sm transition-all hover:border-[#ff8a5c]/40 hover:bg-white/[0.05]"
+                >
+                  <div className="absolute -top-px left-4 right-4 h-px bg-gradient-to-r from-transparent via-[#ff8a5c]/0 to-transparent transition-all duration-500 group-hover:via-[#ff8a5c]/70" />
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[10px] font-mono tracking-wider text-[#ff8a5c]/70">{s.n}</span>
+                    <h4 className="text-sm md:text-base font-bold lowercase tracking-tight text-white">{s.t}</h4>
                   </div>
+                  <p className="mt-2 text-[12px] leading-snug lowercase text-zinc-400">{s.d}</p>
+                </div>
+              ))}
+            </div>
 
-                  {/* MOBILE: vertical timeline */}
-                  <div className="md:hidden flex flex-col gap-0">
-                    {steps.map((s, i) => (
-                      <div key={s.title} className="flex flex-col">
-                        <div className="relative rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">
-                          <div className="flex items-center gap-2.5">
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#E3001B]/40 bg-[#E3001B]/10 text-[10px] font-bold text-[#ff6e7e]">
-                              {i + 1}
-                            </span>
-                            <s.icon className="h-4 w-4 text-[#E3001B]" />
-                            <span className="text-sm font-bold uppercase tracking-wider text-zinc-100">
-                              {s.title}
-                            </span>
-                          </div>
-                          <p className="mt-2 pl-[38px] text-[12px] leading-snug lowercase text-zinc-400">
-                            {s.desc}
-                          </p>
-                        </div>
-                        {i < steps.length - 1 && (
-                          <div className="flex flex-col items-center py-2">
-                            <span className="h-4 w-px bg-white/10" />
-                            <ChevronDown className="h-3.5 w-3.5 text-zinc-600" />
-                            <span className="h-4 w-px bg-white/10" />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
+            {/* cada gasto deja rastro */}
+            <div className="mt-6 rounded-xl border border-white/10 bg-gradient-to-r from-[#ff8a5c]/[0.07] via-transparent to-cyan-400/[0.05] p-5 md:p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400">
+                <Receipt className="h-3.5 w-3.5 text-[#ffb38a]" />
+                cada gasto debe dejar rastro
+              </div>
+              <p className="mt-2 text-base md:text-lg lowercase text-zinc-100">
+                cuando un gasto se ejecuta, no queda como una frase.{" "}
+                <span className="text-white font-semibold">queda como un movimiento con soporte.</span>
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {["factura", "comprobante", "foto", "video", "entrega", "proveedor", "monto", "fecha"].map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold lowercase text-zinc-200"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-3 text-xs lowercase text-zinc-500">
+                si existe factura, la subimos. si existe comprobante, lo mostramos. si existe contenido de entrega, lo publicamos.
+              </p>
+            </div>
 
             <p className="mt-6 text-xs md:text-sm lowercase text-zinc-500 max-w-2xl">
-              no es una promesa de transparencia. es una plataforma para verla.
+              transparencia no es promesa: es registro. si se usa, se publica. si se gasta, se respalda.
             </p>
           </div>
 
