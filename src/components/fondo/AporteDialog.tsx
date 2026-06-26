@@ -248,7 +248,7 @@ export function AporteDialog({ metodo, open, onOpenChange }: Props) {
                 para quienes lo perdieron todo. Comparte esta captura. Tu red también puede ser parte de la red de ayuda.”
               </p>
               <p className="relative mt-3 text-xs text-zinc-500 uppercase tracking-wider">
-                #FuerzaVenezuela · fundacionbasico.com
+                #FondoTransparente · fundacionbasico.com
               </p>
             </div>
 

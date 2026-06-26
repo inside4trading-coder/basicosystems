@@ -129,7 +129,7 @@ export default function FuerzaVenezuela() {
   const [aporteMetodo, setAporteMetodo] = useState<MetodoAporte | null>(null);
 
   useEffect(() => {
-    document.title = "Fuerza Venezuela — Fondo Transparente | fundacionbasico.com";
+    document.title = "Fondo Transparente | fundacionbasico.com";
 
     const ensureMeta = (selector: string, attrs: Record<string, string>) => {
       let el = document.head.querySelector<HTMLMetaElement>(selector);
@@ -153,12 +153,12 @@ export default function FuerzaVenezuela() {
     };
 
     const desc =
-      "Fondo Transparente Fuerza Venezuela: cada aporte verificable, cada gasto público. Ayuda a las víctimas del terremoto en Venezuela.";
+      "Fondo Transparente por [basico]: cada aporte verificable, cada gasto público. Ayuda a las víctimas del terremoto en Venezuela con total transparencia.";
     ensureMeta('meta[name="description"]', { name: "description", content: desc });
-    ensureMeta('meta[property="og:title"]', { property: "og:title", content: "Fuerza Venezuela — Fondo Transparente" });
+    ensureMeta('meta[property="og:title"]', { property: "og:title", content: "Fondo Transparente | fundacionbasico.com" });
     ensureMeta('meta[property="og:description"]', { property: "og:description", content: desc });
     ensureMeta('meta[property="og:url"]', { property: "og:url", content: "https://fundacionbasico.com/" });
-    ensureMeta('meta[name="twitter:title"]', { name: "twitter:title", content: "Fuerza Venezuela — Fondo Transparente" });
+    ensureMeta('meta[name="twitter:title"]', { name: "twitter:title", content: "Fondo Transparente | fundacionbasico.com" });
     ensureMeta('meta[name="twitter:description"]', { name: "twitter:description", content: desc });
     ensureCanonical("https://fundacionbasico.com/");
 
@@ -279,7 +279,7 @@ export default function FuerzaVenezuela() {
             className="mt-8 font-black lowercase tracking-tight text-white animate-fade-in"
             style={{ fontSize: "clamp(2.75rem, 9vw, 7rem)", lineHeight: 0.95, animationDelay: "0.1s" }}
           >
-            fuerza<br />venezuela
+            fondo<br />transparente
           </h1>
 
           <p
