@@ -322,7 +322,7 @@ export default function FuerzaVenezuela() {
           >
             <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              estado del fondo · en vivo
+              estado del fondo · actualizado tras verificación
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <BigStat
@@ -332,9 +332,12 @@ export default function FuerzaVenezuela() {
                 tag="balance neto"
                 hint="bs + us$ + usdt convertidos"
               />
-              <BigStat label="ingresado confirmado" value={ing} tag="ingresos" hint="aportes verificados" />
-              <BigStat label="gastado" value={gas} tag="egresos" hint="ya ejecutado" />
+              <BigStat label="recaudado confirmado" value={ing} tag="ingresos" hint="aportes verificados" />
+              <BigStat label="gastado con soporte" value={gas} tag="egresos" hint="con comprobante" />
             </div>
+            <p className="mt-3 text-[11px] leading-snug lowercase text-zinc-500 max-w-2xl">
+              los montos aproximados combinan bs, usd y usdt usando la tasa bcv activa para bolívares. los saldos reales se mantienen separados por moneda.
+            </p>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] uppercase tracking-wider text-zinc-500">
               {ultimaAct ? (
                 <>
@@ -358,6 +361,7 @@ export default function FuerzaVenezuela() {
                 {t?.tasa_fuente ? ` · ${t.tasa_fuente}` : ""}
               </p>
             )}
+
           </div>
 
           <div
