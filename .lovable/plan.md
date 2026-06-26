@@ -1,78 +1,48 @@
+# Próximos pasos para activar fundacionbasico.com
 
-# Plan: Conectar `fundacionbasico.com` a Fuerza Venezuela
+No requiere cambios de código. Es trabajo de configuración en BanaHosting + Lovable.
 
-## Objetivo
-Cuando alguien entre a `fundacionbasico.com` (o `www.fundacionbasico.com`), debe ver directamente la landing pública de **Fuerza Venezuela**, sin tocar el HUB privado ni los demás módulos.
+## 1. Completar registros DNS en BanaHosting
 
----
+Ya tienes 3 registros. Faltan ajustes y 1 registro nuevo. Tu pantalla debe quedar así:
 
-## Parte 1 — Cambios en la app (código)
+| Host Name | Record Type | Address |
+|-----------|-------------|---------|
+| `@` | A (Address) | `185.158.133.1` |
+| `www` | A (Address) | `185.158.133.1` |
+| `_lovable` | TXT (SPF/txt) | `lovable_verify=1d139af1b85e6851a6954f403dbac292de118001a53daef1bfd89a5034d0333b` |
+| `_lovable.www` | TXT (SPF/txt) | `lovable_verify=1ae57cf85144948193f64252b94013ba4b4d283c96da8852f1b3f0d7410b8417` |
 
-Hoy `/` muestra `Landing` (la landing corporativa de BASICO) y `/fuerza-venezuela` muestra la página pública del fondo. Necesitamos que en el dominio nuevo la raíz `/` muestre Fuerza Venezuela, pero en el dominio principal del HUB siga mostrando la Landing actual.
+Acciones concretas:
+- **Verificar el TXT `_lovable`**: en tu captura el campo Address se ve cortado (`...292de118(`). Abre ese registro y confirma que contiene el valor COMPLETO que muestra Lovable (termina en `...a53daef1bfd89a5034d0333b`). Si está cortado, bórralo y vuelve a pegarlo entero.
+- **Agregar el cuarto registro** `_lovable.www` tipo TXT con el segundo `lovable_verify=...` que muestra Lovable para `www.fundacionbasico.com`.
+- Pulsar **Save Changes**.
+- No tocar MX, SPF reales, DKIM, DMARC ni nameservers.
 
-Cambios:
+## 2. Esperar verificación en Lovable
 
-1. **`src/App.tsx`** — detectar el host:
-   - Si `window.location.hostname` es `fundacionbasico.com` o `www.fundacionbasico.com`:
-     - `/` → `<FuerzaVenezuela />`
-     - `/fuerza-venezuela` → `<Navigate to="/" replace />` (alias / redirect)
-     - El resto de rutas privadas del HUB siguen montadas pero quedan protegidas por `ProtectedRoute` (no se exponen visualmente; cualquier intento de entrar desde ese dominio sigue requiriendo login, no hay riesgo de fuga de datos).
-   - Si el host es cualquier otro (`*.lovable.app`, dominio del HUB, localhost):
-     - `/` → `<Landing />` (sin cambios)
-     - `/fuerza-venezuela` → `<FuerzaVenezuela />` (sin cambios)
+- Volver a Lovable → Project Settings → Domains.
+- Pulsar **Check status** en cada dominio cada 10–15 min.
+- Propagación normal: 15 min – 2 h. Máximo 72 h.
+- Cuando ambos pasen a **Active**, Lovable emite SSL automático.
+- Marcar `fundacionbasico.com` como **Primary** (menú ⋯ → Set as primary). Así `www` redirige al dominio sin www.
 
-2. **SEO de Fuerza Venezuela** (`src/pages/FuerzaVenezuela.tsx`): asegurar `<title>`, `meta description`, OG y canonical apuntando a `https://fundacionbasico.com/`.
+## 3. Publicar el proyecto
 
-3. **`index.html`**: revisar que no haya tags estáticos que sobrescriban el SEO específico de Fuerza Venezuela cuando se sirve desde el dominio nuevo.
+El switch de hostname (que ya dejé en `src/App.tsx`) solo viaja al dominio cuando el proyecto está publicado/actualizado.
+- Cuando me confirmes que los dominios están **Active** en Lovable, ejecuto el publish desde aquí.
+- Resultado final:
+  - `fundacionbasico.com` → landing pública Fuerza Venezuela.
+  - `www.fundacionbasico.com` → redirige a `fundacionbasico.com`.
+  - `/fuerza-venezuela` en ese dominio → redirige a `/`.
+  - El HUB privado sigue solo en `basicosystems.lovable.app` y la URL de preview.
 
-No se tocan: HUB, login, ventas, inventario, fabricación, WooCommerce, RRPP, Crew, Sublime, Core, España, ni el módulo privado `/fondo-transparente`.
+## 4. Verificación final (cuando publique)
 
----
-
-## Parte 2 — Conectar el dominio en Lovable
-
-Pasos que harás tú en la UI de Lovable (no se hace por código):
-
-1. **Project Settings → Domains → Connect Domain**.
-2. Añadir **`fundacionbasico.com`** → marcar como **Primary**.
-3. Añadir **`www.fundacionbasico.com`** como segundo dominio (Lovable redirige automáticamente al Primary).
-4. Esperar verificación (TXT) y emisión de SSL automática (puede tardar hasta 72 h, normalmente minutos).
-
----
-
-## Parte 3 — Registros DNS en BanaHosting
-
-Antes de crearlos, **elimina cualquier registro A, AAAA o CNAME existente** para `@` y `www` que apunte a la IP vieja de BanaHosting, o se quedará el hosting actual respondiendo.
-
-| Tipo  | Host / Name | Value / Target          | TTL  | Notas                              |
-|-------|-------------|-------------------------|------|------------------------------------|
-| A     | `@`         | `185.158.133.1`         | 3600 | Raíz `fundacionbasico.com`         |
-| A     | `www`       | `185.158.133.1`         | 3600 | Subdominio `www`                   |
-| TXT   | `_lovable`  | (el valor exacto que muestre la UI de Lovable al añadir el dominio, formato `lovable_verify=XXXX`) | 3600 | Verificación de propiedad |
-
-Notas importantes:
-- **No usar CNAME** en `@`; debe ser A.
-- Si BanaHosting tiene activado **Cloudflare/proxy**, hay que desactivar el "nube naranja" o usar el modo proxy en Lovable (Connect Domain → Advanced → "Domain uses Cloudflare or a similar proxy"). Si BanaHosting no es proxy, ignorar.
-- **MX, SPF, DKIM, DMARC**: si usas correo `@fundacionbasico.com`, **no toques** esos registros (déjalos como están en BanaHosting).
-- Eliminar registros viejos `A @ → IP_BanaHosting` y `A www → IP_BanaHosting`.
+- Abrir `https://fundacionbasico.com` en incógnito → debe cargar Fuerza Venezuela.
+- Abrir `https://www.fundacionbasico.com` → debe redirigir.
+- Abrir `https://basicosystems.lovable.app` → debe seguir mostrando el HUB normal (login).
 
 ---
 
-## Parte 4 — Verificación
-
-1. Esperar propagación DNS (chequear en https://dnschecker.org).
-2. En Lovable, el estado del dominio pasará por: *Verifying → Setting up → Active*.
-3. Probar:
-   - `https://fundacionbasico.com/` → debe abrir Fuerza Venezuela.
-   - `https://www.fundacionbasico.com/` → debe redirigir a `https://fundacionbasico.com/`.
-   - `https://fundacionbasico.com/fuerza-venezuela` → debe redirigir a `/`.
-   - El HUB sigue accesible solo por la URL antigua de Lovable / dominio interno, y `/fondo-transparente` sigue protegido por login.
-
----
-
-## Detalles técnicos
-
-- El switch por hostname se hace al montar `<App />`, leyendo `window.location.hostname` una sola vez (no reactivo, no hay cambios de host en runtime).
-- `ProtectedRoute` y RLS siguen siendo la barrera real de seguridad para el HUB; el hostname switch es solo presentación.
-- No se requieren cambios en Supabase, edge functions, ni storage.
-- Publicación: tras aprobar el plan e implementar, **debes hacer Publish** para que el cambio de routing por hostname llegue al dominio nuevo.
+**Lo que necesito de ti ahora:** confirma cuando hayas (a) corregido/completado el TXT `_lovable`, (b) agregado el TXT `_lovable.www`, y (c) los dos dominios aparezcan **Active** en Lovable. Ahí publico.
