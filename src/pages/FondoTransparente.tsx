@@ -650,6 +650,7 @@ function AporteFormDialog({ onClose }: { onClose: () => void }) {
                 <SelectItem value="zelle">Zelle (USD)</SelectItem>
                 <SelectItem value="efectivo_sublime">Efectivo Sublime (USD)</SelectItem>
                 <SelectItem value="binance">Binance (USDT)</SelectItem>
+                <SelectItem value="bizum">Bizum (€ → USD)</SelectItem>
               </SelectContent>
             </Select>
           </div>
