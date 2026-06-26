@@ -92,9 +92,12 @@ const fmtMonto = (n: number | null | undefined, m: string) => {
 };
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleString("es-VE") : null);
 const fmtDateOnly = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString("es-VE") : null);
+const HEADER_OFFSET = 80;
 const scrollToId = (id: string) => {
   const el = document.getElementById(id);
-  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (!el) return;
+  const top = el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
+  window.scrollTo({ top, behavior: "smooth" });
 };
 
 // Animated counter
