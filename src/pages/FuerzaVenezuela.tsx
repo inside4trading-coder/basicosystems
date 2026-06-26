@@ -19,7 +19,8 @@ import {
   Eye,
   ExternalLink,
 } from "lucide-react";
-import heroImg from "@/assets/fuerza-venezuela-hero.jpg";
+import amanecerDesktop from "@/assets/amanecer-desktop.jpg.asset.json";
+import amanecerMobile from "@/assets/amanecer-mobile.jpg.asset.json";
 import basicoLogoAsset from "@/assets/basico-box-logo.png.asset.json";
 import fondoLogoAsset from "@/assets/logo-fondo-transparente-v2.png.asset.json";
 import { AporteDialog } from "@/components/fondo/AporteDialog";
@@ -205,9 +206,10 @@ export default function FuerzaVenezuela() {
   const gas = useCountUp(gastadoTotalUsd);
 
   return (
-    <div className="min-h-screen bg-[#070708] text-zinc-100 antialiased selection:bg-[#E3001B]/40">
+    <div className="min-h-screen bg-[#070b18] text-zinc-100 antialiased selection:bg-[#ff7a4c]/40">
       {/* STICKY TOP NAV */}
-      <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#070708]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[#070708]/60">
+      <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#070b18]/85 backdrop-blur-md supports-[backdrop-filter]:bg-[#070b18]/65">
+
         <div className="mx-auto max-w-6xl px-4 py-2.5 md:py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <img
@@ -230,7 +232,7 @@ export default function FuerzaVenezuela() {
             </div>
             <button
               onClick={() => scrollToId("aportar")}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#E3001B] px-3 py-2 md:px-4 md:py-2.5 text-xs md:text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_24px_-6px_rgba(227,0,27,0.7)] hover:bg-[#ff1a36] transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-[#ff7a4c] to-[#ff5a6e] px-3 py-2 md:px-4 md:py-2.5 text-xs md:text-sm font-bold uppercase tracking-wider text-white shadow-[0_4px_20px_-4px_rgba(255,122,76,0.7)] hover:shadow-[0_6px_28px_-2px_rgba(255,122,76,0.9)] transition-shadow"
             >
               donar ahora
               <ArrowRight className="h-3.5 w-3.5" />
@@ -246,17 +248,24 @@ export default function FuerzaVenezuela() {
 
       {/* HERO */}
       <header className="relative isolate overflow-hidden">
-        {/* background image */}
-        <div
-          className="absolute inset-0 -z-20 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroImg})` }}
-        />
-        {/* gradients overlay */}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/80 via-black/85 to-[#070708]" />
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,rgba(227,0,27,0.18),transparent_55%)]" />
+        {/* background image — responsive: mobile portrait / desktop landscape */}
+        <picture aria-hidden="true">
+          <source media="(min-width: 768px)" srcSet={amanecerDesktop.url} />
+          <img
+            src={amanecerMobile.url}
+            alt=""
+            className="absolute inset-0 -z-20 h-full w-full object-cover object-[center_30%] md:object-center"
+          />
+        </picture>
+        {/* navy + burdeos overlays — oscurece sin matar el amanecer */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-[#0a1428]/85 via-[#0a1428]/75 to-[#0a1428]" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_bottom_right,rgba(255,140,90,0.18),transparent_55%)]" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,rgba(140,30,60,0.22),transparent_60%)]" />
+        {/* extra darkening band behind text — más fuerte en mobile */}
+        <div className="absolute inset-x-0 top-0 -z-10 h-[70%] bg-gradient-to-b from-[#070b18]/70 via-[#070b18]/40 to-transparent md:from-[#070b18]/55 md:via-[#070b18]/25" />
         {/* tech grid */}
         <div
-          className="absolute inset-0 -z-10 opacity-[0.18] mix-blend-screen"
+          className="absolute inset-0 -z-10 opacity-[0.12] mix-blend-screen"
           style={{
             backgroundImage:
               "linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)",
@@ -265,18 +274,19 @@ export default function FuerzaVenezuela() {
               "radial-gradient(ellipse at center, black 40%, transparent 80%)",
           }}
         />
-        {/* scanline */}
-        <div className="pointer-events-none absolute inset-x-0 -z-10 h-px top-1/3 bg-gradient-to-r from-transparent via-[#E3001B]/60 to-transparent animate-[scan_6s_linear_infinite]" />
+        {/* scanline — coral cálido */}
+        <div className="pointer-events-none absolute inset-x-0 -z-10 h-px top-1/3 bg-gradient-to-r from-transparent via-[#ff8a5c]/40 to-transparent animate-[scan_6s_linear_infinite]" />
+
 
         <div className="mx-auto max-w-6xl px-5 pt-8 pb-16 md:pt-12 md:pb-24">
-          {/* slim context band */}
+          {/* slim context band — más editorial, burdeos apagado */}
           <div
-            className="animate-fade-in flex items-start gap-3 rounded-md border-l-2 border-[#E3001B] bg-[#E3001B]/[0.06] px-4 py-3"
+            className="animate-fade-in flex items-start gap-3 rounded-md border-l-2 border-[#c44a5a] bg-[#c44a5a]/[0.08] px-4 py-3 backdrop-blur-sm"
             style={{ animationDelay: "0s" }}
           >
             <span className="relative flex h-2 w-2 shrink-0 mt-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff4d63] opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E3001B]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff7a8a] opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#c44a5a]" />
             </span>
             <div className="min-w-0">
               <p className="text-sm md:text-[15px] font-semibold lowercase leading-snug text-zinc-100">
@@ -293,28 +303,37 @@ export default function FuerzaVenezuela() {
             className="mt-7 animate-fade-in"
             style={{ animationDelay: "0.1s" }}
           >
-            <span className="sr-only">Fondo Transparente</span>
+            <span className="sr-only">Fondo Transparente · fuerza venezuela</span>
             <img
               src={fondoLogoAsset.url}
               alt=""
               aria-hidden="true"
-              className="h-auto w-full max-w-[340px] md:max-w-[460px]"
+              className="h-auto w-full max-w-[340px] md:max-w-[460px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]"
             />
           </h1>
 
           <p
-            className="mt-5 text-xl md:text-3xl font-semibold lowercase text-zinc-200 animate-fade-in"
+            className="mt-5 text-xl md:text-3xl font-semibold lowercase text-zinc-100 animate-fade-in"
             style={{ animationDelay: "0.15s" }}
           >
             una nueva forma de ayudar.
           </p>
 
+          {/* frase emocional — amanecer */}
           <p
-            className="mt-4 max-w-2xl text-sm md:text-base leading-relaxed lowercase text-zinc-400 animate-fade-in"
-            style={{ animationDelay: "0.18s" }}
+            className="mt-3 text-lg md:text-2xl font-medium lowercase italic animate-fade-in bg-gradient-to-r from-[#ff9a6c] via-[#ffb38a] to-[#ffc9a8] bg-clip-text text-transparent"
+            style={{ animationDelay: "0.17s" }}
+          >
+            cada aporte acerca el amanecer.
+          </p>
+
+          <p
+            className="mt-4 max-w-2xl text-sm md:text-base leading-relaxed lowercase text-zinc-300 animate-fade-in"
+            style={{ animationDelay: "0.2s" }}
           >
             aquí no solo donas. aquí puedes ver qué pasa con tu aporte.
           </p>
+
 
 
           {/* RESUMEN EN HERO — primero, para impacto inmediato */}
@@ -384,13 +403,13 @@ export default function FuerzaVenezuela() {
             className="mt-8 max-w-3xl animate-fade-in"
             style={{ animationDelay: "0.28s" }}
           >
-            <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/40 bg-[#E3001B]/[0.07] p-5 md:p-6 backdrop-blur-sm">
-              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#E3001B]/20 blur-3xl" />
-              <div className="absolute -left-10 -bottom-10 h-28 w-28 rounded-full bg-[#E3001B]/15 blur-3xl" />
+            <div className="relative overflow-hidden rounded-xl border border-[#ff8a5c]/30 bg-[#3a1a14]/40 p-5 md:p-6 backdrop-blur-sm">
+              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#ff8a5c]/20 blur-3xl" />
+              <div className="absolute -left-10 -bottom-10 h-28 w-28 rounded-full bg-[#c44a5a]/20 blur-3xl" />
               <p className="relative text-3xl md:text-5xl font-black lowercase tracking-tight text-white leading-[0.95]">
                 no nos creas.
                 <br />
-                <span className="text-[#E3001B]">míralo.</span>
+                <span className="bg-gradient-to-r from-[#ff8a5c] to-[#ffb38a] bg-clip-text text-transparent">míralo.</span>
               </p>
               <p className="relative mt-3 text-xs md:text-sm text-zinc-300 lowercase">
                 cada ingreso, cada gasto y cada saldo publicado en esta página.
@@ -399,7 +418,7 @@ export default function FuerzaVenezuela() {
                 href="https://fundacionbasico.com"
                 target="_blank"
                 rel="noreferrer"
-                className="relative mt-4 inline-flex items-center gap-2 rounded-full border border-[#E3001B]/40 bg-[#E3001B]/10 px-4 py-2 text-sm font-semibold text-[#ff6e7e] hover:bg-[#E3001B]/20 hover:text-white transition-colors"
+                className="relative mt-4 inline-flex items-center gap-2 rounded-full border border-[#ff8a5c]/40 bg-[#ff8a5c]/10 px-4 py-2 text-sm font-semibold text-[#ffb38a] hover:bg-[#ff8a5c]/20 hover:text-white transition-colors"
               >
                 <Radio className="h-3.5 w-3.5" />
                 fundacionbasico.com
@@ -413,12 +432,13 @@ export default function FuerzaVenezuela() {
           >
             <button
               onClick={() => scrollToId("aportar")}
-              className="group relative inline-flex items-center justify-center gap-2 rounded-md bg-[#E3001B] px-7 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_0_0_rgba(227,0,27,0.6)] transition-all duration-300 hover:bg-[#ff1a36] hover:shadow-[0_0_40px_-5px_rgba(227,0,27,0.8)] hover:-translate-y-0.5"
+              className="group relative inline-flex items-center justify-center gap-2 rounded-md bg-gradient-to-r from-[#ff7a4c] to-[#ff5a6e] px-7 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-[0_8px_30px_-8px_rgba(255,122,76,0.6)] transition-all duration-300 hover:shadow-[0_12px_40px_-6px_rgba(255,122,76,0.8)] hover:-translate-y-0.5"
             >
-              <span className="absolute inset-0 -z-10 rounded-md bg-[#E3001B] opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-60" />
+              <span className="absolute inset-0 -z-10 rounded-md bg-[#ff7a4c] opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-60" />
               donar ahora
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </button>
+
             <button
               onClick={() => scrollToId("resumen")}
               className="inline-flex items-center justify-center gap-2 rounded-md border border-white/20 bg-white/[0.03] px-7 py-4 text-sm font-semibold uppercase tracking-wider text-zinc-200 backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/[0.06] hover:text-white"
