@@ -1384,9 +1384,11 @@ function ConfiguracionTab() {
             <Label>Tasa sugerida — uso histórico (VES/USD)</Label>
             <Input type="number" step="0.01" value={c.tasa_sugerida ?? ""} onChange={(e) => setC({ ...c, tasa_sugerida: e.target.value })} />
           </div>
-          <Button onClick={save} disabled={saving}>Guardar</Button>
+        <Button onClick={save} disabled={saving}>Guardar</Button>
         </CardContent>
       </Card>
+
+      <MetodosAporteCard />
 
       <BcvAutoRateCard onRateApplied={() => {
         supabase.from("fondo_configuracion").select("*").single().then(({ data }) => setC(data));
