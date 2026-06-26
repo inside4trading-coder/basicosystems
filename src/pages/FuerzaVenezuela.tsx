@@ -310,8 +310,9 @@ export default function FuerzaVenezuela() {
             className="mt-4 max-w-2xl text-sm md:text-base leading-relaxed lowercase text-zinc-400 animate-fade-in"
             style={{ animationDelay: "0.18s" }}
           >
-            tras el terremoto que afectó a venezuela, abrimos este fondo transparente para canalizar aportes y convertirlos en ayuda visible.
+            aquí no solo donas. aquí puedes ver qué pasa con tu aporte.
           </p>
+
 
           {/* RESUMEN EN HERO — primero, para impacto inmediato */}
           <div
