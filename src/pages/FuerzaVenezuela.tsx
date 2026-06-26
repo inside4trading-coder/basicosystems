@@ -566,11 +566,11 @@ export default function FuerzaVenezuela() {
             </button>
 
             <button
-              onClick={() => scrollToId("resumen")}
+              onClick={() => scrollToId("registro")}
               className="inline-flex items-center justify-center gap-2 rounded-md border border-white/20 bg-white/[0.03] px-7 py-4 text-sm font-semibold uppercase tracking-wider text-zinc-200 backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/[0.06] hover:text-white"
             >
               <Activity className="h-4 w-4" />
-              ver fondo
+              ver movimientos
             </button>
           </div>
 
