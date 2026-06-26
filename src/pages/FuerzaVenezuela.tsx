@@ -92,9 +92,12 @@ const fmtMonto = (n: number | null | undefined, m: string) => {
 };
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleString("es-VE") : null);
 const fmtDateOnly = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString("es-VE") : null);
+const HEADER_OFFSET = 80;
 const scrollToId = (id: string) => {
   const el = document.getElementById(id);
-  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (!el) return;
+  const top = el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
+  window.scrollTo({ top, behavior: "smooth" });
 };
 
 // Animated counter
@@ -317,7 +320,7 @@ export default function FuerzaVenezuela() {
           {/* RESUMEN EN HERO — primero, para impacto inmediato */}
           <div
             id="resumen"
-            className="mt-10 animate-fade-in"
+            className="mt-10 animate-fade-in scroll-mt-24"
             style={{ animationDelay: "0.2s" }}
           >
             <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
@@ -520,7 +523,7 @@ export default function FuerzaVenezuela() {
 
 
         {/* CÓMO APORTAR */}
-        <section id="aportar" className="animate-fade-in">
+        <section id="aportar" className="animate-fade-in scroll-mt-24">
           <SectionHeader
             eyebrow="canales activos"
             title="cómo aportar"
@@ -604,7 +607,7 @@ export default function FuerzaVenezuela() {
         </section>
 
         {/* TABLAS */}
-        <section id="registro" className="animate-fade-in">
+        <section id="registro" className="animate-fade-in scroll-mt-24">
           <SectionHeader
             eyebrow="registro público"
             title="ingresos confirmados"
@@ -630,7 +633,7 @@ export default function FuerzaVenezuela() {
           </div>
         </section>
 
-        <section id="por-verificar" className="animate-fade-in">
+        <section id="por-verificar" className="animate-fade-in scroll-mt-24">
           <SectionHeader eyebrow="cola" title="aportes por verificar" subtitle="reportados, en proceso de validación" />
           <div className="mt-6">
             {porVerificar.length === 0 ? (
