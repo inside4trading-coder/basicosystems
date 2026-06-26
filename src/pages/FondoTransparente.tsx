@@ -281,7 +281,7 @@ function DashboardTab() {
       <Card>
         <CardHeader><CardTitle className="text-sm">Reglas contables</CardTitle></CardHeader>
         <CardContent className="text-xs text-muted-foreground space-y-1">
-          <div>· Pago Móvil → VES · Zelle → USD · Efectivo Sublime → USD · Binance → USDT</div>
+          <div>· Pago Móvil → VES · Zelle → USD · Efectivo Sublime → USD · Binance → USDT · Bizum → USD (1:1)</div>
           <div>· Los egresos descuentan saldo de la misma moneda usada para pagar.</div>
           <div>· No se mezclan monedas automáticamente. Las conversiones deben registrarse como movimiento de conversión.</div>
         </CardContent>
