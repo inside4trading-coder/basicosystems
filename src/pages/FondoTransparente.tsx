@@ -13,11 +13,13 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
-  HeartHandshake, Plus, RefreshCw, ExternalLink, CheckCircle2, XCircle, Copy, Upload, Receipt, History, Settings as SettingsIcon, Download,
+  HeartHandshake, Plus, RefreshCw, ExternalLink, CheckCircle2, XCircle, Copy, Upload, Receipt, History, Settings as SettingsIcon, Download, Info, HandCoins, ArrowRightLeft, Eye,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { CANALES } from "@/components/fondo/canales";
 
-type Metodo = "pago_movil" | "binance" | "zelle" | "efectivo_sublime";
+type Metodo = "pago_movil" | "binance" | "zelle" | "efectivo_sublime" | "bizum";
+
 type Moneda = "VES" | "USD" | "USDT";
 type AporteEstado =
   | "por_verificar" | "coincidencia_encontrada" | "confirmado"
