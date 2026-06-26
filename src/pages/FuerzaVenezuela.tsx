@@ -523,7 +523,7 @@ export default function FuerzaVenezuela() {
 
 
         {/* CÓMO APORTAR */}
-        <section id="aportar" className="animate-fade-in">
+        <section id="aportar" className="animate-fade-in scroll-mt-24">
           <SectionHeader
             eyebrow="canales activos"
             title="cómo aportar"
@@ -607,7 +607,7 @@ export default function FuerzaVenezuela() {
         </section>
 
         {/* TABLAS */}
-        <section id="registro" className="animate-fade-in">
+        <section id="registro" className="animate-fade-in scroll-mt-24">
           <SectionHeader
             eyebrow="registro público"
             title="ingresos confirmados"
@@ -633,7 +633,7 @@ export default function FuerzaVenezuela() {
           </div>
         </section>
 
-        <section id="por-verificar" className="animate-fade-in">
+        <section id="por-verificar" className="animate-fade-in scroll-mt-24">
           <SectionHeader eyebrow="cola" title="aportes por verificar" subtitle="reportados, en proceso de validación" />
           <div className="mt-6">
             {porVerificar.length === 0 ? (
