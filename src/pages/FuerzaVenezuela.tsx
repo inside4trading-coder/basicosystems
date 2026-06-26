@@ -390,86 +390,138 @@ export default function FuerzaVenezuela() {
 
           </div>
 
+          {/* EL FONDO ABIERTO — trazabilidad */}
           <div
-            className="mt-10 animate-fade-in"
+            id="fondo-abierto"
+            className="mt-12 animate-fade-in scroll-mt-24"
             style={{ animationDelay: "0.23s" }}
           >
             <div className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
               <span className="h-px w-8 bg-gradient-to-r from-transparent to-[#ff8a5c]/60" />
-              así funciona tu aporte
+              el fondo abierto
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+            <h2 className="text-2xl md:text-4xl font-black lowercase tracking-tight text-white leading-tight">
+              no es solo donar.{" "}
+              <span className="bg-gradient-to-r from-[#ff8a5c] to-[#ffb38a] bg-clip-text text-transparent">
+                es poder seguir el recorrido del dinero.
+              </span>
+            </h2>
+
+            <p className="mt-4 max-w-3xl text-sm md:text-base leading-relaxed lowercase text-zinc-300">
+              cada aporte confirmado entra al fondo y queda publicado.
+              cada gasto ejecutado se descuenta del saldo y se muestra con monto, fecha, concepto y soporte.
+              si hay factura, comprobante, foto, video o contenido de entrega, también se publica.
+            </p>
+            <p className="mt-3 max-w-3xl text-sm md:text-base lowercase text-zinc-400">
+              puedes sumar lo que entra, restar lo que sale y ver el saldo disponible.
+            </p>
+
+            {/* 3 columnas */}
+            <div className="mt-7 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
               {[
                 {
-                  num: "01",
-                  Icon: HandHeart,
-                  title: "donas",
-                  desc: "tu aporte queda registrado al instante.",
+                  tag: "ingresos",
+                  title: "lo que entra",
+                  ring: "border-emerald-400/30",
+                  dot: "bg-emerald-400",
+                  glow: "from-emerald-400/20 to-emerald-400/0",
+                  items: [
+                    "aportes confirmados",
+                    "método de pago",
+                    "moneda y monto original",
+                    "equivalente aprox. en usd",
+                    "fecha de confirmación",
+                    "estado verificado",
+                  ],
+                  foot: "cada aporte confirmado suma al fondo disponible.",
                 },
                 {
-                  num: "02",
-                  Icon: CheckCircle2,
-                  title: "confirmamos",
-                  desc: "aparece en la lista de donantes y entra al dinero disponible.",
+                  tag: "egresos",
+                  title: "lo que sale",
+                  ring: "border-[#ff8a5c]/30",
+                  dot: "bg-[#ff8a5c]",
+                  glow: "from-[#ff8a5c]/20 to-[#ff8a5c]/0",
+                  items: [
+                    "gasto ejecutado y concepto",
+                    "monto y moneda",
+                    "factura o comprobante",
+                    "responsable o destino",
+                    "contenido de entrega",
+                  ],
+                  foot: "cada gasto descuenta del saldo y queda respaldado.",
                 },
                 {
-                  num: "03",
-                  Icon: Receipt,
-                  title: "ejecutamos",
-                  desc: "publicamos el monto, el gasto y el comprobante.",
+                  tag: "saldo",
+                  title: "lo que queda",
+                  ring: "border-cyan-400/30",
+                  dot: "bg-cyan-400",
+                  glow: "from-cyan-400/20 to-cyan-400/0",
+                  items: [
+                    "saldo disponible por moneda",
+                    "saldo aproximado total en usd",
+                    "tasa bcv usada para bolívares",
+                    "última actualización",
+                    "movimientos por verificar",
+                  ],
+                  foot: "el saldo cambia con cada ingreso confirmado y cada egreso ejecutado.",
                 },
-                {
-                  num: "04",
-                  Icon: Eye,
-                  title: "mostramos",
-                  desc: "cuando es posible, también el contenido de la entrega o la acción realizada.",
-                },
-              ].map(({ num, Icon, title, desc }, i) => (
+              ].map((c) => (
                 <div
-                  key={num}
-                  className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.025] p-4 md:p-5 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#ff8a5c]/40 hover:bg-white/[0.05] animate-fade-in"
-                  style={{ animationDelay: `${0.26 + i * 0.05}s` }}
+                  key={c.tag}
+                  className={`relative overflow-hidden rounded-xl border ${c.ring} bg-white/[0.025] p-4 md:p-5 backdrop-blur-sm`}
                 >
-                  <div className="absolute -top-px left-4 right-4 h-px bg-gradient-to-r from-transparent via-[#ff8a5c]/0 to-transparent transition-all duration-500 group-hover:via-[#ff8a5c]/80" />
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#ff8a5c]/25 bg-gradient-to-br from-[#ff8a5c]/15 to-[#c44a5a]/10 text-[#ffb38a] transition-colors group-hover:text-white group-hover:border-[#ff8a5c]/60">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-[10px] font-mono tracking-wider text-[#ff8a5c]/70">{num}</span>
-                        <h3 className="text-base md:text-lg font-bold lowercase tracking-tight text-white">
-                          {title}
-                        </h3>
-                      </div>
-                      <p className="mt-1.5 text-xs md:text-sm leading-snug lowercase text-zinc-400">
-                        {desc}
-                      </p>
-                    </div>
+                  <div className={`absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${c.glow} blur-2xl`} />
+                  <div className="relative flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400">
+                    <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
+                    {c.tag}
                   </div>
+                  <h3 className="relative mt-1.5 text-xl md:text-2xl font-black lowercase tracking-tight text-white">
+                    {c.title}
+                  </h3>
+                  <ul className="relative mt-3 space-y-1.5 text-[12px] md:text-[13px] lowercase text-zinc-300">
+                    {c.items.map((it) => (
+                      <li key={it} className="flex items-start gap-2">
+                        <span className={`mt-1.5 h-1 w-1 shrink-0 rounded-full ${c.dot}`} />
+                        <span>{it}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="relative mt-4 text-[11px] lowercase italic text-zinc-500 border-t border-white/5 pt-3">
+                    {c.foot}
+                  </p>
                 </div>
               ))}
             </div>
 
-            {/* sealed promise band */}
-            <div className="mt-4 relative overflow-hidden rounded-xl border border-[#ff8a5c]/25 bg-gradient-to-r from-[#ff8a5c]/[0.08] via-[#c44a5a]/[0.06] to-[#ff8a5c]/[0.08] px-4 py-3.5 md:py-4 backdrop-blur-sm">
-              <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-[#ff8a5c] to-[#c44a5a]" />
-              <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-center text-sm md:text-base font-semibold lowercase">
-                <span className="flex items-center gap-1.5 text-zinc-100">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#ff8a5c]" />
-                  ingresos visibles
-                </span>
-                <span className="flex items-center gap-1.5 text-zinc-100">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#ffb38a]" />
-                  gastos con soporte
-                </span>
-                <span className="flex items-center gap-1.5 text-zinc-100">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#ffc9a8]" />
-                  saldo disponible
-                </span>
+            {/* fórmula visual */}
+            <div className="mt-6 rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-transparent p-5 md:p-7 backdrop-blur-sm">
+              <div className="flex flex-wrap items-center justify-center gap-3 md:gap-5 text-center">
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-400/90">ingresos confirmados</span>
+                  <span className="mt-1 text-2xl md:text-3xl font-black tabular-nums text-white">~ {fmtUSD(ingresadoTotalUsd)}</span>
+                </div>
+                <span className="text-3xl md:text-5xl font-black text-zinc-600">−</span>
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#ffb38a]">gastos con soporte</span>
+                  <span className="mt-1 text-2xl md:text-3xl font-black tabular-nums text-white">~ {fmtUSD(gastadoTotalUsd)}</span>
+                </div>
+                <span className="text-3xl md:text-5xl font-black text-zinc-600">=</span>
+                <div className="flex flex-col items-center rounded-lg border border-cyan-400/30 bg-cyan-400/[0.06] px-4 py-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300">saldo disponible</span>
+                  <span className="mt-1 text-2xl md:text-3xl font-black tabular-nums text-white">~ {fmtUSD(disponibleTotalUsd)}</span>
+                </div>
               </div>
+              <p className="mt-4 text-center text-xs md:text-sm lowercase text-zinc-400">
+                la cuenta está abierta: cada movimiento publicado cambia el resultado.
+              </p>
             </div>
+
+            {/* frase fuerte */}
+            <p className="mt-6 text-center text-base md:text-xl lowercase italic text-zinc-300 max-w-3xl mx-auto">
+              transparencia no es decirlo.{" "}
+              <span className="text-white font-semibold not-italic">es dejar que cualquiera lo revise.</span>
+            </p>
           </div>
 
 
