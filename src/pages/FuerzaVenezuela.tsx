@@ -203,6 +203,44 @@ export default function FuerzaVenezuela() {
 
   return (
     <div className="min-h-screen bg-[#070708] text-zinc-100 antialiased selection:bg-[#E3001B]/40">
+      {/* STICKY TOP NAV */}
+      <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#070708]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[#070708]/60">
+        <div className="mx-auto max-w-6xl px-4 py-2.5 md:py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <img
+              src={fondoLogoAsset.url}
+              alt="Fondo Transparente"
+              className="h-7 md:h-8 w-auto"
+            />
+            <span className="hidden sm:inline text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+              por [basico]
+            </span>
+          </div>
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="hidden sm:flex flex-col items-end leading-tight">
+              <span className="text-[9px] uppercase tracking-[0.18em] text-zinc-500">
+                recaudado confirmado
+              </span>
+              <span className="text-sm md:text-base font-bold text-white tabular-nums">
+                ~ {fmtUSD(ingresadoTotalUsd)}
+              </span>
+            </div>
+            <button
+              onClick={() => scrollToId("aportar")}
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#E3001B] px-3 py-2 md:px-4 md:py-2.5 text-xs md:text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_24px_-6px_rgba(227,0,27,0.7)] hover:bg-[#ff1a36] transition-colors"
+            >
+              donar ahora
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+        {/* mobile recaudado row */}
+        <div className="sm:hidden border-t border-white/5 px-4 py-1.5 flex items-center justify-between text-[10px] uppercase tracking-wider">
+          <span className="text-zinc-500">recaudado confirmado</span>
+          <span className="font-bold text-white tabular-nums normal-case">~ {fmtUSD(ingresadoTotalUsd)}</span>
+        </div>
+      </nav>
+
       {/* HERO */}
       <header className="relative isolate overflow-hidden">
         {/* background image */}
@@ -227,40 +265,26 @@ export default function FuerzaVenezuela() {
         {/* scanline */}
         <div className="pointer-events-none absolute inset-x-0 -z-10 h-px top-1/3 bg-gradient-to-r from-transparent via-[#E3001B]/60 to-transparent animate-[scan_6s_linear_infinite]" />
 
-        <div className="mx-auto max-w-6xl px-5 pt-12 pb-16 md:pt-20 md:pb-24">
-          {/* alerta de contexto: terremoto */}
+        <div className="mx-auto max-w-6xl px-5 pt-8 pb-16 md:pt-12 md:pb-24">
+          {/* slim context band */}
           <div
-            className="animate-fade-in"
+            className="animate-fade-in flex items-start gap-3 rounded-md border-l-2 border-[#E3001B] bg-[#E3001B]/[0.06] px-4 py-3"
             style={{ animationDelay: "0s" }}
           >
-            <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/50 bg-gradient-to-r from-[#E3001B]/15 via-[#E3001B]/10 to-[#E3001B]/[0.03] p-4 backdrop-blur-sm">
-              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[#E3001B]/25 blur-2xl" />
-              <div className="absolute -left-8 -bottom-8 h-20 w-20 rounded-full bg-[#E3001B]/15 blur-2xl" />
-              <div className="relative flex items-start gap-3">
-                <span className="relative flex h-2.5 w-2.5 shrink-0 mt-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff4d63] opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E3001B]" />
-                </span>
-                <p className="text-sm md:text-base font-semibold lowercase leading-snug text-zinc-100">
-                  respuesta de ayuda por el terremoto ocurrido en venezuela
-                </p>
-              </div>
+            <span className="relative flex h-2 w-2 shrink-0 mt-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff4d63] opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E3001B]" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm md:text-[15px] font-semibold lowercase leading-snug text-zinc-100">
+                respuesta activa por el terremoto ocurrido en venezuela
+              </p>
+              <p className="mt-1 text-xs md:text-sm lowercase leading-snug text-zinc-400">
+                este fondo nace para canalizar aportes y convertirlos en ayuda visible, con ingresos, gastos y saldo disponible publicados.
+              </p>
             </div>
           </div>
 
-          {/* live tag */}
-          <div
-            className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 backdrop-blur-sm animate-fade-in"
-            style={{ animationDelay: "0.05s" }}
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E3001B] opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E3001B]" />
-            </span>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-300">
-              en vivo · transparente · venezuela
-            </span>
-          </div>
 
           <h1
             className="mt-7 animate-fade-in"
@@ -286,8 +310,9 @@ export default function FuerzaVenezuela() {
             className="mt-4 max-w-2xl text-sm md:text-base leading-relaxed lowercase text-zinc-400 animate-fade-in"
             style={{ animationDelay: "0.18s" }}
           >
-            tras el terremoto que afectó a venezuela, abrimos este fondo transparente para canalizar aportes y convertirlos en ayuda visible.
+            aquí no solo donas. aquí puedes ver qué pasa con tu aporte.
           </p>
+
 
           {/* RESUMEN EN HERO — primero, para impacto inmediato */}
           <div
@@ -297,7 +322,7 @@ export default function FuerzaVenezuela() {
           >
             <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              estado del fondo · en vivo
+              estado del fondo · actualizado tras verificación
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <BigStat
@@ -307,9 +332,12 @@ export default function FuerzaVenezuela() {
                 tag="balance neto"
                 hint="bs + us$ + usdt convertidos"
               />
-              <BigStat label="ingresado confirmado" value={ing} tag="ingresos" hint="aportes verificados" />
-              <BigStat label="gastado" value={gas} tag="egresos" hint="ya ejecutado" />
+              <BigStat label="recaudado confirmado" value={ing} tag="ingresos" hint="aportes verificados" />
+              <BigStat label="gastado con soporte" value={gas} tag="egresos" hint="con comprobante" />
             </div>
+            <p className="mt-3 text-[11px] leading-snug lowercase text-zinc-500 max-w-2xl">
+              los montos aproximados combinan bs, usd y usdt usando la tasa bcv activa para bolívares. los saldos reales se mantienen separados por moneda.
+            </p>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] uppercase tracking-wider text-zinc-500">
               {ultimaAct ? (
                 <>
@@ -333,19 +361,20 @@ export default function FuerzaVenezuela() {
                 {t?.tasa_fuente ? ` · ${t.tasa_fuente}` : ""}
               </p>
             )}
+
           </div>
 
           <div
             className="mt-6 max-w-2xl space-y-2 text-sm md:text-base leading-relaxed text-zinc-400 lowercase animate-fade-in"
             style={{ animationDelay: "0.23s" }}
           >
-            <p>aquí no solo donas. aquí puedes ver qué pasa con tu aporte.</p>
             <p>
-              cuando donas, tu aporte se registra. cuando se confirma, entra al dinero disponible.
-              cuando se usa, publicamos el monto, el gasto y el comprobante. cuando es posible,
-              también mostramos contenido de la entrega o la acción realizada.
+              cuando donas, tu aporte se registra. cuando se confirma, aparece en la lista de donantes y entra al dinero disponible.
             </p>
-            <p>ingresos visibles. gastos con soporte. saldo disponible en vivo.</p>
+            <p>
+              cuando usamos el dinero, publicamos el monto, el gasto y el comprobante. cuando es posible, también mostramos contenido de la entrega o de la acción realizada.
+            </p>
+            <p className="text-zinc-300">ingresos visibles. gastos con soporte. saldo disponible.</p>
           </div>
 
           <div
@@ -355,11 +384,12 @@ export default function FuerzaVenezuela() {
             <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/40 bg-[#E3001B]/[0.07] p-5 md:p-6 backdrop-blur-sm">
               <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#E3001B]/20 blur-3xl" />
               <div className="absolute -left-10 -bottom-10 h-28 w-28 rounded-full bg-[#E3001B]/15 blur-3xl" />
-              <p className="relative text-3xl md:text-5xl font-black lowercase tracking-tight text-white">
+              <p className="relative text-3xl md:text-5xl font-black lowercase tracking-tight text-white leading-[0.95]">
                 no nos creas.
-                <span className="text-[#E3001B]"> míralo.</span>
+                <br />
+                <span className="text-[#E3001B]">míralo.</span>
               </p>
-              <p className="relative mt-2 text-xs md:text-sm text-zinc-300 lowercase">
+              <p className="relative mt-3 text-xs md:text-sm text-zinc-300 lowercase">
                 cada ingreso, cada gasto y cada saldo publicado en esta página.
               </p>
               <a
@@ -391,40 +421,90 @@ export default function FuerzaVenezuela() {
               className="inline-flex items-center justify-center gap-2 rounded-md border border-white/20 bg-white/[0.03] px-7 py-4 text-sm font-semibold uppercase tracking-wider text-zinc-200 backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/[0.06] hover:text-white"
             >
               <Activity className="h-4 w-4" />
-              ver fondo en vivo
+              ver fondo
             </button>
           </div>
 
-          {/* mini flow */}
+          {/* CÓMO FUNCIONA — 5 pasos responsive */}
           <div
-            className="mt-14 animate-fade-in"
+            className="mt-16 animate-fade-in"
             style={{ animationDelay: "0.38s" }}
           >
-            <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+            <p className="mb-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
               cómo funciona
             </p>
-            <div className="flex flex-wrap items-stretch gap-3">
-              {[
-                { icon: Heart, label: "donar" },
-                { icon: CheckCircle2, label: "confirmar" },
-                { icon: Wallet, label: "disponible" },
-                { icon: Receipt, label: "gasto con comprobante" },
-                { icon: HandHeart, label: "ayuda visible" },
-              ].map((step, i, arr) => (
-                <div key={step.label} className="flex items-center gap-3">
-                  <div className="group relative flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 backdrop-blur-sm transition-all hover:border-[#E3001B]/40 hover:bg-white/[0.06]">
-                    <step.icon className="h-4 w-4 text-[#E3001B]" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                      {step.label}
-                    </span>
+
+            {(() => {
+              const steps = [
+                { icon: Heart, title: "donas", desc: "eliges pago móvil, zelle, binance o efectivo sublime." },
+                { icon: CheckCircle2, title: "verificamos", desc: "conciliamos manualmente el aporte antes de sumarlo." },
+                { icon: Eye, title: "publicamos", desc: "tu aporte confirmado aparece en el registro público." },
+                { icon: Receipt, title: "ejecutamos", desc: "cuando usamos el dinero, registramos monto, gasto y comprobante." },
+                { icon: HandHeart, title: "mostramos", desc: "el saldo disponible y la ayuda entregada quedan visibles." },
+              ];
+              return (
+                <>
+                  {/* DESKTOP: horizontal */}
+                  <div className="hidden md:flex items-stretch gap-2">
+                    {steps.map((s, i) => (
+                      <div key={s.title} className="flex items-stretch gap-2 flex-1">
+                        <div className="group relative flex-1 rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm transition-all hover:border-[#E3001B]/40 hover:bg-white/[0.06]">
+                          <div className="flex items-center gap-2">
+                            <s.icon className="h-4 w-4 text-[#E3001B]" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-zinc-200">
+                              {s.title}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-[11px] leading-snug lowercase text-zinc-500">
+                            {s.desc}
+                          </p>
+                        </div>
+                        {i < steps.length - 1 && (
+                          <div className="flex items-center">
+                            <ArrowRight className="h-4 w-4 text-zinc-600" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  {i < arr.length - 1 && (
-                    <ArrowRight className="h-3.5 w-3.5 text-zinc-600" />
-                  )}
-                </div>
-              ))}
-            </div>
+
+                  {/* MOBILE: vertical timeline */}
+                  <div className="md:hidden flex flex-col gap-0">
+                    {steps.map((s, i) => (
+                      <div key={s.title} className="flex flex-col">
+                        <div className="relative rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#E3001B]/40 bg-[#E3001B]/10 text-[10px] font-bold text-[#ff6e7e]">
+                              {i + 1}
+                            </span>
+                            <s.icon className="h-4 w-4 text-[#E3001B]" />
+                            <span className="text-sm font-bold uppercase tracking-wider text-zinc-100">
+                              {s.title}
+                            </span>
+                          </div>
+                          <p className="mt-2 pl-[38px] text-[12px] leading-snug lowercase text-zinc-400">
+                            {s.desc}
+                          </p>
+                        </div>
+                        {i < steps.length - 1 && (
+                          <div className="flex flex-col items-center py-2">
+                            <span className="h-4 w-px bg-white/10" />
+                            <ChevronDown className="h-3.5 w-3.5 text-zinc-600" />
+                            <span className="h-4 w-px bg-white/10" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+
+            <p className="mt-6 text-xs md:text-sm lowercase text-zinc-500 max-w-2xl">
+              no es una promesa de transparencia. es una plataforma para verla.
+            </p>
           </div>
+
 
           <button
             onClick={() => scrollToId("resumen")}
