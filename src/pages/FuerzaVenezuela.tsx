@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Activity,
   ChevronDown,
-  Heart,
+  
   CheckCircle2,
   Receipt,
   Eye,
