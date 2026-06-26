@@ -1084,6 +1084,43 @@ function Empty({ msg }: { msg: string }) {
   );
 }
 
+function ExplanationCallout({
+  icon: Icon,
+  eyebrow,
+  title,
+  children,
+  tone = "neutral",
+}: {
+  icon: React.ElementType;
+  eyebrow: string;
+  title: string;
+  children: React.ReactNode;
+  tone?: "neutral" | "warn" | "ok";
+}) {
+  const toneRing =
+    tone === "warn"
+      ? "border-amber-400/30 bg-amber-400/[0.04]"
+      : tone === "ok"
+      ? "border-emerald-400/20 bg-emerald-400/[0.03]"
+      : "border-white/10 bg-white/[0.03]";
+  const toneIcon =
+    tone === "warn" ? "text-amber-300" : tone === "ok" ? "text-emerald-300" : "text-[#ff8a5c]";
+  return (
+    <div className={`mt-6 rounded-2xl border ${toneRing} backdrop-blur-sm p-5 sm:p-6`}>
+      <div className="flex items-start gap-4">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/30 ${toneIcon}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{eyebrow}</p>
+          <h3 className="text-lg sm:text-xl font-bold lowercase tracking-tight text-white leading-snug">{title}</h3>
+          <div className="text-sm sm:text-[15px] text-zinc-300 leading-relaxed lowercase">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DataTable({ cols, rows }: { cols: string[]; rows: React.ReactNode[][] }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-sm">
