@@ -17,6 +17,10 @@ import {
   Receipt,
   Eye,
   ExternalLink,
+  Lock,
+  Users,
+  ArrowDownCircle,
+  ArrowUpCircle,
 } from "lucide-react";
 import amanecerDesktop from "@/assets/amanecer-desktop.jpg.asset.json";
 import amanecerMobile from "@/assets/amanecer-mobile.jpg.asset.json";
@@ -742,7 +746,17 @@ export default function FuerzaVenezuela() {
             title="ingresos confirmados"
             subtitle="cada aporte verificado manualmente antes de sumarse"
           />
+          <ExplanationCallout
+            icon={ArrowDownCircle}
+            eyebrow="por qué importa"
+            title="esta es la parte importante: cada movimiento"
+            tone="ok"
+          >
+            cuando donas, el dinero entra al fondo y queda registrado para siempre. lo ves disponible, lo ves sumado al saldo, lo ves aquí abajo con fecha, método y referencia.
+            no podemos quitarlo, no podemos obviarlo. una vez que el aporte se confirma, vive en este registro público.
+          </ExplanationCallout>
           <div className="mt-6">
+
             {confirmados.length === 0 ? (
               <Empty msg="aún no hay aportes confirmados." />
             ) : (
@@ -764,7 +778,18 @@ export default function FuerzaVenezuela() {
 
         <section id="por-verificar" className="animate-fade-in scroll-mt-24">
           <SectionHeader eyebrow="cola" title="aportes por verificar" subtitle="reportados, en proceso de validación" />
+          <ExplanationCallout
+            icon={Users}
+            eyebrow="confirmación humana"
+            title="hay un equipo de personas confirmando cada movimiento"
+            tone="warn"
+          >
+            por ahora los ingresos no están conectados en tiempo real con los bancos. estamos trabajando para automatizarlo.
+            mientras tanto, cada aporte reportado pasa por una revisión manual de nuestro equipo: comparamos la referencia con el comprobante recibido y, cuando coincide, lo movemos a “ingresos confirmados”.
+            si ves tu aporte aquí, ya lo recibimos y está en cola de verificación.
+          </ExplanationCallout>
           <div className="mt-6">
+
             {porVerificar.length === 0 ? (
               <Empty msg="sin aportes pendientes." />
             ) : (
@@ -787,7 +812,16 @@ export default function FuerzaVenezuela() {
 
         <section className="animate-fade-in">
           <SectionHeader eyebrow="salidas" title="egresos ejecutados" subtitle="adónde va el dinero" />
+          <ExplanationCallout
+            icon={ArrowUpCircle}
+            eyebrow="cada gasto deja rastro"
+            title="cuando el fondo gasta, también queda registrado para siempre"
+          >
+            todo egreso aparece aquí con fecha, categoría, beneficiario, monto y comprobante. no podemos esconderlo ni borrarlo del registro público.
+            si entra un dólar, lo ves entrar; si sale un dólar, lo ves salir y por qué. esa resta —ingresos menos egresos— es el saldo real disponible.
+          </ExplanationCallout>
           <div className="mt-6">
+
             {egresos.length === 0 ? (
               <Empty msg="aún no se han ejecutado gastos." />
             ) : (
@@ -1076,6 +1110,43 @@ function Empty({ msg }: { msg: string }) {
   return (
     <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] py-10 text-center text-sm text-zinc-500 lowercase">
       {msg}
+    </div>
+  );
+}
+
+function ExplanationCallout({
+  icon: Icon,
+  eyebrow,
+  title,
+  children,
+  tone = "neutral",
+}: {
+  icon: React.ElementType;
+  eyebrow: string;
+  title: string;
+  children: React.ReactNode;
+  tone?: "neutral" | "warn" | "ok";
+}) {
+  const toneRing =
+    tone === "warn"
+      ? "border-amber-400/30 bg-amber-400/[0.04]"
+      : tone === "ok"
+      ? "border-emerald-400/20 bg-emerald-400/[0.03]"
+      : "border-white/10 bg-white/[0.03]";
+  const toneIcon =
+    tone === "warn" ? "text-amber-300" : tone === "ok" ? "text-emerald-300" : "text-[#ff8a5c]";
+  return (
+    <div className={`mt-6 rounded-2xl border ${toneRing} backdrop-blur-sm p-5 sm:p-6`}>
+      <div className="flex items-start gap-4">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/30 ${toneIcon}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{eyebrow}</p>
+          <h3 className="text-lg sm:text-xl font-bold lowercase tracking-tight text-white leading-snug">{title}</h3>
+          <div className="text-sm sm:text-[15px] text-zinc-300 leading-relaxed lowercase">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }
