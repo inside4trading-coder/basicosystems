@@ -312,27 +312,21 @@ export default function FuerzaVenezuela() {
             />
           </h1>
 
-          <p
-            className="mt-5 text-xl md:text-3xl font-semibold lowercase text-zinc-100 animate-fade-in"
-            style={{ animationDelay: "0.15s" }}
-          >
-            una nueva forma de ayudar.
-          </p>
-
           {/* frase emocional — amanecer */}
           <p
-            className="mt-3 text-lg md:text-2xl font-medium lowercase italic animate-fade-in bg-gradient-to-r from-[#ff9a6c] via-[#ffb38a] to-[#ffc9a8] bg-clip-text text-transparent"
-            style={{ animationDelay: "0.17s" }}
+            className="mt-6 text-2xl md:text-4xl font-semibold lowercase italic animate-fade-in bg-gradient-to-r from-[#ff9a6c] via-[#ffb38a] to-[#ffc9a8] bg-clip-text text-transparent leading-tight"
+            style={{ animationDelay: "0.15s" }}
           >
             cada aporte acerca el amanecer.
           </p>
 
           <p
-            className="mt-4 max-w-2xl text-sm md:text-base leading-relaxed lowercase text-zinc-300 animate-fade-in"
+            className="mt-4 max-w-2xl text-base md:text-lg leading-relaxed lowercase text-zinc-200 animate-fade-in"
             style={{ animationDelay: "0.2s" }}
           >
-            aquí no solo donas. aquí puedes ver qué pasa con tu aporte.
+            aquí no solo donas. <span className="text-white font-medium">aquí puedes ver qué pasa con tu aporte.</span>
           </p>
+
 
 
 
