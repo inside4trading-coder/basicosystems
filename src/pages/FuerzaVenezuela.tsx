@@ -279,7 +279,7 @@ export default function FuerzaVenezuela() {
             className="mt-8 font-black lowercase tracking-tight text-white animate-fade-in"
             style={{ fontSize: "clamp(2.75rem, 9vw, 7rem)", lineHeight: 0.95, animationDelay: "0.1s" }}
           >
-            fuerza<br />venezuela
+            fondo<br />transparente
           </h1>
 
           <p
