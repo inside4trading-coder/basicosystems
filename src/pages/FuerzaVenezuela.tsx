@@ -746,7 +746,17 @@ export default function FuerzaVenezuela() {
             title="ingresos confirmados"
             subtitle="cada aporte verificado manualmente antes de sumarse"
           />
+          <ExplanationCallout
+            icon={ArrowDownCircle}
+            eyebrow="por qué importa"
+            title="esta es la parte importante: cada movimiento"
+            tone="ok"
+          >
+            cuando donas, el dinero entra al fondo y queda registrado para siempre. lo ves disponible, lo ves sumado al saldo, lo ves aquí abajo con fecha, método y referencia.
+            no podemos quitarlo, no podemos obviarlo. una vez que el aporte se confirma, vive en este registro público.
+          </ExplanationCallout>
           <div className="mt-6">
+
             {confirmados.length === 0 ? (
               <Empty msg="aún no hay aportes confirmados." />
             ) : (
