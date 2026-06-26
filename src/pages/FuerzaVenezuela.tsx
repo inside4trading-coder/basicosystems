@@ -320,7 +320,7 @@ export default function FuerzaVenezuela() {
           {/* RESUMEN EN HERO — primero, para impacto inmediato */}
           <div
             id="resumen"
-            className="mt-10 animate-fade-in"
+            className="mt-10 animate-fade-in scroll-mt-24"
             style={{ animationDelay: "0.2s" }}
           >
             <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
