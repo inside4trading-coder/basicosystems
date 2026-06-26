@@ -13,11 +13,13 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
-  HeartHandshake, Plus, RefreshCw, ExternalLink, CheckCircle2, XCircle, Copy, Upload, Receipt, History, Settings as SettingsIcon, Download,
+  HeartHandshake, Plus, RefreshCw, ExternalLink, CheckCircle2, XCircle, Copy, Upload, Receipt, History, Settings as SettingsIcon, Download, Info as InfoIcon, HandCoins, ArrowRightLeft, Eye,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { CANALES } from "@/components/fondo/canales";
 
-type Metodo = "pago_movil" | "binance" | "zelle" | "efectivo_sublime";
+type Metodo = "pago_movil" | "binance" | "zelle" | "efectivo_sublime" | "bizum";
+
 type Moneda = "VES" | "USD" | "USDT";
 type AporteEstado =
   | "por_verificar" | "coincidencia_encontrada" | "confirmado"
@@ -279,7 +281,7 @@ function DashboardTab() {
       <Card>
         <CardHeader><CardTitle className="text-sm">Reglas contables</CardTitle></CardHeader>
         <CardContent className="text-xs text-muted-foreground space-y-1">
-          <div>· Pago Móvil → VES · Zelle → USD · Efectivo Sublime → USD · Binance → USDT</div>
+          <div>· Pago Móvil → VES · Zelle → USD · Efectivo Sublime → USD · Binance → USDT · Bizum → USD (1:1)</div>
           <div>· Los egresos descuentan saldo de la misma moneda usada para pagar.</div>
           <div>· No se mezclan monedas automáticamente. Las conversiones deben registrarse como movimiento de conversión.</div>
         </CardContent>
@@ -298,6 +300,66 @@ function KCard({ label, value, accent }: { label: string; value: string; accent?
         <div className="text-xl md:text-2xl font-semibold tabular-nums">{value}</div>
       </CardContent>
     </Card>
+  );
+}
+
+function ExplicacionBlock({
+  icon: Icon,
+  title,
+  children,
+  variant = "info",
+}: {
+  icon: React.ElementType;
+  title: string;
+  children: React.ReactNode;
+  variant?: "info" | "warning" | "success";
+}) {
+  const variantClasses = {
+    info: "bg-primary/5 border-primary/20",
+    warning: "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40",
+    success: "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900/40",
+  };
+  return (
+    <Card className={`border ${variantClasses[variant]}`}>
+      <CardContent className="py-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 rounded-full bg-background p-2 border shadow-sm">
+            <Icon className="h-5 w-5 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold leading-tight">{title}</h3>
+            <div className="text-sm text-muted-foreground leading-relaxed">{children}</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AportesExplicacion({ filtroEstado }: { filtroEstado: string }) {
+  return (
+    <div className="space-y-3">
+      <ExplicacionBlock icon={HandCoins} title="Cada ingreso queda registrado para siempre">
+        Esta es la parte importante: <strong>cada movimiento</strong>. Cuando alguien dona, el dinero entra al fondo y se queda aquí de forma visible.
+        No podemos quitarlo, no podemos obviarlo: cada aporte que se agrega aparece en el saldo disponible y en el registro público.
+      </ExplicacionBlock>
+
+      {filtroEstado === "por_verificar" && (
+        <ExplicacionBlock icon={InfoIcon} title="Aportes por verificar" variant="warning">
+          Nuestro equipo de humanos revisa y confirma cada aporte manualmente. Todavía no tenemos los ingresos conectados en tiempo real,
+          pero estamos trabajando para automatizarlo. Mientras tanto, cada donación pasa por una revisión de seguridad antes de aparecer como confirmada.
+        </ExplicacionBlock>
+      )}
+    </div>
+  );
+}
+
+function EgresosExplicacion() {
+  return (
+    <ExplicacionBlock icon={ArrowRightLeft} title="Cada egreso también queda registrado para siempre">
+      Igual que los ingresos, <strong>cada egreso es un movimiento público</strong>. Cuando el fondo gasta dinero, ese gasto queda registrado para siempre.
+      No podemos borrarlo ni esconderlo: cada compra, transferencia o ayuda ejecutada se puede rastrear en el registro.
+    </ExplicacionBlock>
   );
 }
 
@@ -392,13 +454,14 @@ function AportesTab() {
         <div>
           <Label className="text-xs">Método</Label>
           <Select value={filtroMetodo} onValueChange={setFiltroMetodo}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="pago_movil">Pago Móvil (Bs)</SelectItem>
               <SelectItem value="zelle">Zelle (USD)</SelectItem>
               <SelectItem value="efectivo_sublime">Efectivo Sublime (USD)</SelectItem>
               <SelectItem value="binance">Binance (USDT)</SelectItem>
+              <SelectItem value="bizum">Bizum (€ → USD)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -408,6 +471,8 @@ function AportesTab() {
           <Button size="sm" onClick={() => setOpenNew(true)}><Plus className="h-4 w-4 mr-2" /> Reportar aporte</Button>
         </div>
       </div>
+
+      <AportesExplicacion filtroEstado={filtroEstado} />
 
       {exactosSelCount > 0 && (
         <Card className="border-primary">
@@ -585,6 +650,7 @@ function AporteFormDialog({ onClose }: { onClose: () => void }) {
                 <SelectItem value="zelle">Zelle (USD)</SelectItem>
                 <SelectItem value="efectivo_sublime">Efectivo Sublime (USD)</SelectItem>
                 <SelectItem value="binance">Binance (USDT)</SelectItem>
+                <SelectItem value="bizum">Bizum (€ → USD)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1043,6 +1109,7 @@ function EgresosTab() {
         <Button variant="outline" size="sm" onClick={load}><RefreshCw className="h-4 w-4 mr-2" /> Refrescar</Button>
         <Button size="sm" onClick={() => setOpenNew(true)}><Plus className="h-4 w-4 mr-2" /> Registrar egreso</Button>
       </div>
+      <EgresosExplicacion />
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -1257,6 +1324,41 @@ function AuditoriaTab() {
   );
 }
 
+/* ---------------- MÉTODOS DE APORTE ---------------- */
+function MetodosAporteCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm flex items-center gap-2"><Receipt className="h-4 w-4" /> Métodos de aporte activos</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          Estos son los canales habilitados para recibir aportes. Cada método va a su saldo correspondiente y se publica en la página de transparencia.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Object.values(CANALES).map((canal) => (
+            <div key={canal.metodo} className="rounded-lg border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm capitalize">{canal.titulo}</span>
+                <Badge variant="outline">{canal.monedaLabel}</Badge>
+              </div>
+              <div className="space-y-1">
+                {canal.datos.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{d.label}</span>
+                    <span className="font-mono">{d.value}</span>
+                  </div>
+                ))}
+              </div>
+              {canal.notaCanal && <p className="text-[10px] text-muted-foreground leading-tight">{canal.notaCanal}</p>}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ---------------- CONFIGURACIÓN ---------------- */
 function ConfiguracionTab() {
   const [c, setC] = useState<any>(null);
@@ -1317,9 +1419,11 @@ function ConfiguracionTab() {
             <Label>Tasa sugerida — uso histórico (VES/USD)</Label>
             <Input type="number" step="0.01" value={c.tasa_sugerida ?? ""} onChange={(e) => setC({ ...c, tasa_sugerida: e.target.value })} />
           </div>
-          <Button onClick={save} disabled={saving}>Guardar</Button>
+        <Button onClick={save} disabled={saving}>Guardar</Button>
         </CardContent>
       </Card>
+
+      <MetodosAporteCard />
 
       <BcvAutoRateCard onRateApplied={() => {
         supabase.from("fondo_configuracion").select("*").single().then(({ data }) => setC(data));
