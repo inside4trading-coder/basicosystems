@@ -203,6 +203,44 @@ export default function FuerzaVenezuela() {
 
   return (
     <div className="min-h-screen bg-[#070708] text-zinc-100 antialiased selection:bg-[#E3001B]/40">
+      {/* STICKY TOP NAV */}
+      <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#070708]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[#070708]/60">
+        <div className="mx-auto max-w-6xl px-4 py-2.5 md:py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <img
+              src={fondoLogoAsset.url}
+              alt="Fondo Transparente"
+              className="h-7 md:h-8 w-auto"
+            />
+            <span className="hidden sm:inline text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+              por [basico]
+            </span>
+          </div>
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="hidden sm:flex flex-col items-end leading-tight">
+              <span className="text-[9px] uppercase tracking-[0.18em] text-zinc-500">
+                recaudado confirmado
+              </span>
+              <span className="text-sm md:text-base font-bold text-white tabular-nums">
+                ~ {fmtUSD(ingresadoTotalUsd)}
+              </span>
+            </div>
+            <button
+              onClick={() => scrollToId("aportar")}
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#E3001B] px-3 py-2 md:px-4 md:py-2.5 text-xs md:text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_24px_-6px_rgba(227,0,27,0.7)] hover:bg-[#ff1a36] transition-colors"
+            >
+              donar ahora
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+        {/* mobile recaudado row */}
+        <div className="sm:hidden border-t border-white/5 px-4 py-1.5 flex items-center justify-between text-[10px] uppercase tracking-wider">
+          <span className="text-zinc-500">recaudado confirmado</span>
+          <span className="font-bold text-white tabular-nums normal-case">~ {fmtUSD(ingresadoTotalUsd)}</span>
+        </div>
+      </nav>
+
       {/* HERO */}
       <header className="relative isolate overflow-hidden">
         {/* background image */}
@@ -227,40 +265,26 @@ export default function FuerzaVenezuela() {
         {/* scanline */}
         <div className="pointer-events-none absolute inset-x-0 -z-10 h-px top-1/3 bg-gradient-to-r from-transparent via-[#E3001B]/60 to-transparent animate-[scan_6s_linear_infinite]" />
 
-        <div className="mx-auto max-w-6xl px-5 pt-12 pb-16 md:pt-20 md:pb-24">
-          {/* alerta de contexto: terremoto */}
+        <div className="mx-auto max-w-6xl px-5 pt-8 pb-16 md:pt-12 md:pb-24">
+          {/* slim context band */}
           <div
-            className="animate-fade-in"
+            className="animate-fade-in flex items-start gap-3 rounded-md border-l-2 border-[#E3001B] bg-[#E3001B]/[0.06] px-4 py-3"
             style={{ animationDelay: "0s" }}
           >
-            <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/50 bg-gradient-to-r from-[#E3001B]/15 via-[#E3001B]/10 to-[#E3001B]/[0.03] p-4 backdrop-blur-sm">
-              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[#E3001B]/25 blur-2xl" />
-              <div className="absolute -left-8 -bottom-8 h-20 w-20 rounded-full bg-[#E3001B]/15 blur-2xl" />
-              <div className="relative flex items-start gap-3">
-                <span className="relative flex h-2.5 w-2.5 shrink-0 mt-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff4d63] opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E3001B]" />
-                </span>
-                <p className="text-sm md:text-base font-semibold lowercase leading-snug text-zinc-100">
-                  respuesta de ayuda por el terremoto ocurrido en venezuela
-                </p>
-              </div>
+            <span className="relative flex h-2 w-2 shrink-0 mt-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff4d63] opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E3001B]" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm md:text-[15px] font-semibold lowercase leading-snug text-zinc-100">
+                respuesta activa por el terremoto ocurrido en venezuela
+              </p>
+              <p className="mt-1 text-xs md:text-sm lowercase leading-snug text-zinc-400">
+                este fondo nace para canalizar aportes y convertirlos en ayuda visible, con ingresos, gastos y saldo disponible publicados.
+              </p>
             </div>
           </div>
 
-          {/* live tag */}
-          <div
-            className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 backdrop-blur-sm animate-fade-in"
-            style={{ animationDelay: "0.05s" }}
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E3001B] opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E3001B]" />
-            </span>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-300">
-              en vivo · transparente · venezuela
-            </span>
-          </div>
 
           <h1
             className="mt-7 animate-fade-in"
