@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import heroImg from "@/assets/fuerza-venezuela-hero.jpg";
 import basicoLogoAsset from "@/assets/basico-box-logo.png.asset.json";
+import fondoLogoAsset from "@/assets/logo-fondo-transparente.png.asset.json";
 import { AporteDialog } from "@/components/fondo/AporteDialog";
 import type { MetodoAporte } from "@/components/fondo/canales";
 
