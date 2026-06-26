@@ -1,48 +1,93 @@
-# Próximos pasos para activar fundacionbasico.com
 
-No requiere cambios de código. Es trabajo de configuración en BanaHosting + Lovable.
+# Rediseño final de /fuerza-venezuela
 
-## 1. Completar registros DNS en BanaHosting
+Solo cambios de diseño, jerarquía y copy en el hero/header y responsive del bloque "cómo funciona". No se toca lógica contable, RPCs, tablas ni cálculos.
 
-Ya tienes 3 registros. Faltan ajustes y 1 registro nuevo. Tu pantalla debe quedar así:
+## 1. Subir el logo como asset
 
-| Host Name | Record Type | Address |
-|-----------|-------------|---------|
-| `@` | A (Address) | `185.158.133.1` |
-| `www` | A (Address) | `185.158.133.1` |
-| `_lovable` | TXT (SPF/txt) | `lovable_verify=1d139af1b85e6851a6954f403dbac292de118001a53daef1bfd89a5034d0333b` |
-| `_lovable.www` | TXT (SPF/txt) | `lovable_verify=1ae57cf85144948193f64252b94013ba4b4d283c96da8852f1b3f0d7410b8417` |
+- Subir `user-uploads://logo_fondo_transparente.png` con `lovable-assets` → `src/assets/logo-fondo-transparente.png.asset.json`.
+- Importar como pointer JSON y usar `asset.url` en el header.
 
-Acciones concretas:
-- **Verificar el TXT `_lovable`**: en tu captura el campo Address se ve cortado (`...292de118(`). Abre ese registro y confirma que contiene el valor COMPLETO que muestra Lovable (termina en `...a53daef1bfd89a5034d0333b`). Si está cortado, bórralo y vuelve a pegarlo entero.
-- **Agregar el cuarto registro** `_lovable.www` tipo TXT con el segundo `lovable_verify=...` que muestra Lovable para `www.fundacionbasico.com`.
-- Pulsar **Save Changes**.
-- No tocar MX, SPF reales, DKIM, DMARC ni nameservers.
+## 2. Header superior (nuevo)
 
-## 2. Esperar verificación en Lovable
+Reemplazar el header actual de `src/pages/FuerzaVenezuela.tsx` por una barra fija/sticky con:
 
-- Volver a Lovable → Project Settings → Domains.
-- Pulsar **Check status** en cada dominio cada 10–15 min.
-- Propagación normal: 15 min – 2 h. Máximo 72 h.
-- Cuando ambos pasen a **Active**, Lovable emite SSL automático.
-- Marcar `fundacionbasico.com` como **Primary** (menú ⋯ → Set as primary). Así `www` redirige al dominio sin www.
+- Izquierda: logo Fondo Transparente (alto ~28–32px) + bloque pequeño:
+  - línea 1: `fondo transparente` (text-sm font-semibold)
+  - línea 2: `por [basico]` (text-[10px] uppercase tracking-wider text-zinc-500)
+- Derecha: botón compacto `donar ahora` (rojo #E3001B, abre el selector de canales / hace scroll a `#aportar`).
 
-## 3. Publicar el proyecto
+Eliminar el badge `EN VIVO · TRANSPARENTE · VENEZUELA`.
 
-El switch de hostname (que ya dejé en `src/App.tsx`) solo viaja al dominio cuando el proyecto está publicado/actualizado.
-- Cuando me confirmes que los dominios están **Active** en Lovable, ejecuto el publish desde aquí.
-- Resultado final:
-  - `fundacionbasico.com` → landing pública Fuerza Venezuela.
-  - `www.fundacionbasico.com` → redirige a `fundacionbasico.com`.
-  - `/fuerza-venezuela` en ese dominio → redirige a `/`.
-  - El HUB privado sigue solo en `basicosystems.lovable.app` y la URL de preview.
+## 3. Contexto del terremoto (rediseño)
 
-## 4. Verificación final (cuando publique)
+Quitar la alerta grande roja actual. Sustituir por un módulo delgado, editorial:
 
-- Abrir `https://fundacionbasico.com` en incógnito → debe cargar Fuerza Venezuela.
-- Abrir `https://www.fundacionbasico.com` → debe redirigir.
-- Abrir `https://basicosystems.lovable.app` → debe seguir mostrando el HUB normal (login).
+```
+┌──────────────────────────────────────────────────────────┐
+│ ▍ respuesta activa por el terremoto ocurrido en venezuela │
+│   este fondo nace para canalizar aportes y convertirlos  │
+│   en ayuda visible, con ingresos, gastos y saldo         │
+│   disponible publicados.                                  │
+└──────────────────────────────────────────────────────────┘
+```
 
----
+- Borde izquierdo rojo de 2–3px, fondo `bg-white/[0.02]`, sin glow.
+- Una sola línea de título + una línea de descripción en `text-zinc-400`.
 
-**Lo que necesito de ti ahora:** confirma cuando hayas (a) corregido/completado el TXT `_lovable`, (b) agregado el TXT `_lovable.www`, y (c) los dos dominios aparezcan **Active** en Lovable. Ahí publico.
+## 4. Hero principal (reescritura de copy y jerarquía)
+
+Estructura nueva:
+
+1. **Título**: `fuerza venezuela` (mantener escala grande actual)
+2. **Subtítulo**: `una nueva forma de ayudar.`
+3. **Bloque de texto principal** (párrafos cortos, multilínea):
+   ```
+   aquí no solo donas.
+   aquí puedes ver qué pasa con tu aporte.
+
+   cuando donas, tu aporte se registra.
+   cuando se confirma, entra al dinero disponible.
+   cuando usamos el dinero, publicamos el monto, el gasto y el comprobante.
+   cuando es posible, también mostramos contenido de la entrega o la acción realizada.
+   ```
+4. **Remate**: `no nos creas.` / `míralo.` (grande, dos líneas, acento rojo en "míralo.")
+5. **CTAs**:
+   - Principal: `donar ahora` (rojo sólido)
+   - Secundario: `ver fondo en vivo` (outline, scroll a sección de balances)
+6. **Mini-flujo horizontal** (debajo de los CTAs, ya existe — se mantiene en desktop):
+   `DONAS → SE CONFIRMA → DISPONIBLE → GASTO CON COMPROBANTE → AYUDA VISIBLE`
+   con caption: `ingresos visibles. gastos con soporte. saldo disponible.`
+
+El resumen de dinero (cards de balance) permanece **después** del hero, igual que hoy. Añadir microestado `actualizado en vivo tras verificación` arriba de las cards de balance (sustituye el badge eliminado).
+
+## 5. Responsive del bloque "cómo funciona"
+
+- Desktop (`md:` y arriba): mantener el layout horizontal actual con flechas laterales.
+- Mobile (<768px): reemplazar por timeline vertical:
+  - 5 cards full-width apiladas en orden: donar → confirmar → disponible → gasto con comprobante → ayuda visible.
+  - Cada card: ícono + título + descripción corta, mismo estilo dark/tech (borde `white/10`, glow sutil rojo).
+  - Microetiqueta `paso 1` … `paso 5` arriba de cada card en `text-[10px] uppercase tracking-wider text-[#E3001B]/80`.
+  - Conector vertical: línea de 1px `bg-white/10` con una flecha hacia abajo (`ChevronDown`) entre cards.
+  - Spacing generoso (`gap-4` mobile).
+- Implementación: dos bloques renderizados, uno `hidden md:flex` (desktop actual) y otro `md:hidden` (timeline vertical nuevo). No tocar el contenido textual del flujo.
+
+## 6. Limpieza menor
+
+- Mover/eliminar el badge `EN VIVO · TRANSPARENTE · VENEZUELA`.
+- Asegurar que el header sticky no tape el ancla `#aportar` (offset con `scroll-mt-20`).
+- Mantener footer existente con `fundacionbasico.com` y BASICO Box logo.
+
+## Detalles técnicos
+
+- Archivo único editado: `src/pages/FuerzaVenezuela.tsx`.
+- Nuevo asset: `src/assets/logo-fondo-transparente.png.asset.json` (vía `lovable-assets create`).
+- Sin cambios en `AporteDialog.tsx`, `canales.ts`, RPCs ni schema.
+- Sin nuevos paquetes.
+- Tokens existentes (`#E3001B`, zinc palette, glass cards) reutilizados — no se introducen colores nuevos.
+
+## Fuera de alcance
+
+- Lógica de aportes, confirmación, BCV, storage.
+- Página privada `/admin/fondo-transparente`.
+- Modales de donación (ya configurados en el turno anterior).

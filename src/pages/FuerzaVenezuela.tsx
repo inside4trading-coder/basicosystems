@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import heroImg from "@/assets/fuerza-venezuela-hero.jpg";
 import basicoLogoAsset from "@/assets/basico-box-logo.png.asset.json";
+import fondoLogoAsset from "@/assets/logo-fondo-transparente.png.asset.json";
 import { AporteDialog } from "@/components/fondo/AporteDialog";
 import type { MetodoAporte } from "@/components/fondo/canales";
 
@@ -202,6 +203,34 @@ export default function FuerzaVenezuela() {
 
   return (
     <div className="min-h-screen bg-[#070708] text-zinc-100 antialiased selection:bg-[#E3001B]/40">
+      {/* TOP NAV / SELLO INSTITUCIONAL */}
+      <nav className="sticky top-0 z-40 border-b border-white/5 bg-[#070708]/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <img
+              src={fondoLogoAsset.url}
+              alt="fondo transparente"
+              className="h-7 w-auto md:h-8 shrink-0"
+            />
+            <div className="leading-tight min-w-0">
+              <div className="text-xs md:text-sm font-semibold lowercase text-white truncate">
+                fondo transparente
+              </div>
+              <div className="text-[9px] md:text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                por [basico]
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => scrollToId("aportar")}
+            className="inline-flex items-center gap-1.5 rounded-md bg-[#E3001B] px-3 py-1.5 md:px-4 md:py-2 text-[11px] md:text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_20px_-6px_rgba(227,0,27,0.6)] transition-all hover:bg-[#ff1a36] hover:shadow-[0_0_24px_-4px_rgba(227,0,27,0.8)]"
+          >
+            donar ahora
+            <ArrowRight className="h-3 w-3 md:h-3.5 md:w-3.5" />
+          </button>
+        </div>
+      </nav>
+
       {/* HERO */}
       <header className="relative isolate overflow-hidden">
         {/* background image */}
@@ -226,43 +255,28 @@ export default function FuerzaVenezuela() {
         {/* scanline */}
         <div className="pointer-events-none absolute inset-x-0 -z-10 h-px top-1/3 bg-gradient-to-r from-transparent via-[#E3001B]/60 to-transparent animate-[scan_6s_linear_infinite]" />
 
-        <div className="mx-auto max-w-6xl px-5 pt-12 pb-16 md:pt-20 md:pb-24">
-          {/* alerta de contexto: terremoto */}
-          <div
-            className="animate-fade-in"
-            style={{ animationDelay: "0s" }}
-          >
-            <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/50 bg-gradient-to-r from-[#E3001B]/15 via-[#E3001B]/10 to-[#E3001B]/[0.03] p-4 backdrop-blur-sm">
-              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[#E3001B]/25 blur-2xl" />
-              <div className="absolute -left-8 -bottom-8 h-20 w-20 rounded-full bg-[#E3001B]/15 blur-2xl" />
-              <div className="relative flex items-start gap-3">
-                <span className="relative flex h-2.5 w-2.5 shrink-0 mt-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff4d63] opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E3001B]" />
-                </span>
-                <p className="text-sm md:text-base font-semibold lowercase leading-snug text-zinc-100">
-                  respuesta de ayuda por el terremoto ocurrido en venezuela
+        <div className="mx-auto max-w-6xl px-5 pt-10 pb-16 md:pt-16 md:pb-24">
+          {/* contexto editorial del terremoto */}
+          <div className="animate-fade-in">
+            <div className="relative flex items-start gap-3 rounded-md border border-white/[0.06] bg-white/[0.02] py-3 pl-4 pr-4 backdrop-blur-sm">
+              <span
+                aria-hidden
+                className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full bg-[#E3001B]"
+              />
+              <div className="min-w-0">
+                <p className="text-sm md:text-[15px] font-semibold lowercase text-zinc-100 leading-snug">
+                  respuesta activa por el terremoto ocurrido en venezuela
+                </p>
+                <p className="mt-1 text-xs md:text-[13px] lowercase text-zinc-400 leading-relaxed">
+                  este fondo nace para canalizar aportes y convertirlos en ayuda visible,
+                  con ingresos, gastos y saldo disponible publicados.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* live tag */}
-          <div
-            className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 backdrop-blur-sm animate-fade-in"
-            style={{ animationDelay: "0.05s" }}
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E3001B] opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E3001B]" />
-            </span>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-300">
-              en vivo · transparente · venezuela
-            </span>
-          </div>
-
           <h1
-            className="mt-7 font-black lowercase tracking-tight text-white animate-fade-in"
+            className="mt-8 font-black lowercase tracking-tight text-white animate-fade-in"
             style={{ fontSize: "clamp(2.75rem, 9vw, 7rem)", lineHeight: 0.95, animationDelay: "0.1s" }}
           >
             fuerza<br />venezuela
@@ -275,22 +289,135 @@ export default function FuerzaVenezuela() {
             una nueva forma de ayudar.
           </p>
 
-          <p
-            className="mt-4 max-w-2xl text-sm md:text-base leading-relaxed lowercase text-zinc-400 animate-fade-in"
-            style={{ animationDelay: "0.18s" }}
+          <div
+            className="mt-5 max-w-2xl space-y-3 text-sm md:text-base leading-relaxed lowercase text-zinc-400 animate-fade-in"
+            style={{ animationDelay: "0.2s" }}
           >
-            tras el terremoto que afectó a venezuela, abrimos este fondo transparente para canalizar aportes y convertirlos en ayuda visible.
-          </p>
+            <p className="text-zinc-300">
+              aquí no solo donas.<br />
+              aquí puedes ver qué pasa con tu aporte.
+            </p>
+            <p>
+              cuando donas, tu aporte se registra.<br />
+              cuando se confirma, entra al dinero disponible.<br />
+              cuando usamos el dinero, publicamos el monto, el gasto y el comprobante.<br />
+              cuando es posible, también mostramos contenido de la entrega o la acción realizada.
+            </p>
+          </div>
 
-          {/* RESUMEN EN HERO — primero, para impacto inmediato */}
+          {/* remate */}
+          <div
+            className="mt-8 max-w-3xl animate-fade-in"
+            style={{ animationDelay: "0.25s" }}
+          >
+            <p className="text-4xl md:text-6xl font-black lowercase tracking-tight text-white leading-[0.95]">
+              no nos creas.<br />
+              <span className="text-[#E3001B]">míralo.</span>
+            </p>
+          </div>
+
+          {/* CTAs */}
+          <div
+            className="mt-8 flex flex-col sm:flex-row gap-3 animate-fade-in"
+            style={{ animationDelay: "0.3s" }}
+          >
+            <button
+              onClick={() => scrollToId("aportar")}
+              className="group relative inline-flex items-center justify-center gap-2 rounded-md bg-[#E3001B] px-7 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_0_0_rgba(227,0,27,0.6)] transition-all duration-300 hover:bg-[#ff1a36] hover:shadow-[0_0_40px_-5px_rgba(227,0,27,0.8)] hover:-translate-y-0.5"
+            >
+              <span className="absolute inset-0 -z-10 rounded-md bg-[#E3001B] opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-60" />
+              donar ahora
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </button>
+            <button
+              onClick={() => scrollToId("resumen")}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-white/20 bg-white/[0.03] px-7 py-4 text-sm font-semibold uppercase tracking-wider text-zinc-200 backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/[0.06] hover:text-white"
+            >
+              <Activity className="h-4 w-4" />
+              ver fondo en vivo
+            </button>
+          </div>
+
+          {/* mini flow — DESKTOP */}
+          <div
+            className="mt-12 animate-fade-in"
+            style={{ animationDelay: "0.35s" }}
+          >
+            <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+              cómo funciona
+            </p>
+
+            {/* desktop: horizontal flow */}
+            <div className="hidden md:flex flex-wrap items-stretch gap-3">
+              {[
+                { icon: Heart, label: "donar" },
+                { icon: CheckCircle2, label: "confirmar" },
+                { icon: Wallet, label: "disponible" },
+                { icon: Receipt, label: "gasto con comprobante" },
+                { icon: HandHeart, label: "ayuda visible" },
+              ].map((step, i, arr) => (
+                <div key={step.label} className="flex items-center gap-3">
+                  <div className="group relative flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 backdrop-blur-sm transition-all hover:border-[#E3001B]/40 hover:bg-white/[0.06]">
+                    <step.icon className="h-4 w-4 text-[#E3001B]" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                      {step.label}
+                    </span>
+                  </div>
+                  {i < arr.length - 1 && (
+                    <ArrowRight className="h-3.5 w-3.5 text-zinc-600" />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* mobile: vertical timeline */}
+            <div className="md:hidden flex flex-col gap-0">
+              {[
+                { icon: Heart, label: "donar", desc: "elige un canal y envía tu aporte." },
+                { icon: CheckCircle2, label: "confirmar", desc: "verificamos manualmente cada aporte." },
+                { icon: Wallet, label: "disponible", desc: "tu aporte entra al saldo del fondo." },
+                { icon: Receipt, label: "gasto con comprobante", desc: "publicamos monto, gasto y soporte." },
+                { icon: HandHeart, label: "ayuda visible", desc: "cuando es posible, mostramos la entrega." },
+              ].map((step, i, arr) => (
+                <div key={step.label} className="flex flex-col items-stretch">
+                  <div className="relative flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 backdrop-blur-sm">
+                    <div className="absolute -top-px -left-px h-8 w-8 rounded-tl-xl rounded-br-xl bg-[#E3001B]/[0.08] border-b border-r border-[#E3001B]/20 flex items-center justify-center text-[9px] font-bold uppercase tracking-wider text-[#ff6e7e]">
+                      {i + 1}
+                    </div>
+                    <step.icon className="h-5 w-5 text-[#E3001B] shrink-0 mt-0.5 ml-7" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold uppercase tracking-wide text-zinc-200">
+                        {step.label}
+                      </div>
+                      <div className="mt-0.5 text-xs lowercase text-zinc-500 leading-relaxed">
+                        {step.desc}
+                      </div>
+                    </div>
+                  </div>
+                  {i < arr.length - 1 && (
+                    <div className="flex flex-col items-center py-1.5" aria-hidden>
+                      <span className="h-3 w-px bg-white/10" />
+                      <ChevronDown className="h-3.5 w-3.5 text-[#E3001B]/60" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-5 text-[11px] lowercase text-zinc-500">
+              ingresos visibles. gastos con soporte. saldo disponible.
+            </p>
+          </div>
+
+          {/* RESUMEN EN HERO */}
           <div
             id="resumen"
-            className="mt-10 animate-fade-in"
-            style={{ animationDelay: "0.2s" }}
+            className="mt-14 scroll-mt-24 animate-fade-in"
+            style={{ animationDelay: "0.4s" }}
           >
             <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              estado del fondo · en vivo
+              actualizado en vivo tras verificación
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <BigStat
@@ -328,106 +455,24 @@ export default function FuerzaVenezuela() {
             )}
           </div>
 
+          {/* fundacionbasico.com inline */}
           <div
-            className="mt-6 max-w-2xl space-y-2 text-sm md:text-base leading-relaxed text-zinc-400 lowercase animate-fade-in"
-            style={{ animationDelay: "0.23s" }}
+            className="mt-8 animate-fade-in"
+            style={{ animationDelay: "0.45s" }}
           >
-            <p>aquí no solo donas. aquí puedes ver qué pasa con tu aporte.</p>
-            <p>
-              cuando donas, tu aporte se registra. cuando se confirma, entra al dinero disponible.
-              cuando se usa, publicamos el monto, el gasto y el comprobante. cuando es posible,
-              también mostramos contenido de la entrega o la acción realizada.
-            </p>
-            <p>ingresos visibles. gastos con soporte. saldo disponible en vivo.</p>
-          </div>
-
-          <div
-            className="mt-8 max-w-3xl animate-fade-in"
-            style={{ animationDelay: "0.28s" }}
-          >
-            <div className="relative overflow-hidden rounded-xl border border-[#E3001B]/40 bg-[#E3001B]/[0.07] p-5 md:p-6 backdrop-blur-sm">
-              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#E3001B]/20 blur-3xl" />
-              <div className="absolute -left-10 -bottom-10 h-28 w-28 rounded-full bg-[#E3001B]/15 blur-3xl" />
-              <p className="relative text-3xl md:text-5xl font-black lowercase tracking-tight text-white">
-                no nos creas.
-                <span className="text-[#E3001B]"> míralo.</span>
-              </p>
-              <p className="relative mt-2 text-xs md:text-sm text-zinc-300 lowercase">
-                cada ingreso, cada gasto y cada saldo publicado en esta página.
-              </p>
-              <a
-                href="https://fundacionbasico.com"
-                target="_blank"
-                rel="noreferrer"
-                className="relative mt-4 inline-flex items-center gap-2 rounded-full border border-[#E3001B]/40 bg-[#E3001B]/10 px-4 py-2 text-sm font-semibold text-[#ff6e7e] hover:bg-[#E3001B]/20 hover:text-white transition-colors"
-              >
-                <Radio className="h-3.5 w-3.5" />
-                fundacionbasico.com
-              </a>
-            </div>
-          </div>
-
-          <div
-            className="mt-8 flex flex-col sm:flex-row gap-3 animate-fade-in"
-            style={{ animationDelay: "0.33s" }}
-          >
-            <button
-              onClick={() => scrollToId("aportar")}
-              className="group relative inline-flex items-center justify-center gap-2 rounded-md bg-[#E3001B] px-7 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_0_0_rgba(227,0,27,0.6)] transition-all duration-300 hover:bg-[#ff1a36] hover:shadow-[0_0_40px_-5px_rgba(227,0,27,0.8)] hover:-translate-y-0.5"
+            <a
+              href="https://fundacionbasico.com"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-[#E3001B]/40 bg-[#E3001B]/10 px-4 py-2 text-sm font-semibold text-[#ff6e7e] hover:bg-[#E3001B]/20 hover:text-white transition-colors"
             >
-              <span className="absolute inset-0 -z-10 rounded-md bg-[#E3001B] opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-60" />
-              donar ahora
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </button>
-            <button
-              onClick={() => scrollToId("resumen")}
-              className="inline-flex items-center justify-center gap-2 rounded-md border border-white/20 bg-white/[0.03] px-7 py-4 text-sm font-semibold uppercase tracking-wider text-zinc-200 backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/[0.06] hover:text-white"
-            >
-              <Activity className="h-4 w-4" />
-              ver fondo en vivo
-            </button>
+              <Radio className="h-3.5 w-3.5" />
+              fundacionbasico.com
+            </a>
           </div>
-
-          {/* mini flow */}
-          <div
-            className="mt-14 animate-fade-in"
-            style={{ animationDelay: "0.38s" }}
-          >
-            <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-              cómo funciona
-            </p>
-            <div className="flex flex-wrap items-stretch gap-3">
-              {[
-                { icon: Heart, label: "donar" },
-                { icon: CheckCircle2, label: "confirmar" },
-                { icon: Wallet, label: "disponible" },
-                { icon: Receipt, label: "gasto con comprobante" },
-                { icon: HandHeart, label: "ayuda visible" },
-              ].map((step, i, arr) => (
-                <div key={step.label} className="flex items-center gap-3">
-                  <div className="group relative flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 backdrop-blur-sm transition-all hover:border-[#E3001B]/40 hover:bg-white/[0.06]">
-                    <step.icon className="h-4 w-4 text-[#E3001B]" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                      {step.label}
-                    </span>
-                  </div>
-                  {i < arr.length - 1 && (
-                    <ArrowRight className="h-3.5 w-3.5 text-zinc-600" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <button
-            onClick={() => scrollToId("resumen")}
-            className="mt-14 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-300 transition-colors animate-pulse"
-          >
-            <ChevronDown className="h-3 w-3" />
-            scroll
-          </button>
         </div>
       </header>
+
 
       <main className="mx-auto max-w-6xl px-5 py-16 md:py-24 space-y-20 md:space-y-28">
 
