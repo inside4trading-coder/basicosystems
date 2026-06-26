@@ -232,7 +232,7 @@ export default function FuerzaVenezuela() {
             </div>
             <button
               onClick={() => scrollToId("aportar")}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#E3001B] px-3 py-2 md:px-4 md:py-2.5 text-xs md:text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_24px_-6px_rgba(227,0,27,0.7)] hover:bg-[#ff1a36] transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-[#ff7a4c] to-[#ff5a6e] px-3 py-2 md:px-4 md:py-2.5 text-xs md:text-sm font-bold uppercase tracking-wider text-white shadow-[0_4px_20px_-4px_rgba(255,122,76,0.7)] hover:shadow-[0_6px_28px_-2px_rgba(255,122,76,0.9)] transition-shadow"
             >
               donar ahora
               <ArrowRight className="h-3.5 w-3.5" />
