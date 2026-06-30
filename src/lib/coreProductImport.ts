@@ -245,9 +245,8 @@ export function buildPreview(
     }
 
     // Validations
-    if (!r.core_sku && r.action !== "create") {
-      // allow blank sku only for create (auto-generate); otherwise error
-      if (r.action !== "create") warnings.push("core_sku vacío: se generará automáticamente al crear");
+    if (!r.core_sku) {
+      warnings.push("core_sku vacío: se generará automáticamente al crear");
     }
     if (r.action === "create" && existingProduct) {
       errors.push("create pero el core_sku ya existe");
