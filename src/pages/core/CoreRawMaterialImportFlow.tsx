@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
