@@ -316,6 +316,10 @@ function buildPreview(
   const seenCodes = new Set<string>();
   const rows: PreviewRow[] = [];
 
+  // Find the column that maps to "code" to pre-detect existing rows (partial update support)
+  const codeField = fields.find((f) => f.internal_field === "code");
+  const codeColumn = codeField?.column_name;
+
   rawRows.forEach((raw, idx) => {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -326,6 +330,11 @@ function buildPreview(
     let needsResolution = false;
     let shouldSkip = false;
 
+    // Pre-detect: if code matches an existing material, this is a partial UPDATE —
+    // empty cells should NOT trigger "Falta ..." errors; they just won't be updated.
+    const rawCode = codeColumn ? String(raw[codeColumn] ?? "").trim() : "";
+    const isPartialUpdate = !!rawCode && ctx.existingCodes.has(rawCode);
+
     fields.forEach((f) => {
       let val: any = raw[f.column_name];
       if (val === undefined || val === null || String(val).trim() === "") {
@@ -333,6 +342,8 @@ function buildPreview(
       }
       const s = val == null ? "" : String(val).trim();
       const label = f.display_name || f.column_name;
+      const missingOk = isPartialUpdate && f.internal_field !== "code";
+
 
       switch (f.internal_field) {
         case "code":
