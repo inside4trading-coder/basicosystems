@@ -218,7 +218,13 @@ export default function CoreProducts() {
     load();
   }
 
-  const placeholder = () => toast.info("La importación/exportación del Catálogo de Fabricación se conectará al sistema de Templates de Carga en un siguiente ajuste.");
+  const [importOpen, setImportOpen] = useState(false);
+  async function handleExport() {
+    try {
+      await exportCatalog({ search, status: fStatus, type: fType, restock: fRestock });
+      toast.success("Catálogo exportado");
+    } catch (e: any) { toast.error(e?.message ?? "Error exportando"); }
+  }
 
   async function runSync(mode: "catalog" | "sales") {
     setSyncing(true);
