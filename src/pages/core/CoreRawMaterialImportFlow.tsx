@@ -350,10 +350,11 @@ function buildPreview(
           if (!s) errors.push(`Falta "${label}" (código)`);
           parsed.code = s; break;
         case "name":
-          if (!s) errors.push(`Falta "${label}" (nombre)`);
+          if (!s) { if (!missingOk) errors.push(`Falta "${label}" (nombre)`); break; }
           parsed.name = s; break;
         case "category_id": {
-          if (!s) { errors.push(`Falta "${label}" (categoría)`); break; }
+          if (!s) { if (!missingOk) errors.push(`Falta "${label}" (categoría)`); break; }
+
           categoryRaw = s;
           const norm = normalizeKey(s);
           // 1. direct match
