@@ -144,6 +144,7 @@ const App = () => (
                 <Route path="templates-costos/:id" element={<CoreCostTemplateEditor />} />
                 <Route path="productos" element={<CoreProducts />} />
                 <Route path="productos/pendientes" element={<CoreWooCandidates />} />
+                <Route path="productos/importaciones" element={<CoreProductImports />} />
                 <Route path="productos/nuevo" element={<CoreProductEditor />} />
                 <Route path="productos/:id" element={<CoreProductEditor />} />
                 <Route path="control-reposicion" element={<CoreRestockControl />} />
