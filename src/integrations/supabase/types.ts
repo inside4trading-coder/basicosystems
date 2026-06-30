@@ -1799,12 +1799,133 @@ export type Database = {
           },
         ]
       }
+      core_product_import_job_rows: {
+        Row: {
+          action: string | null
+          core_sku: string | null
+          created_at: string
+          created_product_id: string | null
+          created_variant_id: string | null
+          errors: Json | null
+          id: string
+          job_id: string
+          product_name: string | null
+          raw_payload: Json | null
+          result: string | null
+          row_number: number
+          updated_product_id: string | null
+          updated_variant_id: string | null
+          variant_label: string | null
+          warnings: Json | null
+        }
+        Insert: {
+          action?: string | null
+          core_sku?: string | null
+          created_at?: string
+          created_product_id?: string | null
+          created_variant_id?: string | null
+          errors?: Json | null
+          id?: string
+          job_id: string
+          product_name?: string | null
+          raw_payload?: Json | null
+          result?: string | null
+          row_number: number
+          updated_product_id?: string | null
+          updated_variant_id?: string | null
+          variant_label?: string | null
+          warnings?: Json | null
+        }
+        Update: {
+          action?: string | null
+          core_sku?: string | null
+          created_at?: string
+          created_product_id?: string | null
+          created_variant_id?: string | null
+          errors?: Json | null
+          id?: string
+          job_id?: string
+          product_name?: string | null
+          raw_payload?: Json | null
+          result?: string | null
+          row_number?: number
+          updated_product_id?: string | null
+          updated_variant_id?: string | null
+          variant_label?: string | null
+          warnings?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_product_import_job_rows_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "core_product_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_product_import_jobs: {
+        Row: {
+          applied_at: string | null
+          applied_by: string | null
+          created_at: string
+          created_by: string | null
+          errors_count: number
+          file_name: string | null
+          id: string
+          notes: string | null
+          products_created: number
+          products_updated: number
+          status: string
+          total_rows: number
+          variants_created: number
+          variants_updated: number
+          warnings_count: number
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          errors_count?: number
+          file_name?: string | null
+          id?: string
+          notes?: string | null
+          products_created?: number
+          products_updated?: number
+          status?: string
+          total_rows?: number
+          variants_created?: number
+          variants_updated?: number
+          warnings_count?: number
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          errors_count?: number
+          file_name?: string | null
+          id?: string
+          notes?: string | null
+          products_created?: number
+          products_updated?: number
+          status?: string
+          total_rows?: number
+          variants_created?: number
+          variants_updated?: number
+          warnings_count?: number
+        }
+        Relationships: []
+      }
       core_product_variants: {
         Row: {
+          barcode: string | null
           core_product_id: string
           created_at: string
           id: string
           notes: string | null
+          qr_code: string | null
           size: string
           sort_order: number
           status: string
@@ -1819,10 +1940,12 @@ export type Database = {
           woo_variation_id: number | null
         }
         Insert: {
+          barcode?: string | null
           core_product_id: string
           created_at?: string
           id?: string
           notes?: string | null
+          qr_code?: string | null
           size: string
           sort_order?: number
           status?: string
@@ -1837,10 +1960,12 @@ export type Database = {
           woo_variation_id?: number | null
         }
         Update: {
+          barcode?: string | null
           core_product_id?: string
           created_at?: string
           id?: string
           notes?: string | null
+          qr_code?: string | null
           size?: string
           sort_order?: number
           status?: string

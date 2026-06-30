@@ -13,10 +13,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet, RefreshCw, Inbox, Cloud, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet, RefreshCw, Inbox, Cloud, ChevronDown, ChevronRight, History } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { cn } from "@/lib/utils";
 import { formatDMY } from "@/lib/dateUtils";
+import { downloadTemplate, exportCatalog } from "@/lib/coreProductImport";
+import { ProductImportDialog } from "@/components/core/ProductImportDialog";
 
 type Variant = {
   id: string;
@@ -216,7 +218,13 @@ export default function CoreProducts() {
     load();
   }
 
-  const placeholder = () => toast.info("La importación/exportación del Catálogo de Fabricación se conectará al sistema de Templates de Carga en un siguiente ajuste.");
+  const [importOpen, setImportOpen] = useState(false);
+  async function handleExport() {
+    try {
+      await exportCatalog({ search, status: fStatus, type: fType, restock: fRestock });
+      toast.success("Catálogo exportado");
+    } catch (e: any) { toast.error(e?.message ?? "Error exportando"); }
+  }
 
   async function runSync(mode: "catalog" | "sales") {
     setSyncing(true);
@@ -261,9 +269,10 @@ export default function CoreProducts() {
             <Inbox className="h-4 w-4 mr-1" />Pendientes Woo
             {pendingCount > 0 && <Badge variant="destructive" className="ml-2 px-1.5 h-5">{pendingCount}</Badge>}
           </Button>
-          <Button variant="outline" size="sm" onClick={placeholder}><FileSpreadsheet className="h-4 w-4 mr-1" />Formato base</Button>
-          <Button variant="outline" size="sm" onClick={placeholder}><Upload className="h-4 w-4 mr-1" />Importar</Button>
-          <Button variant="outline" size="sm" onClick={placeholder}><Download className="h-4 w-4 mr-1" />Exportar</Button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/core/productos/importaciones")} title="Historial de importaciones"><History className="h-4 w-4 mr-1" />Historial</Button>
+          <Button variant="outline" size="sm" onClick={downloadTemplate}><FileSpreadsheet className="h-4 w-4 mr-1" />Formato base</Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-1" />Importar</Button>
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1" />Exportar</Button>
           <Button size="sm" onClick={() => navigate("/core/productos/nuevo")}><Plus className="h-4 w-4 mr-1" />Nuevo producto de fabricación</Button>
         </div>
       </div>
@@ -438,6 +447,7 @@ export default function CoreProducts() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ProductImportDialog open={importOpen} onOpenChange={setImportOpen} onApplied={load} />
     </div>
   );
 }
