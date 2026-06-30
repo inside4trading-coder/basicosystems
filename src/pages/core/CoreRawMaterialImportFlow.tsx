@@ -316,6 +316,10 @@ function buildPreview(
   const seenCodes = new Set<string>();
   const rows: PreviewRow[] = [];
 
+  // Find the column that maps to "code" to pre-detect existing rows (partial update support)
+  const codeField = fields.find((f) => f.internal_field === "code");
+  const codeColumn = codeField?.column_name;
+
   rawRows.forEach((raw, idx) => {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -326,6 +330,11 @@ function buildPreview(
     let needsResolution = false;
     let shouldSkip = false;
 
+    // Pre-detect: if code matches an existing material, this is a partial UPDATE —
+    // empty cells should NOT trigger "Falta ..." errors; they just won't be updated.
+    const rawCode = codeColumn ? String(raw[codeColumn] ?? "").trim() : "";
+    const isPartialUpdate = !!rawCode && ctx.existingCodes.has(rawCode);
+
     fields.forEach((f) => {
       let val: any = raw[f.column_name];
       if (val === undefined || val === null || String(val).trim() === "") {
@@ -333,16 +342,19 @@ function buildPreview(
       }
       const s = val == null ? "" : String(val).trim();
       const label = f.display_name || f.column_name;
+      const missingOk = isPartialUpdate && f.internal_field !== "code";
+
 
       switch (f.internal_field) {
         case "code":
           if (!s) errors.push(`Falta "${label}" (código)`);
           parsed.code = s; break;
         case "name":
-          if (!s) errors.push(`Falta "${label}" (nombre)`);
+          if (!s) { if (!missingOk) errors.push(`Falta "${label}" (nombre)`); break; }
           parsed.name = s; break;
         case "category_id": {
-          if (!s) { errors.push(`Falta "${label}" (categoría)`); break; }
+          if (!s) { if (!missingOk) errors.push(`Falta "${label}" (categoría)`); break; }
+
           categoryRaw = s;
           const norm = normalizeKey(s);
           // 1. direct match
@@ -382,7 +394,7 @@ function buildPreview(
           break;
         }
         case "unit_of_measure_id": {
-          if (!s) { errors.push(`Falta "${label}" (unidad)`); break; }
+          if (!s) { if (!missingOk) errors.push(`Falta "${label}" (unidad)`); break; }
           unitRaw = s;
           const norm = normalizeKey(s);
           const direct = ctx.unitByNorm.get(norm);
@@ -417,7 +429,7 @@ function buildPreview(
           break;
         }
         case "unit_cost": {
-          if (!s) { errors.push(`Falta "${label}" (costo)`); break; }
+          if (!s) { if (!missingOk) errors.push(`Falta "${label}" (costo)`); break; }
           const n = parseFloat(s.replace(",", "."));
           if (Number.isNaN(n)) errors.push(`Costo "${s}" inválido`);
           else if (n < 0) errors.push(`Costo negativo`);
@@ -425,7 +437,8 @@ function buildPreview(
         }
         case "currency": {
           const up = s.toUpperCase();
-          if (!up) { errors.push(`Falta "${label}" (moneda)`); break; }
+          if (!up) { if (!missingOk) errors.push(`Falta "${label}" (moneda)`); break; }
+
           if (!CURRENCIES.includes(up)) errors.push(`Moneda "${s}" inválida`);
           else parsed.currency = up; break;
         }
@@ -742,7 +755,7 @@ function RawMaterialImporterDialog({
       } else if (effective === "skip") {
         skipped++; validation = "skipped";
       } else {
-        const payload: any = {
+        const fullPayload: any = {
           code: p.parsed.code, name: p.parsed.name,
           category_id: p.parsed.category_id, unit_of_measure_id: p.parsed.unit_of_measure_id,
           unit_cost: p.parsed.unit_cost, currency: p.parsed.currency,
@@ -750,22 +763,35 @@ function RawMaterialImporterDialog({
           notes: p.parsed.notes ?? null,
         };
         if (effective === "update") {
-          const { data: existing } = await supabase.from("core_raw_materials").select("id,unit_cost").eq("code", payload.code).maybeSingle();
+          const { data: existing } = await supabase.from("core_raw_materials").select("id,unit_cost").eq("code", fullPayload.code).maybeSingle();
           if (existing) {
-            const { error } = await supabase.from("core_raw_materials").update(payload).eq("id", (existing as any).id);
+            // Partial update: only include fields actually parsed from the CSV row
+            // (undefined = column missing or empty → preserve existing value).
+            const updatePayload: any = { code: fullPayload.code };
+            if (p.parsed.name !== undefined) updatePayload.name = p.parsed.name;
+            if (p.parsed.category_id !== undefined) updatePayload.category_id = p.parsed.category_id;
+            if (p.parsed.unit_of_measure_id !== undefined) updatePayload.unit_of_measure_id = p.parsed.unit_of_measure_id;
+            if (p.parsed.unit_cost !== undefined) updatePayload.unit_cost = p.parsed.unit_cost;
+            if (p.parsed.currency !== undefined) updatePayload.currency = p.parsed.currency;
+            if (p.parsed.supplier !== undefined && p.parsed.supplier !== null) updatePayload.supplier = p.parsed.supplier;
+            if (p.parsed.status !== undefined) updatePayload.status = p.parsed.status;
+            if (p.parsed.notes !== undefined && p.parsed.notes !== null) updatePayload.notes = p.parsed.notes;
+
+            const { error } = await supabase.from("core_raw_materials").update(updatePayload).eq("id", (existing as any).id);
             if (error) { errored++; validation = "error"; p.errors.push(error.message); }
             else {
               updated++; targetId = (existing as any).id;
-              if (Number((existing as any).unit_cost) !== Number(payload.unit_cost)) {
-                await logCoreAudit({ table: "core_raw_materials", recordId: targetId, action: "import_update_cost", field: "unit_cost", oldValue: (existing as any).unit_cost, newValue: payload.unit_cost });
+              if (updatePayload.unit_cost !== undefined && Number((existing as any).unit_cost) !== Number(updatePayload.unit_cost)) {
+                await logCoreAudit({ table: "core_raw_materials", recordId: targetId, action: "import_update_cost", field: "unit_cost", oldValue: (existing as any).unit_cost, newValue: updatePayload.unit_cost });
               }
             }
           }
         } else {
-          const { data, error } = await supabase.from("core_raw_materials").insert(payload).select().single();
+          const { data, error } = await supabase.from("core_raw_materials").insert(fullPayload).select().single();
           if (error) { errored++; validation = "error"; p.errors.push(error.message); }
           else { created++; targetId = (data as any).id; }
         }
+
       }
 
       rowsToInsert.push({
