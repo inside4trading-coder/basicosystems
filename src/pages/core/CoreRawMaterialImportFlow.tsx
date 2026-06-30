@@ -394,7 +394,7 @@ function buildPreview(
           break;
         }
         case "unit_of_measure_id": {
-          if (!s) { errors.push(`Falta "${label}" (unidad)`); break; }
+          if (!s) { if (!missingOk) errors.push(`Falta "${label}" (unidad)`); break; }
           unitRaw = s;
           const norm = normalizeKey(s);
           const direct = ctx.unitByNorm.get(norm);
