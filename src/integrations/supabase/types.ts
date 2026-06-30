@@ -1410,6 +1410,48 @@ export type Database = {
         }
         Relationships: []
       }
+      core_import_value_aliases: {
+        Row: {
+          action: string
+          alias_type: string
+          created_at: string
+          created_by: string | null
+          id: string
+          normalized_source_value: string
+          source_value: string
+          target_id: string | null
+          target_value: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action: string
+          alias_type: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          normalized_source_value: string
+          source_value: string
+          target_id?: string | null
+          target_value?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action?: string
+          alias_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          normalized_source_value?: string
+          source_value?: string
+          target_id?: string | null
+          target_value?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       core_locations: {
         Row: {
           created_at: string
