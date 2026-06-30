@@ -13,10 +13,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet, RefreshCw, Inbox, Cloud, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet, RefreshCw, Inbox, Cloud, ChevronDown, ChevronRight, History } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { cn } from "@/lib/utils";
 import { formatDMY } from "@/lib/dateUtils";
+import { downloadTemplate, exportCatalog } from "@/lib/coreProductImport";
+import { ProductImportDialog } from "@/components/core/ProductImportDialog";
 
 type Variant = {
   id: string;
