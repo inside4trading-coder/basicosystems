@@ -269,9 +269,10 @@ export default function CoreProducts() {
             <Inbox className="h-4 w-4 mr-1" />Pendientes Woo
             {pendingCount > 0 && <Badge variant="destructive" className="ml-2 px-1.5 h-5">{pendingCount}</Badge>}
           </Button>
-          <Button variant="outline" size="sm" onClick={placeholder}><FileSpreadsheet className="h-4 w-4 mr-1" />Formato base</Button>
-          <Button variant="outline" size="sm" onClick={placeholder}><Upload className="h-4 w-4 mr-1" />Importar</Button>
-          <Button variant="outline" size="sm" onClick={placeholder}><Download className="h-4 w-4 mr-1" />Exportar</Button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/core/productos/importaciones")} title="Historial de importaciones"><History className="h-4 w-4 mr-1" />Historial</Button>
+          <Button variant="outline" size="sm" onClick={downloadTemplate}><FileSpreadsheet className="h-4 w-4 mr-1" />Formato base</Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-1" />Importar</Button>
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1" />Exportar</Button>
           <Button size="sm" onClick={() => navigate("/core/productos/nuevo")}><Plus className="h-4 w-4 mr-1" />Nuevo producto de fabricación</Button>
         </div>
       </div>
