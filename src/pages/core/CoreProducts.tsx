@@ -447,6 +447,7 @@ export default function CoreProducts() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ProductImportDialog open={importOpen} onOpenChange={setImportOpen} onApplied={load} />
     </div>
   );
 }
