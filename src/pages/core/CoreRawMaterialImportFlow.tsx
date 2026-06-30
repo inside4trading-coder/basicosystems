@@ -945,7 +945,13 @@ function RawMaterialImporterDialog({
               }} disabled={confirming}>Volver</Button>
               {missing.length > 0 && <Button variant="secondary" onClick={() => setPhase("resolve")}>Resolver valores ({missing.length})</Button>}
               <Button onClick={confirmImport} disabled={confirming || !canConfirm}>
-                {confirming ? "Importando…" : (summary?.needs ?? 0) > 0 ? "Resuelve los valores faltantes" : "Confirmar importación"}
+                {confirming
+                  ? "Importando…"
+                  : (summary?.needs ?? 0) > 0
+                    ? "Resuelve los valores faltantes"
+                    : (summary?.error ?? 0) > 0
+                      ? `Confirmar (omitir ${summary?.error} con error)`
+                      : "Confirmar importación"}
               </Button>
             </div>
           )}
