@@ -429,7 +429,7 @@ function buildPreview(
           break;
         }
         case "unit_cost": {
-          if (!s) { errors.push(`Falta "${label}" (costo)`); break; }
+          if (!s) { if (!missingOk) errors.push(`Falta "${label}" (costo)`); break; }
           const n = parseFloat(s.replace(",", "."));
           if (Number.isNaN(n)) errors.push(`Costo "${s}" inválido`);
           else if (n < 0) errors.push(`Costo negativo`);
@@ -437,7 +437,8 @@ function buildPreview(
         }
         case "currency": {
           const up = s.toUpperCase();
-          if (!up) { errors.push(`Falta "${label}" (moneda)`); break; }
+          if (!up) { if (!missingOk) errors.push(`Falta "${label}" (moneda)`); break; }
+
           if (!CURRENCIES.includes(up)) errors.push(`Moneda "${s}" inválida`);
           else parsed.currency = up; break;
         }
