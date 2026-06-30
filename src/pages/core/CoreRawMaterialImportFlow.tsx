@@ -807,7 +807,9 @@ function RawMaterialImporterDialog({
     };
   }, [preview]);
 
-  const canConfirm = !!summary && summary.needs === 0 && summary.error === 0 && (summary.create + summary.update) > 0;
+  // Allow confirming even when there are row-level errors: those rows are skipped automatically.
+  // Only block when there are unresolved values (needs > 0) or nothing to import.
+  const canConfirm = !!summary && summary.needs === 0 && (summary.create + summary.update) > 0;
 
   return (
     <Dialog open={true} onOpenChange={(o) => !o && onClose()}>
@@ -943,7 +945,13 @@ function RawMaterialImporterDialog({
               }} disabled={confirming}>Volver</Button>
               {missing.length > 0 && <Button variant="secondary" onClick={() => setPhase("resolve")}>Resolver valores ({missing.length})</Button>}
               <Button onClick={confirmImport} disabled={confirming || !canConfirm}>
-                {confirming ? "Importando…" : (summary?.needs ?? 0) > 0 ? "Resuelve los valores faltantes" : "Confirmar importación"}
+                {confirming
+                  ? "Importando…"
+                  : (summary?.needs ?? 0) > 0
+                    ? "Resuelve los valores faltantes"
+                    : (summary?.error ?? 0) > 0
+                      ? `Confirmar (omitir ${summary?.error} con error)`
+                      : "Confirmar importación"}
               </Button>
             </div>
           )}
