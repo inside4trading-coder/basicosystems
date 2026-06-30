@@ -602,7 +602,26 @@ function RawMaterialImporterDialog({
     const fallbackDelimiter = delimiter === "auto" ? ";" : delimiter;
     const headerDelimiter = bestHeaderDelimiter(lines[0] ?? "", expectedCols, fallbackDelimiter);
     const dataDelimiter = bestDataDelimiter(lines, expectedCols.length, headerDelimiter);
-    const headerValues = parseCsvLine(lines[0] ?? "", headerDelimiter).map(normalizeHeaderName);
+    // Alias common header synonyms (e.g. "precio" → costo_unitario column_name)
+    // so partial CSVs map onto the template fields.
+    const HEADER_ALIASES: Record<string, string> = {
+      precio: "unit_cost", costo: "unit_cost", "costo unitario": "unit_cost", costo_unitario: "unit_cost", price: "unit_cost",
+      codigo: "code", "código": "code", code: "code", sku: "code",
+      nombre: "name", name: "name",
+      categoria: "category_id", "categoría": "category_id", category: "category_id",
+      unidad: "unit_of_measure_id", "unidad de medida": "unit_of_measure_id", unit: "unit_of_measure_id",
+      proveedor: "supplier", supplier: "supplier",
+      moneda: "currency", currency: "currency",
+    };
+    const fieldByInternal = new Map(fields.map((f) => [f.internal_field, f.column_name]));
+    const rawHeaders = parseCsvLine(lines[0] ?? "", headerDelimiter).map(normalizeHeaderName);
+    const headerValues = rawHeaders.map((h) => {
+      if (!h) return h;
+      if (expectedCols.includes(h)) return h;
+      const internal = HEADER_ALIASES[h.toLowerCase().trim()];
+      if (internal && fieldByInternal.has(internal)) return fieldByInternal.get(internal)!;
+      return h;
+    });
     const normalizedText = [headerValues.join(dataDelimiter), ...lines.slice(1)].join("\n");
 
     if (headerDelimiter !== dataDelimiter || delimiter !== dataDelimiter) {
