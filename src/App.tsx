@@ -40,6 +40,7 @@ import CoreCostStructureEditor from "./pages/core/CoreCostStructureEditor";
 import CoreCostTemplates from "./pages/core/CoreCostTemplates";
 import CoreCostTemplateEditor from "./pages/core/CoreCostTemplateEditor";
 import CoreProducts from "./pages/core/CoreProducts";
+import CoreProductImports from "./pages/core/CoreProductImports";
 import CoreProductEditor from "./pages/core/CoreProductEditor";
 import CoreWooCandidates from "./pages/core/CoreWooCandidates";
 import CoreRestockControl from "./pages/core/CoreRestockControl";
