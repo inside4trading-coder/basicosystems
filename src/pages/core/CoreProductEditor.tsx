@@ -121,7 +121,7 @@ export default function CoreProductEditor() {
     (async () => {
       const { data: sts } = await supabase
         .from("core_cost_structures")
-        .select("id, name, base_currency, status, total_unit_cost, total_raw_materials, total_labor, total_technical_processes, total_variable_costs, total_logistics, total_other_costs, total_packaging, suggested_fabrication_fund")
+        .select("id, name, sku, base_currency, status, total_unit_cost, total_raw_materials, total_labor, total_technical_processes, total_variable_costs, total_logistics, total_other_costs, total_packaging, suggested_fabrication_fund, woo_product_id, woo_variation_id, woo_product_name, woo_permalink")
         .in("status", ["draft", "active"])
         .order("name");
       setStructures((sts as any) ?? []);
