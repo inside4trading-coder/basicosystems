@@ -375,6 +375,10 @@ function ProductDialog({ open, onOpenChange, product, variants, stockByVariant, 
           )}
         </div>
 
+        {!isNew && (form.fulfillment_mode === "made_to_order" || form.is_made_to_order) && (
+          <ProductRecipeCard productId={product!.id} />
+        )}
+
         {!isNew && (
           <div className="space-y-2 mt-4">
             <h4 className="text-sm font-bold flex items-center gap-2"><Package className="h-4 w-4" />Variantes / Tallas</h4>
