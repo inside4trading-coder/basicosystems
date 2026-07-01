@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Pencil, Package, Copy, Download } from "lucide-react";
 import { toast } from "sonner";
+import { ProductRecipeCard } from "@/components/espana/ProductRecipeCard";
 
 interface Product {
   id: string;
