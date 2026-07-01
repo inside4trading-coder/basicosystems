@@ -198,6 +198,21 @@ export default function CoreProductEditor() {
     setCurrency(s.base_currency);
     setUnitCost(Number(s.total_unit_cost) || 0);
     setSuggestedFund(Number(s.suggested_fabrication_fund) || Number(s.total_unit_cost) || 0);
+
+    // Prefill name/sku from cost structure if empty in product
+    const prefilled: string[] = [];
+    if (!name.trim() && s.name) { setName(s.name); prefilled.push("nombre"); }
+    if (!coreSku.trim() && s.sku) { setCoreSku(s.sku); prefilled.push("SKU"); }
+
+    // Propagate Woo linkage from cost structure if present and not already set on product
+    if (s.woo_product_id && !wooProductId) {
+      setWooProductId(Number(s.woo_product_id));
+      if (s.woo_product_name) setWooProductName(s.woo_product_name);
+      if (s.woo_permalink) setWooPermalink(s.woo_permalink);
+      if (s.sku && !wooSku) setWooSku(s.sku);
+      prefilled.push("Woo ID");
+    }
+
     const snap = {
       cost_structure_id: s.id,
       cost_structure_name: s.name,
@@ -212,10 +227,18 @@ export default function CoreProductEditor() {
         other_costs: Number(s.total_other_costs) || 0,
         packaging: Number(s.total_packaging) || 0,
       },
+      woo_product_id: s.woo_product_id ?? null,
+      woo_variation_id: s.woo_variation_id ?? null,
+      woo_product_name: s.woo_product_name ?? null,
+      woo_permalink: s.woo_permalink ?? null,
       taken_at: new Date().toISOString(),
     };
     setCostSnapshot(snap);
-    toast.success(`Costo cargado desde ${s.name}`);
+    toast.success(
+      prefilled.length > 0
+        ? `Costo cargado desde ${s.name} · Rellenado: ${prefilled.join(", ")}`
+        : `Costo cargado desde ${s.name}`
+    );
   }
 
   function addVariant(size = "") {
