@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Pencil, Package, Copy, Download } from "lucide-react";
 import { toast } from "sonner";
+import { ProductRecipeCard } from "@/components/espana/ProductRecipeCard";
 
 interface Product {
   id: string;
@@ -373,6 +374,10 @@ function ProductDialog({ open, onOpenChange, product, variants, stockByVariant, 
             </div>
           )}
         </div>
+
+        {!isNew && (form.fulfillment_mode === "made_to_order" || form.is_made_to_order) && (
+          <ProductRecipeCard productId={product!.id} />
+        )}
 
         {!isNew && (
           <div className="space-y-2 mt-4">

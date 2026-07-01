@@ -1,62 +1,54 @@
-## Corrección final /fuerza-venezuela
+# Plan: Recetas de Blank + DTF para productos de fabricación ligera
 
-Solo cambios de diseño, jerarquía, copy y responsive en `src/pages/FuerzaVenezuela.tsx`. No se tocan RPCs, tablas, cálculos ni rutas.
+## Objetivo
+Permitir definir, para cada producto `made_to_order` de España, **qué DTF lleva** y **qué familia de blank usar** (con el blank exacto resuelto automáticamente según la talla de la variante vendida). Editable desde dos lugares: ficha del producto y módulo Blanks/DTF.
 
-### 1. Header superior (sticky)
+## Modelo de datos
 
-Refactor del `<header>` existente:
-- **Izquierda**: logo `logo-fondo-transparente-v2.png` + microtexto "por [basico]".
-- **Derecha (desktop)**: mini-cápsula glass con:
-  - label "recaudado confirmado"
-  - valor `~ US$ {totalesUSD.ingresado_confirmado_usd}` (usa el valor ya calculado de aportes confirmados, no por verificar)
-  - botón primario "donar ahora" que abre `AporteDialog`.
-- **Mobile**: logo arriba, debajo fila compacta `recaudado | botón donar`. Botón "donar ahora" siempre accesible (sticky).
+Ajustar el esquema de recetas para soportar "blank por talla":
 
-### 2. Contexto del terremoto (slim)
+- `esp_product_material_recipes` (ya existe, a nivel producto):
+  - Añadir `dtf_material_id uuid` → apunta al DTF único del producto.
+  - Añadir `blank_family` text → familia lógica de blank (ej. `camiseta_basica_negra`).
+- `esp_material_items` (blanks):
+  - Añadir `blank_family` text y `size` text (normalizada: S, M, L, XL…).
+  - Un blank pertenece a una familia + talla; así la receta resuelve `blank_family + variant.size → material_item`.
+- `esp_product_material_recipe_items` queda solo para "extras" opcionales (etiqueta, bolsa, hilo). No se usa para el blank principal.
 
-Eliminar la caja roja grande. Reemplazar por una banda fina justo bajo el header (border-l acento rojo, fondo `bg-red-500/5`, una línea):
-- Principal: "respuesta activa por el terremoto ocurrido en venezuela"
-- Secundario (muted, una línea): "este fondo nace para canalizar aportes y convertirlos en ayuda visible, con ingresos, gastos y saldo disponible publicados."
+Backfill: para los blanks ya cargados, poblar `blank_family` a partir del nombre/color agrupado actual, y `size` desde su etiqueta actual (ya normalizada en UI).
 
-### 3. Quitar redundancia
+## RPC de resolución
+Actualizar `esp_resolve_fabrication_materials` para que:
+1. Lea la receta del producto.
+2. Devuelva el DTF (`dtf_material_id`).
+3. Busque el blank exacto: `esp_material_items` where `blank_family = receta.blank_family and size = normalize(variant.size)`.
+4. Sume los extras del recipe_items.
+5. Marque error claro si falta el blank de esa talla ("No hay blank talla XL en familia camiseta_basica_negra").
 
-Eliminar el badge "EN VIVO · TRANSPARENTE · VENEZUELA". En la zona de las tarjetas de estado del fondo añadir microtexto "actualizado tras verificación".
+El preflight y consumo (`esp_consume_materials_for_fabrication_request`) ya usan este resolver, así que heredan el cambio.
 
-### 4. Hero reescrito
+## UI — dos accesos
 
-Composición:
-- H1: "fuerza venezuela" (logo o tipografía actual)
-- Subtítulo: "una nueva forma de ayudar."
-- Párrafo explicativo de 4 líneas (donas → confirma → disponible → publicamos gasto/comprobante/contenido).
-- Remate grande: **"no nos creas."** / **"míralo."** (display, dos líneas, acento).
-- Línea soporte: "ingresos visibles. gastos con soporte. saldo disponible."
-- CTAs: primario "donar ahora", secundario "ver fondo" (scroll a `#resumen`).
+**1. Desde `/espana/productos` (ficha del producto)**
+- Nueva sección "Receta de fabricación ligera" visible solo si el producto es `made_to_order`.
+- Dos selects:
+  - **DTF** (buscador entre materiales tipo `dtf`).
+  - **Familia de blank** (lista distinct de `blank_family` con preview de tallas disponibles y stock).
+- Tabla pequeña debajo: "Resolución por talla" mostrando cada variante → blank específico → stock actual → ✓ / ⚠ sin blank.
+- Botón "Guardar receta".
 
-### 5. Bloque "cómo funciona" + responsive
+**2. Desde `/espana/blanks-dtf` → pestaña Recetas**
+- Buscador de producto + filtro "solo sin receta".
+- Vista lista con: producto, DTF asignado, familia blank, nº variantes sin cobertura.
+- Edición inline / diálogo con los mismos campos que la ficha del producto.
+- Acción masiva: "Asignar familia de blank a N productos seleccionados".
 
-Sección dedicada con 5 pasos: DONAS → VERIFICAMOS → PUBLICAMOS → EJECUTAMOS → MOSTRAMOS, cada uno con su copy corto del brief. Cierre: "no es una promesa de transparencia. es una plataforma para verla."
+## Detalles técnicos
+- `normalizeSize` (ya en `src/lib/espMaterials.ts`) se reutiliza en el resolver SQL (crear helper `esp_normalize_size(text)` que replique la lógica: quitar "Talla ", trim, upper).
+- Nuevo hook `useEspProductRecipe(productId)` con react-query para leer/escribir receta.
+- Componente `ProductRecipeCard.tsx` reutilizable en ambos accesos.
+- Sin cambios en el flujo de fabricación existente: el botón "Fabricar" seguirá funcionando y ahora encontrará los materiales correctos.
 
-- **Desktop (`md:`+)**: flujo horizontal actual con flechas laterales `→`.
-- **Mobile**: timeline vertical — cards full-width apiladas, ícono + título + descripción, conector vertical sutil (línea + chevron `↓`) entre pasos. Sin flechas laterales. Mismo estilo dark/tech/glow.
-
-Se hará con dos render paths (`hidden md:flex` para horizontal, `flex md:hidden` para vertical) para no forzar la adaptación.
-
-### 6. Tarjetas de estado del fondo
-
-Ajustar solo los labels (valores siguen igual):
-- "disponible total aprox."
-- "recaudado confirmado"
-- "gastado con soporte"
-
-Pie aclaratorio (muted, small): "los montos aproximados combinan Bs, USD y USDT usando la tasa BCV activa para bolívares. los saldos reales se mantienen separados por moneda."
-
-### 7. Detalles técnicos
-
-- Archivo único: `src/pages/FuerzaVenezuela.tsx`.
-- Reutilizar `AporteDialog`, `totalesUSD`, `tasaBCV` y RPCs ya existentes.
-- Tokens semánticos existentes (no hardcodear colores).
-- Sticky header con `position: sticky; top: 0; z-50` + backdrop-blur.
-- Verificación: build + screenshots Playwright en desktop (1280) y mobile (390) del hero y la sección "cómo funciona".
-
-### Fuera de alcance
-Lógica contable, tablas de aportes/egresos, RPCs, rutas, otros módulos.
+## Fuera de alcance
+- Recetas por color/variante fina (queda modelado pero no expuesto en UI aún).
+- Importación masiva por CSV de recetas.
