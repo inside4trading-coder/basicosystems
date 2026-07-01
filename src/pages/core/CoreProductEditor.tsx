@@ -33,6 +33,7 @@ type Variant = {
 type CostStructure = {
   id: string;
   name: string;
+  sku?: string | null;
   base_currency: string;
   status: string;
   total_unit_cost: number;
@@ -44,6 +45,10 @@ type CostStructure = {
   total_other_costs: number;
   total_packaging: number;
   suggested_fabrication_fund: number;
+  woo_product_id?: number | null;
+  woo_variation_id?: number | null;
+  woo_product_name?: string | null;
+  woo_permalink?: string | null;
 };
 
 const PRODUCT_TYPES = ["Franela", "Hoodie", "Jogger", "Cargo", "Short", "Gorra", "Accesorio", "Producto terminado", "Otro"];
