@@ -112,6 +112,11 @@ export default function CoreCostStructureEditor() {
   const [saving, setSaving] = useState(false);
   const [originalSalePrice, setOriginalSalePrice] = useState<number | null>(null);
 
+  // Woo fetch state
+  const [wooFetching, setWooFetching] = useState(false);
+  const [wooPreview, setWooPreview] = useState<any | null>(null);
+  const [selectedWooVariantId, setSelectedWooVariantId] = useState<string>("");
+
   useEffect(() => {
     (async () => {
       setLoading(true);
