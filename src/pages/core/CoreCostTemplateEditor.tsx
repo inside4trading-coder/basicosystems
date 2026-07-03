@@ -25,7 +25,7 @@ const STATUSES = [
 ];
 const LABOR_TYPES = ["Corte", "Costura", "Estampado", "Bordado", "Empaque", "Otro"];
 
-type Section = "raw_material" | "labor" | "technical_process" | "variable_cost" | "logistics" | "other";
+type Section = "raw_material" | "labor" | "technical_process" | "variable_cost" | "logistics" | "packaging" | "other";
 
 type Item = {
   id?: string;
@@ -55,6 +55,7 @@ type RawMaterial = {
   unit_of_measure_id: string | null;
   unit_cost: number;
   currency: string;
+  category_id: string | null;
 };
 
 type Unit = { id: string; abbreviation: string; name: string };
@@ -91,6 +92,7 @@ export default function CoreCostTemplateEditor() {
   const [items, setItems] = useState<Item[]>([]);
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
   const [units, setUnits] = useState<Record<string, Unit>>({});
+  const [packagingCategoryId, setPackagingCategoryId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -98,14 +100,17 @@ export default function CoreCostTemplateEditor() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [rmRes, uomRes] = await Promise.all([
-        supabase.from("core_raw_materials").select("id, code, name, unit_of_measure_id, unit_cost, currency").eq("status", "active").order("name"),
+      const [rmRes, uomRes, catRes] = await Promise.all([
+        supabase.from("core_raw_materials").select("id, code, name, unit_of_measure_id, unit_cost, currency, category_id").eq("status", "active").order("name"),
         supabase.from("core_units_of_measure").select("id, abbreviation, name"),
+        supabase.from("core_raw_material_categories").select("id, name"),
       ]);
       setRawMaterials((rmRes.data as any) ?? []);
       const uMap: Record<string, Unit> = {};
       (uomRes.data as any[] ?? []).forEach(u => { uMap[u.id] = u; });
       setUnits(uMap);
+      const empaque = (catRes.data as any[] ?? []).find(c => (c.name ?? "").trim().toLowerCase() === "empaque");
+      setPackagingCategoryId(empaque?.id ?? null);
 
       if (!isNew) {
         const { data: head, error } = await supabase.from("core_cost_templates").select("*").eq("id", id!).maybeSingle();
@@ -140,7 +145,7 @@ export default function CoreCostTemplateEditor() {
 
   const totals = useMemo(() => {
     const by: Record<Section, number> = {
-      raw_material: 0, labor: 0, technical_process: 0, variable_cost: 0, logistics: 0, other: 0,
+      raw_material: 0, labor: 0, technical_process: 0, variable_cost: 0, logistics: 0, packaging: 0, other: 0,
     };
     items.forEach(it => { by[it.section] += Number(it.subtotal) || 0; });
     const total = Object.values(by).reduce((a, b) => a + b, 0);
@@ -218,6 +223,7 @@ export default function CoreCostTemplateEditor() {
         total_technical_processes: totals.by.technical_process,
         total_variable_costs: totals.by.variable_cost,
         total_logistics: totals.by.logistics,
+        total_packaging: totals.by.packaging,
         total_other_costs: totals.by.other,
         total_estimated_cost: totals.total,
         updated_by: user?.id ?? null,
@@ -355,6 +361,7 @@ export default function CoreCostTemplateEditor() {
                 <TabsTrigger value="technical_process">Procesos técnicos</TabsTrigger>
                 <TabsTrigger value="variable_cost">Variables</TabsTrigger>
                 <TabsTrigger value="logistics">Logística</TabsTrigger>
+                <TabsTrigger value="packaging">Empaque</TabsTrigger>
                 <TabsTrigger value="other">Otros</TabsTrigger>
               </TabsList>
 
@@ -385,6 +392,18 @@ export default function CoreCostTemplateEditor() {
               <TabsContent value="logistics" className="mt-4">
                 <GenericBlock items={items.filter(i => i.section === "logistics")} onAdd={() => addItem("logistics")} onUpdate={updateItem} onRemove={removeItem} />
               </TabsContent>
+              <TabsContent value="packaging" className="mt-4">
+                <RawMaterialBlock
+                  items={items.filter(i => i.section === "packaging")}
+                  rawMaterials={packagingCategoryId ? rawMaterials.filter(r => r.category_id === packagingCategoryId) : rawMaterials}
+                  onAdd={() => addItem("packaging")}
+                  onUpdate={updateItem}
+                  onRemove={removeItem}
+                  onPickRM={pickRawMaterial}
+                  emptyLabel="Sin líneas de empaque"
+                  pickerPlaceholder="Seleccionar item de empaque"
+                />
+              </TabsContent>
               <TabsContent value="other" className="mt-4">
                 <GenericBlock items={items.filter(i => i.section === "other")} onAdd={() => addItem("other")} onUpdate={updateItem} onRemove={removeItem} extraField="item_type" extraLabel="Categoría" />
               </TabsContent>
@@ -401,6 +420,7 @@ export default function CoreCostTemplateEditor() {
               <SummaryRow label="Procesos técnicos" value={fmt(totals.by.technical_process)} currency={baseCurrency} />
               <SummaryRow label="Variables" value={fmt(totals.by.variable_cost)} currency={baseCurrency} />
               <SummaryRow label="Logística" value={fmt(totals.by.logistics)} currency={baseCurrency} />
+              <SummaryRow label="Empaque" value={fmt(totals.by.packaging)} currency={baseCurrency} />
               <SummaryRow label="Otros" value={fmt(totals.by.other)} currency={baseCurrency} />
             </div>
             <div className="border-t pt-3">
@@ -435,20 +455,23 @@ function sectionLabel(s: Section): string {
     technical_process: "Procesos técnicos",
     variable_cost: "Variables",
     logistics: "Logística",
+    packaging: "Empaque",
     other: "Otros",
   } as Record<Section, string>)[s];
 }
 
-function RawMaterialBlock({ items, rawMaterials, onAdd, onUpdate, onRemove, onPickRM }: {
+function RawMaterialBlock({ items, rawMaterials, onAdd, onUpdate, onRemove, onPickRM, emptyLabel, pickerPlaceholder }: {
   items: Item[]; rawMaterials: RawMaterial[];
   onAdd: () => void;
   onUpdate: (id: string, patch: Partial<Item>) => void;
   onRemove: (id: string) => void;
   onPickRM: (id: string, rmId: string) => void;
+  emptyLabel?: string;
+  pickerPlaceholder?: string;
 }) {
   return (
     <div className="space-y-3">
-      {items.length === 0 && <EmptyState label="Sin líneas de materia prima" />}
+      {items.length === 0 && <EmptyState label={emptyLabel ?? "Sin líneas de materia prima"} />}
       {items.map(it => (
         <div key={it._local_id} className="rounded-lg border p-3 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-end">
@@ -458,6 +481,7 @@ function RawMaterialBlock({ items, rawMaterials, onAdd, onUpdate, onRemove, onPi
                 rawMaterials={rawMaterials}
                 value={it.raw_material_id ?? ""}
                 onChange={(v) => onPickRM(it._local_id, v)}
+                placeholder={pickerPlaceholder}
               />
             </div>
             <div>
@@ -587,11 +611,12 @@ function EmptyState({ label }: { label: string }) {
 }
 
 function RawMaterialPicker({
-  rawMaterials, value, onChange,
+  rawMaterials, value, onChange, placeholder,
 }: {
   rawMaterials: RawMaterial[];
   value: string;
   onChange: (id: string) => void;
+  placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const selected = rawMaterials.find(rm => rm.id === value);
@@ -604,7 +629,7 @@ function RawMaterialPicker({
           className={cn("w-full justify-between font-normal", !selected && "text-muted-foreground")}
         >
           <span className="truncate">
-            {selected ? `${selected.code} — ${selected.name}` : "Seleccionar materia prima"}
+            {selected ? `${selected.code} — ${selected.name}` : (placeholder ?? "Seleccionar materia prima")}
           </span>
           <Search className="h-4 w-4 ml-2 opacity-50 shrink-0" />
         </Button>
