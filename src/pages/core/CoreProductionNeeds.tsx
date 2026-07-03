@@ -365,7 +365,6 @@ export default function CoreProductionNeeds() {
             <p className="text-sm text-muted-foreground">Qué hay que fabricar, generado desde Partidas de Fabricación.</p>
           </div>
         </div>
-        <div className="flex gap-2">
         <div className="flex gap-2 items-end flex-wrap">
           <div className="flex flex-col">
             <Label className="text-xs mb-1">Contar ventas desde</Label>
