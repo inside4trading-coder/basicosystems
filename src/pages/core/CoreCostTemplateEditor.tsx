@@ -585,3 +585,56 @@ function GenericBlock({ items, onAdd, onUpdate, onRemove, extraField, extraLabel
 function EmptyState({ label }: { label: string }) {
   return <div className="text-center text-sm text-muted-foreground py-6 border border-dashed rounded-lg">{label}</div>;
 }
+
+function RawMaterialPicker({
+  rawMaterials, value, onChange,
+}: {
+  rawMaterials: RawMaterial[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = rawMaterials.find(rm => rm.id === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          className={cn("w-full justify-between font-normal", !selected && "text-muted-foreground")}
+        >
+          <span className="truncate">
+            {selected ? `${selected.code} — ${selected.name}` : "Seleccionar materia prima"}
+          </span>
+          <Search className="h-4 w-4 ml-2 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[--radix-popover-trigger-width] min-w-[320px]" align="start">
+        <Command
+          filter={(val, search) => {
+            const q = search.toLowerCase().trim();
+            if (!q) return 1;
+            return val.toLowerCase().includes(q) ? 1 : 0;
+          }}
+        >
+          <CommandInput placeholder="Buscar por código o nombre…" />
+          <CommandList>
+            <CommandEmpty>Sin resultados</CommandEmpty>
+            <CommandGroup>
+              {rawMaterials.map(rm => (
+                <CommandItem
+                  key={rm.id}
+                  value={`${rm.code} ${rm.name}`}
+                  onSelect={() => { onChange(rm.id); setOpen(false); }}
+                >
+                  <span className="font-mono text-xs text-muted-foreground mr-2">{rm.code}</span>
+                  <span className="truncate">{rm.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
