@@ -41,7 +41,9 @@ export default function EspanaInventario() {
   const [stock, setStock] = useState<Stock[]>([]);
   const [q, setQ] = useState("");
   const [mode, setMode] = useState<Mode>(null);
+  const [prefillVariantId, setPrefillVariantId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState<{ variantId: string } | null>(null);
+  const openMode = (m: Mode, vid?: string) => { setPrefillVariantId(vid ?? null); setMode(m); };
 
   const load = async () => {
     const [l, p, v, s] = await Promise.all([
