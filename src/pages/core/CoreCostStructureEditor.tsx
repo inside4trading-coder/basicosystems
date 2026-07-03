@@ -302,6 +302,80 @@ export default function CoreCostStructureEditor() {
 
 
 
+  function mapWooCategoryToType(categories: string[]): string | null {
+    const joined = categories.join(" ").toLowerCase();
+    for (const t of PRODUCT_TYPES) {
+      if (joined.includes(t.toLowerCase())) return t;
+    }
+    return null;
+  }
+
+  function stripHtml(s: string | null | undefined): string {
+    if (!s) return "";
+    return String(s).replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  async function fetchWoo() {
+    const pid = wooProductId.trim();
+    if (!pid) return toast.error("Ingresa un Woo Product ID primero");
+    setWooFetching(true);
+    setWooPreview(null);
+    setSelectedWooVariantId("");
+    try {
+      const { data, error } = await supabase.functions.invoke("core-woo-import-variants", {
+        body: { woo_product_id: Number(pid) },
+      });
+      if (error) throw error;
+      if (!data || data.error) throw new Error(data?.error ?? "Sin respuesta");
+      setWooPreview(data);
+      const parent = data.parent ?? {};
+
+      // Prefill parent-level fields (only if empty or user confirms overwrite already visible via toast)
+      if (parent.name) {
+        setWooProductName(parent.name);
+        if (!name.trim()) setName(parent.name);
+      }
+      if (parent.sku && !sku.trim()) setSku(parent.sku);
+      if (parent.permalink) setWooPermalink(parent.permalink);
+      const shortDesc = stripHtml(parent.short_description) || stripHtml(parent.description);
+      if (shortDesc && !description.trim()) setDescription(shortDesc.slice(0, 500));
+      const priceGuess = parent.regular_price ?? parent.price ?? parent.sale_price;
+      if (priceGuess != null && !estimatedSalePrice) setEstimatedSalePrice(String(priceGuess));
+      const detectedType = mapWooCategoryToType(parent.categories ?? []);
+      if (detectedType && !productType) setProductType(detectedType);
+
+      const variantCount = Array.isArray(data.variants) ? data.variants.length : 0;
+      if (variantCount > 0) {
+        // Pre-select current variation if set
+        if (wooVariationId) {
+          const found = data.variants.find((v: any) => Number(v.woo_variation_id) === Number(wooVariationId));
+          if (found) setSelectedWooVariantId(String(found.woo_variation_id));
+        }
+        toast.success(`Producto encontrado: ${parent.name} · ${variantCount} variaciones`);
+      } else {
+        toast.success(`Producto encontrado: ${parent.name}`);
+      }
+    } catch (e: any) {
+      toast.error("Error consultando WooCommerce: " + (e?.message ?? "desconocido"));
+    } finally {
+      setWooFetching(false);
+    }
+  }
+
+  function applyWooVariant(varIdStr: string) {
+    setSelectedWooVariantId(varIdStr);
+    if (!wooPreview?.variants) return;
+    const v = wooPreview.variants.find((x: any) => String(x.woo_variation_id) === varIdStr);
+    if (!v) return;
+    setWooVariationId(String(v.woo_variation_id));
+    if (v.variant_sku) setSku(v.variant_sku);
+    // Refine name with size
+    const parentName = wooPreview.parent?.name ?? name;
+    if (parentName && v.size) setName(`${parentName} — Talla ${v.size}`);
+    if (v.woo_regular_price != null) setEstimatedSalePrice(String(v.woo_regular_price));
+    toast.success(`Variación ${v.size ?? v.woo_variation_id} vinculada`);
+  }
+
   function validate(): string | null {
     if (!name.trim()) return "El nombre es obligatorio";
     if (!baseCurrency) return "La moneda base es obligatoria";
