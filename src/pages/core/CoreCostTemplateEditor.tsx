@@ -9,8 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Loader2, Search } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 
 const PRODUCT_TYPES = ["Franela", "Hoodie", "Jogger", "Cargo", "Short", "Gorra", "Accesorio", "Producto terminado", "Otro"];
@@ -451,14 +454,11 @@ function RawMaterialBlock({ items, rawMaterials, onAdd, onUpdate, onRemove, onPi
           <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-end">
             <div>
               <Label className="text-xs">Materia prima</Label>
-              <Select value={it.raw_material_id ?? ""} onValueChange={(v) => onPickRM(it._local_id, v)}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar materia prima" /></SelectTrigger>
-                <SelectContent>
-                  {rawMaterials.map(rm => (
-                    <SelectItem key={rm.id} value={rm.id}>{rm.code} — {rm.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <RawMaterialPicker
+                rawMaterials={rawMaterials}
+                value={it.raw_material_id ?? ""}
+                onChange={(v) => onPickRM(it._local_id, v)}
+              />
             </div>
             <div>
               <Label className="text-xs">Unidad</Label>
@@ -584,4 +584,57 @@ function GenericBlock({ items, onAdd, onUpdate, onRemove, extraField, extraLabel
 
 function EmptyState({ label }: { label: string }) {
   return <div className="text-center text-sm text-muted-foreground py-6 border border-dashed rounded-lg">{label}</div>;
+}
+
+function RawMaterialPicker({
+  rawMaterials, value, onChange,
+}: {
+  rawMaterials: RawMaterial[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = rawMaterials.find(rm => rm.id === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          className={cn("w-full justify-between font-normal", !selected && "text-muted-foreground")}
+        >
+          <span className="truncate">
+            {selected ? `${selected.code} — ${selected.name}` : "Seleccionar materia prima"}
+          </span>
+          <Search className="h-4 w-4 ml-2 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[--radix-popover-trigger-width] min-w-[320px]" align="start">
+        <Command
+          filter={(val, search) => {
+            const q = search.toLowerCase().trim();
+            if (!q) return 1;
+            return val.toLowerCase().includes(q) ? 1 : 0;
+          }}
+        >
+          <CommandInput placeholder="Buscar por código o nombre…" />
+          <CommandList>
+            <CommandEmpty>Sin resultados</CommandEmpty>
+            <CommandGroup>
+              {rawMaterials.map(rm => (
+                <CommandItem
+                  key={rm.id}
+                  value={`${rm.code} ${rm.name}`}
+                  onSelect={() => { onChange(rm.id); setOpen(false); }}
+                >
+                  <span className="font-mono text-xs text-muted-foreground mr-2">{rm.code}</span>
+                  <span className="truncate">{rm.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
 }
