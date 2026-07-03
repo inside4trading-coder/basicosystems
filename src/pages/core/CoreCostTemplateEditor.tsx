@@ -223,6 +223,7 @@ export default function CoreCostTemplateEditor() {
         total_technical_processes: totals.by.technical_process,
         total_variable_costs: totals.by.variable_cost,
         total_logistics: totals.by.logistics,
+        total_packaging: totals.by.packaging,
         total_other_costs: totals.by.other,
         total_estimated_cost: totals.total,
         updated_by: user?.id ?? null,
