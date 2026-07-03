@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet, AlertTriangle } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { formatDMY } from "@/lib/dateUtils";
+import * as XLSX from "xlsx";
 
 type CostStructure = {
   id: string;
