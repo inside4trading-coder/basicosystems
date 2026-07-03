@@ -25,7 +25,7 @@ const STATUSES = [
 ];
 const LABOR_TYPES = ["Corte", "Costura", "Estampado", "Bordado", "Empaque", "Otro"];
 
-type Section = "raw_material" | "labor" | "technical_process" | "variable_cost" | "logistics" | "other";
+type Section = "raw_material" | "labor" | "technical_process" | "variable_cost" | "logistics" | "packaging" | "other";
 
 type Item = {
   id?: string;
