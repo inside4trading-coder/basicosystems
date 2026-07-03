@@ -1,54 +1,58 @@
-# Plan: Recetas de Blank + DTF para productos de fabricación ligera
+## Diagnóstico: los números 44 / 55 / 65 / 34 son "correctos" pero vienen de un backfill histórico
 
-## Objetivo
-Permitir definir, para cada producto `made_to_order` de España, **qué DTF lleva** y **qué familia de blank usar** (con el blank exacto resuelto automáticamente según la talla de la variante vendida). Editable desde dos lugares: ficha del producto y módulo Blanks/DTF.
+Revisé la tabla `core_production_needs` y los movimientos que las originaron. La aritmética cuadra al detalle, pero **no representan demanda reciente** — son ventas históricas que se cargaron todas juntas al Fondo de Fabricación.
 
-## Modelo de datos
+### De dónde salen los números
 
-Ajustar el esquema de recetas para soportar "blank por talla":
+Para el SKU **JGM43** encontré 199 movimientos `sale_generated` posted en el Fondo de Fabricación, todos con el **mismo timestamp** `2026-06-04 10:02:11`, provenientes de **197 pedidos distintos** de WooCommerce (algunos con 2 unidades). Es la huella típica de una corrida masiva del proceso del Fondo que "puso al día" todo el histórico de una sola vez.
 
-- `esp_product_material_recipes` (ya existe, a nivel producto):
-  - Añadir `dtf_material_id uuid` → apunta al DTF único del producto.
-  - Añadir `blank_family` text → familia lógica de blank (ej. `camiseta_basica_negra`).
-- `esp_material_items` (blanks):
-  - Añadir `blank_family` text y `size` text (normalizada: S, M, L, XL…).
-  - Un blank pertenece a una familia + talla; así la receta resuelve `blank_family + variant.size → material_item`.
-- `esp_product_material_recipe_items` queda solo para "extras" opcionales (etiqueta, bolsa, hilo). No se usa para el blank principal.
+Por talla:
 
-Backfill: para los blanks ya cargados, poblar `blank_family` a partir del nombre/color agrupado actual, y `size` desde su etiqueta actual (ya normalizada en UI).
+| Talla | Ventas históricas | Ya convertidas | Pendiente actual | Coincide con la pantalla |
+|-------|-------------------|----------------|------------------|---------------------------|
+| L     | 45                | 1              | **44**           | ✔ |
+| S     | 55                | 0              | **55**           | ✔ |
+| M     | 65                | 0              | **65**           | ✔ |
+| XL    | 34                | 0              | **34**           | ✔ |
 
-## RPC de resolución
-Actualizar `esp_resolve_fabrication_materials` para que:
-1. Lea la receta del producto.
-2. Devuelva el DTF (`dtf_material_id`).
-3. Busque el blank exacto: `esp_material_items` where `blank_family = receta.blank_family and size = normalize(variant.size)`.
-4. Sume los extras del recipe_items.
-5. Marque error claro si falta el blank de esa talla ("No hay blank talla XL en familia camiseta_basica_negra").
+El edge function `core-generate-production-needs` agrupa por variante y suma cada movimiento posted que no haya sido ya "linkeado" a una necesidad anterior. Como esos 199 movimientos no estaban linkeados, los tomó todos → 34 + 44 + 55 + 65 = 198 unidades de demanda "para fabricar".
 
-El preflight y consumo (`esp_consume_materials_for_fabrication_request`) ya usan este resolver, así que heredan el cambio.
+### Por qué se ve anormal
 
-## UI — dos accesos
+- No es un error de cálculo: cada unidad corresponde a una venta real ya cobrada en Woo.
+- Es anormal en el sentido de que **mezcla meses de historia** con la reposición real que hoy necesita la fábrica. Ese SKU (Jogger I Wonder) probablemente no se va a re-fabricar en esas cantidades — muchas de esas ventas ya se surtieron con inventario existente en su momento.
+- El pico se disparó porque el 4-jun-2026 se corrió el Fondo de Fabricación en modo "cargar histórico" y el 3-jul se corrió el generador de necesidades por primera vez sobre esos movimientos.
 
-**1. Desde `/espana/productos` (ficha del producto)**
-- Nueva sección "Receta de fabricación ligera" visible solo si el producto es `made_to_order`.
-- Dos selects:
-  - **DTF** (buscador entre materiales tipo `dtf`).
-  - **Familia de blank** (lista distinct de `blank_family` con preview de tallas disponibles y stock).
-- Tabla pequeña debajo: "Resolución por talla" mostrando cada variante → blank específico → stock actual → ✓ / ⚠ sin blank.
-- Botón "Guardar receta".
+## Propuesta de arreglo
 
-**2. Desde `/espana/blanks-dtf` → pestaña Recetas**
-- Buscador de producto + filtro "solo sin receta".
-- Vista lista con: producto, DTF asignado, familia blank, nº variantes sin cobertura.
-- Edición inline / diálogo con los mismos campos que la ficha del producto.
-- Acción masiva: "Asignar familia de blank a N productos seleccionados".
+Necesito tu decisión sobre cómo tratar el histórico. Te propongo tres piezas; se pueden aplicar solas o combinadas.
+
+### 1. Marcar el histórico como "ya atendido" (una sola vez)
+
+Crear una necesidad sintética por variante con `status = 'ignored'` (o `converted_to_order` con nota "backfill histórico") y linkearle todos los movimientos previos al 4-jun-2026 10:02:12. A partir de ahí el generador ya no los volverá a tomar. La pantalla de Necesidades quedaría limpia y el próximo run sólo miraría ventas nuevas.
+
+Auditoría: se registra en `core_audit_logs` con acción `backfill_ignore_historical` para que quede trazado.
+
+### 2. Agregar filtro "desde fecha" al generador
+
+En el edge function `core-generate-production-needs` ya existen los parámetros `period_start` / `period_end` pero la UI no los expone. Añadir en la pantalla de Necesidades un selector "Generar desde…" que llame al function con `period_start = <fecha>`. Así la próxima vez que se cargue un histórico grande, el usuario decide desde cuándo cuenta.
+
+### 3. Guardar una marca "último punto procesado" por variante
+
+Persistir en `core_settings` (o en una tabla nueva `core_production_needs_watermark`) la fecha del último movimiento procesado. El generador arrancaría siempre desde ahí y no volvería a mirar histórico previo, aun si aparecen movimientos "atrasados". Esto es lo más robusto a largo plazo pero implica cambios de esquema.
+
+## Recomendación
+
+Aplicar **#1 ahora mismo** (limpia el ruido actual de JGM43 y de cualquier otro SKU en la misma situación) + **#2** para que tengas control manual la próxima vez que corras un backfill. Dejar #3 para una siguiente iteración si sigue siendo un problema.
 
 ## Detalles técnicos
-- `normalizeSize` (ya en `src/lib/espMaterials.ts`) se reutiliza en el resolver SQL (crear helper `esp_normalize_size(text)` que replique la lógica: quitar "Talla ", trim, upper).
-- Nuevo hook `useEspProductRecipe(productId)` con react-query para leer/escribir receta.
-- Componente `ProductRecipeCard.tsx` reutilizable en ambos accesos.
-- Sin cambios en el flujo de fabricación existente: el botón "Fabricar" seguirá funcionando y ahora encontrará los materiales correctos.
 
-## Fuera de alcance
-- Recetas por color/variante fina (queda modelado pero no expuesto en UI aún).
-- Importación masiva por CSV de recetas.
+- Backfill (#1): `INSERT` una `core_production_needs` por variante afectada con `need_type='sale_generated'`, `status='ignored'`, `quantity_needed = SUM(qty histórica)`, `notes = 'Backfill histórico ignorado — no fabricar'`. Luego `INSERT` en `core_production_need_sources` un registro por cada movimiento previo a la fecha de corte. Marcar además como `ignored` las necesidades ya creadas hoy por el run `dba10927-…` (34/44/55/65).
+- Filtro UI (#2): en `src/pages/core/CoreProductionNeeds.tsx`, junto al botón "Generar desde ventas", agregar un `DatePicker` opcional y enviarlo como `period_start` en el body del fetch al edge function. Sin fecha, comportamiento actual.
+- Fecha de corte sugerida para #1: `2026-06-04 10:03:00+00` (justo después del backfill), o la que tú definas.
+
+## Lo que necesito confirmar antes de implementar
+
+1. ¿Fecha de corte para considerar "histórico" → `2026-06-04 10:03:00`? ¿O prefieres otra?
+2. Las necesidades actuales de JGM43 (34/44/55/65) ¿las marco como `ignored` o quieres dejar alguna cantidad "real" para fabricar (p. ej. reposición manual)?
+3. ¿Aplicamos #1 a **todos los SKU** cuyos movimientos posted tengan ese mismo timestamp del 4-jun, o sólo a JGM43?
