@@ -454,14 +454,11 @@ function RawMaterialBlock({ items, rawMaterials, onAdd, onUpdate, onRemove, onPi
           <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-end">
             <div>
               <Label className="text-xs">Materia prima</Label>
-              <Select value={it.raw_material_id ?? ""} onValueChange={(v) => onPickRM(it._local_id, v)}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar materia prima" /></SelectTrigger>
-                <SelectContent>
-                  {rawMaterials.map(rm => (
-                    <SelectItem key={rm.id} value={rm.id}>{rm.code} — {rm.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <RawMaterialPicker
+                rawMaterials={rawMaterials}
+                value={it.raw_material_id ?? ""}
+                onChange={(v) => onPickRM(it._local_id, v)}
+              />
             </div>
             <div>
               <Label className="text-xs">Unidad</Label>
