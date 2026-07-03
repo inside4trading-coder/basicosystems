@@ -171,6 +171,16 @@ export default function CoreProductEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Nuevo producto: si el usuario conecta WooCommerce, previsualiza el SKU Core = SKU Woo
+  const isNew = !id;
+  useEffect(() => {
+    if (!isNew) return;
+    const w = wooSku.trim();
+    if (w) setCoreSku(w);
+    else suggestNextSku();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wooSku, isNew]);
+
   async function suggestNextSku() {
     const { data } = await supabase.from("core_settings").select("sku_prefix, sku_digits, sku_last_number").maybeSingle();
     const prefix = data?.sku_prefix ?? "CORE";
