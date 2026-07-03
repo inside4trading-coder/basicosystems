@@ -102,6 +102,7 @@ export default function CoreProductionNeeds() {
   const [links, setLinks] = useState<ConvertedLink[]>([]);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
+  const [periodStart, setPeriodStart] = useState<string>("");
   const [manualOpen, setManualOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState<Need | null>(null);
   const [adjustQty, setAdjustQty] = useState("");
