@@ -165,8 +165,10 @@ export default function CoreProductionNeeds() {
   async function runGeneration(dry = false) {
     setRunning(true);
     try {
+      const body: any = { dry_run: dry };
+      if (periodStart) body.period_start = new Date(periodStart).toISOString();
       const { data, error } = await supabase.functions.invoke("core-generate-production-needs", {
-        body: { dry_run: dry },
+        body,
       });
       if (error) throw error;
       const d: any = data;
