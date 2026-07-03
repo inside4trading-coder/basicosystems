@@ -59,6 +59,7 @@ type RawMaterial = {
   unit_of_measure_id: string | null;
   unit_cost: number;
   currency: string;
+  category_id: string | null;
 };
 
 type Unit = { id: string; abbreviation: string; name: string };
@@ -110,6 +111,7 @@ export default function CoreCostStructureEditor() {
   // Data sources
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
   const [units, setUnits] = useState<Record<string, Unit>>({});
+  const [packagingCategoryId, setPackagingCategoryId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -123,16 +125,19 @@ export default function CoreCostStructureEditor() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [rmRes, uomRes, tplRes] = await Promise.all([
-        supabase.from("core_raw_materials").select("id, code, name, unit_of_measure_id, unit_cost, currency").eq("status", "active").order("name"),
+      const [rmRes, uomRes, tplRes, catRes] = await Promise.all([
+        supabase.from("core_raw_materials").select("id, code, name, unit_of_measure_id, unit_cost, currency, category_id").eq("status", "active").order("name"),
         supabase.from("core_units_of_measure").select("id, abbreviation, name"),
         isNew ? supabase.from("core_cost_templates").select("id, name, product_type, base_currency").eq("status", "active").order("name") : Promise.resolve({ data: [] } as any),
+        supabase.from("core_raw_material_categories").select("id, name"),
       ]);
       setRawMaterials((rmRes.data as any) ?? []);
       const uMap: Record<string, Unit> = {};
       (uomRes.data as any[] ?? []).forEach(u => { uMap[u.id] = u; });
       setUnits(uMap);
       setTemplates((tplRes.data as any) ?? []);
+      const empaque = (catRes.data as any[] ?? []).find(c => (c.name ?? "").trim().toLowerCase() === "empaque");
+      setPackagingCategoryId(empaque?.id ?? null);
 
       if (!isNew) {
         const { data: head, error } = await supabase.from("core_cost_structures").select("*").eq("id", id!).maybeSingle();
@@ -752,13 +757,19 @@ export default function CoreCostStructureEditor() {
               </TabsContent>
 
               <TabsContent value="packaging" className="mt-4">
-                <GenericBlock
+                <RawMaterialBlock
                   items={items.filter(i => i.section === "packaging")}
+                  rawMaterials={
+                    packagingCategoryId
+                      ? rawMaterials.filter(r => r.category_id === packagingCategoryId)
+                      : rawMaterials
+                  }
                   onAdd={() => addItem("packaging")}
                   onUpdate={updateItem}
                   onRemove={removeItem}
-                  extraField="supplier"
-                  extraLabel="Proveedor"
+                  onPickRM={pickRawMaterial}
+                  emptyLabel="Sin líneas de empaque"
+                  pickerPlaceholder="Seleccionar item de empaque"
                 />
               </TabsContent>
 
@@ -848,17 +859,19 @@ function sectionLabel(s: Section): string {
 /* ---------------- Block components ---------------- */
 
 function RawMaterialBlock({
-  items, rawMaterials, onAdd, onUpdate, onRemove, onPickRM,
+  items, rawMaterials, onAdd, onUpdate, onRemove, onPickRM, emptyLabel, pickerPlaceholder,
 }: {
   items: Item[]; rawMaterials: RawMaterial[];
   onAdd: () => void;
   onUpdate: (id: string, patch: Partial<Item>) => void;
   onRemove: (id: string) => void;
   onPickRM: (id: string, rmId: string) => void;
+  emptyLabel?: string;
+  pickerPlaceholder?: string;
 }) {
   return (
     <div className="space-y-3">
-      {items.length === 0 && <EmptyState label="Sin líneas de materia prima" />}
+      {items.length === 0 && <EmptyState label={emptyLabel ?? "Sin líneas de materia prima"} />}
       {items.map(it => (
         <div key={it._local_id} className="rounded-lg border p-3 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-end">
@@ -868,6 +881,7 @@ function RawMaterialBlock({
                 rawMaterials={rawMaterials}
                 value={it.raw_material_id ?? ""}
                 onChange={(v) => onPickRM(it._local_id, v)}
+                placeholder={pickerPlaceholder}
               />
             </div>
 
@@ -1010,11 +1024,12 @@ function EmptyState({ label }: { label: string }) {
 }
 
 function RawMaterialPicker({
-  rawMaterials, value, onChange,
+  rawMaterials, value, onChange, placeholder,
 }: {
   rawMaterials: RawMaterial[];
   value: string;
   onChange: (id: string) => void;
+  placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const selected = rawMaterials.find(rm => rm.id === value);
@@ -1027,7 +1042,7 @@ function RawMaterialPicker({
           className={cn("w-full justify-between font-normal", !selected && "text-muted-foreground")}
         >
           <span className="truncate">
-            {selected ? `${selected.code} — ${selected.name}` : "Seleccionar materia prima"}
+            {selected ? `${selected.code} — ${selected.name}` : (placeholder ?? "Seleccionar materia prima")}
           </span>
           <Search className="h-4 w-4 ml-2 opacity-50 shrink-0" />
         </Button>
