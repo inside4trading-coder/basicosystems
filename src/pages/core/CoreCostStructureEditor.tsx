@@ -757,13 +757,19 @@ export default function CoreCostStructureEditor() {
               </TabsContent>
 
               <TabsContent value="packaging" className="mt-4">
-                <GenericBlock
+                <RawMaterialBlock
                   items={items.filter(i => i.section === "packaging")}
+                  rawMaterials={
+                    packagingCategoryId
+                      ? rawMaterials.filter(r => r.category_id === packagingCategoryId)
+                      : rawMaterials
+                  }
                   onAdd={() => addItem("packaging")}
                   onUpdate={updateItem}
                   onRemove={removeItem}
-                  extraField="supplier"
-                  extraLabel="Proveedor"
+                  onPickRM={pickRawMaterial}
+                  emptyLabel="Sin líneas de empaque"
+                  pickerPlaceholder="Seleccionar item de empaque"
                 />
               </TabsContent>
 
