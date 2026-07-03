@@ -172,7 +172,6 @@ export default function CoreProductEditor() {
   }, [id]);
 
   // Nuevo producto: si el usuario conecta WooCommerce, previsualiza el SKU Core = SKU Woo
-  const isNew = !id;
   useEffect(() => {
     if (!isNew) return;
     const w = wooSku.trim();
