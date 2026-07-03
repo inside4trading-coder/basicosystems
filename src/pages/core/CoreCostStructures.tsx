@@ -129,7 +129,75 @@ export default function CoreCostStructures() {
     load();
   }
 
-  const placeholder = () => toast.info("La importación/exportación de estructuras de costos se conectará al sistema de Template de Carga materia prima en el siguiente ajuste.");
+  const placeholder = () => toast.info("La importación de estructuras de costos se conectará al sistema de Template de Carga materia prima en el siguiente ajuste.");
+
+  const exportStructures = async () => {
+    const rows = filtered;
+    if (rows.length === 0) return toast.info("No hay estructuras para exportar");
+    const ids = rows.map(r => r.id);
+    const { data: lines, error } = await supabase
+      .from("core_cost_structure_items")
+      .select("*")
+      .in("cost_structure_id", ids);
+    if (error) return toast.error("Error cargando líneas: " + error.message);
+
+    const headers = [
+      "structure_name","sku","description","product_type","base_currency","estimated_sale_price","status","observations",
+      "woo_product_id","woo_variation_id","woo_product_name","total_unit_cost","estimated_gross_margin","estimated_gross_margin_percent",
+      "section","item_name","raw_material_code","process_type","quantity","unit_cost","unit_of_measure","supplier","adds_to_payroll","notes"
+    ];
+    const linesByStruct = new Map<string, any[]>();
+    (lines ?? []).forEach((l: any) => {
+      const arr = linesByStruct.get(l.cost_structure_id) ?? [];
+      arr.push(l);
+      linesByStruct.set(l.cost_structure_id, arr);
+    });
+
+    const out: string[][] = [];
+    for (const s of rows) {
+      const base = [
+        s.name, (s as any).sku ?? "", s.description ?? "", s.product_type ?? "", s.base_currency,
+        s.estimated_sale_price != null ? String(s.estimated_sale_price) : "", s.status, s.notes ?? "",
+        s.woo_product_id != null ? String(s.woo_product_id) : "",
+        s.woo_variation_id != null ? String(s.woo_variation_id) : "",
+        s.woo_product_name ?? "",
+        String(s.total_unit_cost ?? 0),
+        s.estimated_gross_margin != null ? String(s.estimated_gross_margin) : "",
+        s.estimated_gross_margin_percent != null ? String(s.estimated_gross_margin_percent) : "",
+      ];
+      const sLines = linesByStruct.get(s.id) ?? [];
+      if (sLines.length === 0) {
+        out.push([...base, "", "", "", "", "", "", "", "", "", ""]);
+      } else {
+        sLines.forEach((l: any, idx) => {
+          const b = idx === 0 ? base : base.map(() => "");
+          out.push([
+            ...b,
+            l.section ?? "", l.item_name ?? "", l.raw_material_code ?? "", l.process_type ?? "",
+            l.quantity != null ? String(l.quantity) : "",
+            l.unit_cost != null ? String(l.unit_cost) : "",
+            l.unit_of_measure ?? "", l.supplier ?? "",
+            l.adds_to_payroll ? "true" : "false",
+            l.notes ?? "",
+          ]);
+        });
+      }
+    }
+
+    const escape = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g,'""')}"` : v;
+    const csv = [headers, ...out].map(r => r.map(c => escape(String(c ?? ""))).join(",")).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const stamp = new Date().toISOString().slice(0,10);
+    a.download = `estructuras-costos-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exportadas ${rows.length} estructuras`);
+  };
 
   const downloadBaseFormat = () => {
     const headers = [
@@ -176,7 +244,8 @@ export default function CoreCostStructures() {
           <Button variant="outline" size="sm" onClick={placeholder}>
             <Upload className="h-4 w-4 mr-1" />Importar
           </Button>
-          <Button variant="outline" size="sm" onClick={placeholder}>
+          <Button variant="outline" size="sm" onClick={exportStructures}>
+
             <Download className="h-4 w-4 mr-1" />Exportar
           </Button>
           <Button size="sm" onClick={() => navigate("/core/estructuras-costos/nueva")}>
