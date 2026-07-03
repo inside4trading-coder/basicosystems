@@ -181,8 +181,8 @@ export default function EspanaInventario() {
   );
 }
 
-function MovementDialog({ mode, onClose, locs, variants, products, stockMap, onSaved }: {
-  mode: Mode; onClose: () => void; locs: Loc[]; variants: Variant[]; products: Product[];
+function MovementDialog({ mode, prefillVariantId, onClose, locs, variants, products, stockMap, onSaved }: {
+  mode: Mode; prefillVariantId?: string | null; onClose: () => void; locs: Loc[]; variants: Variant[]; products: Product[];
   stockMap: Record<string, Record<string, number>>; onSaved: () => void;
 }) {
   const [variantId, setVariantId] = useState("");
@@ -195,8 +195,8 @@ function MovementDialog({ mode, onClose, locs, variants, products, stockMap, onS
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (mode) { setVariantId(""); setLocationId(""); setFromId(""); setToId(""); setQty(1); setReason(""); setNotes(""); }
-  }, [mode]);
+    if (mode) { setVariantId(prefillVariantId || ""); setLocationId(""); setFromId(""); setToId(""); setQty(1); setReason(""); setNotes(""); }
+  }, [mode, prefillVariantId]);
 
   if (!mode) return null;
 
