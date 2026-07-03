@@ -1024,11 +1024,12 @@ function EmptyState({ label }: { label: string }) {
 }
 
 function RawMaterialPicker({
-  rawMaterials, value, onChange,
+  rawMaterials, value, onChange, placeholder,
 }: {
   rawMaterials: RawMaterial[];
   value: string;
   onChange: (id: string) => void;
+  placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const selected = rawMaterials.find(rm => rm.id === value);
@@ -1041,7 +1042,7 @@ function RawMaterialPicker({
           className={cn("w-full justify-between font-normal", !selected && "text-muted-foreground")}
         >
           <span className="truncate">
-            {selected ? `${selected.code} — ${selected.name}` : "Seleccionar materia prima"}
+            {selected ? `${selected.code} — ${selected.name}` : (placeholder ?? "Seleccionar materia prima")}
           </span>
           <Search className="h-4 w-4 ml-2 opacity-50 shrink-0" />
         </Button>
