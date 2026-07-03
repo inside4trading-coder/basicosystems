@@ -711,6 +711,7 @@ export type Database = {
           total_labor: number
           total_logistics: number
           total_other_costs: number
+          total_packaging: number
           total_raw_materials: number
           total_technical_processes: number
           total_variable_costs: number
@@ -732,6 +733,7 @@ export type Database = {
           total_labor?: number
           total_logistics?: number
           total_other_costs?: number
+          total_packaging?: number
           total_raw_materials?: number
           total_technical_processes?: number
           total_variable_costs?: number
@@ -753,6 +755,7 @@ export type Database = {
           total_labor?: number
           total_logistics?: number
           total_other_costs?: number
+          total_packaging?: number
           total_raw_materials?: number
           total_technical_processes?: number
           total_variable_costs?: number

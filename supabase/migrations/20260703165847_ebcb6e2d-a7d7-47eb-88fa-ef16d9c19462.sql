@@ -1,0 +1,1 @@
+ALTER TABLE public.core_cost_templates ADD COLUMN IF NOT EXISTS total_packaging numeric NOT NULL DEFAULT 0;
