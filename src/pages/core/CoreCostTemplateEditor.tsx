@@ -392,6 +392,18 @@ export default function CoreCostTemplateEditor() {
               <TabsContent value="logistics" className="mt-4">
                 <GenericBlock items={items.filter(i => i.section === "logistics")} onAdd={() => addItem("logistics")} onUpdate={updateItem} onRemove={removeItem} />
               </TabsContent>
+              <TabsContent value="packaging" className="mt-4">
+                <RawMaterialBlock
+                  items={items.filter(i => i.section === "packaging")}
+                  rawMaterials={packagingCategoryId ? rawMaterials.filter(r => r.category_id === packagingCategoryId) : rawMaterials}
+                  onAdd={() => addItem("packaging")}
+                  onUpdate={updateItem}
+                  onRemove={removeItem}
+                  onPickRM={pickRawMaterial}
+                  emptyLabel="Sin líneas de empaque"
+                  pickerPlaceholder="Seleccionar item de empaque"
+                />
+              </TabsContent>
               <TabsContent value="other" className="mt-4">
                 <GenericBlock items={items.filter(i => i.section === "other")} onAdd={() => addItem("other")} onUpdate={updateItem} onRemove={removeItem} extraField="item_type" extraLabel="Categoría" />
               </TabsContent>
