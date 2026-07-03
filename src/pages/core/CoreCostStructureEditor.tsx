@@ -125,16 +125,19 @@ export default function CoreCostStructureEditor() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [rmRes, uomRes, tplRes] = await Promise.all([
-        supabase.from("core_raw_materials").select("id, code, name, unit_of_measure_id, unit_cost, currency").eq("status", "active").order("name"),
+      const [rmRes, uomRes, tplRes, catRes] = await Promise.all([
+        supabase.from("core_raw_materials").select("id, code, name, unit_of_measure_id, unit_cost, currency, category_id").eq("status", "active").order("name"),
         supabase.from("core_units_of_measure").select("id, abbreviation, name"),
         isNew ? supabase.from("core_cost_templates").select("id, name, product_type, base_currency").eq("status", "active").order("name") : Promise.resolve({ data: [] } as any),
+        supabase.from("core_raw_material_categories").select("id, name"),
       ]);
       setRawMaterials((rmRes.data as any) ?? []);
       const uMap: Record<string, Unit> = {};
       (uomRes.data as any[] ?? []).forEach(u => { uMap[u.id] = u; });
       setUnits(uMap);
       setTemplates((tplRes.data as any) ?? []);
+      const empaque = (catRes.data as any[] ?? []).find(c => (c.name ?? "").trim().toLowerCase() === "empaque");
+      setPackagingCategoryId(empaque?.id ?? null);
 
       if (!isNew) {
         const { data: head, error } = await supabase.from("core_cost_structures").select("*").eq("id", id!).maybeSingle();
