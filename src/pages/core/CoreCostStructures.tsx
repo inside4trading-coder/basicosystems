@@ -244,7 +244,8 @@ export default function CoreCostStructures() {
           <Button variant="outline" size="sm" onClick={placeholder}>
             <Upload className="h-4 w-4 mr-1" />Importar
           </Button>
-          <Button variant="outline" size="sm" onClick={placeholder}>
+          <Button variant="outline" size="sm" onClick={exportStructures}>
+
             <Download className="h-4 w-4 mr-1" />Exportar
           </Button>
           <Button size="sm" onClick={() => navigate("/core/estructuras-costos/nueva")}>
