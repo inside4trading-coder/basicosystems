@@ -696,7 +696,7 @@ export default function CoreCostStructureEditor() {
                 <TabsTrigger value="raw_material">Materia prima</TabsTrigger>
                 <TabsTrigger value="labor">Mano de obra</TabsTrigger>
                 <TabsTrigger value="technical_process">Procesos técnicos</TabsTrigger>
-                <TabsTrigger value="variable_cost">Variables</TabsTrigger>
+                <TabsTrigger value="variable_cost">Costos variables</TabsTrigger>
                 <TabsTrigger value="logistics">Logística</TabsTrigger>
                 <TabsTrigger value="packaging">Empaque</TabsTrigger>
                 <TabsTrigger value="other">Otros</TabsTrigger>
@@ -784,7 +784,7 @@ export default function CoreCostStructureEditor() {
               <SummaryRow label="Materia prima" value={fmt(totals.by.raw_material)} currency={baseCurrency} />
               <SummaryRow label="Mano de obra" value={fmt(totals.by.labor)} currency={baseCurrency} />
               <SummaryRow label="Procesos técnicos" value={fmt(totals.by.technical_process)} currency={baseCurrency} />
-              <SummaryRow label="Variables" value={fmt(totals.by.variable_cost)} currency={baseCurrency} />
+              <SummaryRow label="Costos variables" value={fmt(totals.by.variable_cost)} currency={baseCurrency} />
               <SummaryRow label="Logística" value={fmt(totals.by.logistics)} currency={baseCurrency} />
               <SummaryRow label="Empaque" value={fmt(totals.by.packaging)} currency={baseCurrency} />
               <SummaryRow label="Otros" value={fmt(totals.by.other)} currency={baseCurrency} />
@@ -838,7 +838,7 @@ function sectionLabel(s: Section): string {
     raw_material: "Materia prima",
     labor: "Mano de obra",
     technical_process: "Procesos técnicos",
-    variable_cost: "Variables",
+    variable_cost: "Costos variables",
     logistics: "Logística",
     packaging: "Empaque",
     other: "Otros",

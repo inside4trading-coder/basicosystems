@@ -385,12 +385,23 @@ export default function CoreProductEditor() {
       let assignedSku = coreSku;
 
       if (isNew) {
-        // Allocate next SKU atomically by reading + bumping settings
-        const { data: settings } = await supabase.from("core_settings").select("id, sku_prefix, sku_digits, sku_last_number").maybeSingle();
-        const prefix = settings?.sku_prefix ?? "CORE";
-        const digits = settings?.sku_digits ?? 6;
-        const nextNum = (settings?.sku_last_number ?? 0) + 1;
-        assignedSku = `${prefix}${String(nextNum).padStart(digits, "0")}`;
+        // Si hay SKU de WooCommerce, usarlo como SKU Core (facilita fabricación/restock).
+        // Si no, generar CORE###### desde la configuración y consumir el correlativo.
+        const wooSkuTrim = wooSku.trim();
+        let bumpSettingsId: string | null = null;
+        let bumpNextNum: number | null = null;
+
+        if (wooSkuTrim) {
+          assignedSku = wooSkuTrim;
+        } else {
+          const { data: settings } = await supabase.from("core_settings").select("id, sku_prefix, sku_digits, sku_last_number").maybeSingle();
+          const prefix = settings?.sku_prefix ?? "CORE";
+          const digits = settings?.sku_digits ?? 6;
+          const nextNum = (settings?.sku_last_number ?? 0) + 1;
+          assignedSku = `${prefix}${String(nextNum).padStart(digits, "0")}`;
+          bumpSettingsId = settings?.id ?? null;
+          bumpNextNum = nextNum;
+        }
 
         const { data: created, error } = await supabase
           .from("core_products")
@@ -400,8 +411,8 @@ export default function CoreProductEditor() {
         if (error) throw error;
         savedId = created.id;
 
-        if (settings?.id) {
-          await supabase.from("core_settings").update({ sku_last_number: nextNum }).eq("id", settings.id);
+        if (bumpSettingsId && bumpNextNum !== null) {
+          await supabase.from("core_settings").update({ sku_last_number: bumpNextNum }).eq("id", bumpSettingsId);
         }
 
         if (costSnapshot && costStructureId) {
@@ -508,7 +519,11 @@ export default function CoreProductEditor() {
                   <Input value={coreSku} readOnly className="font-mono font-semibold bg-muted" />
                   {isNew && <Button variant="outline" size="icon" onClick={suggestNextSku} title="Refrescar"><RefreshCw className="h-4 w-4" /></Button>}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Generado automáticamente desde Configuración Core.</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {wooSku.trim()
+                    ? <>Usando el SKU de WooCommerce (<span className="font-mono">{wooSku}</span>) para facilitar la reposición.</>
+                    : "Generado automáticamente desde Configuración Core. Si conectas WooCommerce, se usará el SKU de Woo."}
+                </p>
               </div>
               <div>
                 <Label>Nombre *</Label>
