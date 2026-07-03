@@ -202,14 +202,23 @@ export default function CoreProductEditor() {
     // Prefill name/sku from cost structure if empty in product
     const prefilled: string[] = [];
     if (!name.trim() && s.name) { setName(s.name); prefilled.push("nombre"); }
-    if (!coreSku.trim() && s.sku) { setCoreSku(s.sku); prefilled.push("SKU"); }
+
+    // Si la estructura está conectada a WooCommerce, el SKU Core = SKU principal de Woo
+    const wooSkuFromStructure = s.woo_product_id && s.sku ? s.sku : null;
+    if (wooSkuFromStructure) {
+      setCoreSku(wooSkuFromStructure);
+      prefilled.push("SKU Core (desde Woo)");
+    } else if (!coreSku.trim() && s.sku) {
+      setCoreSku(s.sku);
+      prefilled.push("SKU");
+    }
 
     // Propagate Woo linkage from cost structure if present and not already set on product
     if (s.woo_product_id && !wooProductId) {
       setWooProductId(Number(s.woo_product_id));
       if (s.woo_product_name) setWooProductName(s.woo_product_name);
       if (s.woo_permalink) setWooPermalink(s.woo_permalink);
-      if (s.sku && !wooSku) setWooSku(s.sku);
+      if (s.sku) setWooSku(s.sku);
       prefilled.push("Woo ID");
     }
 
