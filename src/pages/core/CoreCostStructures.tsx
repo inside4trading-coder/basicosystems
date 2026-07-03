@@ -143,10 +143,13 @@ export default function CoreCostStructures() {
     if (error) return toast.error("Error cargando líneas: " + error.message);
 
     const headers = [
-      "structure_name","sku","description","product_type","base_currency","estimated_sale_price","status","observations",
-      "woo_product_id","woo_variation_id","woo_product_name","total_unit_cost","estimated_gross_margin","estimated_gross_margin_percent",
-      "section","item_name","raw_material_code","process_type","quantity","unit_cost","unit_of_measure","supplier","adds_to_payroll","notes"
+      "structure_name","sku","description","product_type","base_currency","status","observations",
+      "woo_product_id","woo_variation_id","woo_product_name",
+      "estimated_sale_price","total_unit_cost","estimated_gross_margin","estimated_gross_margin_percent",
+      "raw_material_cost","labor_cost","packaging_cost","logistics_cost","other_cost",
+      "items_count","items_detail",
     ];
+
     const linesByStruct = new Map<string, any[]>();
     (lines ?? []).forEach((l: any) => {
       const arr = linesByStruct.get(l.cost_structure_id) ?? [];
@@ -161,34 +164,47 @@ export default function CoreCostStructures() {
       return Math.round(v * f) / f;
     };
 
-    const out: any[][] = [];
-    for (const s of rows) {
-      const base: any[] = [
-        s.name, (s as any).sku ?? "", s.description ?? "", s.product_type ?? "", s.base_currency,
-        round(s.estimated_sale_price), s.status, s.notes ?? "",
-        s.woo_product_id ?? "", s.woo_variation_id ?? "", s.woo_product_name ?? "",
-        round(s.total_unit_cost), round(s.estimated_gross_margin), round(s.estimated_gross_margin_percent, 1),
-      ];
+    const sectionTotal = (arr: any[], sec: string) =>
+      arr.filter(l => l.section === sec)
+         .reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unit_cost) || 0), 0);
+    const otherTotal = (arr: any[]) => {
+      const known = new Set(["raw_material","labor","packaging","logistics"]);
+      return arr.filter(l => !known.has(l.section))
+                .reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unit_cost) || 0), 0);
+    };
+
+    const out: any[][] = rows.map(s => {
       const sLines = linesByStruct.get(s.id) ?? [];
-      if (sLines.length === 0) {
-        out.push([...base, "", "", "", "", "", "", "", "", "", ""]);
-      } else {
-        sLines.forEach((l: any, idx) => {
-          const b = idx === 0 ? base : base.map(() => "");
-          out.push([
-            ...b,
-            l.section ?? "", l.item_name ?? "", l.raw_material_code ?? "", l.process_type ?? "",
-            round(l.quantity, 4), round(l.unit_cost, 4),
-            l.unit_of_measure ?? "", l.supplier ?? "",
-            l.adds_to_payroll ? "true" : "false",
-            l.notes ?? "",
-          ]);
-        });
-      }
-    }
+      const detail = sLines.map(l => {
+        const parts = [
+          l.section ?? "",
+          l.item_name || l.process_type || l.raw_material_code || "",
+          `${round(l.quantity, 4) ?? ""}${l.unit_of_measure ? " " + l.unit_of_measure : ""} × ${round(l.unit_cost, 4) ?? ""}`,
+        ].filter(Boolean);
+        return parts.join(" | ");
+      }).join(" ;; ");
+      return [
+        s.name, (s as any).sku ?? "", s.description ?? "", s.product_type ?? "", s.base_currency,
+        s.status, s.notes ?? "",
+        s.woo_product_id ?? "", s.woo_variation_id ?? "", s.woo_product_name ?? "",
+        round(s.estimated_sale_price), round(s.total_unit_cost),
+        round(s.estimated_gross_margin), round(s.estimated_gross_margin_percent, 1),
+        round(sectionTotal(sLines, "raw_material")),
+        round(sectionTotal(sLines, "labor")),
+        round(sectionTotal(sLines, "packaging")),
+        round(sectionTotal(sLines, "logistics")),
+        round(otherTotal(sLines)),
+        sLines.length,
+        detail,
+      ];
+    });
 
     const ws = XLSX.utils.aoa_to_sheet([headers, ...out]);
-    ws["!cols"] = headers.map((h) => ({ wch: Math.max(12, Math.min(32, h.length + 4)) }));
+    ws["!cols"] = headers.map((h) => {
+      if (h === "items_detail") return { wch: 80 };
+      if (h === "structure_name" || h === "description" || h === "woo_product_name") return { wch: 32 };
+      return { wch: Math.max(12, Math.min(24, h.length + 4)) };
+    });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Estructuras");
     const stamp = new Date().toISOString().slice(0, 10);
