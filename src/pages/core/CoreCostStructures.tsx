@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet, AlertTriangle } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { formatDMY } from "@/lib/dateUtils";
+import * as XLSX from "xlsx";
 
 type CostStructure = {
   id: string;
@@ -153,17 +154,20 @@ export default function CoreCostStructures() {
       linesByStruct.set(l.cost_structure_id, arr);
     });
 
-    const out: string[][] = [];
+    const round = (n: any, d = 2) => {
+      const v = Number(n);
+      if (!isFinite(v)) return null;
+      const f = Math.pow(10, d);
+      return Math.round(v * f) / f;
+    };
+
+    const out: any[][] = [];
     for (const s of rows) {
-      const base = [
+      const base: any[] = [
         s.name, (s as any).sku ?? "", s.description ?? "", s.product_type ?? "", s.base_currency,
-        s.estimated_sale_price != null ? String(s.estimated_sale_price) : "", s.status, s.notes ?? "",
-        s.woo_product_id != null ? String(s.woo_product_id) : "",
-        s.woo_variation_id != null ? String(s.woo_variation_id) : "",
-        s.woo_product_name ?? "",
-        String(s.total_unit_cost ?? 0),
-        s.estimated_gross_margin != null ? String(s.estimated_gross_margin) : "",
-        s.estimated_gross_margin_percent != null ? String(s.estimated_gross_margin_percent) : "",
+        round(s.estimated_sale_price), s.status, s.notes ?? "",
+        s.woo_product_id ?? "", s.woo_variation_id ?? "", s.woo_product_name ?? "",
+        round(s.total_unit_cost), round(s.estimated_gross_margin), round(s.estimated_gross_margin_percent, 1),
       ];
       const sLines = linesByStruct.get(s.id) ?? [];
       if (sLines.length === 0) {
@@ -174,8 +178,7 @@ export default function CoreCostStructures() {
           out.push([
             ...b,
             l.section ?? "", l.item_name ?? "", l.raw_material_code ?? "", l.process_type ?? "",
-            l.quantity != null ? String(l.quantity) : "",
-            l.unit_cost != null ? String(l.unit_cost) : "",
+            round(l.quantity, 4), round(l.unit_cost, 4),
             l.unit_of_measure ?? "", l.supplier ?? "",
             l.adds_to_payroll ? "true" : "false",
             l.notes ?? "",
@@ -184,18 +187,12 @@ export default function CoreCostStructures() {
       }
     }
 
-    const escape = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g,'""')}"` : v;
-    const csv = [headers, ...out].map(r => r.map(c => escape(String(c ?? ""))).join(",")).join("\n");
-    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const stamp = new Date().toISOString().slice(0,10);
-    a.download = `estructuras-costos-${stamp}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...out]);
+    ws["!cols"] = headers.map((h) => ({ wch: Math.max(12, Math.min(32, h.length + 4)) }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Estructuras");
+    const stamp = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `estructuras-costos-${stamp}.xlsx`);
     toast.success(`Exportadas ${rows.length} estructuras`);
   };
 
