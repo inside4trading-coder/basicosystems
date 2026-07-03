@@ -121,13 +121,26 @@ serve(async (req) => {
   if (!apply || !coreProductId) {
     return json({
       preview: true,
-      parent: { id: parent.id, name: parent.name, sku: parentSku, type: parent.type },
+      parent: {
+        id: parent.id,
+        name: parent.name,
+        sku: parentSku,
+        type: parent.type,
+        permalink: parent.permalink ?? null,
+        short_description: parent.short_description ?? null,
+        description: parent.description ?? null,
+        regular_price: parent.regular_price ? Number(parent.regular_price) : null,
+        sale_price: parent.sale_price ? Number(parent.sale_price) : null,
+        price: parent.price ? Number(parent.price) : null,
+        categories: Array.isArray(parent.categories) ? parent.categories.map((c: any) => c?.name).filter(Boolean) : [],
+      },
       total: normalized.length,
       usable: usable.length,
       skipped_missing_size: skipped,
       variants: usable,
     });
   }
+
 
   // 4. Apply: upsert into core_product_variants by (core_product_id, woo_variation_id) — fallback by (core_product_id, size)
   const { data: existing } = await supabase

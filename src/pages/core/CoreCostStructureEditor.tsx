@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Save, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Loader2, AlertTriangle, Search, CheckCircle2 } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { formatDMY } from "@/lib/dateUtils";
 
@@ -111,6 +111,11 @@ export default function CoreCostStructureEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [originalSalePrice, setOriginalSalePrice] = useState<number | null>(null);
+
+  // Woo fetch state
+  const [wooFetching, setWooFetching] = useState(false);
+  const [wooPreview, setWooPreview] = useState<any | null>(null);
+  const [selectedWooVariantId, setSelectedWooVariantId] = useState<string>("");
 
   useEffect(() => {
     (async () => {
@@ -297,6 +302,80 @@ export default function CoreCostStructureEditor() {
 
 
 
+  function mapWooCategoryToType(categories: string[]): string | null {
+    const joined = categories.join(" ").toLowerCase();
+    for (const t of PRODUCT_TYPES) {
+      if (joined.includes(t.toLowerCase())) return t;
+    }
+    return null;
+  }
+
+  function stripHtml(s: string | null | undefined): string {
+    if (!s) return "";
+    return String(s).replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  async function fetchWoo() {
+    const pid = wooProductId.trim();
+    if (!pid) return toast.error("Ingresa un Woo Product ID primero");
+    setWooFetching(true);
+    setWooPreview(null);
+    setSelectedWooVariantId("");
+    try {
+      const { data, error } = await supabase.functions.invoke("core-woo-import-variants", {
+        body: { woo_product_id: Number(pid) },
+      });
+      if (error) throw error;
+      if (!data || data.error) throw new Error(data?.error ?? "Sin respuesta");
+      setWooPreview(data);
+      const parent = data.parent ?? {};
+
+      // Prefill parent-level fields (only if empty or user confirms overwrite already visible via toast)
+      if (parent.name) {
+        setWooProductName(parent.name);
+        if (!name.trim()) setName(parent.name);
+      }
+      if (parent.sku && !sku.trim()) setSku(parent.sku);
+      if (parent.permalink) setWooPermalink(parent.permalink);
+      const shortDesc = stripHtml(parent.short_description) || stripHtml(parent.description);
+      if (shortDesc && !description.trim()) setDescription(shortDesc.slice(0, 500));
+      const priceGuess = parent.regular_price ?? parent.price ?? parent.sale_price;
+      if (priceGuess != null && !estimatedSalePrice) setEstimatedSalePrice(String(priceGuess));
+      const detectedType = mapWooCategoryToType(parent.categories ?? []);
+      if (detectedType && !productType) setProductType(detectedType);
+
+      const variantCount = Array.isArray(data.variants) ? data.variants.length : 0;
+      if (variantCount > 0) {
+        // Pre-select current variation if set
+        if (wooVariationId) {
+          const found = data.variants.find((v: any) => Number(v.woo_variation_id) === Number(wooVariationId));
+          if (found) setSelectedWooVariantId(String(found.woo_variation_id));
+        }
+        toast.success(`Producto encontrado: ${parent.name} · ${variantCount} variaciones`);
+      } else {
+        toast.success(`Producto encontrado: ${parent.name}`);
+      }
+    } catch (e: any) {
+      toast.error("Error consultando WooCommerce: " + (e?.message ?? "desconocido"));
+    } finally {
+      setWooFetching(false);
+    }
+  }
+
+  function applyWooVariant(varIdStr: string) {
+    setSelectedWooVariantId(varIdStr);
+    if (!wooPreview?.variants) return;
+    const v = wooPreview.variants.find((x: any) => String(x.woo_variation_id) === varIdStr);
+    if (!v) return;
+    setWooVariationId(String(v.woo_variation_id));
+    if (v.variant_sku) setSku(v.variant_sku);
+    // Refine name with size
+    const parentName = wooPreview.parent?.name ?? name;
+    if (parentName && v.size) setName(`${parentName} — Talla ${v.size}`);
+    if (v.woo_regular_price != null) setEstimatedSalePrice(String(v.woo_regular_price));
+    toast.success(`Variación ${v.size ?? v.woo_variation_id} vinculada`);
+  }
+
   function validate(): string | null {
     if (!name.trim()) return "El nombre es obligatorio";
     if (!baseCurrency) return "La moneda base es obligatoria";
@@ -466,6 +545,91 @@ export default function CoreCostStructureEditor() {
           )}
 
           <Card className="p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Conexión con WooCommerce</h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ingresa el ID del producto de WooCommerce y pulsa <strong>Aplicar</strong>. Rellenaremos nombre, SKU, precio, tipo y descripción automáticamente, y podrás elegir la variación (talla) si aplica.
+                </p>
+              </div>
+              {!wooProductId.trim() ? (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" />Sin conectar
+                </Badge>
+              ) : wooPreview ? (
+                <Badge variant="default" className="gap-1">
+                  <CheckCircle2 className="h-3 w-3" />Producto encontrado
+                </Badge>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 items-end">
+              <div>
+                <Label>Woo Product ID *</Label>
+                <Input
+                  type="number"
+                  value={wooProductId}
+                  onChange={(e) => { setWooProductId(e.target.value); setWooPreview(null); }}
+                  placeholder="Ej: 12345"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">ID del producto padre en WooCommerce.</p>
+              </div>
+              <Button onClick={fetchWoo} disabled={!wooProductId.trim() || wooFetching}>
+                {wooFetching ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Search className="h-4 w-4 mr-1" />}
+                Aplicar
+              </Button>
+            </div>
+
+            {wooPreview?.variants && wooPreview.variants.length > 0 && (
+              <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
+                <Label>Vincular con variación (talla)</Label>
+                <p className="text-[11px] text-muted-foreground">Este producto tiene {wooPreview.variants.length} variaciones. Selecciona la que corresponde a esta estructura.</p>
+                <Select value={selectedWooVariantId} onValueChange={applyWooVariant}>
+                  <SelectTrigger><SelectValue placeholder="Elegir talla / variación" /></SelectTrigger>
+                  <SelectContent>
+                    {wooPreview.variants.map((v: any) => (
+                      <SelectItem key={v.woo_variation_id} value={String(v.woo_variation_id)}>
+                        {v.size ?? v.variant_label ?? `#${v.woo_variation_id}`}
+                        {v.variant_sku ? ` · ${v.variant_sku}` : ""}
+                        {v.woo_regular_price != null ? ` · ${v.woo_regular_price}` : ""}
+                        {" · #"}{v.woo_variation_id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Woo Variation ID</Label>
+                <Input
+                  type="number"
+                  value={wooVariationId}
+                  onChange={(e) => setWooVariationId(e.target.value)}
+                  placeholder="Opcional · Ej: 67890"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Se rellena al elegir una variación arriba.</p>
+              </div>
+              <div>
+                <Label>Nombre en WooCommerce</Label>
+                <Input
+                  value={wooProductName}
+                  onChange={(e) => setWooProductName(e.target.value)}
+                  placeholder="Como aparece en la tienda"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label>URL del producto</Label>
+                <Input
+                  value={wooPermalink}
+                  onChange={(e) => setWooPermalink(e.target.value)}
+                  placeholder="https://basicoclothes.com/producto/..."
+                />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-5 space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Información general</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -521,59 +685,6 @@ export default function CoreCostStructureEditor() {
             </div>
           </Card>
 
-          <Card className="p-5 space-y-4">
-            <div className="flex items-start justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Conexión con WooCommerce</h2>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Vincula esta estructura con el producto real en WooCommerce. Sin esta conexión, las ventas de este producto caerán en "Pendientes" en Partidas de Fabricación.
-                </p>
-              </div>
-              {!wooProductId.trim() && (
-                <Badge variant="destructive" className="gap-1">
-                  <AlertTriangle className="h-3 w-3" />Sin conectar
-                </Badge>
-              )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Woo Product ID *</Label>
-                <Input
-                  type="number"
-                  value={wooProductId}
-                  onChange={(e) => setWooProductId(e.target.value)}
-                  placeholder="Ej: 12345"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">ID del producto padre en WooCommerce.</p>
-              </div>
-              <div>
-                <Label>Woo Variation ID</Label>
-                <Input
-                  type="number"
-                  value={wooVariationId}
-                  onChange={(e) => setWooVariationId(e.target.value)}
-                  placeholder="Opcional · Ej: 67890"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">Solo si esta estructura corresponde a una variación específica (talla/color).</p>
-              </div>
-              <div>
-                <Label>Nombre en WooCommerce</Label>
-                <Input
-                  value={wooProductName}
-                  onChange={(e) => setWooProductName(e.target.value)}
-                  placeholder="Como aparece en la tienda"
-                />
-              </div>
-              <div>
-                <Label>URL del producto</Label>
-                <Input
-                  value={wooPermalink}
-                  onChange={(e) => setWooPermalink(e.target.value)}
-                  placeholder="https://basicoclothes.com/producto/..."
-                />
-              </div>
-            </div>
-          </Card>
 
 
           <Card className="p-5">
