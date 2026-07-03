@@ -859,17 +859,19 @@ function sectionLabel(s: Section): string {
 /* ---------------- Block components ---------------- */
 
 function RawMaterialBlock({
-  items, rawMaterials, onAdd, onUpdate, onRemove, onPickRM,
+  items, rawMaterials, onAdd, onUpdate, onRemove, onPickRM, emptyLabel, pickerPlaceholder,
 }: {
   items: Item[]; rawMaterials: RawMaterial[];
   onAdd: () => void;
   onUpdate: (id: string, patch: Partial<Item>) => void;
   onRemove: (id: string) => void;
   onPickRM: (id: string, rmId: string) => void;
+  emptyLabel?: string;
+  pickerPlaceholder?: string;
 }) {
   return (
     <div className="space-y-3">
-      {items.length === 0 && <EmptyState label="Sin líneas de materia prima" />}
+      {items.length === 0 && <EmptyState label={emptyLabel ?? "Sin líneas de materia prima"} />}
       {items.map(it => (
         <div key={it._local_id} className="rounded-lg border p-3 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-end">
@@ -879,6 +881,7 @@ function RawMaterialBlock({
                 rawMaterials={rawMaterials}
                 value={it.raw_material_id ?? ""}
                 onChange={(v) => onPickRM(it._local_id, v)}
+                placeholder={pickerPlaceholder}
               />
             </div>
 
