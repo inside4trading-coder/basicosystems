@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Save, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Loader2, AlertTriangle, Search, CheckCircle2 } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { formatDMY } from "@/lib/dateUtils";
 
