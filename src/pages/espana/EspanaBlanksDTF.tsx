@@ -357,6 +357,7 @@ export default function EspanaBlanksDTF() {
                     groups.get(k)!.items.push(m);
                   });
                   const rendered: JSX.Element[] = [];
+                  let groupIndex = 0;
                   groups.forEach(({ key, items }) => {
                     // Sort sizes
                     const sizeOrder = ["XS","S","M","L","XL","XXL","XXXL"];
@@ -370,13 +371,17 @@ export default function EspanaBlanksDTF() {
                     const totalLow = items.filter(m => (stockByMat.get(m.id) || 0) <= Number(m.low_stock_threshold || 0)).length;
                     const isGroup = items.length > 1;
                     const expanded = !!expandedGroups[key];
+                    // Zebra por grupo de variante: gris tenue vs blanco
+                    const zebra = groupIndex % 2 === 0 ? "" : "bg-zinc-50 dark:bg-zinc-900/30";
+                    const zebraChild = groupIndex % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-zinc-50 dark:bg-zinc-900/30";
+                    groupIndex++;
 
                     if (!isGroup) {
                       const m = head;
                       const stk = stockByMat.get(m.id) || 0;
                       const low = stk <= Number(m.low_stock_threshold || 0);
                       rendered.push(
-                        <TableRow key={m.id}>
+                        <TableRow key={m.id} className={`${zebra} border-t-2 border-t-muted`}>
                           <TableCell></TableCell>
                           <TableCell><Badge variant="outline">{MATERIAL_TYPE_LABEL[m.material_type]}</Badge></TableCell>
                           <TableCell className="text-xs font-mono">{m.sku || "—"}</TableCell>
@@ -389,8 +394,11 @@ export default function EspanaBlanksDTF() {
                           <TableCell><Badge variant={m.status === "active" ? "default" : "secondary"}>{m.status}</Badge></TableCell>
                           <TableCell>
                             <div className="flex gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => setMatDlg({ open: true, item: m })}><Edit className="h-3 w-3" /></Button>
-                              {m.status !== "archived" && <Button size="sm" variant="ghost" onClick={async () => { const { error } = await supabase.from("esp_material_items").update({ status: "archived" }).eq("id", m.id); if (error) toast.error(error.message); else { toast.success("Archivado"); load(); } }}><Archive className="h-3 w-3" /></Button>}
+                              <Button size="sm" variant="ghost" title="Entrada rápida" onClick={() => setMovDlg({ open: true, type: "manual_in", materialId: m.id })}><ArrowDownToLine className="h-3 w-3 text-green-600" /></Button>
+                              <Button size="sm" variant="ghost" title="Salida rápida" onClick={() => setMovDlg({ open: true, type: "manual_out", materialId: m.id })}><ArrowUpFromLine className="h-3 w-3 text-red-600" /></Button>
+                              <Button size="sm" variant="ghost" title="Ajuste" onClick={() => setMovDlg({ open: true, type: "adjustment", materialId: m.id })}><Settings2 className="h-3 w-3" /></Button>
+                              <Button size="sm" variant="ghost" title="Editar" onClick={() => setMatDlg({ open: true, item: m })}><Edit className="h-3 w-3" /></Button>
+                              {m.status !== "archived" && <Button size="sm" variant="ghost" title="Archivar" onClick={async () => { const { error } = await supabase.from("esp_material_items").update({ status: "archived" }).eq("id", m.id); if (error) toast.error(error.message); else { toast.success("Archivado"); load(); } }}><Archive className="h-3 w-3" /></Button>}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -400,7 +408,7 @@ export default function EspanaBlanksDTF() {
 
                     // Parent group row — click opens the size editor dialog; chevron toggles inline expansion
                     rendered.push(
-                      <TableRow key={key} className="bg-muted/40 cursor-pointer hover:bg-muted/60"
+                      <TableRow key={key} className={`${groupIndex % 2 === 1 ? "bg-zinc-100 dark:bg-zinc-800/50" : "bg-muted/60"} cursor-pointer hover:bg-muted border-t-2 border-t-muted-foreground/20`}
                         onClick={() => setGroupDlg({ open: true, items, title: `${head.name}${head.color ? ` · ${head.color}` : ""}` })}>
                         <TableCell onClick={(e) => { e.stopPropagation(); toggleGroup(key); }} className="cursor-pointer">
                           {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -424,7 +432,7 @@ export default function EspanaBlanksDTF() {
                         const stk = stockByMat.get(m.id) || 0;
                         const low = stk <= Number(m.low_stock_threshold || 0);
                         rendered.push(
-                          <TableRow key={m.id}>
+                          <TableRow key={m.id} className={zebraChild}>
                             <TableCell></TableCell>
                             <TableCell></TableCell>
                             <TableCell className="text-xs font-mono pl-6">{m.sku || "—"}</TableCell>
@@ -437,8 +445,11 @@ export default function EspanaBlanksDTF() {
                             <TableCell><Badge variant={m.status === "active" ? "default" : "secondary"}>{m.status}</Badge></TableCell>
                             <TableCell>
                               <div className="flex gap-1">
-                                <Button size="sm" variant="ghost" onClick={() => setMatDlg({ open: true, item: m })}><Edit className="h-3 w-3" /></Button>
-                                {m.status !== "archived" && <Button size="sm" variant="ghost" onClick={async () => { const { error } = await supabase.from("esp_material_items").update({ status: "archived" }).eq("id", m.id); if (error) toast.error(error.message); else { toast.success("Archivado"); load(); } }}><Archive className="h-3 w-3" /></Button>}
+                                <Button size="sm" variant="ghost" title="Entrada rápida" onClick={() => setMovDlg({ open: true, type: "manual_in", materialId: m.id })}><ArrowDownToLine className="h-3 w-3 text-green-600" /></Button>
+                                <Button size="sm" variant="ghost" title="Salida rápida" onClick={() => setMovDlg({ open: true, type: "manual_out", materialId: m.id })}><ArrowUpFromLine className="h-3 w-3 text-red-600" /></Button>
+                                <Button size="sm" variant="ghost" title="Ajuste" onClick={() => setMovDlg({ open: true, type: "adjustment", materialId: m.id })}><Settings2 className="h-3 w-3" /></Button>
+                                <Button size="sm" variant="ghost" title="Editar" onClick={() => setMatDlg({ open: true, item: m })}><Edit className="h-3 w-3" /></Button>
+                                {m.status !== "archived" && <Button size="sm" variant="ghost" title="Archivar" onClick={async () => { const { error } = await supabase.from("esp_material_items").update({ status: "archived" }).eq("id", m.id); if (error) toast.error(error.message); else { toast.success("Archivado"); load(); } }}><Archive className="h-3 w-3" /></Button>}
                               </div>
                             </TableCell>
                           </TableRow>
