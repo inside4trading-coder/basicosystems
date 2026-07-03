@@ -59,6 +59,7 @@ type RawMaterial = {
   unit_of_measure_id: string | null;
   unit_cost: number;
   currency: string;
+  category_id: string | null;
 };
 
 type Unit = { id: string; abbreviation: string; name: string };
