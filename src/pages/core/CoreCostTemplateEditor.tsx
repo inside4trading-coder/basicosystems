@@ -420,6 +420,7 @@ export default function CoreCostTemplateEditor() {
               <SummaryRow label="Procesos técnicos" value={fmt(totals.by.technical_process)} currency={baseCurrency} />
               <SummaryRow label="Variables" value={fmt(totals.by.variable_cost)} currency={baseCurrency} />
               <SummaryRow label="Logística" value={fmt(totals.by.logistics)} currency={baseCurrency} />
+              <SummaryRow label="Empaque" value={fmt(totals.by.packaging)} currency={baseCurrency} />
               <SummaryRow label="Otros" value={fmt(totals.by.other)} currency={baseCurrency} />
             </div>
             <div className="border-t pt-3">
