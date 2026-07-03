@@ -366,6 +366,17 @@ export default function CoreProductionNeeds() {
           </div>
         </div>
         <div className="flex gap-2">
+        <div className="flex gap-2 items-end flex-wrap">
+          <div className="flex flex-col">
+            <Label className="text-xs mb-1">Contar ventas desde</Label>
+            <Input
+              type="date"
+              value={periodStart}
+              onChange={(e) => setPeriodStart(e.target.value)}
+              className="h-9 w-[160px]"
+              title="Sólo procesa ventas creadas a partir de esta fecha. Dejar vacío para incluir todo el histórico."
+            />
+          </div>
           <Button variant="outline" onClick={() => runGeneration(true)} disabled={running}>
             <RotateCcw className="h-4 w-4 mr-2" />Simular
           </Button>
