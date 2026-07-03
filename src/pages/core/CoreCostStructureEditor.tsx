@@ -111,6 +111,7 @@ export default function CoreCostStructureEditor() {
   // Data sources
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
   const [units, setUnits] = useState<Record<string, Unit>>({});
+  const [packagingCategoryId, setPackagingCategoryId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
