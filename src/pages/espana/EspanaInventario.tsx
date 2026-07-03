@@ -41,7 +41,9 @@ export default function EspanaInventario() {
   const [stock, setStock] = useState<Stock[]>([]);
   const [q, setQ] = useState("");
   const [mode, setMode] = useState<Mode>(null);
+  const [prefillVariantId, setPrefillVariantId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState<{ variantId: string } | null>(null);
+  const openMode = (m: Mode, vid?: string) => { setPrefillVariantId(vid ?? null); setMode(m); };
 
   const load = async () => {
     const [l, p, v, s] = await Promise.all([
@@ -133,37 +135,54 @@ export default function EspanaInventario() {
             </TableHeader>
             <TableBody>
               {filteredVariants.length === 0 && <TableRow><TableCell colSpan={locs.length + 6} className="text-center py-8 text-sm text-muted-foreground">Sin variantes activas.</TableCell></TableRow>}
-              {filteredVariants.map((v) => {
-                const p = productById[v.product_id];
-                return (
-                  <TableRow key={v.id}>
-                    <TableCell className="font-medium">{p?.name}</TableCell>
-                    <TableCell className="font-mono text-xs">{v.variant_sku}</TableCell>
-                    <TableCell>{v.size || "—"}</TableCell>
-                    {locs.map(l => {
-                      const qty = stockMap[v.id]?.[l.id] ?? 0;
-                      const noStock = l.inventory_mode === "no_stock";
-                      return <TableCell key={l.id} className={`text-right ${noStock ? "text-muted-foreground/50" : ""}`}>{noStock ? "—" : qty}</TableCell>;
-                    })}
-                    <TableCell className="text-right font-bold">{totalFor(v.id)}</TableCell>
-                    <TableCell>{isLow(v.id) && <Badge variant="destructive" className="text-[10px]">bajo</Badge>}</TableCell>
-                    <TableCell><Button size="sm" variant="ghost" onClick={() => setHistoryOpen({ variantId: v.id })}><History className="h-3.5 w-3.5" /></Button></TableCell>
-                  </TableRow>
-                );
-              })}
+              {(() => {
+                // Group visually by product with zebra alternation
+                let lastProductId: string | null = null;
+                let groupIdx = -1;
+                return filteredVariants.map((v) => {
+                  const p = productById[v.product_id];
+                  const isNewGroup = v.product_id !== lastProductId;
+                  if (isNewGroup) { groupIdx++; lastProductId = v.product_id; }
+                  const zebra = groupIdx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-zinc-50 dark:bg-zinc-900/30";
+                  const border = isNewGroup ? "border-t-2 border-t-zinc-300 dark:border-t-zinc-700" : "";
+                  return (
+                    <TableRow key={v.id} className={`${zebra} ${border}`}>
+                      <TableCell className="font-medium">{isNewGroup ? p?.name : <span className="text-muted-foreground/70 pl-3">↳</span>}</TableCell>
+                      <TableCell className="font-mono text-xs">{v.variant_sku}</TableCell>
+                      <TableCell>{v.size || "—"}</TableCell>
+                      {locs.map(l => {
+                        const qty = stockMap[v.id]?.[l.id] ?? 0;
+                        const noStock = l.inventory_mode === "no_stock";
+                        return <TableCell key={l.id} className={`text-right ${noStock ? "text-muted-foreground/50" : ""}`}>{noStock ? "—" : qty}</TableCell>;
+                      })}
+                      <TableCell className="text-right font-bold">{totalFor(v.id)}</TableCell>
+                      <TableCell>{isLow(v.id) && <Badge variant="destructive" className="text-[10px]">bajo</Badge>}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-0.5">
+                          <Button size="sm" variant="ghost" title="Entrada" onClick={() => openMode("in", v.id)}><ArrowDownToLine className="h-3.5 w-3.5 text-green-600" /></Button>
+                          <Button size="sm" variant="ghost" title="Salida" onClick={() => openMode("out", v.id)}><ArrowUpFromLine className="h-3.5 w-3.5 text-red-600" /></Button>
+                          <Button size="sm" variant="ghost" title="Ajuste" onClick={() => openMode("adjust", v.id)}><Sliders className="h-3.5 w-3.5" /></Button>
+                          <Button size="sm" variant="ghost" title="Transferir" onClick={() => openMode("transfer", v.id)}><ArrowLeftRight className="h-3.5 w-3.5" /></Button>
+                          <Button size="sm" variant="ghost" title="Historial" onClick={() => setHistoryOpen({ variantId: v.id })}><History className="h-3.5 w-3.5" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                });
+              })()}
             </TableBody>
           </Table>
         </div>
       </Card>
 
-      <MovementDialog mode={mode} onClose={() => setMode(null)} locs={locs} variants={variants} products={products} onSaved={load} stockMap={stockMap} />
+      <MovementDialog mode={mode} prefillVariantId={prefillVariantId} onClose={() => { setMode(null); setPrefillVariantId(null); }} locs={locs} variants={variants} products={products} onSaved={load} stockMap={stockMap} />
       {historyOpen && <HistoryDialog variantId={historyOpen.variantId} variants={variants} products={products} locs={locs} onClose={() => setHistoryOpen(null)} />}
     </div>
   );
 }
 
-function MovementDialog({ mode, onClose, locs, variants, products, stockMap, onSaved }: {
-  mode: Mode; onClose: () => void; locs: Loc[]; variants: Variant[]; products: Product[];
+function MovementDialog({ mode, prefillVariantId, onClose, locs, variants, products, stockMap, onSaved }: {
+  mode: Mode; prefillVariantId?: string | null; onClose: () => void; locs: Loc[]; variants: Variant[]; products: Product[];
   stockMap: Record<string, Record<string, number>>; onSaved: () => void;
 }) {
   const [variantId, setVariantId] = useState("");
@@ -176,8 +195,8 @@ function MovementDialog({ mode, onClose, locs, variants, products, stockMap, onS
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (mode) { setVariantId(""); setLocationId(""); setFromId(""); setToId(""); setQty(1); setReason(""); setNotes(""); }
-  }, [mode]);
+    if (mode) { setVariantId(prefillVariantId || ""); setLocationId(""); setFromId(""); setToId(""); setQty(1); setReason(""); setNotes(""); }
+  }, [mode, prefillVariantId]);
 
   if (!mode) return null;
 
