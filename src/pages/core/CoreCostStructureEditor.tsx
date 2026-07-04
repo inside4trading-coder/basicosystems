@@ -150,7 +150,90 @@ export default function CoreCostStructureEditor() {
       const empaque = (catRes.data as any[] ?? []).find(c => (c.name ?? "").trim().toLowerCase() === "empaque");
       setPackagingCategoryId(empaque?.id ?? null);
 
-      if (!isNew) {
+      if (isVariantMode) {
+        // Load variant and either its cost structure or prefill from parent base
+        const { data: vRow } = await supabase
+          .from("core_product_variants")
+          .select("id, size, color, variant_sku, core_product_id, woo_variation_id, cost_structure_id")
+          .eq("id", variantIdParam!)
+          .maybeSingle();
+        if (!vRow) { toast.error("Variante no encontrada"); navigate(-1); return; }
+
+        // Find parent product woo id
+        const { data: prod } = await supabase.from("core_products")
+          .select("id, name, woo_product_id, unit_cost").eq("id", (vRow as any).core_product_id).maybeSingle();
+        const parentWooId = (prod as any)?.woo_product_id ?? null;
+
+        // Find parent base structure via woo_product_id
+        let parentStructureId: string | null = null;
+        if (parentWooId) {
+          const { data: baseS } = await supabase.from("core_cost_structures")
+            .select("id, base_currency")
+            .eq("woo_product_id", parentWooId)
+            .is("variant_id", null)
+            .order("updated_at", { ascending: false }).limit(1).maybeSingle();
+          parentStructureId = (baseS as any)?.id ?? null;
+        }
+
+        setVariantInfo({
+          id: (vRow as any).id,
+          size: (vRow as any).size,
+          color: (vRow as any).color,
+          sku: (vRow as any).variant_sku,
+          core_product_id: (vRow as any).core_product_id,
+          woo_variation_id: (vRow as any).woo_variation_id,
+          parent_structure_id: parentStructureId,
+        });
+
+        setWooProductId(parentWooId != null ? String(parentWooId) : "");
+        setWooVariationId((vRow as any).woo_variation_id != null ? String((vRow as any).woo_variation_id) : "");
+
+        const existingSid = (vRow as any).cost_structure_id as string | null;
+        if (existingSid) {
+          // Load existing variant structure
+          const { data: head } = await supabase.from("core_cost_structures").select("*").eq("id", existingSid).maybeSingle();
+          if (head) {
+            setExistingStructureId(existingSid);
+            setName(head.name);
+            setSku((head as any).sku ?? "");
+            setDescription(head.description ?? "");
+            if (head.product_type && !PRODUCT_TYPES.includes(head.product_type)) { setProductType("Otro"); setProductTypeOther(head.product_type); }
+            else setProductType(head.product_type ?? "");
+            setBaseCurrency(head.base_currency);
+            setEstimatedSalePrice(head.estimated_sale_price != null ? String(head.estimated_sale_price) : "");
+            setOriginalSalePrice(head.estimated_sale_price != null ? Number(head.estimated_sale_price) : null);
+            setStatus(head.status);
+            setNotes(head.notes ?? "");
+            setWooProductName((head as any).woo_product_name ?? "");
+            setWooPermalink((head as any).woo_permalink ?? "");
+            const { data: rows } = await supabase
+              .from("core_cost_structure_items")
+              .select("*").eq("cost_structure_id", existingSid).order("section").order("sort_order");
+            setItems((rows as any[] ?? []).map(r => ({ ...r, _local_id: r.id })));
+          }
+        } else {
+          // Prefill name and copy items from parent base
+          const base = prod as any;
+          const label = `${base?.name ?? "Producto"} — ${(vRow as any).size ?? ""}${(vRow as any).color ? " / " + (vRow as any).color : ""}`.trim();
+          setName(label);
+          setSku((vRow as any).variant_sku ?? "");
+          setStatus("active");
+          if (parentStructureId) {
+            const { data: baseHead } = await supabase.from("core_cost_structures").select("*").eq("id", parentStructureId).maybeSingle();
+            if (baseHead) {
+              setBaseCurrency(baseHead.base_currency);
+              setEstimatedSalePrice(baseHead.estimated_sale_price != null ? String(baseHead.estimated_sale_price) : "");
+              setDescription(baseHead.description ?? "");
+              setProductType(baseHead.product_type ?? "");
+              setWooProductName((baseHead as any).woo_product_name ?? "");
+              setWooPermalink((baseHead as any).woo_permalink ?? "");
+              const { data: rows } = await supabase
+                .from("core_cost_structure_items").select("*").eq("cost_structure_id", parentStructureId).order("section").order("sort_order");
+              setItems((rows as any[] ?? []).map(r => ({ ...r, id: undefined, _local_id: uid() })));
+            }
+          }
+        }
+      } else if (!isNew) {
         const { data: head, error } = await supabase.from("core_cost_structures").select("*").eq("id", id!).maybeSingle();
         if (error || !head) {
           toast.error("No se encontró la estructura");
@@ -186,7 +269,7 @@ export default function CoreCostStructureEditor() {
       }
       setLoading(false);
     })();
-  }, [id, isNew, navigate]);
+  }, [id, isNew, isVariantMode, variantIdParam, navigate]);
 
   // Recompute subtotals when values change
   useEffect(() => {
