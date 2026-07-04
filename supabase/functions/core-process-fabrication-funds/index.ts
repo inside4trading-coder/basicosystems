@@ -359,7 +359,11 @@ async function runProcessSales(
           product_name: it.product_name ?? product.name ?? null,
           quantity: qty,
           unit_cost_snapshot: unitCost,
-          cost_snapshot_data: product.cost_snapshot ?? null,
+          cost_snapshot_data: {
+            ...(product.cost_snapshot ?? {}),
+            cost_source: resolved.cost_source,
+            resolved_variant_id: variant?.id ?? null,
+          },
           amount,
           currency: product.currency || "USD",
           reason: isNonRestock ? "Venta confirmada (no restockeable)" : "Venta confirmada",
