@@ -24,11 +24,28 @@ type Variant = {
   id: string;
   core_product_id: string;
   size: string;
+  color: string | null;
   variant_sku: string | null;
   woo_sku: string | null;
+  woo_variation_id: number | null;
   status: string;
   sort_order: number | null;
+  cost_override_enabled: boolean;
+  uses_parent_cost_structure: boolean;
+  variant_unit_cost_usd: number | null;
+  resolved_unit_cost?: number;
+  cost_source?: string;
 };
+
+type CostRange = {
+  variant_count: number;
+  variants_with_override: number;
+  has_overrides: boolean;
+  min_unit_cost: number;
+  max_unit_cost: number;
+  base_unit_cost: number;
+};
+
 
 type Product = {
   id: string;
