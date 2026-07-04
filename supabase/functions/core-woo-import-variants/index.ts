@@ -152,28 +152,34 @@ serve(async (req) => {
   }
 
 
-  // 4. Apply: upsert into core_product_variants by (core_product_id, woo_variation_id) — fallback by (core_product_id, size)
+  // 4. Apply: upsert into core_product_variants by (core_product_id, woo_variation_id) — fallback by (core_product_id, size, color)
   const { data: existing } = await supabase
     .from("core_product_variants")
-    .select("id, size, woo_variation_id")
+    .select("id, size, color, woo_variation_id")
     .eq("core_product_id", coreProductId);
 
   const byVarId = new Map<number, any>();
-  const bySize = new Map<string, any>();
+  const bySizeColor = new Map<string, any>();
   for (const r of existing ?? []) {
     if (r.woo_variation_id) byVarId.set(Number(r.woo_variation_id), r);
-    if (r.size) bySize.set(String(r.size).toUpperCase(), r);
+    const key = `${String(r.size ?? "").toUpperCase()}|${String(r.color ?? "").toUpperCase()}`;
+    bySizeColor.set(key, r);
   }
 
   let created = 0;
   let updated = 0;
   let sort = 0;
   for (const v of usable) {
-    const match = (v.woo_variation_id && byVarId.get(v.woo_variation_id)) || bySize.get(String(v.size).toUpperCase());
+    const key = `${String(v.size ?? "").toUpperCase()}|${String(v.color ?? "").toUpperCase()}`;
+    const match = (v.woo_variation_id && byVarId.get(v.woo_variation_id)) || bySizeColor.get(key);
     const payload: any = {
       core_product_id: coreProductId,
       size: v.size,
+      normalized_size: v.normalized_size,
       variant_label: v.variant_label,
+      color: v.color,
+      normalized_color: v.normalized_color,
+      woo_attributes: v.woo_attributes,
       status: "active",
       woo_variation_id: v.woo_variation_id,
       woo_sku: v.woo_sku,
