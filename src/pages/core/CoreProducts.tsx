@@ -515,30 +515,75 @@ export default function CoreProducts() {
                           ) : (
                             <div className="space-y-2">
                               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tallas / variaciones</div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {vars.map(v => (
-                                  <div key={v.id} className={cn(
-                                    "flex items-center justify-between gap-3 rounded-md border px-3 py-2 bg-background",
-                                    v.status !== "active" && "opacity-60"
-                                  )}>
-                                    <div className="min-w-0">
-                                      <div className="font-semibold text-sm">Talla {v.size}</div>
-                                      <div className="text-[11px] font-mono text-muted-foreground truncate">{v.variant_sku || v.woo_sku || "—"}</div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <span className={cn("text-[10px] font-medium", v.status === "active" ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
-                                        {v.status === "active" ? "ON" : "OFF"}
-                                      </span>
-                                      <Switch checked={v.status === "active"} onCheckedChange={() => toggleVariantStatus(v)} />
-                                    </div>
-                                  </div>
-                                ))}
+                              <div className="rounded-md border bg-background overflow-x-auto">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Talla</TableHead>
+                                      <TableHead>Color</TableHead>
+                                      <TableHead>SKU</TableHead>
+                                      <TableHead>Woo ID</TableHead>
+                                      <TableHead>Modo costo</TableHead>
+                                      <TableHead className="text-right">Costo resuelto</TableHead>
+                                      <TableHead>Fuente</TableHead>
+                                      <TableHead className="text-center">Activa</TableHead>
+                                      <TableHead className="text-right">Acciones</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {vars.map(v => {
+                                      const src = v.cost_source ?? "product_unit_cost";
+                                      const srcLabel: Record<string, { label: string; cls: string }> = {
+                                        variant_override: { label: "variant_override", cls: "border-red-600 text-red-700" },
+                                        product_base: { label: "product_base", cls: "border-muted-foreground text-muted-foreground" },
+                                        product_unit_cost: { label: "product_unit_cost", cls: "border-muted-foreground text-muted-foreground" },
+                                        zero_fallback: { label: "zero_fallback", cls: "border-amber-600 text-amber-700" },
+                                      };
+                                      const sInfo = srcLabel[src] ?? srcLabel.product_unit_cost;
+                                      return (
+                                        <TableRow key={v.id} className={cn(v.status !== "active" && "opacity-60")}>
+                                          <TableCell className="font-medium">{v.size || "—"}</TableCell>
+                                          <TableCell>{v.color || "—"}</TableCell>
+                                          <TableCell className="font-mono text-xs">{v.variant_sku || v.woo_sku || "—"}</TableCell>
+                                          <TableCell className="font-mono text-xs">{v.woo_variation_id ?? "—"}</TableCell>
+                                          <TableCell>
+                                            {v.cost_override_enabled
+                                              ? <Badge variant="outline" className="border-red-600 text-red-700">Costo propio</Badge>
+                                              : <Badge variant="secondary">Hereda base</Badge>}
+                                          </TableCell>
+                                          <TableCell className="text-right tabular-nums">
+                                            {v.resolved_unit_cost != null ? Number(v.resolved_unit_cost).toFixed(2) : "—"} {p.currency}
+                                          </TableCell>
+                                          <TableCell>
+                                            <Badge variant="outline" className={cn("text-[10px]", sInfo.cls)}>{sInfo.label}</Badge>
+                                          </TableCell>
+                                          <TableCell className="text-center">
+                                            <Switch checked={v.status === "active"} onCheckedChange={() => toggleVariantStatus(v)} />
+                                          </TableCell>
+                                          <TableCell className="text-right">
+                                            <div className="inline-flex gap-1">
+                                              <Button size="sm" variant="outline" onClick={() => navigate(`/core/estructuras-costos/nueva?variant=${v.id}`)} title="Editar costo variante">
+                                                <Pencil className="h-3 w-3 mr-1" />Editar costo
+                                              </Button>
+                                              {v.cost_override_enabled && (
+                                                <Button size="sm" variant="ghost" onClick={() => setToResetVariant(v)} title="Volver a heredar base">
+                                                  ↺
+                                                </Button>
+                                              )}
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </TableBody>
+                                </Table>
                               </div>
                             </div>
                           )}
                         </TableCell>
                       </TableRow>
                     )}
+
                   </Fragment>
                 );
               })}
