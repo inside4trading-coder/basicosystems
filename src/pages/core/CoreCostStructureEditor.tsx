@@ -586,8 +586,32 @@ export default function CoreCostStructureEditor() {
       }
 
       await logCoreAudit({ table: "core_cost_structure_items", recordId: structureId, action: "replace_items", newValue: String(items.length) });
-      toast.success(isNew ? "Estructura creada" : "Estructura actualizada");
-      navigate(`/core/estructuras-costos/${structureId}`);
+
+      if (isVariantMode && variantInfo) {
+        await supabase.from("core_product_variants").update({
+          cost_structure_id: structureId,
+          uses_parent_cost_structure: false,
+          cost_override_enabled: true,
+          variant_unit_cost_usd: totals.totalUnitCost,
+          cost_updated_at: new Date().toISOString(),
+        } as any).eq("id", variantInfo.id);
+        await logCoreAudit({
+          table: "core_product_variants", recordId: variantInfo.id, action: "variant_cost_saved",
+          field: "variant_unit_cost_usd", newValue: totals.totalUnitCost,
+        });
+      }
+
+      toast.success(creatingNewRecord ? "Estructura creada" : "Estructura actualizada");
+      if (isVariantMode) {
+        // Go back to the parent structure if we know it
+        if (variantInfo?.parent_structure_id) {
+          navigate(`/core/estructuras-costos/${variantInfo.parent_structure_id}`);
+        } else {
+          navigate("/core/estructuras-costos");
+        }
+      } else {
+        navigate(`/core/estructuras-costos/${structureId}`);
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "Error al guardar");
     } finally {
