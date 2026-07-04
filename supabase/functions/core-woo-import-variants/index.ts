@@ -34,6 +34,13 @@ function pickSize(attrs: any[]): { size: string | null; label: string | null; co
   return { size, label: labelParts.join(" / ") || size, color };
 }
 
+function normalizeText(s: string | null | undefined): string | null {
+  if (!s) return null;
+  const t = String(s).trim();
+  if (!t) return null;
+  return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").toUpperCase();
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
