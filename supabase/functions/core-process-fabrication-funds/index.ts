@@ -29,6 +29,41 @@ const REVERTING_STATUSES = new Set([
   "pago-pendiente-po",
 ]);
 
+// Resolves the effective unit cost for (product, variant) via
+// public.resolve_core_variant_unit_cost, and tags the source so callers can
+// audit whether the cost came from a variant override, the product's base
+// structure, the legacy unit_cost, or a zero fallback.
+async function resolveVariantUnitCost(
+  supabase: any,
+  product: any,
+  variant: any,
+): Promise<{ unit_cost: number; cost_source: string }> {
+  const productId = product?.id ?? null;
+  const variantId = variant?.id ?? null;
+  const { data, error } = await supabase.rpc("resolve_core_variant_unit_cost", {
+    p_product_id: productId,
+    p_variant_id: variantId,
+  });
+  if (error) {
+    console.warn("resolve_core_variant_unit_cost failed", error?.message);
+  }
+  const unitCost = Number(data ?? 0) || 0;
+  let source = "zero_fallback";
+  if (unitCost > 0) {
+    if (variant && variant.cost_override_enabled && variant.cost_structure_id) {
+      source = "variant_override";
+    } else {
+      const legacy = Number(product?.unit_cost ?? 0) || 0;
+      // If the RPC returned exactly the legacy unit_cost we assume no active
+      // base structure sum applied. Otherwise it summed a base structure.
+      source = legacy > 0 && Math.abs(legacy - unitCost) < 1e-6
+        ? "product_unit_cost"
+        : "product_base";
+    }
+  }
+  return { unit_cost: unitCost, cost_source: source };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -101,7 +136,7 @@ async function runProcessSales(
     ] = await Promise.all([
       supabase.from("core_fabrication_funds").select("id, fund_type, currency, core_product_id"),
       supabase.from("core_products").select("id, core_sku, woo_sku, woo_product_id, name, unit_cost, is_restockable, currency, cost_snapshot"),
-      supabase.from("core_product_variants").select("id, core_product_id, variant_sku, woo_sku, woo_variation_id, status, size, variant_label"),
+      supabase.from("core_product_variants").select("id, core_product_id, variant_sku, woo_sku, woo_variation_id, status, size, variant_label, cost_override_enabled, cost_structure_id, variant_unit_cost_usd"),
       supabase.from("core_restock_control").select("sku, woo_product_id, woo_variation_id, core_product_id, core_variant_id, status, reason"),
       supabase.from("core_fabrication_fund_movements").select("source_order_id, source_order_item_id, movement_type, id, amount, fund_id, currency").not("source_order_item_id", "is", null),
       supabase.from("core_fabrication_fund_pending_items").select("source_order_id, source_order_item_id, id, status"),
@@ -266,7 +301,7 @@ async function runProcessSales(
               woo_sku: wooSku,
               variant_sku: variantSku,
             })
-            .select("id, core_product_id, variant_sku, woo_sku, woo_variation_id, status, size, variant_label")
+            .select("id, core_product_id, variant_sku, woo_sku, woo_variation_id, status, size, variant_label, cost_override_enabled, cost_structure_id, variant_unit_cost_usd")
             .single();
           if (createVarErr || !createdVar) {
             queuePending(
@@ -283,8 +318,15 @@ async function runProcessSales(
           summary.by_reason["variant_auto_created"] = (summary.by_reason["variant_auto_created"] ?? 0) + 1;
         }
 
-        const unitCost = Number(product.unit_cost ?? 0);
-        if (!unitCost || unitCost <= 0) { queuePending("unit_cost_missing", "Asignar estructura de costos o snapshot al Producto Core"); continue; }
+        const resolved = await resolveVariantUnitCost(supabase, product, variant);
+        const unitCost = resolved.unit_cost;
+        if (!unitCost || unitCost <= 0) {
+          queuePending(
+            "unit_cost_missing",
+            `Sin costo resuelto (source=${resolved.cost_source}). Configura estructura base o costo por variante.`,
+          );
+          continue;
+        }
 
         const isNonRestock =
           (skuLower && restockSkuSet.has(skuLower)) ||
@@ -317,7 +359,11 @@ async function runProcessSales(
           product_name: it.product_name ?? product.name ?? null,
           quantity: qty,
           unit_cost_snapshot: unitCost,
-          cost_snapshot_data: product.cost_snapshot ?? null,
+          cost_snapshot_data: {
+            ...(product.cost_snapshot ?? {}),
+            cost_source: resolved.cost_source,
+            resolved_variant_id: variant?.id ?? null,
+          },
           amount,
           currency: product.currency || "USD",
           reason: isNonRestock ? "Venta confirmada (no restockeable)" : "Venta confirmada",
@@ -484,15 +530,21 @@ async function runReprocess(supabase: any, userId: string, pendingIds?: string[]
     const { data: pendings, error: pErr } = await pq;
     if (pErr) throw pErr;
 
-    const [{ data: funds }, { data: coreProducts }] = await Promise.all([
+    const variantIds = Array.from(new Set((pendings ?? []).map((p: any) => p.linked_core_variant_id).filter(Boolean)));
+    const [{ data: funds }, { data: coreProducts }, { data: coreVariants }] = await Promise.all([
       supabase.from("core_fabrication_funds").select("id, fund_type, currency, core_product_id, available_amount"),
       supabase.from("core_products").select("id, name, unit_cost, currency, cost_snapshot, is_restockable"),
+      variantIds.length
+        ? supabase.from("core_product_variants").select("id, cost_override_enabled, cost_structure_id, variant_unit_cost_usd").in("id", variantIds)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
     const generalFund = (funds ?? []).find((f: any) => f.fund_type === "general" && f.currency === "USD" && !f.core_product_id);
     const nonRestockFund = (funds ?? []).find((f: any) => f.fund_type === "non_restockable" && f.currency === "USD" && !f.core_product_id);
     if (!generalFund || !nonRestockFund) return json({ error: "missing_base_funds" }, 500);
     const productById = new Map<string, any>();
     for (const p of coreProducts ?? []) productById.set(p.id, p);
+    const variantById = new Map<string, any>();
+    for (const v of coreVariants ?? []) variantById.set(v.id, v);
 
     const fundDeltas = new Map<string, number>();
     const movementInserts: any[] = [];
@@ -511,7 +563,9 @@ async function runReprocess(supabase: any, userId: string, pendingIds?: string[]
         summary.pending_skipped += 1;
         continue;
       }
-      const unitCost = Number(product.unit_cost ?? 0);
+      const variant = p.linked_core_variant_id ? variantById.get(p.linked_core_variant_id) : null;
+      const resolved = await resolveVariantUnitCost(supabase, product, variant);
+      const unitCost = resolved.unit_cost;
       if (!unitCost || unitCost <= 0) {
         skippedUpdates.push({ id: p.id, reason: "unit_cost_missing" });
         summary.pending_skipped += 1;
@@ -534,7 +588,12 @@ async function runReprocess(supabase: any, userId: string, pendingIds?: string[]
         woo_product_id: p.woo_product_id, woo_variation_id: p.woo_variation_id,
         core_product_id: product.id, core_variant_id: p.linked_core_variant_id ?? null,
         sku: p.woo_sku, product_name: p.product_name ?? product.name,
-        quantity: qty, unit_cost_snapshot: unitCost, cost_snapshot_data: product.cost_snapshot ?? null,
+        quantity: qty, unit_cost_snapshot: unitCost,
+        cost_snapshot_data: {
+          ...(product.cost_snapshot ?? {}),
+          cost_source: resolved.cost_source,
+          resolved_variant_id: p.linked_core_variant_id ?? null,
+        },
         amount, currency: product.currency || "USD",
         reason: isNonRestock ? "Reprocesado (no restockeable)" : "Reprocesado tras resolver pendiente",
         status: "posted", created_by: userId,

@@ -304,19 +304,58 @@ async function createFromNeeds(
     .single();
   if (orderErr) throw orderErr;
 
-  const linesToInsert = linesArr.map((l) => ({
-    production_order_id: orderRow.id,
-    core_product_id: l.core_product_id,
-    core_variant_id: l.core_variant_id,
-    sku: l.sku,
-    variant_sku: l.variant_sku,
-    variant_label: l.variant_label,
-    size: l.size,
-    quantity_ordered: l.quantity_ordered,
-    quantity_completed: 0,
-    quantity_pending: l.quantity_pending,
-    status: "pending",
-  }));
+  // Resolver costo por variante (RPC resolve_core_variant_unit_cost) para
+  // dejar snapshot en la línea. Si la variante tiene override → usa costo
+  // propio; si no → costo base del producto; fallback a unit_cost o 0.
+  const productIds = Array.from(new Set(linesArr.map((l) => l.core_product_id).filter(Boolean)));
+  const variantIdsAll = Array.from(new Set(linesArr.map((l) => l.core_variant_id).filter(Boolean)));
+  const [{ data: productsInfo }, { data: variantsInfo }] = await Promise.all([
+    productIds.length
+      ? supabase.from("core_products").select("id, unit_cost").in("id", productIds)
+      : Promise.resolve({ data: [] as any[] }),
+    variantIdsAll.length
+      ? supabase.from("core_product_variants").select("id, cost_override_enabled, cost_structure_id").in("id", variantIdsAll)
+      : Promise.resolve({ data: [] as any[] }),
+  ]);
+  const pInfoMap = new Map((productsInfo ?? []).map((p: any) => [p.id, p]));
+  const vInfoMap = new Map((variantsInfo ?? []).map((v: any) => [v.id, v]));
+
+  const linesToInsert: any[] = [];
+  for (const l of linesArr) {
+    const p = l.core_product_id ? pInfoMap.get(l.core_product_id) : null;
+    const v = l.core_variant_id ? vInfoMap.get(l.core_variant_id) : null;
+    const { data: costData } = await supabase.rpc("resolve_core_variant_unit_cost", {
+      p_product_id: l.core_product_id ?? null,
+      p_variant_id: l.core_variant_id ?? null,
+    });
+    const unitCost = Number(costData ?? 0) || 0;
+    let cost_source = "zero_fallback";
+    if (unitCost > 0) {
+      if (v && v.cost_override_enabled && v.cost_structure_id) {
+        cost_source = "variant_override";
+      } else {
+        const legacy = Number((p as any)?.unit_cost ?? 0) || 0;
+        cost_source = legacy > 0 && Math.abs(legacy - unitCost) < 1e-6
+          ? "product_unit_cost"
+          : "product_base";
+      }
+    }
+    linesToInsert.push({
+      production_order_id: orderRow.id,
+      core_product_id: l.core_product_id,
+      core_variant_id: l.core_variant_id,
+      sku: l.sku,
+      variant_sku: l.variant_sku,
+      variant_label: l.variant_label,
+      size: l.size,
+      quantity_ordered: l.quantity_ordered,
+      quantity_completed: 0,
+      quantity_pending: l.quantity_pending,
+      status: "pending",
+      estimated_unit_cost: unitCost || null,
+      cost_source,
+    });
+  }
   const { error: linesErr } = await supabase
     .from("core_production_order_lines")
     .insert(linesToInsert);
@@ -430,10 +469,13 @@ async function createManual(
   if (!prod) return json({ error: "Producto no encontrado" }, 404);
 
   const variantIds = body.lines.map((l) => l.core_variant_id);
-  const { data: variants } = await supabase
-    .from("core_product_variants")
-    .select("id,variant_sku,variant_label,size,woo_variation_id")
-    .in("id", variantIds);
+  const [{ data: variants }, { data: prodInfo }] = await Promise.all([
+    supabase
+      .from("core_product_variants")
+      .select("id,variant_sku,variant_label,size,woo_variation_id,cost_override_enabled,cost_structure_id")
+      .in("id", variantIds),
+    supabase.from("core_products").select("id, unit_cost").eq("id", body.core_product_id).maybeSingle(),
+  ]);
   const vmap = new Map((variants ?? []).map((v: any) => [v.id, v]));
 
   const totalQty = body.lines.reduce((a, l) => a + Number(l.quantity), 0);
@@ -462,9 +504,26 @@ async function createManual(
     .single();
   if (orderErr) throw orderErr;
 
-  const linesToInsert = body.lines.map((l) => {
+  const linesToInsert: any[] = [];
+  for (const l of body.lines) {
     const v: any = vmap.get(l.core_variant_id);
-    return {
+    const { data: costData } = await supabase.rpc("resolve_core_variant_unit_cost", {
+      p_product_id: body.core_product_id,
+      p_variant_id: l.core_variant_id,
+    });
+    const unitCost = Number(costData ?? 0) || 0;
+    let cost_source = "zero_fallback";
+    if (unitCost > 0) {
+      if (v && v.cost_override_enabled && v.cost_structure_id) {
+        cost_source = "variant_override";
+      } else {
+        const legacy = Number((prodInfo as any)?.unit_cost ?? 0) || 0;
+        cost_source = legacy > 0 && Math.abs(legacy - unitCost) < 1e-6
+          ? "product_unit_cost"
+          : "product_base";
+      }
+    }
+    linesToInsert.push({
       production_order_id: orderRow.id,
       core_product_id: body.core_product_id,
       core_variant_id: l.core_variant_id,
@@ -476,8 +535,10 @@ async function createManual(
       quantity_completed: 0,
       quantity_pending: Number(l.quantity),
       status: "pending",
-    };
-  });
+      estimated_unit_cost: unitCost || null,
+      cost_source,
+    });
+  }
   const { error: linesErr } = await supabase
     .from("core_production_order_lines")
     .insert(linesToInsert);
