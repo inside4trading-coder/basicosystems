@@ -318,8 +318,15 @@ async function runProcessSales(
           summary.by_reason["variant_auto_created"] = (summary.by_reason["variant_auto_created"] ?? 0) + 1;
         }
 
-        const unitCost = Number(product.unit_cost ?? 0);
-        if (!unitCost || unitCost <= 0) { queuePending("unit_cost_missing", "Asignar estructura de costos o snapshot al Producto Core"); continue; }
+        const resolved = await resolveVariantUnitCost(supabase, product, variant);
+        const unitCost = resolved.unit_cost;
+        if (!unitCost || unitCost <= 0) {
+          queuePending(
+            "unit_cost_missing",
+            `Sin costo resuelto (source=${resolved.cost_source}). Configura estructura base o costo por variante.`,
+          );
+          continue;
+        }
 
         const isNonRestock =
           (skuLower && restockSkuSet.has(skuLower)) ||
