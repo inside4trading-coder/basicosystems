@@ -1,58 +1,117 @@
-## Diagnóstico: los números 44 / 55 / 65 / 34 son "correctos" pero vienen de un backfill histórico
 
-Revisé la tabla `core_production_needs` y los movimientos que las originaron. La aritmética cuadra al detalle, pero **no representan demanda reciente** — son ventas históricas que se cargaron todas juntas al Fondo de Fabricación.
+# Costos por variante en Estructuras de Costos (modo avanzado opcional)
 
-### De dónde salen los números
+## Principio rector
+El flujo actual (una estructura por producto padre, todas las variantes heredan) queda **exactamente igual**. Todo lo nuevo vive detrás de un checkbox apagado por defecto. Cero cambios en WooCommerce, POS, España, Blanks/DTF, QR, nómina o histórico.
 
-Para el SKU **JGM43** encontré 199 movimientos `sale_generated` posted en el Fondo de Fabricación, todos con el **mismo timestamp** `2026-06-04 10:02:11`, provenientes de **197 pedidos distintos** de WooCommerce (algunos con 2 unidades). Es la huella típica de una corrida masiva del proceso del Fondo que "puso al día" todo el histórico de una sola vez.
+## 1. Base de datos (una sola migración aditiva)
 
-Por talla:
+### `core_product_variants` — añadir columnas
+- `cost_structure_id uuid NULL` → FK a `core_cost_structures(id)` (estructura propia de la variante)
+- `uses_parent_cost_structure boolean NOT NULL DEFAULT true`
+- `cost_override_enabled boolean NOT NULL DEFAULT false`
+- `variant_unit_cost_usd numeric NULL` (costo resuelto en override, cache)
+- `cost_updated_at timestamptz NULL`
+- `color text NULL`, `normalized_color text NULL`, `woo_attributes jsonb NULL` (si no existen ya — reutilizar `size`, `variant_label`, `woo_variation_id`, `variant_sku` que ya existen)
 
-| Talla | Ventas históricas | Ya convertidas | Pendiente actual | Coincide con la pantalla |
-|-------|-------------------|----------------|------------------|---------------------------|
-| L     | 45                | 1              | **44**           | ✔ |
-| S     | 55                | 0              | **55**           | ✔ |
-| M     | 65                | 0              | **65**           | ✔ |
-| XL    | 34                | 0              | **34**           | ✔ |
+Todas nullables → registros existentes quedan intactos con `uses_parent_cost_structure = true`.
 
-El edge function `core-generate-production-needs` agrupa por variante y suma cada movimiento posted que no haya sido ya "linkeado" a una necesidad anterior. Como esos 199 movimientos no estaban linkeados, los tomó todos → 34 + 44 + 55 + 65 = 198 unidades de demanda "para fabricar".
+### `core_cost_structures` — añadir columna
+- `variant_id uuid NULL REFERENCES core_product_variants(id)`  
+  - `NULL` = estructura base del producto (comportamiento actual)
+  - Con valor = estructura propia de esa variante
 
-### Por qué se ve anormal
+Se elige esta opción sobre una tabla puente porque mantiene toda la lógica de `core_cost_structure_items` intacta (siguen atados a `cost_structure_id`).
 
-- No es un error de cálculo: cada unidad corresponde a una venta real ya cobrada en Woo.
-- Es anormal en el sentido de que **mezcla meses de historia** con la reposición real que hoy necesita la fábrica. Ese SKU (Jogger I Wonder) probablemente no se va a re-fabricar en esas cantidades — muchas de esas ventas ya se surtieron con inventario existente en su momento.
-- El pico se disparó porque el 4-jun-2026 se corrió el Fondo de Fabricación en modo "cargar histórico" y el 3-jul se corrió el generador de necesidades por primera vez sobre esos movimientos.
+### Helper SQL
+`public.resolve_core_variant_unit_cost(p_product_id uuid, p_variant_id uuid)` returns numeric:
+1. Si variante tiene `cost_override_enabled=true` y `cost_structure_id` con estructura activa → suma sus items.
+2. Si no → costo de estructura base del producto (`variant_id IS NULL`).
+3. Si no → `core_products.unit_cost`.
+4. Si nada → 0.
 
-## Propuesta de arreglo
+## 2. Normalización (frontend)
 
-Necesito tu decisión sobre cómo tratar el histórico. Te propongo tres piezas; se pueden aplicar solas o combinadas.
+`src/lib/coreNormalize.ts`:
+- `normalizeSize(label)` — ya existe algo en `espMaterials.ts`, replicar para core.
+- `normalizeColor(label)` — trim, uppercase, quitar acentos, colapsar espacios.
 
-### 1. Marcar el histórico como "ya atendido" (una sola vez)
+## 3. Edge function `core-woo-import-variants`
 
-Crear una necesidad sintética por variante con `status = 'ignored'` (o `converted_to_order` con nota "backfill histórico") y linkearle todos los movimientos previos al 4-jun-2026 10:02:12. A partir de ahí el generador ya no los volverá a tomar. La pantalla de Necesidades quedaría limpia y el próximo run sólo miraría ventas nuevas.
+Ya existe y ya detecta atributos. Ajustes mínimos:
+- Guardar también `color`, `normalized_color`, `woo_attributes` (raw).
+- No tocar lógica existente de tallas.
+- Sigue siendo solo-lectura contra Woo.
 
-Auditoría: se registra en `core_audit_logs` con acción `backfill_ignore_historical` para que quede trazado.
+## 4. UI — `CoreCostStructureEditor.tsx`
 
-### 2. Agregar filtro "desde fecha" al generador
+Solo en modo "nueva/editar" con Woo Product ID vinculado:
 
-En el edge function `core-generate-production-needs` ya existen los parámetros `period_start` / `period_end` pero la UI no los expone. Añadir en la pantalla de Necesidades un selector "Generar desde…" que llame al function con `period_start = <fecha>`. Así la próxima vez que se cargue un histórico grande, el usuario decide desde cuándo cuenta.
+### Checkbox
+Debajo del bloque de conexión WooCommerce:
+```
+[ ] Este producto tiene costos diferentes por variante/color/talla
+    Activa solo si algunas variantes consumen materias primas distintas.
+```
+Estado guardado en la estructura base (nuevo campo `has_variant_overrides boolean` en `core_cost_structures`, o derivado de existencia de variantes con override — usaremos derivado para no añadir más columnas).
 
-### 3. Guardar una marca "último punto procesado" por variante
+### Panel colapsable "Costos por variante" (solo si checkbox ON)
+- Botón **"Sincronizar variantes Woo"** → llama edge function existente con `apply: true`.
+- Matriz con columnas: Woo variation ID · SKU · Talla · Color · Precio Woo (readonly) · Modo costo (select: `Heredar base` / `Personalizar`) · Costo unitario · Acciones.
+- Acciones por fila: **Editar costos** (abre sheet), **Copiar desde base**, **Copiar desde otra variante**, **Resetear a heredar**.
+- Por defecto todas en "Heredar base".
 
-Persistir en `core_settings` (o en una tabla nueva `core_production_needs_watermark`) la fecha del último movimiento procesado. El generador arrancaría siempre desde ahí y no volvería a mirar histórico previo, aun si aparecen movimientos "atrasados". Esto es lo más robusto a largo plazo pero implica cambios de esquema.
+### Sheet "Editar costos de variante"
+Reutiliza el mismo componente de secciones que la estructura base (Materia prima, Mano de obra, Procesos técnicos, Costos variables, Logística, Empaque, Otros). Al guardar:
+- Crea/actualiza una `core_cost_structures` con `variant_id` seteado.
+- Marca la variante: `cost_override_enabled=true`, `uses_parent_cost_structure=false`, `cost_structure_id=<nueva>`.
+- Recalcula `variant_unit_cost_usd`.
 
-## Recomendación
+"Copiar desde base": prellena items desde la base pero la variante sigue en "Heredar" hasta que el usuario guarde.
 
-Aplicar **#1 ahora mismo** (limpia el ruido actual de JGM43 y de cualquier otro SKU en la misma situación) + **#2** para que tengas control manual la próxima vez que corras un backfill. Dejar #3 para una siguiente iteración si sigue siendo un problema.
+## 5. Catálogo `/core/productos`
 
-## Detalles técnicos
+En fila del producto padre:
+- Si todas heredan → `Costo: X.XX USD`
+- Si hay overrides → `Costo: min–max USD` con badge "variantes con costo propio: N".
 
-- Backfill (#1): `INSERT` una `core_production_needs` por variante afectada con `need_type='sale_generated'`, `status='ignored'`, `quantity_needed = SUM(qty histórica)`, `notes = 'Backfill histórico ignorado — no fabricar'`. Luego `INSERT` en `core_production_need_sources` un registro por cada movimiento previo a la fecha de corte. Marcar además como `ignored` las necesidades ya creadas hoy por el run `dba10927-…` (34/44/55/65).
-- Filtro UI (#2): en `src/pages/core/CoreProductionNeeds.tsx`, junto al botón "Generar desde ventas", agregar un `DatePicker` opcional y enviarlo como `period_start` en el body del fetch al edge function. Sin fecha, comportamiento actual.
-- Fecha de corte sugerida para #1: `2026-06-04 10:03:00+00` (justo después del backfill), o la que tú definas.
+En expandido, columnas: Talla · Color · SKU · Woo variation ID · Modo (Hereda base / Costo propio) · Costo unitario · acciones (Editar / Copiar base / Resetear).
 
-## Lo que necesito confirmar antes de implementar
+## 6. Resolución de costo en producción / partidas / necesidades
 
-1. ¿Fecha de corte para considerar "histórico" → `2026-06-04 10:03:00`? ¿O prefieres otra?
-2. Las necesidades actuales de JGM43 (34/44/55/65) ¿las marco como `ignored` o quieres dejar alguna cantidad "real" para fabricar (p. ej. reposición manual)?
-3. ¿Aplicamos #1 a **todos los SKU** cuyos movimientos posted tengan ese mismo timestamp del 4-jun, o sólo a JGM43?
+Sustituir lecturas actuales de `core_products.unit_cost` (cuando hay `variant_id` disponible) por una llamada al RPC `resolve_core_variant_unit_cost(product_id, variant_id)` en:
+- `core-create-production-order`
+- `core-generate-production-units`
+- `core-process-fabrication-funds` (solo en cálculos de costo nuevo)
+
+**No se reprocesa histórico**: solo aplica a nuevos cálculos. OPs, QR, nómina y snapshots existentes intactos.
+
+## 7. Seguridad y auditoría
+
+- Toda escritura protegida: `admin` o `manager` (RLS ya cubierta por políticas existentes de `core_*`).
+- Registrar en `core_audit_logs` cada cambio de modo/costo por variante (acción `variant_cost_override`, `variant_cost_reset`).
+
+## 8. Fuera de alcance (explícito)
+- Carga masiva de costos por variante (solo se deja preparado el esquema).
+- Overrides parciales de líneas dentro de una estructura heredada — implementamos opciones A/B (hereda completa **o** estructura propia completa) más el botón "copiar desde base" para no reescribir manualmente.
+- Cualquier escritura a WooCommerce.
+
+## 9. Validación con Woo Product 18007
+1. Abrir estructura, ingresar 18007, aplicar → 12 variaciones detectadas por la edge function.
+2. Checkbox off → guarda como siempre, todas heredan.
+3. Checkbox on → panel muestra 12 filas con talla y color, todas "Heredar base".
+4. Cambiar M/Negro a "Personalizar", editar materia prima, guardar → esa variante muestra costo propio; las otras 11 siguen heredando.
+5. Catálogo muestra rango de costos si hay overrides.
+
+## 10. Orden de ejecución
+1. Migración SQL (columnas + RPC + grants ya cubiertos).
+2. Regenerar tipos.
+3. Edge function: añadir color/normalized_color/woo_attributes.
+4. `src/lib/coreNormalize.ts`.
+5. UI: checkbox + panel + matriz + sheet en `CoreCostStructureEditor.tsx`.
+6. UI: catálogo `/core/productos` (rango + badges + acciones en expandido).
+7. Reemplazar lecturas de costo por RPC en las 3 edge functions listadas.
+8. Auditoría.
+
+## Respuesta al cuestionario del brief (post-implementación esperada)
+Todos los ítems del checklist final del usuario se cumplirán: checkbox off por defecto, flujo normal intacto, panel colapsable presente, 12 variaciones detectadas para 18007, herencia por defecto, personalización por variante con las 7 secciones, cálculo por variante solo en override, catálogo con rango, resolución con fallback al padre, Woo no tocado, sin romper estructuras existentes.
