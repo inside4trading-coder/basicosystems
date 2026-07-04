@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Save, Loader2, AlertTriangle, Search, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Loader2, AlertTriangle, Search, CheckCircle2, Layers } from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { formatDMY } from "@/lib/dateUtils";
+import { CoreVariantCostPanel } from "@/components/core/CoreVariantCostPanel";
 
 const PRODUCT_TYPES = ["Franela", "Hoodie", "Jogger", "Cargo", "Short", "Gorra", "Accesorio", "Producto terminado", "Otro"];
 const CURRENCIES = ["USD", "Bs", "EUR"];
@@ -82,7 +83,10 @@ function makeItem(section: Section, sortOrder: number, currency: string): Item {
 
 export default function CoreCostStructureEditor() {
   const { id } = useParams<{ id: string }>();
-  const isNew = !id || id === "nueva";
+  const [searchParams] = useSearchParams();
+  const variantIdParam = searchParams.get("variant");
+  const isVariantMode = !!variantIdParam;
+  const isNew = !isVariantMode && (!id || id === "nueva");
   const navigate = useNavigate();
 
   // Header fields
@@ -122,6 +126,10 @@ export default function CoreCostStructureEditor() {
   const [wooPreview, setWooPreview] = useState<any | null>(null);
   const [selectedWooVariantId, setSelectedWooVariantId] = useState<string>("");
 
+  // Variant mode state
+  const [variantInfo, setVariantInfo] = useState<{ id: string; size: string | null; color: string | null; sku: string | null; core_product_id: string; woo_variation_id: number | null; parent_structure_id: string | null } | null>(null);
+  const [existingStructureId, setExistingStructureId] = useState<string | null>(null);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -139,7 +147,90 @@ export default function CoreCostStructureEditor() {
       const empaque = (catRes.data as any[] ?? []).find(c => (c.name ?? "").trim().toLowerCase() === "empaque");
       setPackagingCategoryId(empaque?.id ?? null);
 
-      if (!isNew) {
+      if (isVariantMode) {
+        // Load variant and either its cost structure or prefill from parent base
+        const { data: vRow } = await supabase
+          .from("core_product_variants")
+          .select("id, size, color, variant_sku, core_product_id, woo_variation_id, cost_structure_id")
+          .eq("id", variantIdParam!)
+          .maybeSingle();
+        if (!vRow) { toast.error("Variante no encontrada"); navigate(-1); return; }
+
+        // Find parent product woo id
+        const { data: prod } = await supabase.from("core_products")
+          .select("id, name, woo_product_id, unit_cost").eq("id", (vRow as any).core_product_id).maybeSingle();
+        const parentWooId = (prod as any)?.woo_product_id ?? null;
+
+        // Find parent base structure via woo_product_id
+        let parentStructureId: string | null = null;
+        if (parentWooId) {
+          const { data: baseS } = await supabase.from("core_cost_structures")
+            .select("id, base_currency")
+            .eq("woo_product_id", parentWooId)
+            .is("variant_id", null)
+            .order("updated_at", { ascending: false }).limit(1).maybeSingle();
+          parentStructureId = (baseS as any)?.id ?? null;
+        }
+
+        setVariantInfo({
+          id: (vRow as any).id,
+          size: (vRow as any).size,
+          color: (vRow as any).color,
+          sku: (vRow as any).variant_sku,
+          core_product_id: (vRow as any).core_product_id,
+          woo_variation_id: (vRow as any).woo_variation_id,
+          parent_structure_id: parentStructureId,
+        });
+
+        setWooProductId(parentWooId != null ? String(parentWooId) : "");
+        setWooVariationId((vRow as any).woo_variation_id != null ? String((vRow as any).woo_variation_id) : "");
+
+        const existingSid = (vRow as any).cost_structure_id as string | null;
+        if (existingSid) {
+          // Load existing variant structure
+          const { data: head } = await supabase.from("core_cost_structures").select("*").eq("id", existingSid).maybeSingle();
+          if (head) {
+            setExistingStructureId(existingSid);
+            setName(head.name);
+            setSku((head as any).sku ?? "");
+            setDescription(head.description ?? "");
+            if (head.product_type && !PRODUCT_TYPES.includes(head.product_type)) { setProductType("Otro"); setProductTypeOther(head.product_type); }
+            else setProductType(head.product_type ?? "");
+            setBaseCurrency(head.base_currency);
+            setEstimatedSalePrice(head.estimated_sale_price != null ? String(head.estimated_sale_price) : "");
+            setOriginalSalePrice(head.estimated_sale_price != null ? Number(head.estimated_sale_price) : null);
+            setStatus(head.status);
+            setNotes(head.notes ?? "");
+            setWooProductName((head as any).woo_product_name ?? "");
+            setWooPermalink((head as any).woo_permalink ?? "");
+            const { data: rows } = await supabase
+              .from("core_cost_structure_items")
+              .select("*").eq("cost_structure_id", existingSid).order("section").order("sort_order");
+            setItems((rows as any[] ?? []).map(r => ({ ...r, _local_id: r.id })));
+          }
+        } else {
+          // Prefill name and copy items from parent base
+          const base = prod as any;
+          const label = `${base?.name ?? "Producto"} — ${(vRow as any).size ?? ""}${(vRow as any).color ? " / " + (vRow as any).color : ""}`.trim();
+          setName(label);
+          setSku((vRow as any).variant_sku ?? "");
+          setStatus("active");
+          if (parentStructureId) {
+            const { data: baseHead } = await supabase.from("core_cost_structures").select("*").eq("id", parentStructureId).maybeSingle();
+            if (baseHead) {
+              setBaseCurrency(baseHead.base_currency);
+              setEstimatedSalePrice(baseHead.estimated_sale_price != null ? String(baseHead.estimated_sale_price) : "");
+              setDescription(baseHead.description ?? "");
+              setProductType(baseHead.product_type ?? "");
+              setWooProductName((baseHead as any).woo_product_name ?? "");
+              setWooPermalink((baseHead as any).woo_permalink ?? "");
+              const { data: rows } = await supabase
+                .from("core_cost_structure_items").select("*").eq("cost_structure_id", parentStructureId).order("section").order("sort_order");
+              setItems((rows as any[] ?? []).map(r => ({ ...r, id: undefined, _local_id: uid() })));
+            }
+          }
+        }
+      } else if (!isNew) {
         const { data: head, error } = await supabase.from("core_cost_structures").select("*").eq("id", id!).maybeSingle();
         if (error || !head) {
           toast.error("No se encontró la estructura");
@@ -175,7 +266,7 @@ export default function CoreCostStructureEditor() {
       }
       setLoading(false);
     })();
-  }, [id, isNew, navigate]);
+  }, [id, isNew, isVariantMode, variantIdParam, navigate]);
 
   // Recompute subtotals when values change
   useEffect(() => {
@@ -425,6 +516,7 @@ export default function CoreCostStructureEditor() {
         woo_variation_id: wooVariationId.trim() ? Number(wooVariationId.trim()) : null,
         woo_product_name: wooProductName.trim() || null,
         woo_permalink: wooPermalink.trim() || null,
+        variant_id: isVariantMode ? variantInfo?.id ?? null : null,
         total_raw_materials: totals.by.raw_material,
         total_labor: totals.by.labor,
         total_technical_processes: totals.by.technical_process,
@@ -439,8 +531,9 @@ export default function CoreCostStructureEditor() {
         updated_by: user?.id ?? null,
       };
 
-      let structureId = id!;
-      if (isNew) {
+      let structureId: string;
+      const creatingNewRecord = isNew || (isVariantMode && !existingStructureId);
+      if (creatingNewRecord) {
         const { data, error } = await supabase
           .from("core_cost_structures")
           .insert({ ...head, created_by: user?.id ?? null })
@@ -448,8 +541,9 @@ export default function CoreCostStructureEditor() {
           .single();
         if (error || !data) throw error ?? new Error("No se pudo crear");
         structureId = data.id;
-        await logCoreAudit({ table: "core_cost_structures", recordId: structureId, action: "create", field: "record", newValue: name });
+        await logCoreAudit({ table: "core_cost_structures", recordId: structureId, action: isVariantMode ? "create_variant" : "create", field: "record", newValue: name });
       } else {
+        structureId = (isVariantMode ? existingStructureId : id)!;
         const { error } = await supabase.from("core_cost_structures").update(head).eq("id", structureId);
         if (error) throw error;
         await logCoreAudit({ table: "core_cost_structures", recordId: structureId, action: "update", field: "record", newValue: name });
@@ -489,8 +583,32 @@ export default function CoreCostStructureEditor() {
       }
 
       await logCoreAudit({ table: "core_cost_structure_items", recordId: structureId, action: "replace_items", newValue: String(items.length) });
-      toast.success(isNew ? "Estructura creada" : "Estructura actualizada");
-      navigate(`/core/estructuras-costos/${structureId}`);
+
+      if (isVariantMode && variantInfo) {
+        await supabase.from("core_product_variants").update({
+          cost_structure_id: structureId,
+          uses_parent_cost_structure: false,
+          cost_override_enabled: true,
+          variant_unit_cost_usd: totals.totalUnitCost,
+          cost_updated_at: new Date().toISOString(),
+        } as any).eq("id", variantInfo.id);
+        await logCoreAudit({
+          table: "core_product_variants", recordId: variantInfo.id, action: "variant_cost_saved",
+          field: "variant_unit_cost_usd", newValue: totals.totalUnitCost,
+        });
+      }
+
+      toast.success(creatingNewRecord ? "Estructura creada" : "Estructura actualizada");
+      if (isVariantMode) {
+        // Go back to the parent structure if we know it
+        if (variantInfo?.parent_structure_id) {
+          navigate(`/core/estructuras-costos/${variantInfo.parent_structure_id}`);
+        } else {
+          navigate("/core/estructuras-costos");
+        }
+      } else {
+        navigate(`/core/estructuras-costos/${structureId}`);
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "Error al guardar");
     } finally {
@@ -508,11 +626,22 @@ export default function CoreCostStructureEditor() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/core/estructuras-costos")}><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4" /></Button>
           <div>
-            <h1 className="text-2xl font-black tracking-tight">{isNew ? "Nueva estructura de costos" : name || "Editar estructura"}</h1>
-            <p className="text-xs text-muted-foreground">Constructor de costos de fabricación por sección.</p>
+            <h1 className="text-2xl font-black tracking-tight">
+              {isVariantMode
+                ? `Editar variante ${variantInfo?.size ?? ""}${variantInfo?.color ? " / " + variantInfo.color : ""}`.trim()
+                : (isNew ? "Nueva estructura de costos" : name || "Editar estructura")}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              {isVariantMode
+                ? "Costo personalizado para esta variante. Puedes copiar líneas desde la estructura base."
+                : "Constructor de costos de fabricación por sección."}
+            </p>
           </div>
+          {isVariantMode && (
+            <Badge variant="outline" className="gap-1"><Layers className="h-3 w-3" />Modo variante</Badge>
+          )}
         </div>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
@@ -552,6 +681,7 @@ export default function CoreCostStructureEditor() {
             </Card>
           )}
 
+          {!isVariantMode && (
           <Card className="p-5 space-y-4">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div>
@@ -636,6 +766,15 @@ export default function CoreCostStructureEditor() {
               </div>
             </div>
           </Card>
+          )}
+
+          {!isVariantMode && !isNew && wooProductId.trim() && (
+            <CoreVariantCostPanel
+              wooProductId={Number(wooProductId.trim())}
+              baseStructureId={id!}
+              onOpenVariantEditor={(variantId) => navigate(`/core/estructuras-costos/nueva?variant=${variantId}`)}
+            />
+          )}
 
           <Card className="p-5 space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Información general</h2>

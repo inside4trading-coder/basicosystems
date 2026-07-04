@@ -548,6 +548,7 @@ export type Database = {
           total_variable_costs: number
           updated_at: string
           updated_by: string | null
+          variant_id: string | null
           woo_permalink: string | null
           woo_product_id: number | null
           woo_product_name: string | null
@@ -578,6 +579,7 @@ export type Database = {
           total_variable_costs?: number
           updated_at?: string
           updated_by?: string | null
+          variant_id?: string | null
           woo_permalink?: string | null
           woo_product_id?: number | null
           woo_product_name?: string | null
@@ -608,12 +610,21 @@ export type Database = {
           total_variable_costs?: number
           updated_at?: string
           updated_by?: string | null
+          variant_id?: string | null
           woo_permalink?: string | null
           woo_product_id?: number | null
           woo_product_name?: string | null
           woo_variation_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "core_cost_structures_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "core_product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       core_cost_template_items: {
         Row: {
@@ -1966,17 +1977,26 @@ export type Database = {
       core_product_variants: {
         Row: {
           barcode: string | null
+          color: string | null
           core_product_id: string
+          cost_override_enabled: boolean
+          cost_structure_id: string | null
+          cost_updated_at: string | null
           created_at: string
           id: string
+          normalized_color: string | null
+          normalized_size: string | null
           notes: string | null
           qr_code: string | null
           size: string
           sort_order: number
           status: string
           updated_at: string
+          uses_parent_cost_structure: boolean
           variant_label: string | null
           variant_sku: string | null
+          variant_unit_cost_usd: number | null
+          woo_attributes: Json | null
           woo_last_sync_at: string | null
           woo_regular_price: number | null
           woo_sale_price: number | null
@@ -1986,17 +2006,26 @@ export type Database = {
         }
         Insert: {
           barcode?: string | null
+          color?: string | null
           core_product_id: string
+          cost_override_enabled?: boolean
+          cost_structure_id?: string | null
+          cost_updated_at?: string | null
           created_at?: string
           id?: string
+          normalized_color?: string | null
+          normalized_size?: string | null
           notes?: string | null
           qr_code?: string | null
           size: string
           sort_order?: number
           status?: string
           updated_at?: string
+          uses_parent_cost_structure?: boolean
           variant_label?: string | null
           variant_sku?: string | null
+          variant_unit_cost_usd?: number | null
+          woo_attributes?: Json | null
           woo_last_sync_at?: string | null
           woo_regular_price?: number | null
           woo_sale_price?: number | null
@@ -2006,17 +2035,26 @@ export type Database = {
         }
         Update: {
           barcode?: string | null
+          color?: string | null
           core_product_id?: string
+          cost_override_enabled?: boolean
+          cost_structure_id?: string | null
+          cost_updated_at?: string | null
           created_at?: string
           id?: string
+          normalized_color?: string | null
+          normalized_size?: string | null
           notes?: string | null
           qr_code?: string | null
           size?: string
           sort_order?: number
           status?: string
           updated_at?: string
+          uses_parent_cost_structure?: boolean
           variant_label?: string | null
           variant_sku?: string | null
+          variant_unit_cost_usd?: number | null
+          woo_attributes?: Json | null
           woo_last_sync_at?: string | null
           woo_regular_price?: number | null
           woo_sale_price?: number | null
@@ -2030,6 +2068,13 @@ export type Database = {
             columns: ["core_product_id"]
             isOneToOne: false
             referencedRelation: "core_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_product_variants_cost_structure_id_fkey"
+            columns: ["cost_structure_id"]
+            isOneToOne: false
+            referencedRelation: "core_cost_structures"
             referencedColumns: ["id"]
           },
         ]
@@ -7521,6 +7566,10 @@ export type Database = {
         Returns: boolean
       }
       refresh_customers_order_stats: { Args: never; Returns: undefined }
+      resolve_core_variant_unit_cost: {
+        Args: { p_product_id: string; p_variant_id: string }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "manager" | "partner" | "rrpp" | "marketing"
