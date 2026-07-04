@@ -24,11 +24,28 @@ type Variant = {
   id: string;
   core_product_id: string;
   size: string;
+  color: string | null;
   variant_sku: string | null;
   woo_sku: string | null;
+  woo_variation_id: number | null;
   status: string;
   sort_order: number | null;
+  cost_override_enabled: boolean;
+  uses_parent_cost_structure: boolean;
+  variant_unit_cost_usd: number | null;
+  resolved_unit_cost?: number;
+  cost_source?: string;
 };
+
+type CostRange = {
+  variant_count: number;
+  variants_with_override: number;
+  has_overrides: boolean;
+  min_unit_cost: number;
+  max_unit_cost: number;
+  base_unit_cost: number;
+};
+
 
 type Product = {
   id: string;
@@ -83,6 +100,8 @@ export default function CoreProducts() {
   const [fRestock, setFRestock] = useState("all");
 
   const [toDelete, setToDelete] = useState<Product | null>(null);
+  const [toResetVariant, setToResetVariant] = useState<Variant | null>(null);
+
 
   async function loadNextSku() {
     const { data } = await supabase.from("core_settings").select("sku_prefix, sku_digits, sku_last_number").maybeSingle();
@@ -95,19 +114,50 @@ export default function CoreProducts() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [variantsByProduct, setVariantsByProduct] = useState<Map<string, Variant[]>>(new Map());
 
+  const [costRanges, setCostRanges] = useState<Map<string, CostRange>>(new Map());
+
   async function loadVariants(productId: string) {
     const { data, error } = await supabase
       .from("core_product_variants")
-      .select("id, core_product_id, size, variant_sku, woo_sku, status, sort_order")
+      .select("id, core_product_id, size, color, variant_sku, woo_sku, woo_variation_id, status, sort_order, cost_override_enabled, uses_parent_cost_structure, variant_unit_cost_usd")
       .eq("core_product_id", productId)
       .order("sort_order", { nullsFirst: false })
+      .order("color", { nullsFirst: true })
       .order("size");
     if (error) { toast.error(error.message); return; }
+    const list = ((data as any) ?? []) as Variant[];
+    // Resolve cost per variant with source
+    const enriched = await Promise.all(list.map(async v => {
+      const { data: r } = await supabase.rpc("resolve_core_variant_unit_cost_with_source" as any, {
+        p_product_id: productId, p_variant_id: v.id,
+      });
+      const row = Array.isArray(r) ? r[0] : r;
+      return { ...v, resolved_unit_cost: Number(row?.unit_cost ?? 0), cost_source: row?.cost_source ?? "zero_fallback" };
+    }));
     setVariantsByProduct(prev => {
       const m = new Map(prev);
-      m.set(productId, (data as any) ?? []);
+      m.set(productId, enriched);
       return m;
     });
+  }
+
+  async function loadCostRange(productId: string) {
+    const { data } = await supabase.rpc("resolve_core_product_variant_cost_range" as any, { p_product_id: productId });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (row) {
+      setCostRanges(prev => {
+        const m = new Map(prev);
+        m.set(productId, {
+          variant_count: Number(row.variant_count) || 0,
+          variants_with_override: Number(row.variants_with_override) || 0,
+          has_overrides: !!row.has_overrides,
+          min_unit_cost: Number(row.min_unit_cost) || 0,
+          max_unit_cost: Number(row.max_unit_cost) || 0,
+          base_unit_cost: Number(row.base_unit_cost) || 0,
+        });
+        return m;
+      });
+    }
   }
 
   async function toggleExpand(p: Product) {
@@ -116,6 +166,28 @@ export default function CoreProducts() {
     n.add(p.id);
     setExpanded(n);
     if (!variantsByProduct.has(p.id)) await loadVariants(p.id);
+    if (!costRanges.has(p.id)) await loadCostRange(p.id);
+  }
+
+  async function resetVariantToBase(v: Variant) {
+    const { error } = await supabase.from("core_product_variants").update({
+      uses_parent_cost_structure: true,
+      cost_override_enabled: false,
+      variant_unit_cost_usd: null,
+      cost_updated_at: new Date().toISOString(),
+    } as any).eq("id", v.id);
+    if (error) return toast.error(error.message);
+    // Archive variant structure if any
+    if ((v as any).cost_structure_id) {
+      await supabase.from("core_cost_structures").update({ status: "inactive" }).eq("id", (v as any).cost_structure_id);
+    }
+    await logCoreAudit({
+      table: "core_product_variants", recordId: v.id, action: "variant_cost_reset",
+      field: "cost_override_enabled", oldValue: true, newValue: false,
+    });
+    toast.success("Variante vuelve a heredar base");
+    await loadVariants(v.core_product_id);
+    await loadCostRange(v.core_product_id);
   }
 
   async function toggleVariantStatus(v: Variant) {
@@ -125,7 +197,9 @@ export default function CoreProducts() {
     await logCoreAudit({ table: "core_product_variants", recordId: v.id, action: "update", field: "status", oldValue: v.status, newValue: newStatus });
     toast.success(`Talla ${v.size}: ${newStatus === "active" ? "activada" : "desactivada"}`);
     loadVariants(v.core_product_id);
+    loadCostRange(v.core_product_id);
   }
+
 
   async function load() {
     setLoading(true);
@@ -134,12 +208,27 @@ export default function CoreProducts() {
       .select("id, core_sku, name, product_type, color, commercial_status, is_restockable, product_priority, replenishment_mode, unit_cost, currency, estimated_sale_price, woo_product_id, woo_product_name, sku_source, sync_status, updated_at")
       .order("updated_at", { ascending: false });
     if (error) toast.error("Error cargando productos: " + error.message);
-    setItems((data as any) ?? []);
+    const products = ((data as any) ?? []) as Product[];
+    setItems(products);
     const { count } = await supabase.from("core_woo_product_candidates").select("id", { count: "exact", head: true }).in("status", ["pendiente", "conflicto", "requiere_sku"]);
     setPendingCount(count ?? 0);
     setLoading(false);
     loadNextSku();
+    // Lazy-load cost ranges only for products that actually have variant overrides,
+    // detected via a single grouped query to avoid N RPC calls on catalog paint.
+    const productIds = products.map(p => p.id);
+    if (productIds.length > 0) {
+      const { data: overrideRows } = await supabase
+        .from("core_product_variants")
+        .select("core_product_id")
+        .in("core_product_id", productIds)
+        .eq("cost_override_enabled", true);
+      const withOverrides = Array.from(new Set(((overrideRows as any) ?? []).map((r: any) => r.core_product_id)));
+      // Resolve ranges only for those (small subset)
+      await Promise.all(withOverrides.map(pid => loadCostRange(pid as string)));
+    }
   }
+
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => items.filter(p => {
@@ -372,7 +461,35 @@ export default function CoreProducts() {
                       <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                         <Switch checked={p.is_restockable} onCheckedChange={() => toggleRestock(p)} />
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{Number(p.unit_cost).toFixed(2)} {p.currency}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {(() => {
+                          const range = costRanges.get(p.id);
+                          if (range && range.has_overrides && range.min_unit_cost !== range.max_unit_cost) {
+                            return (
+                              <div className="flex flex-col items-end gap-1">
+                                <span title="Rango de costo entre variantes (min–max)">
+                                  {range.min_unit_cost.toFixed(2)}–{range.max_unit_cost.toFixed(2)} {p.currency}
+                                </span>
+                                <Badge variant="outline" className="text-[10px] py-0 px-1 border-red-600 text-red-700" title="Algunas variantes tienen costos personalizados. Las demás heredan la estructura base.">
+                                  Costos por variante · {range.variants_with_override}
+                                </Badge>
+                              </div>
+                            );
+                          }
+                          if (range && range.has_overrides) {
+                            return (
+                              <div className="flex flex-col items-end gap-1">
+                                <span>{range.max_unit_cost.toFixed(2)} {p.currency}</span>
+                                <Badge variant="outline" className="text-[10px] py-0 px-1 border-red-600 text-red-700" title="Algunas variantes tienen costos personalizados. Las demás heredan la estructura base.">
+                                  Costos por variante · {range.variants_with_override}
+                                </Badge>
+                              </div>
+                            );
+                          }
+                          return <>{Number(p.unit_cost).toFixed(2)} {p.currency}</>;
+                        })()}
+                      </TableCell>
+
                       <TableCell className="text-xs">
                         {p.woo_product_id ? (
                           <span className="text-muted-foreground">#{p.woo_product_id}{p.woo_product_name ? ` · ${p.woo_product_name}` : ""}</span>
@@ -400,30 +517,75 @@ export default function CoreProducts() {
                           ) : (
                             <div className="space-y-2">
                               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tallas / variaciones</div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {vars.map(v => (
-                                  <div key={v.id} className={cn(
-                                    "flex items-center justify-between gap-3 rounded-md border px-3 py-2 bg-background",
-                                    v.status !== "active" && "opacity-60"
-                                  )}>
-                                    <div className="min-w-0">
-                                      <div className="font-semibold text-sm">Talla {v.size}</div>
-                                      <div className="text-[11px] font-mono text-muted-foreground truncate">{v.variant_sku || v.woo_sku || "—"}</div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <span className={cn("text-[10px] font-medium", v.status === "active" ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
-                                        {v.status === "active" ? "ON" : "OFF"}
-                                      </span>
-                                      <Switch checked={v.status === "active"} onCheckedChange={() => toggleVariantStatus(v)} />
-                                    </div>
-                                  </div>
-                                ))}
+                              <div className="rounded-md border bg-background overflow-x-auto">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Talla</TableHead>
+                                      <TableHead>Color</TableHead>
+                                      <TableHead>SKU</TableHead>
+                                      <TableHead>Woo ID</TableHead>
+                                      <TableHead>Modo costo</TableHead>
+                                      <TableHead className="text-right">Costo resuelto</TableHead>
+                                      <TableHead>Fuente</TableHead>
+                                      <TableHead className="text-center">Activa</TableHead>
+                                      <TableHead className="text-right">Acciones</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {vars.map(v => {
+                                      const src = v.cost_source ?? "product_unit_cost";
+                                      const srcLabel: Record<string, { label: string; cls: string }> = {
+                                        variant_override: { label: "variant_override", cls: "border-red-600 text-red-700" },
+                                        product_base: { label: "product_base", cls: "border-muted-foreground text-muted-foreground" },
+                                        product_unit_cost: { label: "product_unit_cost", cls: "border-muted-foreground text-muted-foreground" },
+                                        zero_fallback: { label: "zero_fallback", cls: "border-amber-600 text-amber-700" },
+                                      };
+                                      const sInfo = srcLabel[src] ?? srcLabel.product_unit_cost;
+                                      return (
+                                        <TableRow key={v.id} className={cn(v.status !== "active" && "opacity-60")}>
+                                          <TableCell className="font-medium">{v.size || "—"}</TableCell>
+                                          <TableCell>{v.color || "—"}</TableCell>
+                                          <TableCell className="font-mono text-xs">{v.variant_sku || v.woo_sku || "—"}</TableCell>
+                                          <TableCell className="font-mono text-xs">{v.woo_variation_id ?? "—"}</TableCell>
+                                          <TableCell>
+                                            {v.cost_override_enabled
+                                              ? <Badge variant="outline" className="border-red-600 text-red-700">Costo propio</Badge>
+                                              : <Badge variant="secondary">Hereda base</Badge>}
+                                          </TableCell>
+                                          <TableCell className="text-right tabular-nums">
+                                            {v.resolved_unit_cost != null ? Number(v.resolved_unit_cost).toFixed(2) : "—"} {p.currency}
+                                          </TableCell>
+                                          <TableCell>
+                                            <Badge variant="outline" className={cn("text-[10px]", sInfo.cls)}>{sInfo.label}</Badge>
+                                          </TableCell>
+                                          <TableCell className="text-center">
+                                            <Switch checked={v.status === "active"} onCheckedChange={() => toggleVariantStatus(v)} />
+                                          </TableCell>
+                                          <TableCell className="text-right">
+                                            <div className="inline-flex gap-1">
+                                              <Button size="sm" variant="outline" onClick={() => navigate(`/core/estructuras-costos/nueva?variant=${v.id}`)} title="Editar costo variante">
+                                                <Pencil className="h-3 w-3 mr-1" />Editar costo
+                                              </Button>
+                                              {v.cost_override_enabled && (
+                                                <Button size="sm" variant="ghost" onClick={() => setToResetVariant(v)} title="Volver a heredar base">
+                                                  ↺
+                                                </Button>
+                                              )}
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </TableBody>
+                                </Table>
                               </div>
                             </div>
                           )}
                         </TableCell>
                       </TableRow>
                     )}
+
                   </Fragment>
                 );
               })}
@@ -432,7 +594,26 @@ export default function CoreProducts() {
         </div>
       </Card>
 
+      <AlertDialog open={!!toResetVariant} onOpenChange={(o) => !o && setToResetVariant(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Volver a heredar base?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta variante <strong>{toResetVariant?.size}{toResetVariant?.color ? ` · ${toResetVariant.color}` : ""}</strong> dejará de usar costo propio y volverá a heredar la estructura base del producto. No se borrará el historial.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (toResetVariant) await resetVariantToBase(toResetVariant);
+              setToResetVariant(null);
+            }}>Volver a heredar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar producto Core?</AlertDialogTitle>
