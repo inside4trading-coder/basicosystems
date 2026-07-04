@@ -104,15 +104,18 @@ serve(async (req) => {
     if (wooSku) {
       variantSku = wooSku.replace(/\s+/g, "-");
     } else if (parentSku && size) {
-      variantSku = `${parentSku}-${size}`;
+      variantSku = `${parentSku}-${size}${color ? "-" + color : ""}`;
     }
     return {
       woo_variation_id: Number(v.id),
       woo_sku: wooSku,
       variant_sku: variantSku,
-      size: size,
+      size,
+      normalized_size: normalizeText(size),
       variant_label: label,
       color,
+      normalized_color: normalizeText(color),
+      woo_attributes: Array.isArray(v.attributes) ? v.attributes : null,
       woo_stock_quantity: v.stock_quantity ?? null,
       woo_regular_price: v.regular_price ? Number(v.regular_price) : null,
       woo_sale_price: v.sale_price ? Number(v.sale_price) : null,
