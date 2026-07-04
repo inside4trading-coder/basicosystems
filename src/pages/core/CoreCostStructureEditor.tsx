@@ -21,6 +21,7 @@ import { ArrowLeft, Plus, Trash2, Save, Loader2, AlertTriangle, Search, CheckCir
 import { logCoreAudit } from "@/lib/coreAudit";
 import { formatDMY } from "@/lib/dateUtils";
 import { normalizeSize, normalizeColor } from "@/lib/coreNormalize";
+import { CoreVariantCostPanel } from "@/components/core/CoreVariantCostPanel";
 
 const PRODUCT_TYPES = ["Franela", "Hoodie", "Jogger", "Cargo", "Short", "Gorra", "Accesorio", "Producto terminado", "Otro"];
 const CURRENCIES = ["USD", "Bs", "EUR"];
