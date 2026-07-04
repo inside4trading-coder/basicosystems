@@ -563,7 +563,9 @@ async function runReprocess(supabase: any, userId: string, pendingIds?: string[]
         summary.pending_skipped += 1;
         continue;
       }
-      const unitCost = Number(product.unit_cost ?? 0);
+      const variant = p.linked_core_variant_id ? variantById.get(p.linked_core_variant_id) : null;
+      const resolved = await resolveVariantUnitCost(supabase, product, variant);
+      const unitCost = resolved.unit_cost;
       if (!unitCost || unitCost <= 0) {
         skippedUpdates.push({ id: p.id, reason: "unit_cost_missing" });
         summary.pending_skipped += 1;
@@ -586,7 +588,12 @@ async function runReprocess(supabase: any, userId: string, pendingIds?: string[]
         woo_product_id: p.woo_product_id, woo_variation_id: p.woo_variation_id,
         core_product_id: product.id, core_variant_id: p.linked_core_variant_id ?? null,
         sku: p.woo_sku, product_name: p.product_name ?? product.name,
-        quantity: qty, unit_cost_snapshot: unitCost, cost_snapshot_data: product.cost_snapshot ?? null,
+        quantity: qty, unit_cost_snapshot: unitCost,
+        cost_snapshot_data: {
+          ...(product.cost_snapshot ?? {}),
+          cost_source: resolved.cost_source,
+          resolved_variant_id: p.linked_core_variant_id ?? null,
+        },
         amount, currency: product.currency || "USD",
         reason: isNonRestock ? "Reprocesado (no restockeable)" : "Reprocesado tras resolver pendiente",
         status: "posted", created_by: userId,
