@@ -101,7 +101,7 @@ async function runProcessSales(
     ] = await Promise.all([
       supabase.from("core_fabrication_funds").select("id, fund_type, currency, core_product_id"),
       supabase.from("core_products").select("id, core_sku, woo_sku, woo_product_id, name, unit_cost, is_restockable, currency, cost_snapshot"),
-      supabase.from("core_product_variants").select("id, core_product_id, variant_sku, woo_sku, woo_variation_id, status, size, variant_label"),
+      supabase.from("core_product_variants").select("id, core_product_id, variant_sku, woo_sku, woo_variation_id, status, size, variant_label, cost_override_enabled, cost_structure_id, variant_unit_cost_usd"),
       supabase.from("core_restock_control").select("sku, woo_product_id, woo_variation_id, core_product_id, core_variant_id, status, reason"),
       supabase.from("core_fabrication_fund_movements").select("source_order_id, source_order_item_id, movement_type, id, amount, fund_id, currency").not("source_order_item_id", "is", null),
       supabase.from("core_fabrication_fund_pending_items").select("source_order_id, source_order_item_id, id, status"),
