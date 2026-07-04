@@ -100,6 +100,8 @@ export default function CoreProducts() {
   const [fRestock, setFRestock] = useState("all");
 
   const [toDelete, setToDelete] = useState<Product | null>(null);
+  const [toResetVariant, setToResetVariant] = useState<Variant | null>(null);
+
 
   async function loadNextSku() {
     const { data } = await supabase.from("core_settings").select("sku_prefix, sku_digits, sku_last_number").maybeSingle();
