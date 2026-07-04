@@ -459,7 +459,35 @@ export default function CoreProducts() {
                       <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                         <Switch checked={p.is_restockable} onCheckedChange={() => toggleRestock(p)} />
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{Number(p.unit_cost).toFixed(2)} {p.currency}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {(() => {
+                          const range = costRanges.get(p.id);
+                          if (range && range.has_overrides && range.min_unit_cost !== range.max_unit_cost) {
+                            return (
+                              <div className="flex flex-col items-end gap-1">
+                                <span title="Rango de costo entre variantes (min–max)">
+                                  {range.min_unit_cost.toFixed(2)}–{range.max_unit_cost.toFixed(2)} {p.currency}
+                                </span>
+                                <Badge variant="outline" className="text-[10px] py-0 px-1 border-red-600 text-red-700" title="Algunas variantes tienen costos personalizados. Las demás heredan la estructura base.">
+                                  Costos por variante · {range.variants_with_override}
+                                </Badge>
+                              </div>
+                            );
+                          }
+                          if (range && range.has_overrides) {
+                            return (
+                              <div className="flex flex-col items-end gap-1">
+                                <span>{range.max_unit_cost.toFixed(2)} {p.currency}</span>
+                                <Badge variant="outline" className="text-[10px] py-0 px-1 border-red-600 text-red-700" title="Algunas variantes tienen costos personalizados. Las demás heredan la estructura base.">
+                                  Costos por variante · {range.variants_with_override}
+                                </Badge>
+                              </div>
+                            );
+                          }
+                          return <>{Number(p.unit_cost).toFixed(2)} {p.currency}</>;
+                        })()}
+                      </TableCell>
+
                       <TableCell className="text-xs">
                         {p.woo_product_id ? (
                           <span className="text-muted-foreground">#{p.woo_product_id}{p.woo_product_name ? ` · ${p.woo_product_name}` : ""}</span>
