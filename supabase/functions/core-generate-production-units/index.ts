@@ -27,7 +27,10 @@ function isProcessItem(it: any): boolean {
   return false;
 }
 
-// Cache cost-structure → process rows per request to avoid N+1
+// Cache resolved processes per (productId|variantId) to avoid N+1.
+// If the variant has cost_override_enabled + cost_structure_id, we use the
+// variant's own structure processes; otherwise fallback to the product's
+// base structure; otherwise fallback to order-level processes.
 async function resolveProcessesForLine(
   supa: any,
   line: any,
@@ -35,25 +38,43 @@ async function resolveProcessesForLine(
   orderLevelProcesses: any[],
 ): Promise<any[]> {
   const productId = line.core_product_id;
+  const variantId = line.core_variant_id ?? null;
   if (!productId) {
     // No product on line → fallback to order-level (legacy single-product)
     return orderLevelProcesses;
   }
 
-  if (costStructureCache.has(productId)) {
-    return costStructureCache.get(productId)!;
+  const cacheKey = `${productId}|${variantId ?? ""}`;
+  if (costStructureCache.has(cacheKey)) {
+    return costStructureCache.get(cacheKey)!;
   }
 
-  const { data: prod } = await supa
-    .from("core_products")
-    .select("cost_structure_id")
-    .eq("id", productId)
-    .maybeSingle();
+  // 1) Variant override?
+  let csId: string | null = null;
+  if (variantId) {
+    const { data: variant } = await supa
+      .from("core_product_variants")
+      .select("cost_override_enabled, cost_structure_id")
+      .eq("id", variantId)
+      .maybeSingle();
+    if (variant?.cost_override_enabled && variant.cost_structure_id) {
+      csId = variant.cost_structure_id;
+    }
+  }
 
-  const csId = prod?.cost_structure_id;
+  // 2) Fallback: product base structure
+  if (!csId) {
+    const { data: prod } = await supa
+      .from("core_products")
+      .select("cost_structure_id")
+      .eq("id", productId)
+      .maybeSingle();
+    csId = prod?.cost_structure_id ?? null;
+  }
+
   if (!csId) {
     // No cost-structure linked → fallback to order-level
-    costStructureCache.set(productId, orderLevelProcesses);
+    costStructureCache.set(cacheKey, orderLevelProcesses);
     return orderLevelProcesses;
   }
 
@@ -78,8 +99,12 @@ async function resolveProcessesForLine(
       rate_snapshot: { unit_cost: it.unit_cost, currency: it.currency },
     }));
 
-  costStructureCache.set(productId, rows);
-  return rows;
+  // If the variant/product structure has no process items, fall back to
+  // order-level so units are not created with 0 processes when a base
+  // structure clearly exists.
+  const effective = rows.length ? rows : orderLevelProcesses;
+  costStructureCache.set(cacheKey, effective);
+  return effective;
 }
 
 async function insertUnitProcessesIfMissing(
