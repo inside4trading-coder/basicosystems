@@ -684,6 +684,7 @@ export default function CoreCostStructureEditor() {
             </Card>
           )}
 
+          {!isVariantMode && (
           <Card className="p-5 space-y-4">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div>
@@ -768,6 +769,15 @@ export default function CoreCostStructureEditor() {
               </div>
             </div>
           </Card>
+          )}
+
+          {!isVariantMode && !isNew && wooProductId.trim() && (
+            <CoreVariantCostPanel
+              wooProductId={Number(wooProductId.trim())}
+              baseStructureId={id!}
+              onOpenVariantEditor={(variantId) => navigate(`/core/estructuras-costos/nueva?variant=${variantId}`)}
+            />
+          )}
 
           <Card className="p-5 space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Información general</h2>
