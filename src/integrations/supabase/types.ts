@@ -7572,9 +7572,28 @@ export type Database = {
         Returns: boolean
       }
       refresh_customers_order_stats: { Args: never; Returns: undefined }
+      resolve_core_product_variant_cost_range: {
+        Args: { p_product_id: string }
+        Returns: {
+          base_unit_cost: number
+          has_overrides: boolean
+          max_unit_cost: number
+          min_unit_cost: number
+          product_id: string
+          variant_count: number
+          variants_with_override: number
+        }[]
+      }
       resolve_core_variant_unit_cost: {
         Args: { p_product_id: string; p_variant_id: string }
         Returns: number
+      }
+      resolve_core_variant_unit_cost_with_source: {
+        Args: { p_product_id: string; p_variant_id: string }
+        Returns: {
+          cost_source: string
+          unit_cost: number
+        }[]
       }
     }
     Enums: {
