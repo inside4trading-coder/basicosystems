@@ -266,7 +266,7 @@ async function runProcessSales(
               woo_sku: wooSku,
               variant_sku: variantSku,
             })
-            .select("id, core_product_id, variant_sku, woo_sku, woo_variation_id, status, size, variant_label")
+            .select("id, core_product_id, variant_sku, woo_sku, woo_variation_id, status, size, variant_label, cost_override_enabled, cost_structure_id, variant_unit_cost_usd")
             .single();
           if (createVarErr || !createdVar) {
             queuePending(
