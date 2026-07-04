@@ -594,7 +594,26 @@ export default function CoreProducts() {
         </div>
       </Card>
 
+      <AlertDialog open={!!toResetVariant} onOpenChange={(o) => !o && setToResetVariant(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Volver a heredar base?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta variante <strong>{toResetVariant?.size}{toResetVariant?.color ? ` · ${toResetVariant.color}` : ""}</strong> dejará de usar costo propio y volverá a heredar la estructura base del producto. No se borrará el historial.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (toResetVariant) await resetVariantToBase(toResetVariant);
+              setToResetVariant(null);
+            }}>Volver a heredar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar producto Core?</AlertDialogTitle>
