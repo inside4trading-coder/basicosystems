@@ -86,7 +86,10 @@ function makeItem(section: Section, sortOrder: number, currency: string): Item {
 
 export default function CoreCostStructureEditor() {
   const { id } = useParams<{ id: string }>();
-  const isNew = !id || id === "nueva";
+  const [searchParams] = useSearchParams();
+  const variantIdParam = searchParams.get("variant");
+  const isVariantMode = !!variantIdParam;
+  const isNew = !isVariantMode && (!id || id === "nueva");
   const navigate = useNavigate();
 
   // Header fields
@@ -125,6 +128,10 @@ export default function CoreCostStructureEditor() {
   const [wooFetching, setWooFetching] = useState(false);
   const [wooPreview, setWooPreview] = useState<any | null>(null);
   const [selectedWooVariantId, setSelectedWooVariantId] = useState<string>("");
+
+  // Variant mode state
+  const [variantInfo, setVariantInfo] = useState<{ id: string; size: string | null; color: string | null; sku: string | null; core_product_id: string; woo_variation_id: number | null; parent_structure_id: string | null } | null>(null);
+  const [existingStructureId, setExistingStructureId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
