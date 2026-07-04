@@ -206,12 +206,27 @@ export default function CoreProducts() {
       .select("id, core_sku, name, product_type, color, commercial_status, is_restockable, product_priority, replenishment_mode, unit_cost, currency, estimated_sale_price, woo_product_id, woo_product_name, sku_source, sync_status, updated_at")
       .order("updated_at", { ascending: false });
     if (error) toast.error("Error cargando productos: " + error.message);
-    setItems((data as any) ?? []);
+    const products = ((data as any) ?? []) as Product[];
+    setItems(products);
     const { count } = await supabase.from("core_woo_product_candidates").select("id", { count: "exact", head: true }).in("status", ["pendiente", "conflicto", "requiere_sku"]);
     setPendingCount(count ?? 0);
     setLoading(false);
     loadNextSku();
+    // Lazy-load cost ranges only for products that actually have variant overrides,
+    // detected via a single grouped query to avoid N RPC calls on catalog paint.
+    const productIds = products.map(p => p.id);
+    if (productIds.length > 0) {
+      const { data: overrideRows } = await supabase
+        .from("core_product_variants")
+        .select("core_product_id")
+        .in("core_product_id", productIds)
+        .eq("cost_override_enabled", true);
+      const withOverrides = Array.from(new Set(((overrideRows as any) ?? []).map((r: any) => r.core_product_id)));
+      // Resolve ranges only for those (small subset)
+      await Promise.all(withOverrides.map(pid => loadCostRange(pid as string)));
+    }
   }
+
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => items.filter(p => {
