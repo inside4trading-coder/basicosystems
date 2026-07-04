@@ -629,11 +629,22 @@ export default function CoreCostStructureEditor() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/core/estructuras-costos")}><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4" /></Button>
           <div>
-            <h1 className="text-2xl font-black tracking-tight">{isNew ? "Nueva estructura de costos" : name || "Editar estructura"}</h1>
-            <p className="text-xs text-muted-foreground">Constructor de costos de fabricación por sección.</p>
+            <h1 className="text-2xl font-black tracking-tight">
+              {isVariantMode
+                ? `Editar variante ${variantInfo?.size ?? ""}${variantInfo?.color ? " / " + variantInfo.color : ""}`.trim()
+                : (isNew ? "Nueva estructura de costos" : name || "Editar estructura")}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              {isVariantMode
+                ? "Costo personalizado para esta variante. Puedes copiar líneas desde la estructura base."
+                : "Constructor de costos de fabricación por sección."}
+            </p>
           </div>
+          {isVariantMode && (
+            <Badge variant="outline" className="gap-1"><Layers className="h-3 w-3" />Modo variante</Badge>
+          )}
         </div>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
