@@ -2265,7 +2265,9 @@ export type Database = {
         Row: {
           core_product_id: string | null
           core_variant_id: string | null
+          cost_source: string | null
           created_at: string
+          estimated_unit_cost: number | null
           id: string
           notes: string | null
           production_order_id: string
@@ -2282,7 +2284,9 @@ export type Database = {
         Insert: {
           core_product_id?: string | null
           core_variant_id?: string | null
+          cost_source?: string | null
           created_at?: string
+          estimated_unit_cost?: number | null
           id?: string
           notes?: string | null
           production_order_id: string
@@ -2299,7 +2303,9 @@ export type Database = {
         Update: {
           core_product_id?: string | null
           core_variant_id?: string | null
+          cost_source?: string | null
           created_at?: string
+          estimated_unit_cost?: number | null
           id?: string
           notes?: string | null
           production_order_id?: string
