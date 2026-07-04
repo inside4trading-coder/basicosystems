@@ -519,6 +519,7 @@ export default function CoreCostStructureEditor() {
         woo_variation_id: wooVariationId.trim() ? Number(wooVariationId.trim()) : null,
         woo_product_name: wooProductName.trim() || null,
         woo_permalink: wooPermalink.trim() || null,
+        variant_id: isVariantMode ? variantInfo?.id ?? null : null,
         total_raw_materials: totals.by.raw_material,
         total_labor: totals.by.labor,
         total_technical_processes: totals.by.technical_process,
@@ -533,8 +534,9 @@ export default function CoreCostStructureEditor() {
         updated_by: user?.id ?? null,
       };
 
-      let structureId = id!;
-      if (isNew) {
+      let structureId: string;
+      const creatingNewRecord = isNew || (isVariantMode && !existingStructureId);
+      if (creatingNewRecord) {
         const { data, error } = await supabase
           .from("core_cost_structures")
           .insert({ ...head, created_by: user?.id ?? null })
@@ -542,8 +544,9 @@ export default function CoreCostStructureEditor() {
           .single();
         if (error || !data) throw error ?? new Error("No se pudo crear");
         structureId = data.id;
-        await logCoreAudit({ table: "core_cost_structures", recordId: structureId, action: "create", field: "record", newValue: name });
+        await logCoreAudit({ table: "core_cost_structures", recordId: structureId, action: isVariantMode ? "create_variant" : "create", field: "record", newValue: name });
       } else {
+        structureId = (isVariantMode ? existingStructureId : id)!;
         const { error } = await supabase.from("core_cost_structures").update(head).eq("id", structureId);
         if (error) throw error;
         await logCoreAudit({ table: "core_cost_structures", recordId: structureId, action: "update", field: "record", newValue: name });
