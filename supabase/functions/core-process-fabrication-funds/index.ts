@@ -530,15 +530,21 @@ async function runReprocess(supabase: any, userId: string, pendingIds?: string[]
     const { data: pendings, error: pErr } = await pq;
     if (pErr) throw pErr;
 
-    const [{ data: funds }, { data: coreProducts }] = await Promise.all([
+    const variantIds = Array.from(new Set((pendings ?? []).map((p: any) => p.linked_core_variant_id).filter(Boolean)));
+    const [{ data: funds }, { data: coreProducts }, { data: coreVariants }] = await Promise.all([
       supabase.from("core_fabrication_funds").select("id, fund_type, currency, core_product_id, available_amount"),
       supabase.from("core_products").select("id, name, unit_cost, currency, cost_snapshot, is_restockable"),
+      variantIds.length
+        ? supabase.from("core_product_variants").select("id, cost_override_enabled, cost_structure_id, variant_unit_cost_usd").in("id", variantIds)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
     const generalFund = (funds ?? []).find((f: any) => f.fund_type === "general" && f.currency === "USD" && !f.core_product_id);
     const nonRestockFund = (funds ?? []).find((f: any) => f.fund_type === "non_restockable" && f.currency === "USD" && !f.core_product_id);
     if (!generalFund || !nonRestockFund) return json({ error: "missing_base_funds" }, 500);
     const productById = new Map<string, any>();
     for (const p of coreProducts ?? []) productById.set(p.id, p);
+    const variantById = new Map<string, any>();
+    for (const v of coreVariants ?? []) variantById.set(v.id, v);
 
     const fundDeltas = new Map<string, number>();
     const movementInserts: any[] = [];
