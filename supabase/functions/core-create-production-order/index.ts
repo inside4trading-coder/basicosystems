@@ -469,10 +469,13 @@ async function createManual(
   if (!prod) return json({ error: "Producto no encontrado" }, 404);
 
   const variantIds = body.lines.map((l) => l.core_variant_id);
-  const { data: variants } = await supabase
-    .from("core_product_variants")
-    .select("id,variant_sku,variant_label,size,woo_variation_id")
-    .in("id", variantIds);
+  const [{ data: variants }, { data: prodInfo }] = await Promise.all([
+    supabase
+      .from("core_product_variants")
+      .select("id,variant_sku,variant_label,size,woo_variation_id,cost_override_enabled,cost_structure_id")
+      .in("id", variantIds),
+    supabase.from("core_products").select("id, unit_cost").eq("id", body.core_product_id).maybeSingle(),
+  ]);
   const vmap = new Map((variants ?? []).map((v: any) => [v.id, v]));
 
   const totalQty = body.lines.reduce((a, l) => a + Number(l.quantity), 0);
