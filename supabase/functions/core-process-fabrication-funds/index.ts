@@ -29,6 +29,41 @@ const REVERTING_STATUSES = new Set([
   "pago-pendiente-po",
 ]);
 
+// Resolves the effective unit cost for (product, variant) via
+// public.resolve_core_variant_unit_cost, and tags the source so callers can
+// audit whether the cost came from a variant override, the product's base
+// structure, the legacy unit_cost, or a zero fallback.
+async function resolveVariantUnitCost(
+  supabase: any,
+  product: any,
+  variant: any,
+): Promise<{ unit_cost: number; cost_source: string }> {
+  const productId = product?.id ?? null;
+  const variantId = variant?.id ?? null;
+  const { data, error } = await supabase.rpc("resolve_core_variant_unit_cost", {
+    p_product_id: productId,
+    p_variant_id: variantId,
+  });
+  if (error) {
+    console.warn("resolve_core_variant_unit_cost failed", error?.message);
+  }
+  const unitCost = Number(data ?? 0) || 0;
+  let source = "zero_fallback";
+  if (unitCost > 0) {
+    if (variant && variant.cost_override_enabled && variant.cost_structure_id) {
+      source = "variant_override";
+    } else {
+      const legacy = Number(product?.unit_cost ?? 0) || 0;
+      // If the RPC returned exactly the legacy unit_cost we assume no active
+      // base structure sum applied. Otherwise it summed a base structure.
+      source = legacy > 0 && Math.abs(legacy - unitCost) < 1e-6
+        ? "product_unit_cost"
+        : "product_base";
+    }
+  }
+  return { unit_cost: unitCost, cost_source: source };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
