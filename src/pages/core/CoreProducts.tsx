@@ -112,19 +112,50 @@ export default function CoreProducts() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [variantsByProduct, setVariantsByProduct] = useState<Map<string, Variant[]>>(new Map());
 
+  const [costRanges, setCostRanges] = useState<Map<string, CostRange>>(new Map());
+
   async function loadVariants(productId: string) {
     const { data, error } = await supabase
       .from("core_product_variants")
-      .select("id, core_product_id, size, variant_sku, woo_sku, status, sort_order")
+      .select("id, core_product_id, size, color, variant_sku, woo_sku, woo_variation_id, status, sort_order, cost_override_enabled, uses_parent_cost_structure, variant_unit_cost_usd")
       .eq("core_product_id", productId)
       .order("sort_order", { nullsFirst: false })
+      .order("color", { nullsFirst: true })
       .order("size");
     if (error) { toast.error(error.message); return; }
+    const list = ((data as any) ?? []) as Variant[];
+    // Resolve cost per variant with source
+    const enriched = await Promise.all(list.map(async v => {
+      const { data: r } = await supabase.rpc("resolve_core_variant_unit_cost_with_source" as any, {
+        p_product_id: productId, p_variant_id: v.id,
+      });
+      const row = Array.isArray(r) ? r[0] : r;
+      return { ...v, resolved_unit_cost: Number(row?.unit_cost ?? 0), cost_source: row?.cost_source ?? "zero_fallback" };
+    }));
     setVariantsByProduct(prev => {
       const m = new Map(prev);
-      m.set(productId, (data as any) ?? []);
+      m.set(productId, enriched);
       return m;
     });
+  }
+
+  async function loadCostRange(productId: string) {
+    const { data } = await supabase.rpc("resolve_core_product_variant_cost_range" as any, { p_product_id: productId });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (row) {
+      setCostRanges(prev => {
+        const m = new Map(prev);
+        m.set(productId, {
+          variant_count: Number(row.variant_count) || 0,
+          variants_with_override: Number(row.variants_with_override) || 0,
+          has_overrides: !!row.has_overrides,
+          min_unit_cost: Number(row.min_unit_cost) || 0,
+          max_unit_cost: Number(row.max_unit_cost) || 0,
+          base_unit_cost: Number(row.base_unit_cost) || 0,
+        });
+        return m;
+      });
+    }
   }
 
   async function toggleExpand(p: Product) {
@@ -133,6 +164,28 @@ export default function CoreProducts() {
     n.add(p.id);
     setExpanded(n);
     if (!variantsByProduct.has(p.id)) await loadVariants(p.id);
+    if (!costRanges.has(p.id)) await loadCostRange(p.id);
+  }
+
+  async function resetVariantToBase(v: Variant) {
+    const { error } = await supabase.from("core_product_variants").update({
+      uses_parent_cost_structure: true,
+      cost_override_enabled: false,
+      variant_unit_cost_usd: null,
+      cost_updated_at: new Date().toISOString(),
+    } as any).eq("id", v.id);
+    if (error) return toast.error(error.message);
+    // Archive variant structure if any
+    if ((v as any).cost_structure_id) {
+      await supabase.from("core_cost_structures").update({ status: "inactive" }).eq("id", (v as any).cost_structure_id);
+    }
+    await logCoreAudit({
+      table: "core_product_variants", recordId: v.id, action: "variant_cost_reset",
+      field: "cost_override_enabled", oldValue: true, newValue: false,
+    });
+    toast.success("Variante vuelve a heredar base");
+    await loadVariants(v.core_product_id);
+    await loadCostRange(v.core_product_id);
   }
 
   async function toggleVariantStatus(v: Variant) {
@@ -142,7 +195,9 @@ export default function CoreProducts() {
     await logCoreAudit({ table: "core_product_variants", recordId: v.id, action: "update", field: "status", oldValue: v.status, newValue: newStatus });
     toast.success(`Talla ${v.size}: ${newStatus === "active" ? "activada" : "desactivada"}`);
     loadVariants(v.core_product_id);
+    loadCostRange(v.core_product_id);
   }
+
 
   async function load() {
     setLoading(true);
