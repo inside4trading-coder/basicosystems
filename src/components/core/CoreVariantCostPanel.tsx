@@ -198,7 +198,7 @@ export function CoreVariantCostPanel({
                 {open ? "Ocultar variantes" : `Mostrar variantes (${variants.length})`}
               </Button>
             </CollapsibleTrigger>
-            <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing || !coreProductId}>
+            <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing || !wooProductId}>
               {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
               Sincronizar variantes Woo
             </Button>
