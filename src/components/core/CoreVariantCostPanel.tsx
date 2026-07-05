@@ -85,22 +85,55 @@ export function CoreVariantCostPanel({
     return () => { cancelled = true; };
   }, [wooProductId]);
 
+  async function ensureCoreProduct(): Promise<string | null> {
+    if (coreProductId) return coreProductId;
+    if (!wooProductId) return null;
+    // Preview via edge function to get Woo parent info without needing core_product_id
+    const { data: preview, error: pErr } = await supabase.functions.invoke("core-woo-import-variants", {
+      body: { woo_product_id: wooProductId, apply: false },
+    });
+    if (pErr) throw pErr;
+    if (preview?.error) throw new Error(preview.error);
+    const p = preview?.parent ?? {};
+    const coreSku = (p.sku && String(p.sku).trim()) || `WOO-${wooProductId}`;
+    const name = p.name || `Woo ${wooProductId}`;
+    const insertPayload: any = {
+      core_sku: coreSku,
+      name,
+      cost_structure_id: baseStructureId,
+      woo_product_id: wooProductId,
+      woo_product_name: p.name ?? null,
+      woo_sku: p.sku ?? null,
+      woo_permalink: p.permalink ?? null,
+      woo_regular_price: p.regular_price ?? null,
+      woo_sale_price: p.sale_price ?? null,
+      sku_source: p.sku ? "woo" : "auto",
+      sync_status: "synced",
+    };
+    const { data: inserted, error: iErr } = await supabase
+      .from("core_products")
+      .insert(insertPayload)
+      .select("id")
+      .single();
+    if (iErr) throw iErr;
+    const newId = inserted!.id as string;
+    setCoreProductId(newId);
+    return newId;
+  }
+
   async function handleSync() {
     if (!wooProductId) { toast.error("Falta Woo Product ID"); return; }
-    if (!coreProductId) {
-      // Try to auto-create a core_products row so variants can be attached
-      toast.error("Este Woo Product no está vinculado a un producto Core. Créalo en /core/productos primero.");
-      return;
-    }
     setSyncing(true);
     try {
+      const pid = await ensureCoreProduct();
+      if (!pid) throw new Error("No se pudo crear/vincular producto Core");
       const { data, error } = await supabase.functions.invoke("core-woo-import-variants", {
-        body: { woo_product_id: wooProductId, core_product_id: coreProductId, apply: true },
+        body: { woo_product_id: wooProductId, core_product_id: pid, apply: true },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success(`Sincronizadas ${data?.total ?? 0} variantes (${data?.created ?? 0} nuevas, ${data?.updated ?? 0} actualizadas)`);
-      await loadVariants(coreProductId);
+      await loadVariants(pid);
     } catch (e: any) {
       toast.error("Error sincronizando: " + (e?.message ?? "desconocido"));
     } finally {
@@ -165,7 +198,7 @@ export function CoreVariantCostPanel({
                 {open ? "Ocultar variantes" : `Mostrar variantes (${variants.length})`}
               </Button>
             </CollapsibleTrigger>
-            <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing || !coreProductId}>
+            <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing || !wooProductId}>
               {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
               Sincronizar variantes Woo
             </Button>
