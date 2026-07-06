@@ -27,7 +27,7 @@ const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 const fmtAmount = (n: number, c = "USD") => {
   if (!n) return "";
-  return new Intl.NumberFormat("es-VE", { style: "currency", currency: c, maximumFractionDigits: 0 }).format(n);
+  return formatCurrencySafe(n, c);
 };
 
 export function AdminCalendar({ monthDate, instances, onPrevMonth, onNextMonth, onChipClick, onDayClick }: Props) {
