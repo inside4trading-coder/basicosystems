@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import type { ObligationInstance, InstanceStatus } from "@/types/admin";
 import { cn } from "@/lib/utils";
 import { parseLocalDate } from "@/lib/dateUtils";
+import { formatCurrencySafe } from "@/lib/formatCurrency";
 
 interface Props {
   monthDate: Date;
