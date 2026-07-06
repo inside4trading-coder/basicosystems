@@ -2,14 +2,14 @@ import { AlertTriangle, CalendarClock, CheckCircle2, Clock, DollarSign, Flame, S
 import type { ObligationInstance } from "@/types/admin";
 import { cn } from "@/lib/utils";
 import { formatDMY } from "@/lib/dateUtils";
+import { formatCurrencySafe } from "@/lib/formatCurrency";
 
 interface Props {
   instances: ObligationInstance[];
   monthDate: Date;
 }
 
-const fmtMoney = (n: number, c = "USD") =>
-  new Intl.NumberFormat("es-VE", { style: "currency", currency: c, maximumFractionDigits: 0 }).format(n);
+const fmtMoney = (n: number, c = "USD") => formatCurrencySafe(n, c);
 
 export function AdminKPIs({ instances, monthDate }: Props) {
   const today = new Date();

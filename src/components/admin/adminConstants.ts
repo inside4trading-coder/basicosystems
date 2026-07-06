@@ -49,8 +49,10 @@ export function relativeDate(due: string): string {
   return `hace ${Math.abs(days)} días`;
 }
 
+import { formatCurrencySafe } from "@/lib/formatCurrency";
+
 export function fmtMoney(n: number, c = "USD") {
-  return new Intl.NumberFormat("es-VE", { style: "currency", currency: c, maximumFractionDigits: 2 }).format(n || 0);
+  return formatCurrencySafe(n || 0, c, { maximumFractionDigits: 2 });
 }
 
 export function isVariableAmount(n: number | null | undefined): boolean {

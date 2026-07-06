@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import type { ObligationInstance, InstanceStatus } from "@/types/admin";
 import { cn } from "@/lib/utils";
 import { parseLocalDate } from "@/lib/dateUtils";
+import { formatCurrencySafe } from "@/lib/formatCurrency";
 
 interface Props {
   monthDate: Date;
@@ -26,7 +27,7 @@ const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 const fmtAmount = (n: number, c = "USD") => {
   if (!n) return "";
-  return new Intl.NumberFormat("es-VE", { style: "currency", currency: c, maximumFractionDigits: 0 }).format(n);
+  return formatCurrencySafe(n, c);
 };
 
 export function AdminCalendar({ monthDate, instances, onPrevMonth, onNextMonth, onChipClick, onDayClick }: Props) {

@@ -18,8 +18,9 @@ interface Props {
   onPaid?: () => void;
 }
 
-const fmtMoney = (n: number, c = "USD") =>
-  new Intl.NumberFormat("es-VE", { style: "currency", currency: c }).format(n);
+import { formatCurrencySafe } from "@/lib/formatCurrency";
+
+const fmtMoney = (n: number, c = "USD") => formatCurrencySafe(n, c, { maximumFractionDigits: 2 });
 
 export function AdminInstanceSheet({ instance, open, onOpenChange, onEdit, onPaid }: Props) {
   const { basePath } = useAdminScope();
