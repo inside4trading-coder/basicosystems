@@ -2,6 +2,7 @@ import { AlertTriangle, CalendarClock, CheckCircle2, Clock, DollarSign, Flame, S
 import type { ObligationInstance } from "@/types/admin";
 import { cn } from "@/lib/utils";
 import { formatDMY } from "@/lib/dateUtils";
+import { formatCurrencySafe } from "@/lib/formatCurrency";
 
 interface Props {
   instances: ObligationInstance[];
