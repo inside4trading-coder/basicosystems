@@ -9,8 +9,7 @@ interface Props {
   monthDate: Date;
 }
 
-const fmtMoney = (n: number, c = "USD") =>
-  new Intl.NumberFormat("es-VE", { style: "currency", currency: c, maximumFractionDigits: 0 }).format(n);
+const fmtMoney = (n: number, c = "USD") => formatCurrencySafe(n, c);
 
 export function AdminKPIs({ instances, monthDate }: Props) {
   const today = new Date();
