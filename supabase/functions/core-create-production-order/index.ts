@@ -567,7 +567,9 @@ async function createManual(
         total_quantity: totalQty,
         lines: linesToInsert.length,
         processes: processCount,
+        cost_warnings: costWarnings,
       },
+
     ],
     count: 1,
   });
