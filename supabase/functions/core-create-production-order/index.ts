@@ -505,23 +505,20 @@ async function createManual(
   if (orderErr) throw orderErr;
 
   const linesToInsert: any[] = [];
+  const costWarnings: any[] = [];
   for (const l of body.lines) {
     const v: any = vmap.get(l.core_variant_id);
-    const { data: costData } = await supabase.rpc("resolve_core_variant_unit_cost", {
-      p_product_id: body.core_product_id,
-      p_variant_id: l.core_variant_id,
+    const { data: costData } = await supabase.rpc("resolve_core_operational_unit_cost", {
+      p_core_product_id: body.core_product_id,
+      p_core_variant_id: l.core_variant_id,
+      p_woo_product_id: (prodInfo as any)?.woo_product_id ?? null,
+      p_woo_variation_id: v?.woo_variation_id ?? null,
     });
-    const unitCost = Number(costData ?? 0) || 0;
-    let cost_source = "zero_fallback";
-    if (unitCost > 0) {
-      if (v && v.cost_override_enabled && v.cost_structure_id) {
-        cost_source = "variant_override";
-      } else {
-        const legacy = Number((prodInfo as any)?.unit_cost ?? 0) || 0;
-        cost_source = legacy > 0 && Math.abs(legacy - unitCost) < 1e-6
-          ? "product_unit_cost"
-          : "product_base";
-      }
+    const row = Array.isArray(costData) ? costData[0] : costData;
+    const unitCost = Number(row?.unit_cost ?? 0) || 0;
+    const cost_source = row?.cost_source ?? "zero_fallback";
+    if (row?.warning) {
+      costWarnings.push({ core_variant_id: l.core_variant_id, cost_source, warning: row.warning });
     }
     linesToInsert.push({
       production_order_id: orderRow.id,
@@ -539,6 +536,7 @@ async function createManual(
       cost_source,
     });
   }
+
   const { error: linesErr } = await supabase
     .from("core_production_order_lines")
     .insert(linesToInsert);
