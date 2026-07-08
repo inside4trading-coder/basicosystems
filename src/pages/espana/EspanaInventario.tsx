@@ -166,6 +166,9 @@ export default function EspanaInventario() {
                           <Button size="sm" variant="ghost" title="Ajuste" onClick={() => openMode("adjust", v.id)}><Sliders className="h-3.5 w-3.5" /></Button>
                           <Button size="sm" variant="ghost" title="Transferir" onClick={() => openMode("transfer", v.id)}><ArrowLeftRight className="h-3.5 w-3.5" /></Button>
                           <Button size="sm" variant="ghost" title="Historial" onClick={() => setHistoryOpen({ variantId: v.id })}><History className="h-3.5 w-3.5" /></Button>
+                          <Button size="sm" variant="ghost" asChild title="Etiquetas">
+                            <Link to={`/espana/etiquetas?producto=${v.product_id}`}><QrCode className="h-3.5 w-3.5" /></Link>
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
