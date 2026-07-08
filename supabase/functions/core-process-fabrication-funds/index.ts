@@ -70,6 +70,35 @@ async function resolveVariantUnitCost(
   };
 }
 
+// Resolves the effective replenishment action via public.resolve_core_replenishment_action.
+async function resolveReplenishmentAction(
+  supabase: any,
+  product: any,
+  variant: any,
+  wooProductId?: number | null,
+  wooVariationId?: number | null,
+): Promise<any> {
+  const { data, error } = await supabase.rpc("resolve_core_replenishment_action", {
+    p_core_product_id: product?.id ?? null,
+    p_core_variant_id: variant?.id ?? null,
+    p_woo_product_id: wooProductId ?? product?.woo_product_id ?? null,
+    p_woo_variation_id: wooVariationId ?? variant?.woo_variation_id ?? null,
+  });
+  if (error) console.warn("resolve_core_replenishment_action failed", error?.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ?? { action: "allow_internal_factory", severity: "allow" };
+}
+
+async function insertPolicyEvent(supabase: any, row: any) {
+  try {
+    await supabase.from("core_replenishment_policy_events").insert(row);
+  } catch (e) {
+    console.warn("insertPolicyEvent failed", (e as Error).message);
+  }
+}
+
+
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
