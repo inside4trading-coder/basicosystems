@@ -325,12 +325,12 @@ async function runProcessSales(
           summary.by_reason["variant_auto_created"] = (summary.by_reason["variant_auto_created"] ?? 0) + 1;
         }
 
-        const resolved = await resolveVariantUnitCost(supabase, product, variant);
+        const resolved = await resolveVariantUnitCost(supabase, product, variant, wooProdId, wooVarId);
         const unitCost = resolved.unit_cost;
         if (!unitCost || unitCost <= 0) {
           queuePending(
             "unit_cost_missing",
-            `Sin costo resuelto (source=${resolved.cost_source}). Configura estructura base o costo por variante.`,
+            `Sin costo resuelto (source=${resolved.cost_source}). Configura estructura, costo manual en política o costo unitario.`,
           );
           continue;
         }
@@ -369,7 +369,13 @@ async function runProcessSales(
           cost_snapshot_data: {
             ...(product.cost_snapshot ?? {}),
             cost_source: resolved.cost_source,
+            policy_id: resolved.policy_id,
+            resolved_core_product_id: resolved.resolved_core_product_id ?? product.id,
+            resolved_core_variant_id: resolved.resolved_core_variant_id ?? variant?.id ?? null,
             resolved_variant_id: variant?.id ?? null,
+            woo_product_id: resolved.woo_product_id ?? wooProdId ?? null,
+            woo_variation_id: resolved.woo_variation_id ?? wooVarId ?? null,
+            warning: resolved.warning,
           },
           amount,
           currency: product.currency || "USD",
@@ -377,6 +383,7 @@ async function runProcessSales(
           status: "posted",
           created_by: userId,
         });
+
         fundDeltas.set(fund.id, (fundDeltas.get(fund.id) ?? 0) + amount);
         movByKey.set(movKey(oid, iid, movementType), { source_order_id: oid, source_order_item_id: iid, movement_type: movementType });
         if (isNonRestock) summary.by_fund.non_restockable += 1; else summary.by_fund.general += 1;
