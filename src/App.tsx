@@ -53,6 +53,7 @@ import CoreFactoryOperators from "./pages/core/CoreFactoryOperators";
 import CorePayroll from "./pages/core/CorePayroll";
 import CoreInventory from "./pages/core/CoreInventory";
 import CoreReports from "./pages/core/CoreReports";
+import CoreWooCoreMap from "./pages/core/CoreWooCoreMap";
 import EspanaLayout from "./pages/espana/EspanaLayout";
 import EspanaDashboard from "./pages/espana/EspanaDashboard";
 import EspanaConfiguracion from "./pages/espana/EspanaConfiguracion";
@@ -151,6 +152,7 @@ const App = () => (
                 <Route path="productos/nuevo" element={<CoreProductEditor />} />
                 <Route path="productos/:id" element={<CoreProductEditor />} />
                 <Route path="control-reposicion" element={<CoreRestockControl />} />
+                <Route path="mapa-woo-core" element={<CoreWooCoreMap />} />
                 <Route path="partidas-fabricacion" element={<CoreFabricationFunds />} />
                 <Route path="necesidades" element={<CoreProductionNeeds />} />
                 <Route path="ordenes-produccion" element={<CoreProductionOrders />} />
