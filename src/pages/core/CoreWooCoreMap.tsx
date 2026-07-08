@@ -210,7 +210,6 @@ export default function CoreWooCoreMap() {
     );
   }
 
-  function connectionCell(ctx: RowCtx) {
   function statusTier(ctx: RowCtx): 0 | 1 | 2 {
     // 0 = rojo (sin conexión total), 1 = amarillo (sin core pero con costo), 2 = verde (core conectado)
     if (ctx.core) return 2;
