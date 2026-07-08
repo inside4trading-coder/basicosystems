@@ -126,6 +126,13 @@ export default function CoreWooCoreMap() {
         (r.core?.core_sku ?? "").toLowerCase().includes(s) ||
         (r.core?.name ?? "").toLowerCase().includes(s)
       );
+    }).sort((a, b) => {
+      const tier = (r: RowCtx) => {
+        if (r.core) return 2;
+        const hasCost = !!r.activeStructure || !!r.policy?.manual_unit_cost_usd || !!r.core?.manual_unit_cost_usd;
+        return hasCost ? 1 : 0;
+      };
+      return tier(a) - tier(b);
     });
   }, [rowsCtx, search, filterMapping, filterLifecycle, filterRoute, filterBrand]);
 
@@ -210,48 +217,46 @@ export default function CoreWooCoreMap() {
     );
   }
 
+  function statusTier(ctx: RowCtx): 0 | 1 | 2 {
+    // 0 = rojo (sin conexión total), 1 = amarillo (sin core pero con costo), 2 = verde (core conectado)
+    if (ctx.core) return 2;
+    const hasCost = !!ctx.activeStructure
+      || !!ctx.policy?.manual_unit_cost_usd
+      || !!ctx.core?.manual_unit_cost_usd;
+    return hasCost ? 1 : 0;
+  }
+
   function connectionCell(ctx: RowCtx) {
-    if (ctx.connState === "core_full") {
+    const tier = statusTier(ctx);
+    const greenChip = "inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold bg-emerald-600 text-white";
+    const yellowChip = "inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold bg-yellow-300 text-black";
+    const redChip = "inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold bg-red-600 text-white";
+
+    if (tier === 2) {
       return (
         <div className="space-y-1">
-          <div className="truncate" title={ctx.core!.name}>{ctx.core!.core_sku}
-            <div className="text-[10px] text-muted-foreground truncate">{ctx.core!.name}</div>
-          </div>
-          {badge("Core conectado", "default")}
-        </div>
-      );
-    }
-    if (ctx.connState === "core_no_structure") {
-      return (
-        <div className="space-y-1">
-          <div className="truncate" title={ctx.core!.name}>{ctx.core!.core_sku}
+          <div className="truncate" title={ctx.core!.name}>
+            {ctx.core!.core_sku}
             <div className="text-[10px] text-muted-foreground truncate">{ctx.core!.name}</div>
           </div>
           <div className="flex gap-1 flex-wrap">
-            {badge("Core conectado", "default")}
-            {badge("Falta estructura", "destructive")}
+            <span className={greenChip}>Core conectado</span>
+            {!ctx.activeStructure && !ctx.core?.cost_structure_id && (
+              <span className={yellowChip}>Falta estructura</span>
+            )}
           </div>
         </div>
       );
     }
-    if (ctx.connState === "structure_only") {
+    if (tier === 1) {
       return (
         <div className="space-y-1">
-          {badge("Con estructura Woo", "secondary")}
-          {badge("Falta Core", "outline")}
-        </div>
-      );
-    }
-    if (ctx.connState === "needs_review") {
-      return (
-        <div className="space-y-1">
-          {badge("Revisión", "destructive")}
+          <span className={yellowChip}>Sin conexión · con costo</span>
           {ctx.activeStructure && badge("Con estructura Woo", "secondary")}
-          {ctx.core && badge(ctx.core.core_sku, "outline")}
         </div>
       );
     }
-    return badge("Sin conexión", "destructive");
+    return <span className={redChip}>Sin conexión</span>;
   }
 
 
