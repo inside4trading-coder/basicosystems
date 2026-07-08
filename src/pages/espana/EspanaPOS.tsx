@@ -12,8 +12,9 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Minus, Plus, Trash2, ScanLine, ShoppingCart, CheckCircle2, Copy } from "lucide-react";
+import { Minus, Plus, Trash2, ScanLine, ShoppingCart, CheckCircle2, Copy, Camera } from "lucide-react";
 import { toast } from "sonner";
+import { MobileQrScanner } from "@/components/espana/MobileQrScanner";
 
 interface Loc { id: string; name: string; code: string; inventory_mode: string; linked_location_id: string | null; is_active: boolean }
 interface Channel { id: string; name: string; key: string; location_id: string | null; is_active: boolean }
@@ -51,6 +52,7 @@ export default function EspanaPOS() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<null | { sale_number: string; total: number; lines: CartLine[]; payment: string; location: string; channel: string }>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
+  const [scanOpen, setScanOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -270,6 +272,9 @@ export default function EspanaPOS() {
               onChange={(e) => setCode(e.target.value)}
             />
           </div>
+          <Button type="button" variant="secondary" className="h-12 px-4" onClick={() => setScanOpen(true)} title="Abrir cámara">
+            <Camera className="h-4 w-4" />
+          </Button>
           <Button type="submit" className="h-12 px-6">Agregar</Button>
         </form>
         <div className="relative">
@@ -380,6 +385,18 @@ export default function EspanaPOS() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <MobileQrScanner
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onDetected={(text) => {
+          setScanOpen(false);
+          const v = findByCode(text);
+          if (!v) { toast.error("Producto no encontrado"); return; }
+          if (!locationId) { toast.error("Selecciona sede"); return; }
+          addVariantToCart(v);
+        }}
+      />
     </div>
   );
 }
