@@ -7738,6 +7738,7 @@ export type Database = {
         Args: { p_date: string; p_employee_id: string }
         Returns: undefined
       }
+      core_reconcile_woo_core_map: { Args: never; Returns: Json }
       esp_apply_material_movement: {
         Args: {
           p_allow_negative?: boolean

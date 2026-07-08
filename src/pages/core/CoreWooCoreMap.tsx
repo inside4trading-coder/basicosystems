@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Download, Link as LinkIcon, RefreshCw, DollarSign, Truck, Ban, Repeat, Tag, ChevronRight, ChevronDown } from "lucide-react";
+import { Loader2, Download, Link as LinkIcon, RefreshCw, DollarSign, Truck, Ban, Repeat, Tag, ChevronRight, ChevronDown, Wand2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -14,9 +14,11 @@ import {
   useReplenishmentPolicies,
   useCoreProductsLite,
   useStrategyAudit,
+  useCostStructuresByWoo,
   type WooProductMapRow,
   type ReplenishmentPolicyRow,
   type CoreProductLite,
+  type CostStructureLite,
 } from "@/hooks/useWooCoreMap";
 import {
   LIFECYCLE_LABELS,
@@ -43,6 +45,9 @@ type RowCtx = {
   map: WooProductMapRow;
   core: CoreProductLite | null;
   policy: ReplenishmentPolicyRow | null;
+  structures: CostStructureLite[];
+  activeStructure: CostStructureLite | null;
+  connState: "core_full" | "core_no_structure" | "structure_only" | "needs_review" | "none";
 };
 
 type DialogState =
@@ -62,6 +67,7 @@ export default function CoreWooCoreMap() {
   const { data: mapRows = [], isLoading: loadingMap } = useWooProductMap();
   const { data: policies = [] } = useReplenishmentPolicies();
   const { data: coreProducts = [] } = useCoreProductsLite();
+  const { data: structuresByWoo } = useCostStructuresByWoo();
   const auditQ = useStrategyAudit();
 
   const [tab, setTab] = useState("mapa");
@@ -73,6 +79,7 @@ export default function CoreWooCoreMap() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [dialog, setDialog] = useState<DialogState>(null);
   const [importing, setImporting] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
 
   const coreById = useMemo(() => new Map(coreProducts.map(c => [c.id, c])), [coreProducts]);
   const policyByWoo = useMemo(() => {
@@ -90,9 +97,16 @@ export default function CoreWooCoreMap() {
     return mapRows.map(m => {
       const core = m.core_product_id ? coreById.get(m.core_product_id) ?? null : null;
       const policy = policyByWoo.get(m.woo_product_id) ?? (m.core_product_id ? policyByCore.get(m.core_product_id) ?? null : null);
-      return { map: m, core, policy };
+      const structures = structuresByWoo?.get(m.woo_product_id) ?? [];
+      const activeStructure = structures.find(s => s.status === "active") ?? structures[0] ?? null;
+      let connState: RowCtx["connState"] = "none";
+      if (m.mapping_status === "needs_review") connState = "needs_review";
+      else if (core && activeStructure) connState = "core_full";
+      else if (core) connState = "core_no_structure";
+      else if (activeStructure) connState = "structure_only";
+      return { map: m, core, policy, structures, activeStructure, connState };
     });
-  }, [mapRows, coreById, policyByWoo, policyByCore]);
+  }, [mapRows, coreById, policyByWoo, policyByCore, structuresByWoo]);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -117,7 +131,7 @@ export default function CoreWooCoreMap() {
 
   const missingCostRows = useMemo(
     () => rowsCtx.filter(r => {
-      const hasStructure = !!r.core?.cost_structure_id;
+      const hasStructure = !!r.core?.cost_structure_id || !!r.activeStructure;
       const hasManual = !!(r.policy?.manual_unit_cost_usd || r.core?.manual_unit_cost_usd);
       return !hasStructure && !hasManual;
     }),
@@ -155,13 +169,33 @@ export default function CoreWooCoreMap() {
     }
   }
 
+  async function runReconcile() {
+    setReconciling(true);
+    try {
+      const { data, error } = await supabase.rpc("core_reconcile_woo_core_map" as any);
+      if (error) throw error;
+      const d: any = data;
+      toast({
+        title: "Reconciliación completa",
+        description: `Revisados: ${d?.reviewed ?? 0} · Core: ${d?.linked_via_core_products ?? 0} · Estructuras: ${d?.linked_via_structures ?? 0} · Revisión: ${d?.needs_review ?? 0} · Conflictos: ${d?.conflicts ?? 0} · Sin link: ${d?.no_link ?? 0}`,
+      });
+      qc.invalidateQueries({ queryKey: ["woo-core-map"] });
+      qc.invalidateQueries({ queryKey: ["cost-structures-by-woo"] });
+    } catch (e: any) {
+      toast({ title: "Error reconciliando", description: e.message, variant: "destructive" });
+    } finally {
+      setReconciling(false);
+    }
+  }
+
   function badge(text: string, variant: "default" | "secondary" | "destructive" | "outline" = "outline") {
     return <Badge variant={variant} className="text-[10px]">{text}</Badge>;
   }
 
   function costCell(ctx: RowCtx) {
+    const structCost = ctx.activeStructure?.total_unit_cost ?? null;
     const r = resolveDisplayCost({
-      productBaseStructureCost: ctx.core?.cost_structure_id ? null : null, // sin sum del resolver DB en cliente
+      productBaseStructureCost: structCost,
       policyManualCost: ctx.policy?.manual_unit_cost_usd ?? null,
       productManualMirrorCost: ctx.core?.manual_unit_cost_usd ?? null,
       productUnitCost: ctx.core?.unit_cost ?? null,
@@ -175,6 +209,51 @@ export default function CoreWooCoreMap() {
       </div>
     );
   }
+
+  function connectionCell(ctx: RowCtx) {
+    if (ctx.connState === "core_full") {
+      return (
+        <div className="space-y-1">
+          <div className="truncate" title={ctx.core!.name}>{ctx.core!.core_sku}
+            <div className="text-[10px] text-muted-foreground truncate">{ctx.core!.name}</div>
+          </div>
+          {badge("Core conectado", "default")}
+        </div>
+      );
+    }
+    if (ctx.connState === "core_no_structure") {
+      return (
+        <div className="space-y-1">
+          <div className="truncate" title={ctx.core!.name}>{ctx.core!.core_sku}
+            <div className="text-[10px] text-muted-foreground truncate">{ctx.core!.name}</div>
+          </div>
+          <div className="flex gap-1 flex-wrap">
+            {badge("Core conectado", "default")}
+            {badge("Falta estructura", "destructive")}
+          </div>
+        </div>
+      );
+    }
+    if (ctx.connState === "structure_only") {
+      return (
+        <div className="space-y-1">
+          {badge("Con estructura Woo", "secondary")}
+          {badge("Falta Core", "outline")}
+        </div>
+      );
+    }
+    if (ctx.connState === "needs_review") {
+      return (
+        <div className="space-y-1">
+          {badge("Revisión", "destructive")}
+          {ctx.activeStructure && badge("Con estructura Woo", "secondary")}
+          {ctx.core && badge(ctx.core.core_sku, "outline")}
+        </div>
+      );
+    }
+    return badge("Sin conexión", "destructive");
+  }
+
 
   function renderMainTable(rows: RowCtx[]) {
     if (loadingMap) {
@@ -232,10 +311,8 @@ export default function CoreWooCoreMap() {
                     </td>
                     <td className="p-2">{m.woo_product_type ?? "—"}</td>
                     <td className="p-2 text-center">{m.woo_variations_count}</td>
-                    <td className="p-2 max-w-[160px]">
-                      {ctx.core
-                        ? <div className="truncate" title={ctx.core.name}>{ctx.core.core_sku}<div className="text-[10px] text-muted-foreground truncate">{ctx.core.name}</div></div>
-                        : badge("Sin conexión", "destructive")}
+                    <td className="p-2 max-w-[200px]">
+                      {connectionCell(ctx)}
                     </td>
                     <td className="p-2">{badge(VARIANT_SYNC_LABELS[m.variants_sync_status] ?? m.variants_sync_status)}</td>
                     <td className="p-2">{costCell(ctx)}</td>
@@ -283,9 +360,13 @@ export default function CoreWooCoreMap() {
           <h1 className="text-2xl font-black tracking-tight">Mapa Woo / Core</h1>
           <p className="text-sm text-muted-foreground">Mesa de decisión entre WooCommerce y Basico Core. Solo lectura de Woo, sin escrituras al store.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => setDialog({ kind: "linkWoo" })}>
             <LinkIcon className="h-4 w-4 mr-2" />Vincular Woo ID
+          </Button>
+          <Button variant="secondary" onClick={runReconcile} disabled={reconciling}>
+            {reconciling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+            Reconciliar conexiones existentes
           </Button>
           <Button onClick={() => runImport(1)} disabled={importing}>
             {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
