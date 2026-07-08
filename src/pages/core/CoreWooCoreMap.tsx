@@ -131,7 +131,7 @@ export default function CoreWooCoreMap() {
 
   const missingCostRows = useMemo(
     () => rowsCtx.filter(r => {
-      const hasStructure = !!r.core?.cost_structure_id;
+      const hasStructure = !!r.core?.cost_structure_id || !!r.activeStructure;
       const hasManual = !!(r.policy?.manual_unit_cost_usd || r.core?.manual_unit_cost_usd);
       return !hasStructure && !hasManual;
     }),
