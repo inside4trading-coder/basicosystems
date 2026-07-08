@@ -68,6 +68,7 @@ import EspanaBlanksDTF from "./pages/espana/EspanaBlanksDTF";
 import EspanaWooProblemas from "./pages/espana/EspanaWooProblemas";
 import EspanaWooReclasificar from "./pages/espana/EspanaWooReclasificar";
 import EspanaEtiquetas from "./pages/espana/EspanaEtiquetas";
+import PosPublico from "./pages/pos-publico/PosPublico";
 import FondoTransparente from "./pages/FondoTransparente";
 import FuerzaVenezuela from "./pages/FuerzaVenezuela";
 import NotFound from "./pages/NotFound";
@@ -91,6 +92,7 @@ const App = () => (
               element={isFundacionHost ? <FuerzaVenezuela /> : <Landing />}
             />
             <Route path="/login" element={<Login />} />
+            <Route path="/pos/:locationSlug/:publicToken" element={<PosPublico />} />
             <Route
               element={
                 <ProtectedRoute>

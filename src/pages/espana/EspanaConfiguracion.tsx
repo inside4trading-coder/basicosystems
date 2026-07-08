@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Plus, Save } from "lucide-react";
+import { EspanaPublicPosConfig } from "@/components/espana/EspanaPublicPosConfig";
 
 interface Settings {
   id: string;
@@ -113,6 +114,7 @@ export default function EspanaConfiguracion() {
         <TabsTrigger value="pagos">Métodos de pago</TabsTrigger>
         <TabsTrigger value="usuarios">Usuarios / Sedes</TabsTrigger>
         <TabsTrigger value="woo">WooCommerce España</TabsTrigger>
+        <TabsTrigger value="pos-publico">POS Público</TabsTrigger>
       </TabsList>
 
       {/* GENERAL */}
@@ -196,6 +198,10 @@ export default function EspanaConfiguracion() {
       {/* WOO */}
       <TabsContent value="woo">
         <WooEspanaPanel settings={settings} onUpdated={reload} />
+      </TabsContent>
+
+      <TabsContent value="pos-publico">
+        <EspanaPublicPosConfig />
       </TabsContent>
     </Tabs>
   );
