@@ -169,8 +169,89 @@ export default function CoreWooCoreMap() {
     }
   }
 
+  async function runReconcile() {
+    setReconciling(true);
+    try {
+      const { data, error } = await supabase.rpc("core_reconcile_woo_core_map" as any);
+      if (error) throw error;
+      const d: any = data;
+      toast({
+        title: "Reconciliación completa",
+        description: `Revisados: ${d?.reviewed ?? 0} · Core: ${d?.linked_via_core_products ?? 0} · Estructuras: ${d?.linked_via_structures ?? 0} · Revisión: ${d?.needs_review ?? 0} · Conflictos: ${d?.conflicts ?? 0} · Sin link: ${d?.no_link ?? 0}`,
+      });
+      qc.invalidateQueries({ queryKey: ["woo-core-map"] });
+      qc.invalidateQueries({ queryKey: ["cost-structures-by-woo"] });
+    } catch (e: any) {
+      toast({ title: "Error reconciliando", description: e.message, variant: "destructive" });
+    } finally {
+      setReconciling(false);
+    }
+  }
+
   function badge(text: string, variant: "default" | "secondary" | "destructive" | "outline" = "outline") {
     return <Badge variant={variant} className="text-[10px]">{text}</Badge>;
+  }
+
+  function costCell(ctx: RowCtx) {
+    const structCost = ctx.activeStructure?.total_unit_cost ?? null;
+    const r = resolveDisplayCost({
+      productBaseStructureCost: structCost,
+      policyManualCost: ctx.policy?.manual_unit_cost_usd ?? null,
+      productManualMirrorCost: ctx.core?.manual_unit_cost_usd ?? null,
+      productUnitCost: ctx.core?.unit_cost ?? null,
+    });
+    return (
+      <div className="flex flex-col">
+        <span className={r.hasWarning ? "text-destructive font-semibold" : "font-medium"}>
+          {r.hasWarning ? "—" : `$${r.amount.toFixed(2)}`}
+        </span>
+        <span className="text-[10px] text-muted-foreground">{r.label}</span>
+      </div>
+    );
+  }
+
+  function connectionCell(ctx: RowCtx) {
+    if (ctx.connState === "core_full") {
+      return (
+        <div className="space-y-1">
+          <div className="truncate" title={ctx.core!.name}>{ctx.core!.core_sku}
+            <div className="text-[10px] text-muted-foreground truncate">{ctx.core!.name}</div>
+          </div>
+          {badge("Core conectado", "default")}
+        </div>
+      );
+    }
+    if (ctx.connState === "core_no_structure") {
+      return (
+        <div className="space-y-1">
+          <div className="truncate" title={ctx.core!.name}>{ctx.core!.core_sku}
+            <div className="text-[10px] text-muted-foreground truncate">{ctx.core!.name}</div>
+          </div>
+          <div className="flex gap-1 flex-wrap">
+            {badge("Core conectado", "default")}
+            {badge("Falta estructura", "destructive")}
+          </div>
+        </div>
+      );
+    }
+    if (ctx.connState === "structure_only") {
+      return (
+        <div className="space-y-1">
+          {badge("Con estructura Woo", "secondary")}
+          {badge("Falta Core", "outline")}
+        </div>
+      );
+    }
+    if (ctx.connState === "needs_review") {
+      return (
+        <div className="space-y-1">
+          {badge("Revisión", "destructive")}
+          {ctx.activeStructure && badge("Con estructura Woo", "secondary")}
+          {ctx.core && badge(ctx.core.core_sku, "outline")}
+        </div>
+      );
+    }
+    return badge("Sin conexión", "destructive");
   }
 
   function costCell(ctx: RowCtx) {
