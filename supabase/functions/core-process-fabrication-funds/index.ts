@@ -356,6 +356,47 @@ async function runProcessSales(
 
         const resolved = await resolveVariantUnitCost(supabase, product, variant, wooProdId, wooVarId);
         const unitCost = resolved.unit_cost;
+
+        // Fase 2B-1: consultar política de reposición
+        const policyAct = await resolveReplenishmentAction(supabase, product, variant, wooProdId, wooVarId);
+        const qtyPre = Number(it.quantity ?? 0) || 0;
+
+        const registerPolicyEvent = async (extra: Record<string, any> = {}) => {
+          await insertPolicyEvent(supabase, {
+            source_type: "woo_order_item",
+            woo_order_id: oid,
+            woo_order_item_id: iid,
+            core_product_id: product?.id ?? null,
+            core_variant_id: variant?.id ?? null,
+            woo_product_id: wooProdId ?? null,
+            woo_variation_id: wooVarId ?? null,
+            policy_id: policyAct?.policy_id ?? null,
+            action: policyAct?.action ?? "allow_internal_factory",
+            severity: policyAct?.severity ?? "allow",
+            message: policyAct?.message ?? null,
+            warning: policyAct?.warning ?? null,
+            quantity: qtyPre,
+            unit_cost: unitCost || null,
+            amount: unitCost && qtyPre ? +(qtyPre * unitCost).toFixed(4) : null,
+            cost_source: resolved.cost_source,
+            replacement_product_id: policyAct?.replacement_product_id ?? null,
+            replacement_woo_product_id: policyAct?.replacement_woo_product_id ?? null,
+            replacement_behavior: policyAct?.replacement_behavior ?? null,
+            external_supplier_name: policyAct?.external_supplier_name ?? null,
+            external_supplier_unit_cost_usd: policyAct?.external_supplier_unit_cost_usd ?? null,
+            status: "open",
+            created_by: userId,
+            ...extra,
+          });
+        };
+
+        const action = policyAct?.action ?? "allow_internal_factory";
+        if (action !== "allow_internal_factory") {
+          await registerPolicyEvent();
+          summary.by_reason[`policy_${action}`] = (summary.by_reason[`policy_${action}`] ?? 0) + 1;
+          continue;
+        }
+
         if (!unitCost || unitCost <= 0) {
           queuePending(
             "unit_cost_missing",
@@ -363,6 +404,7 @@ async function runProcessSales(
           );
           continue;
         }
+
 
         const isNonRestock =
           (skuLower && restockSkuSet.has(skuLower)) ||
