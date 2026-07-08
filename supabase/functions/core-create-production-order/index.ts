@@ -533,6 +533,31 @@ async function createManual(
 
   const totalQty = body.lines.reduce((a, l) => a + Number(l.quantity), 0);
 
+  // Fase 2B-1: verificar política antes de crear la OP.
+  const blockedManual: any[] = [];
+  for (const l of body.lines) {
+    const v: any = vmap.get(l.core_variant_id);
+    const pol = await resolvePolicy(supabase, body.core_product_id, l.core_variant_id, (prodInfo as any)?.woo_product_id ?? null, v?.woo_variation_id ?? null);
+    if (pol.action !== "allow_internal_factory") {
+      blockedManual.push({ core_variant_id: l.core_variant_id, action: pol.action, message: pol.message, replacement_product_id: pol.replacement_product_id, replacement_woo_product_id: pol.replacement_woo_product_id });
+      await logPolicyEvent(supabase, {
+        source_type: "production_order", core_product_id: body.core_product_id, core_variant_id: l.core_variant_id,
+        woo_product_id: (prodInfo as any)?.woo_product_id ?? null, woo_variation_id: v?.woo_variation_id ?? null,
+        policy_id: pol.policy_id ?? null, action: pol.action, severity: pol.severity ?? "block",
+        message: pol.message, warning: pol.warning, quantity: Number(l.quantity),
+        replacement_product_id: pol.replacement_product_id ?? null, replacement_woo_product_id: pol.replacement_woo_product_id ?? null,
+        replacement_behavior: pol.replacement_behavior ?? null,
+        external_supplier_name: pol.external_supplier_name ?? null, external_supplier_unit_cost_usd: pol.external_supplier_unit_cost_usd ?? null,
+        status: "open", created_by: userId,
+      });
+    }
+  }
+  if (blockedManual.length) {
+    return json({ error: "policy_blocked", blocked_lines: blockedManual, message: "Una o más variantes están bloqueadas por política de reposición." }, 409);
+  }
+
+
+
   const { data: orderRow, error: orderErr } = await supabase
     .from("core_production_orders")
     .insert({
