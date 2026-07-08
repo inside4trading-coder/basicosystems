@@ -458,9 +458,13 @@ export default function CoreWooCoreMap() {
           <p className="text-sm text-muted-foreground">Productos en <b>No restock</b> o <b>En salida</b>. Aquí eliges reemplazo y comportamiento.</p>
           {renderMainTable(noRestockRows)}
         </TabsContent>
+        <TabsContent value="review">
+          <PolicyReviewPanel />
+        </TabsContent>
         <TabsContent value="audit">
           <StrategyAuditPanel entries={auditQ.data ?? []} loading={auditQ.isLoading} />
         </TabsContent>
+
       </Tabs>
 
       {/* Dialogs */}
