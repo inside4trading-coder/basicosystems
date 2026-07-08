@@ -4081,6 +4081,12 @@ export type Database = {
           linked_location_id: string | null
           name: string
           notes: string | null
+          public_pos_created_at: string | null
+          public_pos_enabled: boolean
+          public_pos_last_used_at: string | null
+          public_pos_pin: string | null
+          public_pos_slug: string | null
+          public_pos_token: string | null
           type: string
           updated_at: string
         }
@@ -4097,6 +4103,12 @@ export type Database = {
           linked_location_id?: string | null
           name: string
           notes?: string | null
+          public_pos_created_at?: string | null
+          public_pos_enabled?: boolean
+          public_pos_last_used_at?: string | null
+          public_pos_pin?: string | null
+          public_pos_slug?: string | null
+          public_pos_token?: string | null
           type?: string
           updated_at?: string
         }
@@ -4113,6 +4125,12 @@ export type Database = {
           linked_location_id?: string | null
           name?: string
           notes?: string | null
+          public_pos_created_at?: string | null
+          public_pos_enabled?: boolean
+          public_pos_last_used_at?: string | null
+          public_pos_pin?: string | null
+          public_pos_slug?: string | null
+          public_pos_token?: string | null
           type?: string
           updated_at?: string
         }
