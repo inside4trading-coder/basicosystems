@@ -67,6 +67,7 @@ import EspanaFabricacion from "./pages/espana/EspanaFabricacion";
 import EspanaBlanksDTF from "./pages/espana/EspanaBlanksDTF";
 import EspanaWooProblemas from "./pages/espana/EspanaWooProblemas";
 import EspanaWooReclasificar from "./pages/espana/EspanaWooReclasificar";
+import EspanaEtiquetas from "./pages/espana/EspanaEtiquetas";
 import FondoTransparente from "./pages/FondoTransparente";
 import FuerzaVenezuela from "./pages/FuerzaVenezuela";
 import NotFound from "./pages/NotFound";
