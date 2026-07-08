@@ -1974,6 +1974,60 @@ export type Database = {
         }
         Relationships: []
       }
+      core_product_strategy_decisions: {
+        Row: {
+          core_product_id: string | null
+          created_at: string
+          created_by: string | null
+          decision_type: string
+          id: string
+          new_values: Json | null
+          policy_id: string | null
+          previous_values: Json | null
+          reason: string | null
+          woo_product_id: number | null
+        }
+        Insert: {
+          core_product_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decision_type: string
+          id?: string
+          new_values?: Json | null
+          policy_id?: string | null
+          previous_values?: Json | null
+          reason?: string | null
+          woo_product_id?: number | null
+        }
+        Update: {
+          core_product_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decision_type?: string
+          id?: string
+          new_values?: Json | null
+          policy_id?: string | null
+          previous_values?: Json | null
+          reason?: string | null
+          woo_product_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_product_strategy_decisions_core_product_id_fkey"
+            columns: ["core_product_id"]
+            isOneToOne: false
+            referencedRelation: "core_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_product_strategy_decisions_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "core_replenishment_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       core_product_variants: {
         Row: {
           barcode: string | null
@@ -2840,11 +2894,14 @@ export type Database = {
           id: string
           image_url: string | null
           is_restockable: boolean
+          manual_cost_reason: string | null
+          manual_unit_cost_usd: number | null
           name: string
           notes: string | null
           product_priority: string
           product_type: string | null
           replenishment_mode: string
+          replenishment_policy_id: string | null
           sku_source: string
           suggested_fabrication_fund: number
           sync_status: string
@@ -2878,11 +2935,14 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_restockable?: boolean
+          manual_cost_reason?: string | null
+          manual_unit_cost_usd?: number | null
           name: string
           notes?: string | null
           product_priority?: string
           product_type?: string | null
           replenishment_mode?: string
+          replenishment_policy_id?: string | null
           sku_source?: string
           suggested_fabrication_fund?: number
           sync_status?: string
@@ -2916,11 +2976,14 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_restockable?: boolean
+          manual_cost_reason?: string | null
+          manual_unit_cost_usd?: number | null
           name?: string
           notes?: string | null
           product_priority?: string
           product_type?: string | null
           replenishment_mode?: string
+          replenishment_policy_id?: string | null
           sku_source?: string
           suggested_fabrication_fund?: number
           sync_status?: string
@@ -2937,7 +3000,15 @@ export type Database = {
           woo_status?: string | null
           woo_stock_quantity?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "core_products_replenishment_policy_id_fkey"
+            columns: ["replenishment_policy_id"]
+            isOneToOne: false
+            referencedRelation: "core_replenishment_policies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       core_raw_material_categories: {
         Row: {
@@ -3031,6 +3102,117 @@ export type Database = {
             columns: ["unit_of_measure_id"]
             isOneToOne: false
             referencedRelation: "core_units_of_measure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_replenishment_policies: {
+        Row: {
+          brand_role: string
+          core_product_id: string | null
+          created_at: string
+          created_by: string | null
+          decision_reason: string | null
+          external_supplier_id: string | null
+          external_supplier_lead_time_days: number | null
+          external_supplier_min_qty: number | null
+          external_supplier_name: string | null
+          external_supplier_notes: string | null
+          external_supplier_unit_cost_usd: number | null
+          id: string
+          last_reviewed_at: string | null
+          lifecycle_status: string
+          manual_cost_reason: string | null
+          manual_cost_updated_at: string | null
+          manual_cost_updated_by: string | null
+          manual_unit_cost_usd: number | null
+          product_name_snapshot: string | null
+          replacement_behavior: string
+          replacement_product_id: string | null
+          replacement_woo_product_id: number | null
+          replenishment_route: string
+          restock_enabled: boolean
+          reviewed_by: string | null
+          sku_snapshot: string | null
+          updated_at: string
+          updated_by: string | null
+          woo_product_id: number | null
+        }
+        Insert: {
+          brand_role?: string
+          core_product_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decision_reason?: string | null
+          external_supplier_id?: string | null
+          external_supplier_lead_time_days?: number | null
+          external_supplier_min_qty?: number | null
+          external_supplier_name?: string | null
+          external_supplier_notes?: string | null
+          external_supplier_unit_cost_usd?: number | null
+          id?: string
+          last_reviewed_at?: string | null
+          lifecycle_status?: string
+          manual_cost_reason?: string | null
+          manual_cost_updated_at?: string | null
+          manual_cost_updated_by?: string | null
+          manual_unit_cost_usd?: number | null
+          product_name_snapshot?: string | null
+          replacement_behavior?: string
+          replacement_product_id?: string | null
+          replacement_woo_product_id?: number | null
+          replenishment_route?: string
+          restock_enabled?: boolean
+          reviewed_by?: string | null
+          sku_snapshot?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          woo_product_id?: number | null
+        }
+        Update: {
+          brand_role?: string
+          core_product_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decision_reason?: string | null
+          external_supplier_id?: string | null
+          external_supplier_lead_time_days?: number | null
+          external_supplier_min_qty?: number | null
+          external_supplier_name?: string | null
+          external_supplier_notes?: string | null
+          external_supplier_unit_cost_usd?: number | null
+          id?: string
+          last_reviewed_at?: string | null
+          lifecycle_status?: string
+          manual_cost_reason?: string | null
+          manual_cost_updated_at?: string | null
+          manual_cost_updated_by?: string | null
+          manual_unit_cost_usd?: number | null
+          product_name_snapshot?: string | null
+          replacement_behavior?: string
+          replacement_product_id?: string | null
+          replacement_woo_product_id?: number | null
+          replenishment_route?: string
+          restock_enabled?: boolean
+          reviewed_by?: string | null
+          sku_snapshot?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          woo_product_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_replenishment_policies_core_product_id_fkey"
+            columns: ["core_product_id"]
+            isOneToOne: false
+            referencedRelation: "core_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_replenishment_policies_replacement_product_id_fkey"
+            columns: ["replacement_product_id"]
+            isOneToOne: false
+            referencedRelation: "core_products"
             referencedColumns: ["id"]
           },
         ]
@@ -3345,6 +3527,152 @@ export type Database = {
           woo_variations?: Json | null
         }
         Relationships: []
+      }
+      core_woo_product_map: {
+        Row: {
+          core_product_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          last_synced_at: string | null
+          mapping_status: string
+          updated_at: string
+          updated_by: string | null
+          variants_sync_status: string
+          woo_parent_id: number | null
+          woo_permalink: string | null
+          woo_product_id: number
+          woo_product_name: string | null
+          woo_product_sku: string | null
+          woo_product_type: string | null
+          woo_raw_payload: Json | null
+          woo_status: string | null
+          woo_variations_count: number
+        }
+        Insert: {
+          core_product_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_synced_at?: string | null
+          mapping_status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variants_sync_status?: string
+          woo_parent_id?: number | null
+          woo_permalink?: string | null
+          woo_product_id: number
+          woo_product_name?: string | null
+          woo_product_sku?: string | null
+          woo_product_type?: string | null
+          woo_raw_payload?: Json | null
+          woo_status?: string | null
+          woo_variations_count?: number
+        }
+        Update: {
+          core_product_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_synced_at?: string | null
+          mapping_status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variants_sync_status?: string
+          woo_parent_id?: number | null
+          woo_permalink?: string | null
+          woo_product_id?: number
+          woo_product_name?: string | null
+          woo_product_sku?: string | null
+          woo_product_type?: string | null
+          woo_raw_payload?: Json | null
+          woo_status?: string | null
+          woo_variations_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_woo_product_map_core_product_id_fkey"
+            columns: ["core_product_id"]
+            isOneToOne: false
+            referencedRelation: "core_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_woo_variant_map: {
+        Row: {
+          color_label: string | null
+          core_product_id: string | null
+          core_variant_id: string | null
+          created_at: string
+          id: string
+          mapping_status: string
+          normalized_color: string | null
+          normalized_size: string | null
+          size_label: string | null
+          updated_at: string
+          woo_attributes: Json | null
+          woo_price: number | null
+          woo_product_id: number
+          woo_raw_payload: Json | null
+          woo_stock_quantity: number | null
+          woo_variant_sku: string | null
+          woo_variation_id: number
+        }
+        Insert: {
+          color_label?: string | null
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          id?: string
+          mapping_status?: string
+          normalized_color?: string | null
+          normalized_size?: string | null
+          size_label?: string | null
+          updated_at?: string
+          woo_attributes?: Json | null
+          woo_price?: number | null
+          woo_product_id: number
+          woo_raw_payload?: Json | null
+          woo_stock_quantity?: number | null
+          woo_variant_sku?: string | null
+          woo_variation_id: number
+        }
+        Update: {
+          color_label?: string | null
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string
+          id?: string
+          mapping_status?: string
+          normalized_color?: string | null
+          normalized_size?: string | null
+          size_label?: string | null
+          updated_at?: string
+          woo_attributes?: Json | null
+          woo_price?: number | null
+          woo_product_id?: number
+          woo_raw_payload?: Json | null
+          woo_stock_quantity?: number | null
+          woo_variant_sku?: string | null
+          woo_variation_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_woo_variant_map_core_product_id_fkey"
+            columns: ["core_product_id"]
+            isOneToOne: false
+            referencedRelation: "core_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_woo_variant_map_core_variant_id_fkey"
+            columns: ["core_variant_id"]
+            isOneToOne: false
+            referencedRelation: "core_product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       core_woo_write_logs: {
         Row: {
