@@ -15,7 +15,8 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowDownToLine, ArrowUpFromLine, Sliders, ArrowLeftRight, History, Download } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, Sliders, ArrowLeftRight, History, Download, QrCode } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 interface Loc { id: string; name: string; code: string; inventory_mode: string }
