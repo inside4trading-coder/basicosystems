@@ -311,10 +311,8 @@ export default function CoreWooCoreMap() {
                     </td>
                     <td className="p-2">{m.woo_product_type ?? "—"}</td>
                     <td className="p-2 text-center">{m.woo_variations_count}</td>
-                    <td className="p-2 max-w-[160px]">
-                      {ctx.core
-                        ? <div className="truncate" title={ctx.core.name}>{ctx.core.core_sku}<div className="text-[10px] text-muted-foreground truncate">{ctx.core.name}</div></div>
-                        : badge("Sin conexión", "destructive")}
+                    <td className="p-2 max-w-[200px]">
+                      {connectionCell(ctx)}
                     </td>
                     <td className="p-2">{badge(VARIANT_SYNC_LABELS[m.variants_sync_status] ?? m.variants_sync_status)}</td>
                     <td className="p-2">{costCell(ctx)}</td>
