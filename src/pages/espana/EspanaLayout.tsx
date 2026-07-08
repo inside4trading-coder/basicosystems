@@ -12,6 +12,7 @@ import {
   Hammer,
   Shirt,
   AlertTriangle,
+  QrCode,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
