@@ -202,6 +202,45 @@ Deno.serve(async (req) => {
       .select("*")
       .eq("production_order_id", production_order_id);
 
+    // Fase 2B-1: validar política antes de generar unidades (no aplica a repair)
+    if (!repair_missing_processes) {
+      const blocked: any[] = [];
+      for (const line of lines ?? []) {
+        const [{ data: p }, { data: v }] = await Promise.all([
+          line.core_product_id ? supa.from("core_products").select("woo_product_id").eq("id", line.core_product_id).maybeSingle() : Promise.resolve({ data: null }),
+          line.core_variant_id ? supa.from("core_product_variants").select("woo_variation_id").eq("id", line.core_variant_id).maybeSingle() : Promise.resolve({ data: null }),
+        ]);
+        const { data: polData } = await supa.rpc("resolve_core_replenishment_action", {
+          p_core_product_id: line.core_product_id ?? null,
+          p_core_variant_id: line.core_variant_id ?? null,
+          p_woo_product_id: (p as any)?.woo_product_id ?? null,
+          p_woo_variation_id: (v as any)?.woo_variation_id ?? null,
+        });
+        const pol = Array.isArray(polData) ? polData[0] : polData;
+        if (pol && pol.action !== "allow_internal_factory") {
+          blocked.push({ line_id: line.id, sku: line.sku, variant_sku: line.variant_sku, action: pol.action, message: pol.message });
+          await supa.from("core_replenishment_policy_events").insert({
+            source_type: "production_order", source_id: production_order_id,
+            core_product_id: line.core_product_id ?? null, core_variant_id: line.core_variant_id ?? null,
+            woo_product_id: (p as any)?.woo_product_id ?? null, woo_variation_id: (v as any)?.woo_variation_id ?? null,
+            policy_id: pol.policy_id ?? null, action: pol.action, severity: pol.severity ?? "block",
+            message: pol.message, warning: pol.warning, quantity: line.quantity_ordered,
+            replacement_product_id: pol.replacement_product_id ?? null,
+            replacement_woo_product_id: pol.replacement_woo_product_id ?? null,
+            replacement_behavior: pol.replacement_behavior ?? null,
+            external_supplier_name: pol.external_supplier_name ?? null,
+            external_supplier_unit_cost_usd: pol.external_supplier_unit_cost_usd ?? null,
+            status: "open", created_by: userId,
+          }).then(() => {}, () => {});
+        }
+      }
+      if (blocked.length) {
+        return new Response(JSON.stringify({ error: "policy_blocked", blocked_lines: blocked, message: "La OP contiene líneas cuya política de reposición ya no permite fabricación interna." }), {
+          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const { data: orderProcesses } = await supa
       .from("core_production_order_processes")
       .select("*")
@@ -210,6 +249,7 @@ Deno.serve(async (req) => {
 
     const costStructureCache = new Map<string, any[]>();
     const orderLevelProcesses = orderProcesses ?? [];
+
 
     // ============== REPAIR MODE ==============
     if (repair_missing_processes) {
