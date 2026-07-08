@@ -45,6 +45,9 @@ type RowCtx = {
   map: WooProductMapRow;
   core: CoreProductLite | null;
   policy: ReplenishmentPolicyRow | null;
+  structures: CostStructureLite[];
+  activeStructure: CostStructureLite | null;
+  connState: "core_full" | "core_no_structure" | "structure_only" | "needs_review" | "none";
 };
 
 type DialogState =
