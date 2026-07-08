@@ -110,6 +110,25 @@ async function audit(
   }
 }
 
+// Fase 2B-1: política de reposición
+async function resolvePolicy(
+  supabase: any, core_product_id: string | null, core_variant_id: string | null,
+  woo_product_id: number | null, woo_variation_id: number | null,
+) {
+  const { data } = await supabase.rpc("resolve_core_replenishment_action", {
+    p_core_product_id: core_product_id, p_core_variant_id: core_variant_id,
+    p_woo_product_id: woo_product_id, p_woo_variation_id: woo_variation_id,
+  });
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ?? { action: "allow_internal_factory", severity: "allow" };
+}
+
+async function logPolicyEvent(supabase: any, row: any) {
+  try { await supabase.from("core_replenishment_policy_events").insert(row); }
+  catch (e) { console.warn("policy_event insert failed", (e as Error).message); }
+}
+
+
 async function fetchProcessesFromCostStructure(
   supabase: any,
   costStructureId: string | null,
