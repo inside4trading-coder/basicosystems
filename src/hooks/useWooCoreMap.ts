@@ -55,6 +55,37 @@ export interface CoreProductLite {
   woo_product_id: number | null;
 }
 
+export interface CostStructureLite {
+  id: string;
+  status: string | null;
+  woo_product_id: number | null;
+  variant_id: string | null;
+  total_unit_cost: number | null;
+  name: string | null;
+}
+
+export function useCostStructuresByWoo() {
+  return useQuery({
+    queryKey: ["cost-structures-by-woo"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("core_cost_structures")
+        .select("id,status,woo_product_id,variant_id,total_unit_cost,name")
+        .not("woo_product_id", "is", null)
+        .limit(10000);
+      if (error) throw error;
+      const map = new Map<number, CostStructureLite[]>();
+      for (const r of (data ?? []) as CostStructureLite[]) {
+        if (!r.woo_product_id) continue;
+        const arr = map.get(r.woo_product_id) ?? [];
+        arr.push(r);
+        map.set(r.woo_product_id, arr);
+      }
+      return map;
+    },
+  });
+}
+
 export function useWooProductMap() {
   return useQuery({
     queryKey: ["woo-core-map"],
