@@ -441,10 +441,12 @@ async function createFromNeeds(
         is_overproduction: isOverproduction,
         multi_product: isMultiProduct,
         distinct_products: distinctProductIds.length,
+        cost_warnings: costWarnings,
       },
     ],
     count: 1,
   });
+
 }
 
 async function createManual(
