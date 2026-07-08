@@ -1,117 +1,141 @@
+## Plan: POS Móvil BASICO ESPAÑA — Público por sede, Escáner real, Menú móvil
 
-# Costos por variante en Estructuras de Costos (modo avanzado opcional)
+Tres bloques independientes: (A) POS público con link/token por sede, (B) escáner real de cámara reutilizable, (C) responsive del layout España.
 
-## Principio rector
-El flujo actual (una estructura por producto padre, todas las variantes heredan) queda **exactamente igual**. Todo lo nuevo vive detrás de un checkbox apagado por defecto. Cero cambios en WooCommerce, POS, España, Blanks/DTF, QR, nómina o histórico.
+---
 
-## 1. Base de datos (una sola migración aditiva)
+### A. POS Público por sede
 
-### `core_product_variants` — añadir columnas
-- `cost_structure_id uuid NULL` → FK a `core_cost_structures(id)` (estructura propia de la variante)
-- `uses_parent_cost_structure boolean NOT NULL DEFAULT true`
-- `cost_override_enabled boolean NOT NULL DEFAULT false`
-- `variant_unit_cost_usd numeric NULL` (costo resuelto en override, cache)
-- `cost_updated_at timestamptz NULL`
-- `color text NULL`, `normalized_color text NULL`, `woo_attributes jsonb NULL` (si no existen ya — reutilizar `size`, `variant_label`, `woo_variation_id`, `variant_sku` que ya existen)
+**Ruta**
+- Pública sin login: `/pos/:locationSlug/:publicToken` (fuera de `AppLayout`/`ProtectedRoute`, registrada en `src/App.tsx` al mismo nivel que `/login`).
+- Nueva página `src/pages/pos-publico/PosPublico.tsx` con su propio `PublicPosLayout` mínimo (header "BASICO POS — <sede>", sin sidebar).
+- Si PIN configurado, primero pantalla de PIN antes de mostrar el POS.
 
-Todas nullables → registros existentes quedan intactos con `uses_parent_cost_structure = true`.
+**Schema (migración nueva)**
 
-### `core_cost_structures` — añadir columna
-- `variant_id uuid NULL REFERENCES core_product_variants(id)`  
-  - `NULL` = estructura base del producto (comportamiento actual)
-  - Con valor = estructura propia de esa variante
+Agregar a `esp_locations`:
+- `public_pos_enabled boolean not null default false`
+- `public_pos_slug text unique`
+- `public_pos_token text` (32+ bytes aleatorios, hex/base64url)
+- `public_pos_pin text` (opcional, hash)
+- `public_pos_created_at timestamptz`
+- `public_pos_last_used_at timestamptz`
 
-Se elige esta opción sobre una tabla puente porque mantiene toda la lógica de `core_cost_structure_items` intacta (siguen atados a `cost_structure_id`).
+RLS: **no** dar acceso anon a `esp_locations`. Todo el flujo público pasa por edge functions con service role.
 
-### Helper SQL
-`public.resolve_core_variant_unit_cost(p_product_id uuid, p_variant_id uuid)` returns numeric:
-1. Si variante tiene `cost_override_enabled=true` y `cost_structure_id` con estructura activa → suma sus items.
-2. Si no → costo de estructura base del producto (`variant_id IS NULL`).
-3. Si no → `core_products.unit_cost`.
-4. Si nada → 0.
+**Edge functions nuevas** (`verify_jwt = false`, validan token en código):
 
-## 2. Normalización (frontend)
+1. `esp-public-pos-resolve` — POST `{ slug, token, pin? }` → valida y devuelve `{ location: { id, name }, payment_methods, needs_pin }`. Actualiza `public_pos_last_used_at`.
+2. `esp-public-pos-search` — POST `{ slug, token, query }` → busca variante por `scan_code | variant_sku | barcode | qr_code`, devuelve `{ product_name, variant_label, color, sku, price, stock_in_location, variant_id }`. Solo campos no sensibles.
+3. `esp-public-pos-sale` — POST `{ slug, token, pin?, items, payments, customer_name?, notes? }`. Server-side:
+   - Valida sede + token + PIN + `public_pos_enabled`.
+   - Resuelve `location_id` **desde el token** (nunca del cliente).
+   - Valida stock por sede, precios desde DB (no del cliente).
+   - Ejecuta la misma lógica atómica que `esp_register_pos_sale` (RPC existente) pasando `source='public_pos'`, `channel='POS'`, `location_id` del token.
+   - Devuelve recibo `{ sale_id, total, items, timestamp }`.
 
-`src/lib/coreNormalize.ts`:
-- `normalizeSize(label)` — ya existe algo en `espMaterials.ts`, replicar para core.
-- `normalizeColor(label)` — trim, uppercase, quitar acentos, colapsar espacios.
+Cliente público usa `fetch` a las edge functions con la publishable key (no supabase session). Las funciones **no** aceptan `location_id` del body.
 
-## 3. Edge function `core-woo-import-variants`
+**Configuración por sede**
 
-Ya existe y ya detecta atributos. Ajustes mínimos:
-- Guardar también `color`, `normalized_color`, `woo_attributes` (raw).
-- No tocar lógica existente de tallas.
-- Sigue siendo solo-lectura contra Woo.
+Nueva pestaña "POS Público" en `src/pages/espana/EspanaConfiguracion.tsx` (o sección dedicada), tabla de sedes con:
+- Toggle activar/desactivar
+- Slug editable (validar único)
+- Ver/copiar link `https://<host>/pos/<slug>/<token>`
+- Regenerar token
+- PIN opcional
+- Último uso
 
-## 4. UI — `CoreCostStructureEditor.tsx`
+Escrituras vía edge function `esp-public-pos-admin` (protegida con JWT, rol admin/manager) que hace las mutaciones a `esp_locations`. Genera token con `crypto.randomUUID()` + `crypto.getRandomValues` (32 bytes → base64url).
 
-Solo en modo "nueva/editar" con Woo Product ID vinculado:
+---
 
-### Checkbox
-Debajo del bloque de conexión WooCommerce:
-```
-[ ] Este producto tiene costos diferentes por variante/color/talla
-    Activa solo si algunas variantes consumen materias primas distintas.
-```
-Estado guardado en la estructura base (nuevo campo `has_variant_overrides boolean` en `core_cost_structures`, o derivado de existencia de variantes con override — usaremos derivado para no añadir más columnas).
+### B. Escáner real de cámara
 
-### Panel colapsable "Costos por variante" (solo si checkbox ON)
-- Botón **"Sincronizar variantes Woo"** → llama edge function existente con `apply: true`.
-- Matriz con columnas: Woo variation ID · SKU · Talla · Color · Precio Woo (readonly) · Modo costo (select: `Heredar base` / `Personalizar`) · Costo unitario · Acciones.
-- Acciones por fila: **Editar costos** (abre sheet), **Copiar desde base**, **Copiar desde otra variante**, **Resetear a heredar**.
-- Por defecto todas en "Heredar base".
+**Nuevo componente** `src/components/espana/MobileQrScanner.tsx`:
+- Modal full-screen (Dialog de shadcn en móvil, `w-screen h-screen`).
+- Estrategia:
+  1. Si `window.BarcodeDetector` existe → usar `getUserMedia({ video: { facingMode: 'environment' } })` + loop `requestAnimationFrame` + `BarcodeDetector.detect()`.
+  2. Fallback: instalar `html5-qrcode` (soporta QR + barcodes 1D, iOS Safari OK).
+- Pide permisos, muestra error si denegado, cámara trasera por defecto.
+- Botones: "Cancelar", "Ingresar código manual" (input + submit).
+- Al detectar → `onDetected(text)` y cierra.
+- Requiere HTTPS (ya lo tenemos en preview y prod).
 
-### Sheet "Editar costos de variante"
-Reutiliza el mismo componente de secciones que la estructura base (Materia prima, Mano de obra, Procesos técnicos, Costos variables, Logística, Empaque, Otros). Al guardar:
-- Crea/actualiza una `core_cost_structures` con `variant_id` seteado.
-- Marca la variante: `cost_override_enabled=true`, `uses_parent_cost_structure=false`, `cost_structure_id=<nueva>`.
-- Recalcula `variant_unit_cost_usd`.
+**Uso**
+- POS público: botón "Escanear" grande → abre `MobileQrScanner` → llama a `esp-public-pos-search`.
+- POS normal (`src/pages/espana/EspanaPOS.tsx`): reemplazar el botón/escáner actual por el mismo componente. Cero duplicación.
 
-"Copiar desde base": prellena items desde la base pero la variante sigue en "Heredar" hasta que el usuario guarde.
+Instalación: `bun add html5-qrcode` (para fallback iOS).
 
-## 5. Catálogo `/core/productos`
+---
 
-En fila del producto padre:
-- Si todas heredan → `Costo: X.XX USD`
-- Si hay overrides → `Costo: min–max USD` con badge "variantes con costo propio: N".
+### C. Menú móvil colapsable en España
 
-En expandido, columnas: Talla · Color · SKU · Woo variation ID · Modo (Hereda base / Costo propio) · Costo unitario · acciones (Editar / Copiar base / Resetear).
+Actualmente `EspanaLayout.tsx` renderiza aside fijo `md:w-60` con `flex-col md:flex-row`, así que en móvil aparece apilado ocupando pantalla.
 
-## 6. Resolución de costo en producción / partidas / necesidades
+Cambios en `src/pages/espana/EspanaLayout.tsx`:
+- En móvil (`< md`): ocultar aside, mostrar barra superior compacta con logo módulo + botón hamburguesa (Sheet de shadcn ya usado en el proyecto).
+- Sheet se abre con hamburguesa, contiene el mismo `<nav>` de grupos, se cierra al navegar (usar `onClick` en NavLink o efecto sobre `location.pathname`).
+- En desktop (`md+`): comportamiento actual sin cambios.
+- Header general de `AppLayout` sigue arriba; añadir el hamburguesa **dentro** de EspanaLayout para no tocar módulos ajenos.
 
-Sustituir lecturas actuales de `core_products.unit_cost` (cuando hay `variant_id` disponible) por una llamada al RPC `resolve_core_variant_unit_cost(product_id, variant_id)` en:
-- `core-create-production-order`
-- `core-generate-production-units`
-- `core-process-fabrication-funds` (solo en cálculos de costo nuevo)
+POS público usa su propio layout minimal, sin sidebar.
 
-**No se reprocesa histórico**: solo aplica a nuevos cálculos. OPs, QR, nómina y snapshots existentes intactos.
+---
 
-## 7. Seguridad y auditoría
+### Seguridad — checklist
 
-- Toda escritura protegida: `admin` o `manager` (RLS ya cubierta por políticas existentes de `core_*`).
-- Registrar en `core_audit_logs` cada cambio de modo/costo por variante (acción `variant_cost_override`, `variant_cost_reset`).
+- Sin token → 404/`Link no válido`.
+- Token incorrecto → mismo error genérico, sin distinguir.
+- `public_pos_enabled=false` → mismo error.
+- `location_id` de venta siempre desde el token en el servidor.
+- Precios y stock validados server-side.
+- Venta atómica reutilizando la RPC existente (no permitir stock negativo).
+- No `GRANT` a `anon` sobre tablas ESP; todo por edge functions.
+- Público no puede llegar a `/espana/*` (siguen en `ProtectedRoute`).
 
-## 8. Fuera de alcance (explícito)
-- Carga masiva de costos por variante (solo se deja preparado el esquema).
-- Overrides parciales de líneas dentro de una estructura heredada — implementamos opciones A/B (hereda completa **o** estructura propia completa) más el botón "copiar desde base" para no reescribir manualmente.
-- Cualquier escritura a WooCommerce.
+---
 
-## 9. Validación con Woo Product 18007
-1. Abrir estructura, ingresar 18007, aplicar → 12 variaciones detectadas por la edge function.
-2. Checkbox off → guarda como siempre, todas heredan.
-3. Checkbox on → panel muestra 12 filas con talla y color, todas "Heredar base".
-4. Cambiar M/Negro a "Personalizar", editar materia prima, guardar → esa variante muestra costo propio; las otras 11 siguen heredando.
-5. Catálogo muestra rango de costos si hay overrides.
+### Detalles técnicos
 
-## 10. Orden de ejecución
-1. Migración SQL (columnas + RPC + grants ya cubiertos).
-2. Regenerar tipos.
-3. Edge function: añadir color/normalized_color/woo_attributes.
-4. `src/lib/coreNormalize.ts`.
-5. UI: checkbox + panel + matriz + sheet en `CoreCostStructureEditor.tsx`.
-6. UI: catálogo `/core/productos` (rango + badges + acciones en expandido).
-7. Reemplazar lecturas de costo por RPC en las 3 edge functions listadas.
-8. Auditoría.
+**Archivos nuevos**
+- `supabase/migrations/<ts>_esp_public_pos.sql` — columnas + índices únicos.
+- `supabase/functions/esp-public-pos-resolve/index.ts`
+- `supabase/functions/esp-public-pos-search/index.ts`
+- `supabase/functions/esp-public-pos-sale/index.ts`
+- `supabase/functions/esp-public-pos-admin/index.ts`
+- `src/pages/pos-publico/PosPublico.tsx`
+- `src/pages/pos-publico/PublicPosLayout.tsx`
+- `src/components/espana/MobileQrScanner.tsx`
+- `src/components/espana/EspanaPublicPosConfig.tsx`
 
-## Respuesta al cuestionario del brief (post-implementación esperada)
-Todos los ítems del checklist final del usuario se cumplirán: checkbox off por defecto, flujo normal intacto, panel colapsable presente, 12 variaciones detectadas para 18007, herencia por defecto, personalización por variante con las 7 secciones, cálculo por variante solo en override, catálogo con rango, resolución con fallback al padre, Woo no tocado, sin romper estructuras existentes.
+**Archivos editados**
+- `src/App.tsx` — ruta pública `/pos/:slug/:token`.
+- `src/pages/espana/EspanaLayout.tsx` — responsive con Sheet + hamburguesa.
+- `src/pages/espana/EspanaPOS.tsx` — usar `MobileQrScanner`.
+- `src/pages/espana/EspanaConfiguracion.tsx` — pestaña "POS Público".
+- `src/integrations/supabase/types.ts` — regenerado por migración.
+- `package.json` — `html5-qrcode`.
+
+**No se toca**: BASICO CORE, WooCommerce (Woo global ni España), Blanks/DTF, Fabricación ES, pedidos Woo, ventas históricas, inventario fuera del flujo POS.
+
+---
+
+### Validación (Pop Up Ibiza)
+
+1. Config → activar POS público Pop Up Ibiza → copiar link.
+2. Abrir link en móvil incógnito → sin login, carga sede fija, sin selector, sin sidebar admin.
+3. Escanear → abre cámara trasera → detecta `scan_code` → agrega al carrito.
+4. Confirmar venta → stock Pop Up Ibiza -1, `esp_sales` con `source=public_pos` y `location_id=Pop Up Ibiza`, movimiento `sale_pos` creado.
+5. Otras sedes intactas. WooCommerce y CORE intactos.
+6. Cambiar token → link viejo deja de funcionar.
+
+### Preguntas rápidas antes de construir
+
+Ninguna bloqueante; asumo:
+- Formato de link: `https://<host>/pos/<slug>/<token>` (limpio y compartible).
+- PIN opcional, off por defecto.
+- Métodos de pago: usar los ya activos globalmente en `esp_payment_methods`.
+
+Si prefieres `/espana/pos-publico/...` o PIN obligatorio, dímelo y ajusto antes de implementar.
