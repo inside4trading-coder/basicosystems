@@ -12,6 +12,7 @@ import {
   Hammer,
   Shirt,
   AlertTriangle,
+  QrCode,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,7 @@ const groups: { label: string; items: Section[] }[] = [
     items: [
       { to: "/espana/productos", label: "Productos", icon: Package },
       { to: "/espana/inventario", label: "Inventario por sedes", icon: Warehouse },
+      { to: "/espana/etiquetas", label: "Etiquetas / QR", icon: QrCode },
     ],
   },
   {

@@ -15,7 +15,8 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowDownToLine, ArrowUpFromLine, Sliders, ArrowLeftRight, History, Download } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, Sliders, ArrowLeftRight, History, Download, QrCode } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 interface Loc { id: string; name: string; code: string; inventory_mode: string }
@@ -110,6 +111,7 @@ export default function EspanaInventario() {
           <p className="text-sm text-muted-foreground">Stock real por sede y variante.</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" asChild><Link to="/espana/etiquetas"><QrCode className="h-4 w-4 mr-2" />Etiquetas</Link></Button>
           <Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4 mr-2" />Exportar</Button>
           <Button variant="outline" onClick={() => setMode("in")}><ArrowDownToLine className="h-4 w-4 mr-2" />Entrada</Button>
           <Button variant="outline" onClick={() => setMode("out")}><ArrowUpFromLine className="h-4 w-4 mr-2" />Salida</Button>
@@ -164,6 +166,9 @@ export default function EspanaInventario() {
                           <Button size="sm" variant="ghost" title="Ajuste" onClick={() => openMode("adjust", v.id)}><Sliders className="h-3.5 w-3.5" /></Button>
                           <Button size="sm" variant="ghost" title="Transferir" onClick={() => openMode("transfer", v.id)}><ArrowLeftRight className="h-3.5 w-3.5" /></Button>
                           <Button size="sm" variant="ghost" title="Historial" onClick={() => setHistoryOpen({ variantId: v.id })}><History className="h-3.5 w-3.5" /></Button>
+                          <Button size="sm" variant="ghost" asChild title="Etiquetas">
+                            <Link to={`/espana/etiquetas?producto=${v.product_id}`}><QrCode className="h-3.5 w-3.5" /></Link>
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>

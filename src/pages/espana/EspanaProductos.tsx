@@ -16,7 +16,8 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Package, Copy, Download } from "lucide-react";
+import { Plus, Pencil, Package, Copy, Download, QrCode } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ProductRecipeCard } from "@/components/espana/ProductRecipeCard";
 
@@ -222,7 +223,14 @@ export default function EspanaProductos() {
                       </span>
                     ) : "—"}
                   </TableCell>
-                  <TableCell><Button size="sm" variant="ghost" onClick={() => { setEditing(p); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
+                  <TableCell>
+                    <div className="flex gap-0.5">
+                      <Button size="sm" variant="ghost" onClick={() => { setEditing(p); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" asChild title="Etiquetas">
+                        <Link to={`/espana/etiquetas?producto=${p.id}`}><QrCode className="h-3.5 w-3.5" /></Link>
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               );})}
             </TableBody>
