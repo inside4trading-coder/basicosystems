@@ -40,6 +40,8 @@ import { ReplacementPickerDialog } from "@/components/core/woocore/ReplacementPi
 import { BrandRoleDialog } from "@/components/core/woocore/BrandRoleDialog";
 import { WooCoreVariantsRow } from "@/components/core/woocore/WooCoreVariantsRow";
 import { StrategyAuditPanel } from "@/components/core/woocore/StrategyAuditPanel";
+import { PolicyReviewPanel } from "@/components/core/woocore/PolicyReviewPanel";
+
 
 type RowCtx = {
   map: WooProductMapRow;
