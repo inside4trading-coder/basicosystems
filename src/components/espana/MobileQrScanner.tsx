@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Html5Qrcode } from "html5-qrcode";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +11,8 @@ interface Props {
 }
 
 export function MobileQrScanner({ open, onClose, onDetected }: Props) {
-  const containerId = "mobile-qr-scanner-region";
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const cameraDivRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState(false);
   const [manualCode, setManualCode] = useState("");
@@ -25,19 +24,25 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
 
     (async () => {
       try {
-        const scanner = new Html5Qrcode(containerId, { verbose: false });
+        const { Html5Qrcode } = await import("html5-qrcode");
+        if (cancelled || !cameraDivRef.current) return;
+        const scanner = new Html5Qrcode(cameraDivRef.current.id);
         scannerRef.current = scanner;
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 260, height: 260 } },
-          (decoded) => {
-            if (cancelled) return;
-            handleDetected(decoded);
+          { fps: 10, qrbox: { width: 240, height: 240 } },
+          (decoded: string) => {
+            const t = (decoded || "").trim();
+            if (!t) return;
+            const s = scannerRef.current;
+            scannerRef.current = null;
+            if (s) s.stop().then(() => { try { s.clear?.(); } catch { /* noop */ } }).catch(() => {});
+            onDetected(t);
           },
-          () => { /* per-frame errors ignored */ }
+          () => { /* ignore per-frame errors */ },
         );
       } catch (e: any) {
-        setError(e?.message || "No se pudo abrir la cámara. Revisa los permisos.");
+        setError(e?.message || String(e) || "No se pudo abrir la cámara. Revisa los permisos.");
       }
     })();
 
@@ -46,27 +51,19 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
       const s = scannerRef.current;
       scannerRef.current = null;
       if (s) {
-        s.stop().then(() => { try { s.clear(); } catch { /* noop */ } }).catch(() => {});
+        s.stop().then(() => { try { s.clear?.(); } catch { /* noop */ } }).catch(() => {});
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, manual]);
 
-  const handleDetected = (text: string) => {
-    const t = text.trim();
-    if (!t) return;
-    const s = scannerRef.current;
-    scannerRef.current = null;
-    if (s) s.stop().then(() => { try { s.clear(); } catch { /* noop */ } }).catch(() => {});
-    onDetected(t);
-  };
-
   const submitManual = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualCode.trim()) return;
-    handleDetected(manualCode.trim());
+    const t = manualCode.trim();
+    if (!t) return;
     setManualCode("");
     setManual(false);
+    onDetected(t);
   };
 
   return (
@@ -81,7 +78,11 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
         <div className="flex-1 flex flex-col">
           {!manual ? (
             <>
-              <div id={containerId} className="bg-black w-full aspect-square sm:aspect-video" />
+              <div
+                id="mobile-qr-scanner-region"
+                ref={cameraDivRef}
+                className="bg-black w-full aspect-square sm:aspect-video"
+              />
               {error && (
                 <div className="p-3 text-xs text-destructive bg-destructive/10">{error}</div>
               )}
