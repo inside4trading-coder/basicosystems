@@ -16,7 +16,8 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Package, Copy, Download } from "lucide-react";
+import { Plus, Pencil, Package, Copy, Download, QrCode } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ProductRecipeCard } from "@/components/espana/ProductRecipeCard";
 
