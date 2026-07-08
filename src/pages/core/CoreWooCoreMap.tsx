@@ -236,9 +236,11 @@ export default function CoreWooCoreMap() {
     if (ctx.core) return 2;
     const hasCost = !!ctx.activeStructure
       || !!ctx.policy?.manual_unit_cost_usd
+      || !!ctx.policy?.external_supplier_unit_cost_usd
       || !!ctx.core?.manual_unit_cost_usd;
     return hasCost ? 1 : 0;
   }
+
 
   function connectionCell(ctx: RowCtx) {
     const tier = statusTier(ctx);
