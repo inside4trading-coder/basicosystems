@@ -3217,6 +3217,102 @@ export type Database = {
           },
         ]
       }
+      core_replenishment_policy_events: {
+        Row: {
+          action: string
+          amount: number | null
+          core_product_id: string | null
+          core_variant_id: string | null
+          cost_source: string | null
+          created_at: string
+          created_by: string | null
+          external_supplier_name: string | null
+          external_supplier_unit_cost_usd: number | null
+          id: string
+          message: string | null
+          policy_id: string | null
+          quantity: number | null
+          replacement_behavior: string | null
+          replacement_product_id: string | null
+          replacement_woo_product_id: number | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          source_id: string | null
+          source_type: string
+          status: string
+          unit_cost: number | null
+          warning: string | null
+          woo_order_id: number | null
+          woo_order_item_id: number | null
+          woo_product_id: number | null
+          woo_variation_id: number | null
+        }
+        Insert: {
+          action: string
+          amount?: number | null
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          cost_source?: string | null
+          created_at?: string
+          created_by?: string | null
+          external_supplier_name?: string | null
+          external_supplier_unit_cost_usd?: number | null
+          id?: string
+          message?: string | null
+          policy_id?: string | null
+          quantity?: number | null
+          replacement_behavior?: string | null
+          replacement_product_id?: string | null
+          replacement_woo_product_id?: number | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+          source_id?: string | null
+          source_type: string
+          status?: string
+          unit_cost?: number | null
+          warning?: string | null
+          woo_order_id?: number | null
+          woo_order_item_id?: number | null
+          woo_product_id?: number | null
+          woo_variation_id?: number | null
+        }
+        Update: {
+          action?: string
+          amount?: number | null
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          cost_source?: string | null
+          created_at?: string
+          created_by?: string | null
+          external_supplier_name?: string | null
+          external_supplier_unit_cost_usd?: number | null
+          id?: string
+          message?: string | null
+          policy_id?: string | null
+          quantity?: number | null
+          replacement_behavior?: string | null
+          replacement_product_id?: string | null
+          replacement_woo_product_id?: number | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          source_id?: string | null
+          source_type?: string
+          status?: string
+          unit_cost?: number | null
+          warning?: string | null
+          woo_order_id?: number | null
+          woo_order_item_id?: number | null
+          woo_product_id?: number | null
+          woo_variation_id?: number | null
+        }
+        Relationships: []
+      }
       core_restock_control: {
         Row: {
           core_product_id: string | null
@@ -7947,6 +8043,34 @@ export type Database = {
           product_id: string
           variant_count: number
           variants_with_override: number
+        }[]
+      }
+      resolve_core_replenishment_action: {
+        Args: {
+          p_core_product_id?: string
+          p_core_variant_id?: string
+          p_woo_product_id?: number
+          p_woo_variation_id?: number
+        }
+        Returns: {
+          action: string
+          brand_role: string
+          core_product_id: string
+          core_variant_id: string
+          external_supplier_name: string
+          external_supplier_unit_cost_usd: number
+          lifecycle_status: string
+          message: string
+          policy_id: string
+          replacement_behavior: string
+          replacement_product_id: string
+          replacement_woo_product_id: number
+          replenishment_route: string
+          restock_enabled: boolean
+          severity: string
+          warning: string
+          woo_product_id: number
+          woo_variation_id: number
         }[]
       }
       resolve_core_variant_unit_cost: {
