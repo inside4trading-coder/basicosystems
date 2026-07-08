@@ -1,66 +1,81 @@
-# Mapa Woo / Core + Política de Reposición — BASICO CORE
 
-Módulo estratégico de decisión entre WooCommerce y Core. Mesa de mapeo y decisión, no una extensión de `core_products`. Solo lectura de Woo + capa de política/costo fallback/reemplazo + auditoría.
+# Fase 2A — Costo fallback operativo desde `core_replenishment_policies`
 
-## Condiciones aprobadas (incorporadas)
+Conectar el costo manual/proveedor de Mapa Woo/Core al resolver operativo usado por partidas, OP y unidades — sin bloquear rutas, sin crear reposición externa, sin tocar Woo, sin reprocesar histórico.
 
-1. **Seguridad edge functions**: cada función exige `Authorization: Bearer <token>`, valida el usuario con `supabase.auth.getUser(token)`, verifica rol `admin` o `manager` contra `user_roles`, y rechaza cualquier llamada anónima con `401/403`. Se mantiene `verify_jwt = false` (default Lovable Cloud + sistema signing-keys) porque la validación en código es igual o más estricta, ya está probada en `core-woo-import-variants`, y garantiza el mismo requisito.
-2. **Fuente de verdad**: `core_replenishment_policies` es la única fuente principal de política, ruta de reposición, costo fallback, proveedor externo y reemplazo. Los campos `manual_unit_cost_usd`, `manual_cost_reason`, `replenishment_policy_id` en `core_products` son **solo espejo de compatibilidad**; el resolver siempre lee primero la política.
-3. **Costo fallback**: estratégico/visual/auditable en esta fase. **No** se conecta al resolver operativo de partidas/necesidades/OP. Fase 2 hará esa conexión.
-4. **Fuera de scope confirmado**: no escribe Woo, no crea producción, no crea partidas, no crea necesidades, no toca inventario, QR, nómina, España, ni reprocesa histórico.
+## 1. Nueva RPC principal
 
----
+Crear `public.resolve_core_operational_unit_cost(p_core_product_id uuid, p_core_variant_id uuid default null, p_woo_product_id bigint default null, p_woo_variation_id bigint default null)` — `SECURITY DEFINER`, `STABLE`, `search_path = public`.
 
-## 1. Ruta y navegación
+Devuelve tabla:
+`unit_cost numeric, cost_source text, policy_id uuid, core_product_id uuid, core_variant_id uuid, woo_product_id bigint, woo_variation_id bigint, warning text`.
 
-- `/core/mapa-woo-core` → `CoreWooCoreMap.tsx` (dentro de `<Route path="/core">` en `App.tsx`).
-- Item en sidebar `CoreLayout.tsx`, grupo **Catálogo**, label **"Mapa Woo / Core"**, icono `Network`.
+Resolución de identidad:
+1. Si falta `core_product_id` y hay `woo_product_id` → buscar en `core_woo_product_map.core_product_id`, luego `core_products.woo_product_id`, luego `core_replenishment_policies` por `woo_product_id`.
+2. Si falta `core_variant_id` y hay `woo_variation_id` → buscar en `core_woo_variant_map.core_variant_id`, luego `core_product_variants.woo_variation_id`.
+3. Buscar política por prioridad: `core_product_id` primero, luego `woo_product_id`.
 
-## 2. Migración (ya aplicada)
+Orden final de costo (primero que aplique):
+1. **variant_override** — variante con `cost_override_enabled` + estructura activa.
+2. **product_base** — estructura base activa del producto (por `woo_product_id` o `core_product_id`).
+3. **policy_manual_cost** — `core_replenishment_policies.manual_unit_cost_usd`.
+4. **external_supplier_cost** — `core_replenishment_policies.external_supplier_unit_cost_usd` (solo referencia; `warning` = "proveedor externo, no genera OP interna en esta fase").
+5. **core_product_manual_cost** — `core_products.manual_unit_cost_usd` (espejo compatibilidad).
+6. **product_unit_cost** — `core_products.unit_cost`.
+7. **zero_fallback** — `0` con `warning`.
 
-- `core_woo_product_map` — snapshot Woo + vínculo opcional Core, `mapping_status`, `variants_sync_status`.
-- `core_woo_variant_map` — snapshot de variaciones + vínculo opcional a `core_product_variants`.
-- `core_replenishment_policies` — fuente principal (rol, lifecycle, ruta, costo manual, proveedor externo, reemplazo, `replacement_behavior`).
-- `core_product_strategy_decisions` — auditoría.
-- `core_products` +3 columnas espejo (`manual_unit_cost_usd`, `manual_cost_reason`, `replenishment_policy_id`).
-- RLS: lectura autenticada; escritura solo `admin|manager` vía `has_role`; delete solo `admin`.
+Warnings adicionales:
+- Si `replenishment_route ∈ {no_restock, none, ignored}`: agregar warning "Producto marcado como no_restock/ignored; costo usado solo como referencia." (no bloquear — Fase 2B).
 
-## 3. Edge functions (todas con auth Bearer + validación rol en código)
+`resolve_core_variant_unit_cost` y `_with_source` existentes se dejan intactos por compatibilidad.
 
-- `core-woo-map-import` — trae productos Woo (`/products?per_page=100&page=N`), `upsert` en `core_woo_product_map`. Paginado con salvaguarda 50 páginas por corrida. No borra.
-- `core-woo-map-import-variants` — trae `/products/{id}/variations`, `upsert` en `core_woo_variant_map`. Si el producto está mapeado, también hace `upsert` en `core_product_variants` matcheando por `woo_variation_id`, luego `size+color`. Actualiza `variants_sync_status`. Nunca borra.
-- `core-woo-map-lookup` — GET manual de un `woo_product_id`, devuelve payload para el modal "Vincular Woo ID" sin escribir.
+## 2. Actualizar edge functions operativas
 
-## 4. Frontend
+### `core-process-fabrication-funds`
+Reemplazar el helper `resolveVariantUnitCost` (que llama `resolve_core_variant_unit_cost`) por llamada a `resolve_core_operational_unit_cost` pasando `core_product_id`, `core_variant_id`, `woo_product_id`, `woo_variation_id` cuando estén disponibles.
 
-`src/pages/core/CoreWooCoreMap.tsx` con 5 tabs:
+- Usar el `unit_cost` devuelto para monto de movimiento (`quantity * unit_cost`).
+- Eliminar el skip por `unit_cost_missing` cuando exista fallback (`policy_manual_cost`, `external_supplier_cost`, `core_product_manual_cost`, `product_unit_cost`); mantener skip solo cuando `cost_source = zero_fallback`.
+- Guardar en `cost_snapshot_data`: `cost_source`, `policy_id`, `resolved_core_product_id`, `resolved_core_variant_id`, `woo_product_id`, `woo_variation_id`, `warning`.
+- Aplica en ambas rutas del archivo (procesamiento principal y actualización de productos ~línea 536).
 
-1. **Mapa Woo / Core** — tabla maestra + filtros (`mapping_status`, `lifecycle_status`, `replenishment_route`, `brand_role`, texto). Columnas: Woo ID, Producto, SKU, Tipo, Variantes, Estado Woo, Core, SKU Core, Variantes sync, Estructura, Costo fallback, Costo usado, Rol, Estado comercial, Ruta, Restock, Proveedor, Reemplazo, Acciones. Filas expandibles → variantes.
-2. **Faltan estructura / costo** — sin estructura activa Y sin `manual_unit_cost_usd`.
-3. **Proveedor externo** — `replenishment_route = external_supplier`.
-4. **No restock / Reemplazos** — `lifecycle_status ∈ {no_restock, exit}` + reemplazo asignado.
-5. **Auditoría** — `core_product_strategy_decisions` con filtros.
+### `core-create-production-order`
+Reemplazar llamadas `resolve_core_variant_unit_cost` (líneas ~327 y ~510) por la nueva RPC.
 
-## 5. Componentes en `src/components/core/woocore/`
+- Guardar `estimated_unit_cost` y `cost_source` reales devueltos por la RPC (no derivar heurísticamente comparando con `unit_cost`).
+- Si `cost_source ∈ {policy_manual_cost, external_supplier_cost, core_product_manual_cost}` y la ruta ≠ `internal_factory`: adjuntar `warning` en respuesta pero **no bloquear** creación.
+- No modificar OPs históricas.
 
-`WooCoreMapTable`, `WooCoreVariantsRow`, `LinkWooIdDialog`, `LinkToCoreDialog`, `CreateCoreFromWooDialog`, `SyncVariantsDialog`, `ManualCostDialog`, `ReplenishmentRouteDialog`, `LifecycleStatusDialog`, `ReplacementPickerDialog`, `BrandRoleDialog`, `StrategyAuditPanel`.
+### `core-generate-production-units`
+No cambia la lógica de procesos: si no hay estructura (base ni variante), **no** materializar procesos falsos desde costo manual. Solo si en algún punto se toma un costo referencial para snapshot, resolverlo con la nueva RPC. Confirmar que costos manuales no crean `core_production_unit_processes`.
 
-Toda mutación registra fila en `core_product_strategy_decisions` (helper `logStrategyDecision`).
+## 3. UI `/core/mapa-woo-core`
 
-## 6. Utilidades
+En la celda de costo (`resolveDisplayCost` de `src/lib/coreReplenishment.ts` + `CoreWooCoreMap.tsx`):
+- Cuando la fuente resulte `policy_manual_cost`, `external_supplier_cost` o `core_product_manual_cost`, mostrar badge **"Costo manual operativo"** con tooltip: "Este costo se usará para montos de partidas/necesidades cuando no exista estructura. No reemplaza una estructura de fabricación."
+- Mantener el orden de tiers rojo/amarillo/verde ya existente; el badge es adicional.
 
-- `src/lib/coreReplenishment.ts` — `resolveCostForPolicy(policy, product, variant)`: variante override → estructura base → política.manual → core_products.manual (espejo) → `unit_cost` → `0 con warning`. **Solo visual**.
-- `src/hooks/useWooCoreMap.ts` — queries con React Query.
+Sin cambios en `/core/estructuras-costos` ni `/core/productos` en esta fase.
 
-## 7. Métricas laterales
+## 4. Fuera de scope (Fase 2B)
+- Bloqueo real por `no_restock` / `ignored`.
+- Reemplazos automáticos (`replacement_behavior`).
+- OPs de reposición externa reales / órdenes de compra a proveedor.
+- Creación automática de partidas o necesidades.
+- Reprocesamiento de histórico.
+- Escrituras a WooCommerce.
 
-Ventas 60d / inventario / OP activa / necesidades: se muestran si hay consulta local sencilla, si no "sin datos". Sin score avanzado.
+## 5. Validación
+Antes de cerrar la fase, correr `supabase--read_query` sobre los 5 casos (A estructura, B policy_manual, C core_product_manual, D external_supplier, E zero) invocando la nueva RPC y verificar `cost_source` esperado. Verificar en `core_fabrication_fund_movements.cost_snapshot_data` y `core_production_order_lines.cost_source` que las corridas nuevas usan la fuente correcta.
 
-## 8. Fuera de alcance (fase 2)
+## Detalles técnicos
 
-Score "Core sugeridos" avanzado, conexión del fallback al resolver operativo, generación automática de partidas/necesidades/OP desde reemplazo, bloqueo real de `block_and_suggest`, reposición externa real, sincronización inversa a Woo.
+**Archivos:**
+- Nueva migración: función `public.resolve_core_operational_unit_cost(...)` + `GRANT EXECUTE ... TO authenticated, service_role`.
+- `supabase/functions/core-process-fabrication-funds/index.ts` — helper reescrito, snapshots ampliados, ambas rutas.
+- `supabase/functions/core-create-production-order/index.ts` — dos call-sites; guardar `cost_source` real y warning.
+- `supabase/functions/core-generate-production-units/index.ts` — verificar que costos manuales no generen procesos falsos (probablemente sin cambios).
+- `src/lib/coreReplenishment.ts` — badge "Costo manual operativo" en `CostResolution` labels.
+- `src/pages/core/CoreWooCoreMap.tsx` — mostrar badge + tooltip.
 
-## 9. Archivos
-
-**Nuevos:** 3 edge functions, `CoreWooCoreMap.tsx`, 12 componentes, `coreReplenishment.ts`, `useWooCoreMap.ts`.
-**Editados:** `App.tsx`, `CoreLayout.tsx`, `types.ts` (auto).
+**Backward-compat:** `resolve_core_variant_unit_cost` y `_with_source` permanecen; solo callers explícitos migran.

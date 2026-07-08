@@ -7919,6 +7919,24 @@ export type Database = {
         Returns: boolean
       }
       refresh_customers_order_stats: { Args: never; Returns: undefined }
+      resolve_core_operational_unit_cost: {
+        Args: {
+          p_core_product_id?: string
+          p_core_variant_id?: string
+          p_woo_product_id?: number
+          p_woo_variation_id?: number
+        }
+        Returns: {
+          core_product_id: string
+          core_variant_id: string
+          cost_source: string
+          policy_id: string
+          unit_cost: number
+          warning: string
+          woo_product_id: number
+          woo_variation_id: number
+        }[]
+      }
       resolve_core_product_variant_cost_range: {
         Args: { p_product_id: string }
         Returns: {

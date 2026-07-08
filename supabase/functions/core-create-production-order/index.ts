@@ -304,41 +304,38 @@ async function createFromNeeds(
     .single();
   if (orderErr) throw orderErr;
 
-  // Resolver costo por variante (RPC resolve_core_variant_unit_cost) para
-  // dejar snapshot en la línea. Si la variante tiene override → usa costo
-  // propio; si no → costo base del producto; fallback a unit_cost o 0.
+  // Resolver costo por línea con resolve_core_operational_unit_cost (Fase 2A):
+  // variant_override → product_base → policy_manual_cost → external_supplier_cost
+  // → core_product_manual_cost → product_unit_cost → zero.
   const productIds = Array.from(new Set(linesArr.map((l) => l.core_product_id).filter(Boolean)));
   const variantIdsAll = Array.from(new Set(linesArr.map((l) => l.core_variant_id).filter(Boolean)));
   const [{ data: productsInfo }, { data: variantsInfo }] = await Promise.all([
     productIds.length
-      ? supabase.from("core_products").select("id, unit_cost").in("id", productIds)
+      ? supabase.from("core_products").select("id, unit_cost, woo_product_id").in("id", productIds)
       : Promise.resolve({ data: [] as any[] }),
     variantIdsAll.length
-      ? supabase.from("core_product_variants").select("id, cost_override_enabled, cost_structure_id").in("id", variantIdsAll)
+      ? supabase.from("core_product_variants").select("id, cost_override_enabled, cost_structure_id, woo_variation_id").in("id", variantIdsAll)
       : Promise.resolve({ data: [] as any[] }),
   ]);
   const pInfoMap = new Map((productsInfo ?? []).map((p: any) => [p.id, p]));
   const vInfoMap = new Map((variantsInfo ?? []).map((v: any) => [v.id, v]));
 
   const linesToInsert: any[] = [];
+  const costWarnings: any[] = [];
   for (const l of linesArr) {
-    const p = l.core_product_id ? pInfoMap.get(l.core_product_id) : null;
-    const v = l.core_variant_id ? vInfoMap.get(l.core_variant_id) : null;
-    const { data: costData } = await supabase.rpc("resolve_core_variant_unit_cost", {
-      p_product_id: l.core_product_id ?? null,
-      p_variant_id: l.core_variant_id ?? null,
+    const p: any = l.core_product_id ? pInfoMap.get(l.core_product_id) : null;
+    const v: any = l.core_variant_id ? vInfoMap.get(l.core_variant_id) : null;
+    const { data: costData } = await supabase.rpc("resolve_core_operational_unit_cost", {
+      p_core_product_id: l.core_product_id ?? null,
+      p_core_variant_id: l.core_variant_id ?? null,
+      p_woo_product_id: p?.woo_product_id ?? null,
+      p_woo_variation_id: v?.woo_variation_id ?? null,
     });
-    const unitCost = Number(costData ?? 0) || 0;
-    let cost_source = "zero_fallback";
-    if (unitCost > 0) {
-      if (v && v.cost_override_enabled && v.cost_structure_id) {
-        cost_source = "variant_override";
-      } else {
-        const legacy = Number((p as any)?.unit_cost ?? 0) || 0;
-        cost_source = legacy > 0 && Math.abs(legacy - unitCost) < 1e-6
-          ? "product_unit_cost"
-          : "product_base";
-      }
+    const row = Array.isArray(costData) ? costData[0] : costData;
+    const unitCost = Number(row?.unit_cost ?? 0) || 0;
+    const cost_source = row?.cost_source ?? "zero_fallback";
+    if (row?.warning) {
+      costWarnings.push({ core_product_id: l.core_product_id, core_variant_id: l.core_variant_id, cost_source, warning: row.warning });
     }
     linesToInsert.push({
       production_order_id: orderRow.id,
@@ -356,6 +353,7 @@ async function createFromNeeds(
       cost_source,
     });
   }
+
   const { error: linesErr } = await supabase
     .from("core_production_order_lines")
     .insert(linesToInsert);
@@ -443,10 +441,12 @@ async function createFromNeeds(
         is_overproduction: isOverproduction,
         multi_product: isMultiProduct,
         distinct_products: distinctProductIds.length,
+        cost_warnings: costWarnings,
       },
     ],
     count: 1,
   });
+
 }
 
 async function createManual(
@@ -474,7 +474,7 @@ async function createManual(
       .from("core_product_variants")
       .select("id,variant_sku,variant_label,size,woo_variation_id,cost_override_enabled,cost_structure_id")
       .in("id", variantIds),
-    supabase.from("core_products").select("id, unit_cost").eq("id", body.core_product_id).maybeSingle(),
+    supabase.from("core_products").select("id, unit_cost, woo_product_id").eq("id", body.core_product_id).maybeSingle(),
   ]);
   const vmap = new Map((variants ?? []).map((v: any) => [v.id, v]));
 
@@ -505,23 +505,20 @@ async function createManual(
   if (orderErr) throw orderErr;
 
   const linesToInsert: any[] = [];
+  const costWarnings: any[] = [];
   for (const l of body.lines) {
     const v: any = vmap.get(l.core_variant_id);
-    const { data: costData } = await supabase.rpc("resolve_core_variant_unit_cost", {
-      p_product_id: body.core_product_id,
-      p_variant_id: l.core_variant_id,
+    const { data: costData } = await supabase.rpc("resolve_core_operational_unit_cost", {
+      p_core_product_id: body.core_product_id,
+      p_core_variant_id: l.core_variant_id,
+      p_woo_product_id: (prodInfo as any)?.woo_product_id ?? null,
+      p_woo_variation_id: v?.woo_variation_id ?? null,
     });
-    const unitCost = Number(costData ?? 0) || 0;
-    let cost_source = "zero_fallback";
-    if (unitCost > 0) {
-      if (v && v.cost_override_enabled && v.cost_structure_id) {
-        cost_source = "variant_override";
-      } else {
-        const legacy = Number((prodInfo as any)?.unit_cost ?? 0) || 0;
-        cost_source = legacy > 0 && Math.abs(legacy - unitCost) < 1e-6
-          ? "product_unit_cost"
-          : "product_base";
-      }
+    const row = Array.isArray(costData) ? costData[0] : costData;
+    const unitCost = Number(row?.unit_cost ?? 0) || 0;
+    const cost_source = row?.cost_source ?? "zero_fallback";
+    if (row?.warning) {
+      costWarnings.push({ core_variant_id: l.core_variant_id, cost_source, warning: row.warning });
     }
     linesToInsert.push({
       production_order_id: orderRow.id,
@@ -539,6 +536,7 @@ async function createManual(
       cost_source,
     });
   }
+
   const { error: linesErr } = await supabase
     .from("core_production_order_lines")
     .insert(linesToInsert);
@@ -569,7 +567,9 @@ async function createManual(
         total_quantity: totalQty,
         lines: linesToInsert.length,
         processes: processCount,
+        cost_warnings: costWarnings,
       },
+
     ],
     count: 1,
   });

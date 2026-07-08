@@ -204,27 +204,43 @@ export default function CoreWooCoreMap() {
     const r = resolveDisplayCost({
       productBaseStructureCost: structCost,
       policyManualCost: ctx.policy?.manual_unit_cost_usd ?? null,
+      externalSupplierCost: ctx.policy?.external_supplier_unit_cost_usd ?? null,
       productManualMirrorCost: ctx.core?.manual_unit_cost_usd ?? null,
       productUnitCost: ctx.core?.unit_cost ?? null,
     });
+    const isOperationalManual =
+      r.source === "policy_manual" ||
+      r.source === "external_supplier" ||
+      r.source === "product_manual_mirror";
     return (
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-0.5">
         <span className={r.hasWarning ? "text-destructive font-semibold" : "font-medium"}>
           {r.hasWarning ? "—" : `$${r.amount.toFixed(2)}`}
         </span>
         <span className="text-[10px] text-muted-foreground">{r.label}</span>
+        {isOperationalManual && (
+          <span
+            className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold bg-yellow-300 text-black w-fit"
+            title="Este costo se usará para montos de partidas/necesidades cuando no exista estructura. No reemplaza una estructura de fabricación."
+          >
+            Costo manual operativo
+          </span>
+        )}
       </div>
     );
   }
+
 
   function statusTier(ctx: RowCtx): 0 | 1 | 2 {
     // 0 = rojo (sin conexión total), 1 = amarillo (sin core pero con costo), 2 = verde (core conectado)
     if (ctx.core) return 2;
     const hasCost = !!ctx.activeStructure
       || !!ctx.policy?.manual_unit_cost_usd
+      || !!ctx.policy?.external_supplier_unit_cost_usd
       || !!ctx.core?.manual_unit_cost_usd;
     return hasCost ? 1 : 0;
   }
+
 
   function connectionCell(ctx: RowCtx) {
     const tier = statusTier(ctx);
