@@ -404,7 +404,9 @@ export default function CoreWooCoreMap() {
           <TabsTrigger value="missing">Faltan estructura / costo ({missingCostRows.length})</TabsTrigger>
           <TabsTrigger value="external">Proveedor externo ({externalRows.length})</TabsTrigger>
           <TabsTrigger value="norestock">No restock / Reemplazos ({noRestockRows.length})</TabsTrigger>
+          <TabsTrigger value="review">Revisión de reposición</TabsTrigger>
           <TabsTrigger value="audit">Auditoría</TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="mapa" className="space-y-3">
