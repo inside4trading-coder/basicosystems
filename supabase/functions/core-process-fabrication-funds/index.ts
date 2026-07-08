@@ -441,6 +441,9 @@ async function runProcessSales(
             ...(product.cost_snapshot ?? {}),
             cost_source: resolved.cost_source,
             policy_id: resolved.policy_id,
+            policy_action: action,
+            replenishment_route: policyAct?.replenishment_route ?? null,
+            lifecycle_status: policyAct?.lifecycle_status ?? null,
             resolved_core_product_id: resolved.resolved_core_product_id ?? product.id,
             resolved_core_variant_id: resolved.resolved_core_variant_id ?? variant?.id ?? null,
             resolved_variant_id: variant?.id ?? null,
@@ -448,6 +451,7 @@ async function runProcessSales(
             woo_variation_id: resolved.woo_variation_id ?? wooVarId ?? null,
             warning: resolved.warning,
           },
+
           amount,
           currency: product.currency || "USD",
           reason: isNonRestock ? "Venta confirmada (no restockeable)" : "Venta confirmada",
