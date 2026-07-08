@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Factory, LayoutDashboard, Settings, Package, FileSpreadsheet, Calculator, ClipboardList, Boxes, Layers, ListChecks, QrCode, ScanLine, Wallet, Warehouse, BarChart3, FileStack, Ban, HardHat } from "lucide-react";
+import { Factory, LayoutDashboard, Settings, Package, FileSpreadsheet, Calculator, ClipboardList, Boxes, Layers, ListChecks, QrCode, ScanLine, Wallet, Warehouse, BarChart3, FileStack, Ban, HardHat, Network } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Section = { to: string; label: string; icon: typeof LayoutDashboard; end?: boolean };
@@ -21,6 +21,7 @@ const groups: { label: string; items: Section[] }[] = [
       { to: "/core/templates-costos", label: "Templates Costos / Prod.", icon: FileStack },
       { to: "/core/productos", label: "Catálogo de Fabricación", icon: Boxes },
       { to: "/core/control-reposicion", label: "Control de Reposición", icon: Ban },
+      { to: "/core/mapa-woo-core", label: "Mapa Woo / Core", icon: Network },
     ],
   },
   {
