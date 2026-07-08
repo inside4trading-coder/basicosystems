@@ -29,40 +29,47 @@ const REVERTING_STATUSES = new Set([
   "pago-pendiente-po",
 ]);
 
-// Resolves the effective unit cost for (product, variant) via
-// public.resolve_core_variant_unit_cost, and tags the source so callers can
-// audit whether the cost came from a variant override, the product's base
-// structure, the legacy unit_cost, or a zero fallback.
+// Resolves the effective unit cost via public.resolve_core_operational_unit_cost.
+// Falls back through: variant override → base structure → policy manual → external
+// supplier → core_products manual mirror → unit_cost → zero.
 async function resolveVariantUnitCost(
   supabase: any,
   product: any,
   variant: any,
-): Promise<{ unit_cost: number; cost_source: string }> {
-  const productId = product?.id ?? null;
-  const variantId = variant?.id ?? null;
-  const { data, error } = await supabase.rpc("resolve_core_variant_unit_cost", {
-    p_product_id: productId,
-    p_variant_id: variantId,
+  wooProductId?: number | null,
+  wooVariationId?: number | null,
+): Promise<{
+  unit_cost: number;
+  cost_source: string;
+  policy_id: string | null;
+  resolved_core_product_id: string | null;
+  resolved_core_variant_id: string | null;
+  woo_product_id: number | null;
+  woo_variation_id: number | null;
+  warning: string | null;
+}> {
+  const { data, error } = await supabase.rpc("resolve_core_operational_unit_cost", {
+    p_core_product_id: product?.id ?? null,
+    p_core_variant_id: variant?.id ?? null,
+    p_woo_product_id: wooProductId ?? product?.woo_product_id ?? null,
+    p_woo_variation_id: wooVariationId ?? variant?.woo_variation_id ?? null,
   });
   if (error) {
-    console.warn("resolve_core_variant_unit_cost failed", error?.message);
+    console.warn("resolve_core_operational_unit_cost failed", error?.message);
   }
-  const unitCost = Number(data ?? 0) || 0;
-  let source = "zero_fallback";
-  if (unitCost > 0) {
-    if (variant && variant.cost_override_enabled && variant.cost_structure_id) {
-      source = "variant_override";
-    } else {
-      const legacy = Number(product?.unit_cost ?? 0) || 0;
-      // If the RPC returned exactly the legacy unit_cost we assume no active
-      // base structure sum applied. Otherwise it summed a base structure.
-      source = legacy > 0 && Math.abs(legacy - unitCost) < 1e-6
-        ? "product_unit_cost"
-        : "product_base";
-    }
-  }
-  return { unit_cost: unitCost, cost_source: source };
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    unit_cost: Number(row?.unit_cost ?? 0) || 0,
+    cost_source: row?.cost_source ?? "zero_fallback",
+    policy_id: row?.policy_id ?? null,
+    resolved_core_product_id: row?.core_product_id ?? null,
+    resolved_core_variant_id: row?.core_variant_id ?? null,
+    woo_product_id: row?.woo_product_id ?? null,
+    woo_variation_id: row?.woo_variation_id ?? null,
+    warning: row?.warning ?? null,
+  };
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
