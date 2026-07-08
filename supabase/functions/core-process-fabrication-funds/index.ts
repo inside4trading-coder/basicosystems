@@ -70,6 +70,35 @@ async function resolveVariantUnitCost(
   };
 }
 
+// Resolves the effective replenishment action via public.resolve_core_replenishment_action.
+async function resolveReplenishmentAction(
+  supabase: any,
+  product: any,
+  variant: any,
+  wooProductId?: number | null,
+  wooVariationId?: number | null,
+): Promise<any> {
+  const { data, error } = await supabase.rpc("resolve_core_replenishment_action", {
+    p_core_product_id: product?.id ?? null,
+    p_core_variant_id: variant?.id ?? null,
+    p_woo_product_id: wooProductId ?? product?.woo_product_id ?? null,
+    p_woo_variation_id: wooVariationId ?? variant?.woo_variation_id ?? null,
+  });
+  if (error) console.warn("resolve_core_replenishment_action failed", error?.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ?? { action: "allow_internal_factory", severity: "allow" };
+}
+
+async function insertPolicyEvent(supabase: any, row: any) {
+  try {
+    await supabase.from("core_replenishment_policy_events").insert(row);
+  } catch (e) {
+    console.warn("insertPolicyEvent failed", (e as Error).message);
+  }
+}
+
+
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -327,6 +356,47 @@ async function runProcessSales(
 
         const resolved = await resolveVariantUnitCost(supabase, product, variant, wooProdId, wooVarId);
         const unitCost = resolved.unit_cost;
+
+        // Fase 2B-1: consultar política de reposición
+        const policyAct = await resolveReplenishmentAction(supabase, product, variant, wooProdId, wooVarId);
+        const qtyPre = Number(it.quantity ?? 0) || 0;
+
+        const registerPolicyEvent = async (extra: Record<string, any> = {}) => {
+          await insertPolicyEvent(supabase, {
+            source_type: "woo_order_item",
+            woo_order_id: oid,
+            woo_order_item_id: iid,
+            core_product_id: product?.id ?? null,
+            core_variant_id: variant?.id ?? null,
+            woo_product_id: wooProdId ?? null,
+            woo_variation_id: wooVarId ?? null,
+            policy_id: policyAct?.policy_id ?? null,
+            action: policyAct?.action ?? "allow_internal_factory",
+            severity: policyAct?.severity ?? "allow",
+            message: policyAct?.message ?? null,
+            warning: policyAct?.warning ?? null,
+            quantity: qtyPre,
+            unit_cost: unitCost || null,
+            amount: unitCost && qtyPre ? +(qtyPre * unitCost).toFixed(4) : null,
+            cost_source: resolved.cost_source,
+            replacement_product_id: policyAct?.replacement_product_id ?? null,
+            replacement_woo_product_id: policyAct?.replacement_woo_product_id ?? null,
+            replacement_behavior: policyAct?.replacement_behavior ?? null,
+            external_supplier_name: policyAct?.external_supplier_name ?? null,
+            external_supplier_unit_cost_usd: policyAct?.external_supplier_unit_cost_usd ?? null,
+            status: "open",
+            created_by: userId,
+            ...extra,
+          });
+        };
+
+        const action = policyAct?.action ?? "allow_internal_factory";
+        if (action !== "allow_internal_factory") {
+          await registerPolicyEvent();
+          summary.by_reason[`policy_${action}`] = (summary.by_reason[`policy_${action}`] ?? 0) + 1;
+          continue;
+        }
+
         if (!unitCost || unitCost <= 0) {
           queuePending(
             "unit_cost_missing",
@@ -334,6 +404,7 @@ async function runProcessSales(
           );
           continue;
         }
+
 
         const isNonRestock =
           (skuLower && restockSkuSet.has(skuLower)) ||
@@ -370,6 +441,9 @@ async function runProcessSales(
             ...(product.cost_snapshot ?? {}),
             cost_source: resolved.cost_source,
             policy_id: resolved.policy_id,
+            policy_action: action,
+            replenishment_route: policyAct?.replenishment_route ?? null,
+            lifecycle_status: policyAct?.lifecycle_status ?? null,
             resolved_core_product_id: resolved.resolved_core_product_id ?? product.id,
             resolved_core_variant_id: resolved.resolved_core_variant_id ?? variant?.id ?? null,
             resolved_variant_id: variant?.id ?? null,
@@ -377,6 +451,7 @@ async function runProcessSales(
             woo_variation_id: resolved.woo_variation_id ?? wooVarId ?? null,
             warning: resolved.warning,
           },
+
           amount,
           currency: product.currency || "USD",
           reason: isNonRestock ? "Venta confirmada (no restockeable)" : "Venta confirmada",
@@ -580,11 +655,46 @@ async function runReprocess(supabase: any, userId: string, pendingIds?: string[]
       const variant = p.linked_core_variant_id ? variantById.get(p.linked_core_variant_id) : null;
       const resolved = await resolveVariantUnitCost(supabase, product, variant, p.woo_product_id, p.woo_variation_id);
       const unitCost = resolved.unit_cost;
+
+      // Fase 2B-1: política
+      const policyAct = await resolveReplenishmentAction(supabase, product, variant, p.woo_product_id, p.woo_variation_id);
+      const action = policyAct?.action ?? "allow_internal_factory";
+      if (action !== "allow_internal_factory") {
+        await insertPolicyEvent(supabase, {
+          source_type: "fabrication_fund",
+          source_id: p.id,
+          woo_order_id: p.source_order_id ?? null,
+          woo_order_item_id: p.source_order_item_id ?? null,
+          core_product_id: product?.id ?? null,
+          core_variant_id: variant?.id ?? null,
+          woo_product_id: p.woo_product_id ?? null,
+          woo_variation_id: p.woo_variation_id ?? null,
+          policy_id: policyAct?.policy_id ?? null,
+          action, severity: policyAct?.severity ?? "review",
+          message: policyAct?.message ?? null,
+          warning: policyAct?.warning ?? null,
+          quantity: Number(p.quantity ?? 0) || null,
+          unit_cost: unitCost || null,
+          amount: unitCost && p.quantity ? +(Number(p.quantity) * unitCost).toFixed(4) : null,
+          cost_source: resolved.cost_source,
+          replacement_product_id: policyAct?.replacement_product_id ?? null,
+          replacement_woo_product_id: policyAct?.replacement_woo_product_id ?? null,
+          replacement_behavior: policyAct?.replacement_behavior ?? null,
+          external_supplier_name: policyAct?.external_supplier_name ?? null,
+          external_supplier_unit_cost_usd: policyAct?.external_supplier_unit_cost_usd ?? null,
+          status: "open", created_by: userId,
+        });
+        skippedUpdates.push({ id: p.id, reason: `policy_${action}` });
+        summary.pending_skipped += 1;
+        continue;
+      }
+
       if (!unitCost || unitCost <= 0) {
         skippedUpdates.push({ id: p.id, reason: "unit_cost_missing" });
         summary.pending_skipped += 1;
         continue;
       }
+
       const qty = Number(p.quantity ?? 0) || 0;
       if (qty <= 0) {
         skippedUpdates.push({ id: p.id, reason: "sync_error" });

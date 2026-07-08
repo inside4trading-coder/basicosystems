@@ -110,6 +110,25 @@ async function audit(
   }
 }
 
+// Fase 2B-1: política de reposición
+async function resolvePolicy(
+  supabase: any, core_product_id: string | null, core_variant_id: string | null,
+  woo_product_id: number | null, woo_variation_id: number | null,
+) {
+  const { data } = await supabase.rpc("resolve_core_replenishment_action", {
+    p_core_product_id: core_product_id, p_core_variant_id: core_variant_id,
+    p_woo_product_id: woo_product_id, p_woo_variation_id: woo_variation_id,
+  });
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ?? { action: "allow_internal_factory", severity: "allow" };
+}
+
+async function logPolicyEvent(supabase: any, row: any) {
+  try { await supabase.from("core_replenishment_policy_events").insert(row); }
+  catch (e) { console.warn("policy_event insert failed", (e as Error).message); }
+}
+
+
 async function fetchProcessesFromCostStructure(
   supabase: any,
   costStructureId: string | null,
@@ -279,6 +298,39 @@ async function createFromNeeds(
     ? `Lote multiproducto · ${distinctProductIds.length} productos · ${linesArr.length} líneas`
     : (linesArr[0]?.product_name ?? null);
 
+  // Fase 2B-1: verificar política de cada línea antes de crear la OP.
+  // Bloquear si alguna línea no está en allow_internal_factory.
+  const blockedLines: any[] = [];
+  {
+    const [{ data: pInfoPre }, { data: vInfoPre }] = await Promise.all([
+      supabase.from("core_products").select("id, woo_product_id, name").in("id", Array.from(new Set(linesArr.map((l) => l.core_product_id).filter(Boolean)))),
+      supabase.from("core_product_variants").select("id, woo_variation_id").in("id", Array.from(new Set(linesArr.map((l) => l.core_variant_id).filter(Boolean)))),
+    ]);
+    const pmap = new Map((pInfoPre ?? []).map((p: any) => [p.id, p]));
+    const vmap = new Map((vInfoPre ?? []).map((v: any) => [v.id, v]));
+    for (const l of linesArr) {
+      const p: any = l.core_product_id ? pmap.get(l.core_product_id) : null;
+      const v: any = l.core_variant_id ? vmap.get(l.core_variant_id) : null;
+      const pol = await resolvePolicy(supabase, l.core_product_id ?? null, l.core_variant_id ?? null, p?.woo_product_id ?? null, v?.woo_variation_id ?? null);
+      if (pol.action !== "allow_internal_factory") {
+        blockedLines.push({ sku: l.sku, variant_sku: l.variant_sku, action: pol.action, message: pol.message, replacement_product_id: pol.replacement_product_id, replacement_woo_product_id: pol.replacement_woo_product_id });
+        await logPolicyEvent(supabase, {
+          source_type: "production_order", core_product_id: l.core_product_id ?? null, core_variant_id: l.core_variant_id ?? null,
+          woo_product_id: p?.woo_product_id ?? null, woo_variation_id: v?.woo_variation_id ?? null,
+          policy_id: pol.policy_id ?? null, action: pol.action, severity: pol.severity ?? "block",
+          message: pol.message, warning: pol.warning, quantity: l.quantity_ordered,
+          replacement_product_id: pol.replacement_product_id ?? null, replacement_woo_product_id: pol.replacement_woo_product_id ?? null,
+          replacement_behavior: pol.replacement_behavior ?? null,
+          external_supplier_name: pol.external_supplier_name ?? null, external_supplier_unit_cost_usd: pol.external_supplier_unit_cost_usd ?? null,
+          status: "open", created_by: userId,
+        });
+      }
+    }
+  }
+  if (blockedLines.length) {
+    return json({ error: "policy_blocked", blocked_lines: blockedLines, message: "Una o más líneas están bloqueadas por política de reposición." }, 409);
+  }
+
   const sampleNeed = needs[0];
   const { data: orderRow, error: orderErr } = await supabase
     .from("core_production_orders")
@@ -297,6 +349,7 @@ async function createFromNeeds(
       responsible_user_id: body.responsible_user_id ?? null,
       notes: body.notes ?? null,
       is_overproduction: isOverproduction,
+
       created_by: userId,
       updated_by: userId,
     })
@@ -479,6 +532,31 @@ async function createManual(
   const vmap = new Map((variants ?? []).map((v: any) => [v.id, v]));
 
   const totalQty = body.lines.reduce((a, l) => a + Number(l.quantity), 0);
+
+  // Fase 2B-1: verificar política antes de crear la OP.
+  const blockedManual: any[] = [];
+  for (const l of body.lines) {
+    const v: any = vmap.get(l.core_variant_id);
+    const pol = await resolvePolicy(supabase, body.core_product_id, l.core_variant_id, (prodInfo as any)?.woo_product_id ?? null, v?.woo_variation_id ?? null);
+    if (pol.action !== "allow_internal_factory") {
+      blockedManual.push({ core_variant_id: l.core_variant_id, action: pol.action, message: pol.message, replacement_product_id: pol.replacement_product_id, replacement_woo_product_id: pol.replacement_woo_product_id });
+      await logPolicyEvent(supabase, {
+        source_type: "production_order", core_product_id: body.core_product_id, core_variant_id: l.core_variant_id,
+        woo_product_id: (prodInfo as any)?.woo_product_id ?? null, woo_variation_id: v?.woo_variation_id ?? null,
+        policy_id: pol.policy_id ?? null, action: pol.action, severity: pol.severity ?? "block",
+        message: pol.message, warning: pol.warning, quantity: Number(l.quantity),
+        replacement_product_id: pol.replacement_product_id ?? null, replacement_woo_product_id: pol.replacement_woo_product_id ?? null,
+        replacement_behavior: pol.replacement_behavior ?? null,
+        external_supplier_name: pol.external_supplier_name ?? null, external_supplier_unit_cost_usd: pol.external_supplier_unit_cost_usd ?? null,
+        status: "open", created_by: userId,
+      });
+    }
+  }
+  if (blockedManual.length) {
+    return json({ error: "policy_blocked", blocked_lines: blockedManual, message: "Una o más variantes están bloqueadas por política de reposición." }, 409);
+  }
+
+
 
   const { data: orderRow, error: orderErr } = await supabase
     .from("core_production_orders")

@@ -40,6 +40,8 @@ import { ReplacementPickerDialog } from "@/components/core/woocore/ReplacementPi
 import { BrandRoleDialog } from "@/components/core/woocore/BrandRoleDialog";
 import { WooCoreVariantsRow } from "@/components/core/woocore/WooCoreVariantsRow";
 import { StrategyAuditPanel } from "@/components/core/woocore/StrategyAuditPanel";
+import { PolicyReviewPanel } from "@/components/core/woocore/PolicyReviewPanel";
+
 
 type RowCtx = {
   map: WooProductMapRow;
@@ -402,7 +404,9 @@ export default function CoreWooCoreMap() {
           <TabsTrigger value="missing">Faltan estructura / costo ({missingCostRows.length})</TabsTrigger>
           <TabsTrigger value="external">Proveedor externo ({externalRows.length})</TabsTrigger>
           <TabsTrigger value="norestock">No restock / Reemplazos ({noRestockRows.length})</TabsTrigger>
+          <TabsTrigger value="review">Revisión de reposición</TabsTrigger>
           <TabsTrigger value="audit">Auditoría</TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="mapa" className="space-y-3">
@@ -454,9 +458,13 @@ export default function CoreWooCoreMap() {
           <p className="text-sm text-muted-foreground">Productos en <b>No restock</b> o <b>En salida</b>. Aquí eliges reemplazo y comportamiento.</p>
           {renderMainTable(noRestockRows)}
         </TabsContent>
+        <TabsContent value="review">
+          <PolicyReviewPanel />
+        </TabsContent>
         <TabsContent value="audit">
           <StrategyAuditPanel entries={auditQ.data ?? []} loading={auditQ.isLoading} />
         </TabsContent>
+
       </Tabs>
 
       {/* Dialogs */}
