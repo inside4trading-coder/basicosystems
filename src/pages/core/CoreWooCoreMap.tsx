@@ -254,22 +254,6 @@ export default function CoreWooCoreMap() {
     return badge("Sin conexión", "destructive");
   }
 
-  function costCell(ctx: RowCtx) {
-    const r = resolveDisplayCost({
-      productBaseStructureCost: ctx.core?.cost_structure_id ? null : null, // sin sum del resolver DB en cliente
-      policyManualCost: ctx.policy?.manual_unit_cost_usd ?? null,
-      productManualMirrorCost: ctx.core?.manual_unit_cost_usd ?? null,
-      productUnitCost: ctx.core?.unit_cost ?? null,
-    });
-    return (
-      <div className="flex flex-col">
-        <span className={r.hasWarning ? "text-destructive font-semibold" : "font-medium"}>
-          {r.hasWarning ? "—" : `$${r.amount.toFixed(2)}`}
-        </span>
-        <span className="text-[10px] text-muted-foreground">{r.label}</span>
-      </div>
-    );
-  }
 
   function renderMainTable(rows: RowCtx[]) {
     if (loadingMap) {
