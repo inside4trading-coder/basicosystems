@@ -111,6 +111,7 @@ export default function EspanaInventario() {
           <p className="text-sm text-muted-foreground">Stock real por sede y variante.</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" asChild><Link to="/espana/etiquetas"><QrCode className="h-4 w-4 mr-2" />Etiquetas</Link></Button>
           <Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4 mr-2" />Exportar</Button>
           <Button variant="outline" onClick={() => setMode("in")}><ArrowDownToLine className="h-4 w-4 mr-2" />Entrada</Button>
           <Button variant="outline" onClick={() => setMode("out")}><ArrowUpFromLine className="h-4 w-4 mr-2" />Salida</Button>
