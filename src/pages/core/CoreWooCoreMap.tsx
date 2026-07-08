@@ -360,9 +360,13 @@ export default function CoreWooCoreMap() {
           <h1 className="text-2xl font-black tracking-tight">Mapa Woo / Core</h1>
           <p className="text-sm text-muted-foreground">Mesa de decisión entre WooCommerce y Basico Core. Solo lectura de Woo, sin escrituras al store.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => setDialog({ kind: "linkWoo" })}>
             <LinkIcon className="h-4 w-4 mr-2" />Vincular Woo ID
+          </Button>
+          <Button variant="secondary" onClick={runReconcile} disabled={reconciling}>
+            {reconciling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+            Reconciliar conexiones existentes
           </Button>
           <Button onClick={() => runImport(1)} disabled={importing}>
             {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
