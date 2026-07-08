@@ -1,10 +1,11 @@
 // Resolver visual del costo estratégico (no operativo).
-// Orden: variante override > estructura base > política.manual > core_products.manual (espejo) > core_products.unit_cost > 0
+// Orden: variante override > estructura base > política.manual > proveedor externo > core_products.manual (espejo) > core_products.unit_cost > 0
 
 export type CostSource =
   | "variant_override"
   | "product_base_structure"
   | "policy_manual"
+  | "external_supplier"
   | "product_manual_mirror"
   | "product_unit_cost"
   | "zero_fallback";
@@ -20,6 +21,7 @@ export function resolveDisplayCost(input: {
   variantOverrideCost?: number | null;
   productBaseStructureCost?: number | null;
   policyManualCost?: number | null;
+  externalSupplierCost?: number | null;
   productManualMirrorCost?: number | null;
   productUnitCost?: number | null;
 }): CostResolution {
@@ -30,12 +32,15 @@ export function resolveDisplayCost(input: {
   if (b !== null) return { amount: b, source: "product_base_structure", hasWarning: false, label: "Estructura base" };
   const pm = c(input.policyManualCost);
   if (pm !== null) return { amount: pm, source: "policy_manual", hasWarning: false, label: "Costo manual (política)" };
+  const ext = c(input.externalSupplierCost);
+  if (ext !== null) return { amount: ext, source: "external_supplier", hasWarning: false, label: "Proveedor externo (ref.)" };
   const pmm = c(input.productManualMirrorCost);
   if (pmm !== null) return { amount: pmm, source: "product_manual_mirror", hasWarning: false, label: "Costo manual (espejo)" };
   const pu = c(input.productUnitCost);
   if (pu !== null) return { amount: pu, source: "product_unit_cost", hasWarning: false, label: "Costo unitario producto" };
   return { amount: 0, source: "zero_fallback", hasWarning: true, label: "Sin costo (fallback 0)" };
 }
+
 
 export const LIFECYCLE_LABELS: Record<string, string> = {
   active: "Activo",
