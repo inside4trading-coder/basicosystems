@@ -578,7 +578,7 @@ async function runReprocess(supabase: any, userId: string, pendingIds?: string[]
         continue;
       }
       const variant = p.linked_core_variant_id ? variantById.get(p.linked_core_variant_id) : null;
-      const resolved = await resolveVariantUnitCost(supabase, product, variant);
+      const resolved = await resolveVariantUnitCost(supabase, product, variant, p.woo_product_id, p.woo_variation_id);
       const unitCost = resolved.unit_cost;
       if (!unitCost || unitCost <= 0) {
         skippedUpdates.push({ id: p.id, reason: "unit_cost_missing" });
@@ -606,12 +606,19 @@ async function runReprocess(supabase: any, userId: string, pendingIds?: string[]
         cost_snapshot_data: {
           ...(product.cost_snapshot ?? {}),
           cost_source: resolved.cost_source,
+          policy_id: resolved.policy_id,
+          resolved_core_product_id: resolved.resolved_core_product_id ?? product.id,
+          resolved_core_variant_id: resolved.resolved_core_variant_id ?? p.linked_core_variant_id ?? null,
           resolved_variant_id: p.linked_core_variant_id ?? null,
+          woo_product_id: resolved.woo_product_id ?? p.woo_product_id ?? null,
+          woo_variation_id: resolved.woo_variation_id ?? p.woo_variation_id ?? null,
+          warning: resolved.warning,
         },
         amount, currency: product.currency || "USD",
         reason: isNonRestock ? "Reprocesado (no restockeable)" : "Reprocesado tras resolver pendiente",
         status: "posted", created_by: userId,
       });
+
       fundDeltas.set(fund.id, (fundDeltas.get(fund.id) ?? 0) + amount);
       resolvedIds.push(p.id);
       if (isNonRestock) summary.by_fund.non_restockable += 1; else summary.by_fund.general += 1;
