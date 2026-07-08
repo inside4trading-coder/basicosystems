@@ -126,6 +126,13 @@ export default function CoreWooCoreMap() {
         (r.core?.core_sku ?? "").toLowerCase().includes(s) ||
         (r.core?.name ?? "").toLowerCase().includes(s)
       );
+    }).sort((a, b) => {
+      const tier = (r: RowCtx) => {
+        if (r.core) return 2;
+        const hasCost = !!r.activeStructure || !!r.policy?.manual_unit_cost_usd || !!r.core?.manual_unit_cost_usd;
+        return hasCost ? 1 : 0;
+      };
+      return tier(a) - tier(b);
     });
   }, [rowsCtx, search, filterMapping, filterLifecycle, filterRoute, filterBrand]);
 
