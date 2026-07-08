@@ -46,7 +46,7 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
       const s = scannerRef.current;
       scannerRef.current = null;
       if (s) {
-        s.stop().catch(() => {}).finally(() => s.clear().catch(() => {}));
+        s.stop().then(() => { try { s.clear(); } catch { /* noop */ } }).catch(() => {});
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
