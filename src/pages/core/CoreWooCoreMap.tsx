@@ -67,6 +67,7 @@ export default function CoreWooCoreMap() {
   const { data: mapRows = [], isLoading: loadingMap } = useWooProductMap();
   const { data: policies = [] } = useReplenishmentPolicies();
   const { data: coreProducts = [] } = useCoreProductsLite();
+  const { data: structuresByWoo } = useCostStructuresByWoo();
   const auditQ = useStrategyAudit();
 
   const [tab, setTab] = useState("mapa");
@@ -78,6 +79,7 @@ export default function CoreWooCoreMap() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [dialog, setDialog] = useState<DialogState>(null);
   const [importing, setImporting] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
 
   const coreById = useMemo(() => new Map(coreProducts.map(c => [c.id, c])), [coreProducts]);
   const policyByWoo = useMemo(() => {
@@ -95,9 +97,16 @@ export default function CoreWooCoreMap() {
     return mapRows.map(m => {
       const core = m.core_product_id ? coreById.get(m.core_product_id) ?? null : null;
       const policy = policyByWoo.get(m.woo_product_id) ?? (m.core_product_id ? policyByCore.get(m.core_product_id) ?? null : null);
-      return { map: m, core, policy };
+      const structures = structuresByWoo?.get(m.woo_product_id) ?? [];
+      const activeStructure = structures.find(s => s.status === "active") ?? structures[0] ?? null;
+      let connState: RowCtx["connState"] = "none";
+      if (m.mapping_status === "needs_review") connState = "needs_review";
+      else if (core && activeStructure) connState = "core_full";
+      else if (core) connState = "core_no_structure";
+      else if (activeStructure) connState = "structure_only";
+      return { map: m, core, policy, structures, activeStructure, connState };
     });
-  }, [mapRows, coreById, policyByWoo, policyByCore]);
+  }, [mapRows, coreById, policyByWoo, policyByCore, structuresByWoo]);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
