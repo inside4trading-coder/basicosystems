@@ -385,6 +385,18 @@ export default function EspanaPOS() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <MobileQrScanner
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onDetected={(text) => {
+          setScanOpen(false);
+          const v = findByCode(text);
+          if (!v) { toast.error("Producto no encontrado"); return; }
+          if (!locationId) { toast.error("Selecciona sede"); return; }
+          addVariantToCart(v);
+        }}
+      />
     </div>
   );
 }
