@@ -173,6 +173,7 @@ const App = () => (
                 <Route path="inventario" element={<EspanaInventario />} />
                 <Route path="fabricacion" element={<EspanaFabricacion />} />
                 <Route path="blanks-dtf" element={<EspanaBlanksDTF />} />
+                <Route path="etiquetas" element={<EspanaEtiquetas />} />
               </Route>
               <Route path="/fondo-transparente" element={<FondoTransparente />} />
             </Route>
