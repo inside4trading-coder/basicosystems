@@ -1305,6 +1305,12 @@ export default function CoreProductionOrders() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PolicyBlockedDialog
+        open={!!policyBlocked}
+        onClose={() => setPolicyBlocked(null)}
+        lines={policyBlocked ?? []}
+      />
     </div>
   );
 }
