@@ -451,6 +451,12 @@ export default function CoreProductionOrders() {
           },
         },
       );
+      const blocked = await parsePolicyBlocked(error, data);
+      if (blocked) {
+        setPolicyBlocked(blocked.blocked);
+        toast.warning(blocked.message ?? "Bloqueado por política de reposición");
+        return;
+      }
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success(`Orden manual creada: ${(data as any).created?.[0]?.order_code}`);
