@@ -26,6 +26,8 @@ import {
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { ProductionPipelineSection } from "@/components/core/ProductionPipelineSection";
+import { PolicyBlockedDialog } from "@/components/core/woocore/PolicyBlockedDialog";
+import { parsePolicyBlocked, type BlockedLine } from "@/lib/policyBlocked";
 
 type Unit = {
   id: string;
@@ -188,6 +190,8 @@ export default function CoreProductionOrders() {
 
   const [cancelOpen, setCancelOpen] = useState<Order | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+
+  const [policyBlocked, setPolicyBlocked] = useState<BlockedLine[] | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -378,6 +382,12 @@ export default function CoreProductionOrders() {
           },
         },
       );
+      const blocked = await parsePolicyBlocked(error, data);
+      if (blocked) {
+        setPolicyBlocked(blocked.blocked);
+        toast.warning(blocked.message ?? "Bloqueado por política de reposición");
+        return;
+      }
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success(`Órdenes creadas: ${(data as any).count}`);
