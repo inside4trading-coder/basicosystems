@@ -70,31 +70,51 @@ async function resolveVariantUnitCost(
   };
 }
 
-// Resolves the effective replenishment action via public.resolve_core_replenishment_action.
-async function resolveReplenishmentAction(
+// Unified replenishment routing engine.
+// Calls the SQL RPC route_core_replenishment_candidate which is the single
+// source of truth for policy decisions AND idempotent event upsert.
+async function routeReplenishment(
   supabase: any,
-  product: any,
-  variant: any,
-  wooProductId?: number | null,
-  wooVariationId?: number | null,
+  args: {
+    source_type: string;
+    source_key: string;               // free-form idempotency key per origin
+    source_id?: string | null;        // uuid when applicable (pending_item.id)
+    product: any;
+    variant: any;
+    woo_product_id?: number | null;
+    woo_variation_id?: number | null;
+    woo_order_id?: number | null;
+    woo_order_item_id?: number | null;
+    quantity?: number | null;
+    unit_cost?: number | null;
+    amount?: number | null;
+    cost_source?: string | null;
+    created_by?: string | null;
+    dry_run?: boolean;
+  },
 ): Promise<any> {
-  const { data, error } = await supabase.rpc("resolve_core_replenishment_action", {
-    p_core_product_id: product?.id ?? null,
-    p_core_variant_id: variant?.id ?? null,
-    p_woo_product_id: wooProductId ?? product?.woo_product_id ?? null,
-    p_woo_variation_id: wooVariationId ?? variant?.woo_variation_id ?? null,
+  const { data, error } = await supabase.rpc("route_core_replenishment_candidate", {
+    p_source_type: args.source_type,
+    p_source_key: args.source_key,
+    p_source_id: args.source_id ?? null,
+    p_core_product_id: args.product?.id ?? null,
+    p_core_variant_id: args.variant?.id ?? null,
+    p_woo_product_id: args.woo_product_id ?? args.product?.woo_product_id ?? null,
+    p_woo_variation_id: args.woo_variation_id ?? args.variant?.woo_variation_id ?? null,
+    p_woo_order_id: args.woo_order_id ?? null,
+    p_woo_order_item_id: args.woo_order_item_id ?? null,
+    p_quantity: args.quantity ?? null,
+    p_unit_cost: args.unit_cost ?? null,
+    p_amount: args.amount ?? null,
+    p_cost_source: args.cost_source ?? null,
+    p_created_by: args.created_by ?? null,
+    p_dry_run: args.dry_run ?? false,
   });
-  if (error) console.warn("resolve_core_replenishment_action failed", error?.message);
-  const row = Array.isArray(data) ? data[0] : data;
-  return row ?? { action: "allow_internal_factory", severity: "allow" };
-}
-
-async function insertPolicyEvent(supabase: any, row: any) {
-  try {
-    await supabase.from("core_replenishment_policy_events").insert(row);
-  } catch (e) {
-    console.warn("insertPolicyEvent failed", (e as Error).message);
+  if (error) {
+    console.warn("route_core_replenishment_candidate failed", error?.message);
+    return { route_action: "allow_internal_factory", allow_internal_need: true, severity: "allow" };
   }
+  return data ?? { route_action: "allow_internal_factory", allow_internal_need: true, severity: "allow" };
 }
 
 
