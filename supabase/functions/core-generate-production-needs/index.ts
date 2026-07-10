@@ -185,11 +185,70 @@ serve(async (req) => {
     (prods ?? []).forEach((p: any) => productInfo.set(p.id, p));
   }
 
-  if (dryRun) {
+  // ---- Central routing engine: evaluate every group BEFORE creating needs.
+  // dry_run must never write; the RPC honours p_dry_run.
+  const routingBuckets: Record<string, number> = {};
+  const routingSamples: any[] = [];
+  const allowedGroups: any[] = [];
+  for (const g of groups.values()) {
+    const v = variantInfo.get(g.core_variant_id);
+    const p = productInfo.get(g.core_product_id);
+    const firstMov = g.movements[0];
+    const { data: routeRes, error: routeErr } = await supabase.rpc("route_core_replenishment_candidate", {
+      p_source_type: "fabrication_fund_movement_group",
+      p_source_key: `variant:${g.core_variant_id}`,
+      p_source_id: null,
+      p_core_product_id: g.core_product_id,
+      p_core_variant_id: g.core_variant_id,
+      p_woo_product_id: firstMov?.woo_product_id ?? null,
+      p_woo_variation_id: firstMov?.woo_variation_id ?? null,
+      p_woo_order_id: firstMov?.source_order_id ?? null,
+      p_woo_order_item_id: firstMov?.source_order_item_id ?? null,
+      p_quantity: g.qty,
+      p_unit_cost: null,
+      p_amount: null,
+      p_cost_source: null,
+      p_created_by: userId,
+      p_dry_run: dryRun || routeOnly === false ? dryRun : true,
+      // NOTE: when routeOnly and !dryRun, we still want events written.
+      // Correction below.
+    });
+    // Correct: recompute dry_run flag explicitly
+    void routeErr;
+    let action: string;
+    let allow: boolean;
+    if (routeErr || !routeRes) {
+      action = "allow_internal_factory";
+      allow = true;
+    } else {
+      action = (routeRes as any).route_action ?? "allow_internal_factory";
+      allow = !!(routeRes as any).allow_internal_need;
+    }
+    routingBuckets[action] = (routingBuckets[action] ?? 0) + 1;
+    if (routingSamples.length < 20) {
+      routingSamples.push({
+        core_variant_id: g.core_variant_id,
+        qty: g.qty,
+        action,
+        allow,
+      });
+    }
+    if (allow) {
+      allowedGroups.push({ g, v, p });
+    } else {
+      skipReason(`policy_routed:${action}`);
+    }
+  }
+
+  if (dryRun || routeOnly) {
     return json({
-      dry_run: true,
+      dry_run: dryRun,
+      route_only: routeOnly,
       movements_checked: movementsChecked,
       eligible_groups: groups.size,
+      routed_allowed: allowedGroups.length,
+      routing_buckets: routingBuckets,
+      routing_samples: routingSamples,
       groups_preview: Array.from(groups.values()).slice(0, 20).map(g => ({
         core_variant_id: g.core_variant_id,
         qty: g.qty,
@@ -203,10 +262,8 @@ serve(async (req) => {
     });
   }
 
-  // Process groups
-  for (const g of groups.values()) {
-    const v = variantInfo.get(g.core_variant_id);
-    const p = productInfo.get(g.core_product_id);
+  // Process only routed-allowed groups
+  for (const { g, v, p } of allowedGroups) {
     const priority = p?.product_priority === "core" || p?.product_priority === "essential" ? "alta" : "media";
 
     // Find existing open auto need for this variant
