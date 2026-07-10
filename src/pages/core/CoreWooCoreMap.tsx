@@ -581,6 +581,17 @@ export default function CoreWooCoreMap() {
                                 if (target) setNoRestockDialog({ open: true, initialCtx: target });
                               }}>Ver reemplazo</Button>
                             )}
+                            {hasRef && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 px-2 text-[10px] text-destructive hover:text-destructive"
+                                onClick={() => clearReplacement(ctx)}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />Eliminar
+                              </Button>
+                            )}
+
                           </div>
                         </td>
                       </tr>
