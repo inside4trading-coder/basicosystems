@@ -65,8 +65,54 @@ export function PolicyReviewPanel() {
   const qc = useQueryClient();
   const [presetKey, setPresetKey] = useState<string>("all_open");
   const [actionOverride, setActionOverride] = useState<string>("all");
+  const [processOpen, setProcessOpen] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [preview, setPreview] = useState<any>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const preset = PRESETS.find((p) => p.key === presetKey) ?? PRESETS[0];
+
+  const runPreview = async () => {
+    setProcessing(true);
+    setPreview(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("core-generate-production-needs", {
+        body: { route_only: true, dry_run: true },
+      });
+      if (error) throw error;
+      setPreview(data);
+    } catch (e: any) {
+      toast({ title: "Error en preview", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const openProcess = () => {
+    setProcessOpen(true);
+    runPreview();
+  };
+
+  const runConfirm = async () => {
+    setConfirming(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("core-generate-production-needs", {
+        body: { route_only: false, dry_run: false },
+      });
+      if (error) throw error;
+      sonner.success(
+        `Procesado. Necesidades creadas: ${data?.needs_created ?? 0}, actualizadas: ${data?.needs_updated ?? 0}.`,
+      );
+      setProcessOpen(false);
+      qc.invalidateQueries({ queryKey: ["policy_events"] });
+      qc.invalidateQueries({ queryKey: ["policy_events_summary"] });
+    } catch (e: any) {
+      toast({ title: "Error al procesar", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setConfirming(false);
+    }
+  };
+
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["policy_events", preset.key, actionOverride],
