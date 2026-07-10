@@ -661,34 +661,26 @@ async function runReprocess(supabase: any, userId: string, pendingIds?: string[]
       const resolved = await resolveVariantUnitCost(supabase, product, variant, p.woo_product_id, p.woo_variation_id);
       const unitCost = resolved.unit_cost;
 
-      // Fase 2B-1: política
-      const policyAct = await resolveReplenishmentAction(supabase, product, variant, p.woo_product_id, p.woo_variation_id);
-      const action = policyAct?.action ?? "allow_internal_factory";
-      if (action !== "allow_internal_factory") {
-        await insertPolicyEvent(supabase, {
-          source_type: "fabrication_fund",
-          source_id: p.id,
-          woo_order_id: p.source_order_id ?? null,
-          woo_order_item_id: p.source_order_item_id ?? null,
-          core_product_id: product?.id ?? null,
-          core_variant_id: variant?.id ?? null,
-          woo_product_id: p.woo_product_id ?? null,
-          woo_variation_id: p.woo_variation_id ?? null,
-          policy_id: policyAct?.policy_id ?? null,
-          action, severity: policyAct?.severity ?? "review",
-          message: policyAct?.message ?? null,
-          warning: policyAct?.warning ?? null,
-          quantity: Number(p.quantity ?? 0) || null,
-          unit_cost: unitCost || null,
-          amount: unitCost && p.quantity ? +(Number(p.quantity) * unitCost).toFixed(4) : null,
-          cost_source: resolved.cost_source,
-          replacement_product_id: policyAct?.replacement_product_id ?? null,
-          replacement_woo_product_id: policyAct?.replacement_woo_product_id ?? null,
-          replacement_behavior: policyAct?.replacement_behavior ?? null,
-          external_supplier_name: policyAct?.external_supplier_name ?? null,
-          external_supplier_unit_cost_usd: policyAct?.external_supplier_unit_cost_usd ?? null,
-          status: "open", created_by: userId,
-        });
+      // Central routing engine
+      const qtyPend = Number(p.quantity ?? 0) || 0;
+      const route = await routeReplenishment(supabase, {
+        source_type: "fabrication_fund_pending",
+        source_key: `fabrication_fund_pending:${p.id}`,
+        source_id: p.id,
+        product,
+        variant,
+        woo_product_id: p.woo_product_id,
+        woo_variation_id: p.woo_variation_id,
+        woo_order_id: p.source_order_id ?? null,
+        woo_order_item_id: p.source_order_item_id ?? null,
+        quantity: qtyPend || null,
+        unit_cost: unitCost || null,
+        amount: unitCost && qtyPend ? +(qtyPend * unitCost).toFixed(4) : null,
+        cost_source: resolved.cost_source,
+        created_by: userId,
+      });
+      const action = route?.route_action ?? "allow_internal_factory";
+      if (!route?.allow_internal_need) {
         skippedUpdates.push({ id: p.id, reason: `policy_${action}` });
         summary.pending_skipped += 1;
         continue;
