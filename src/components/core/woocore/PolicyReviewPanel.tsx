@@ -72,6 +72,7 @@ export function PolicyReviewPanel() {
   const [processing, setProcessing] = useState(false);
   const [preview, setPreview] = useState<any>(null);
   const [confirming, setConfirming] = useState(false);
+  const [replacementEvent, setReplacementEvent] = useState<Event | null>(null);
 
   const preset = PRESETS.find((p) => p.key === presetKey) ?? PRESETS[0];
 
