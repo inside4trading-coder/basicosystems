@@ -307,7 +307,7 @@ export function ReplacementApplicationDialog({
     p_adjustment_reason: reason || null,
   });
 
-  const runPreview = async () => {
+  const runPreview = async (opts?: { silent?: boolean }) => {
     if (!event) return;
     setRunning(true);
     setPreview(null);
@@ -318,11 +318,13 @@ export function ReplacementApplicationDialog({
       } as any);
       if (error) throw error;
       setPreview(data);
-      if ((data as any)?.error) {
+      if ((data as any)?.error && !opts?.silent) {
         toast({ title: "No se puede aplicar", description: String((data as any).error), variant: "destructive" });
       }
     } catch (e: any) {
-      toast({ title: "Error en preview", description: e?.message ?? String(e), variant: "destructive" });
+      if (!opts?.silent) {
+        toast({ title: "Error en preview", description: e?.message ?? String(e), variant: "destructive" });
+      }
     } finally {
       setRunning(false);
     }
@@ -340,7 +342,7 @@ export function ReplacementApplicationDialog({
     if (isResolved) return;
     if (!canPreview) return;
     if (preview || running) return;
-    autoPreviewTimer.current = setTimeout(() => { void runPreview(); }, 250);
+    autoPreviewTimer.current = setTimeout(() => { void runPreview({ silent: true }); }, 250);
     return () => {
       if (autoPreviewTimer.current) {
         clearTimeout(autoPreviewTimer.current);
@@ -709,7 +711,7 @@ export function ReplacementApplicationDialog({
           )}
           {!isResolved && !behaviorBlocked && (
             <>
-              <Button variant="outline" onClick={runPreview} disabled={running || !canPreview}>
+              <Button variant="outline" onClick={() => runPreview()} disabled={running || !canPreview}>
                 {running && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
                 Generar preview
               </Button>
