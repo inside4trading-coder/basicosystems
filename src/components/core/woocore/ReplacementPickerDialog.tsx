@@ -29,8 +29,16 @@ export function ReplacementPickerDialog({ open, onClose, onDone, ctx, coreProduc
   }, [coreProducts, search, ctx.core?.id, originalWooId]);
 
   async function save() {
+    if (replacementId && (replacementId === ctx.core?.id)) {
+      toast({ title: "Configuración inválida", description: "Un producto no puede reemplazarse por sí mismo.", variant: "destructive" });
+      return;
+    }
+    const chosen = coreProducts.find(c => c.id === replacementId);
+    if (chosen && originalWooId && chosen.woo_product_id === originalWooId) {
+      toast({ title: "Configuración inválida", description: "El reemplazo apunta al mismo producto Woo original.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
-    try {
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id ?? null;
       const patch: any = {
