@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Download, Link as LinkIcon, RefreshCw, DollarSign, Truck, Ban, Repeat, Tag, ChevronRight, ChevronDown, Wand2 } from "lucide-react";
+import { Loader2, Download, Link as LinkIcon, RefreshCw, DollarSign, Truck, Ban, Repeat, Tag, ChevronRight, ChevronDown, Wand2, Trash2 } from "lucide-react";
+import { logStrategyDecision, upsertPolicy } from "@/hooks/useWooCoreMap";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -219,6 +221,41 @@ export default function CoreWooCoreMap() {
       setReconciling(false);
     }
   }
+
+  async function clearReplacement(ctx: RowCtx) {
+    const p = ctx.policy;
+    if (!p) return;
+    const label = ctx.core?.core_sku ?? ctx.map.woo_product_name ?? `Woo #${ctx.map.woo_product_id}`;
+    if (!window.confirm(`Eliminar el reemplazo configurado para ${label}? Se limpiarán producto reemplazo y comportamiento. El estado del producto no cambia.`)) return;
+    try {
+      const patch: any = {
+        woo_product_id: ctx.map.woo_product_id,
+        core_product_id: ctx.core?.id ?? null,
+        replacement_product_id: null,
+        replacement_woo_product_id: null,
+        replacement_behavior: "suggest_only",
+      };
+      const { previous } = await upsertPolicy(patch);
+      await logStrategyDecision({
+        woo_product_id: ctx.map.woo_product_id,
+        core_product_id: ctx.core?.id ?? null,
+        decision_type: "clear_replacement",
+        previous_values: {
+          replacement_product_id: previous?.replacement_product_id ?? null,
+          replacement_woo_product_id: previous?.replacement_woo_product_id ?? null,
+          replacement_behavior: previous?.replacement_behavior ?? null,
+        },
+        new_values: { replacement_product_id: null, replacement_woo_product_id: null, replacement_behavior: "suggest_only" },
+      });
+      toast({ title: "Reemplazo eliminado" });
+      qc.invalidateQueries({ queryKey: ["replenishment-policies"] });
+      qc.invalidateQueries({ queryKey: ["strategy-audit"] });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  }
+
+
 
   function badge(text: string, variant: "default" | "secondary" | "destructive" | "outline" = "outline") {
     return <Badge variant={variant} className="text-[10px]">{text}</Badge>;
@@ -579,6 +616,17 @@ export default function CoreWooCoreMap() {
                                 if (target) setNoRestockDialog({ open: true, initialCtx: target });
                               }}>Ver reemplazo</Button>
                             )}
+                            {hasRef && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 px-2 text-[10px] text-destructive hover:text-destructive"
+                                onClick={() => clearReplacement(ctx)}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />Eliminar
+                              </Button>
+                            )}
+
                           </div>
                         </td>
                       </tr>
