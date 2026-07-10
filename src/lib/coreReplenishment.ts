@@ -46,6 +46,7 @@ export const LIFECYCLE_LABELS: Record<string, string> = {
   active: "Activo",
   no_restock: "No restock",
   exit: "En salida",
+  replaced: "Reemplazado",
   archived: "Archivado",
   ignored: "Ignorado",
 };
