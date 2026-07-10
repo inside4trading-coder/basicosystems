@@ -775,6 +775,192 @@ export type Database = {
         }
         Relationships: []
       }
+      core_external_purchase_order_lines: {
+        Row: {
+          cancellation_notes: string | null
+          core_product_id: string | null
+          core_variant_id: string | null
+          cost_source: string | null
+          created_at: string
+          id: string
+          line_subtotal: number
+          notes: string | null
+          order_id: string
+          policy_event_id: string | null
+          policy_id: string | null
+          product_name_snapshot: string | null
+          quantity_ordered: number
+          quantity_received: number
+          sku_snapshot: string | null
+          status: string
+          unit_cost: number
+          updated_at: string
+          variant_label_snapshot: string | null
+          woo_product_id: number | null
+          woo_variation_id: number | null
+        }
+        Insert: {
+          cancellation_notes?: string | null
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          cost_source?: string | null
+          created_at?: string
+          id?: string
+          line_subtotal?: number
+          notes?: string | null
+          order_id: string
+          policy_event_id?: string | null
+          policy_id?: string | null
+          product_name_snapshot?: string | null
+          quantity_ordered: number
+          quantity_received?: number
+          sku_snapshot?: string | null
+          status?: string
+          unit_cost: number
+          updated_at?: string
+          variant_label_snapshot?: string | null
+          woo_product_id?: number | null
+          woo_variation_id?: number | null
+        }
+        Update: {
+          cancellation_notes?: string | null
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          cost_source?: string | null
+          created_at?: string
+          id?: string
+          line_subtotal?: number
+          notes?: string | null
+          order_id?: string
+          policy_event_id?: string | null
+          policy_id?: string | null
+          product_name_snapshot?: string | null
+          quantity_ordered?: number
+          quantity_received?: number
+          sku_snapshot?: string | null
+          status?: string
+          unit_cost?: number
+          updated_at?: string
+          variant_label_snapshot?: string | null
+          woo_product_id?: number | null
+          woo_variation_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_external_purchase_order_lines_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "core_external_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_external_purchase_order_lines_policy_event_id_fkey"
+            columns: ["policy_event_id"]
+            isOneToOne: false
+            referencedRelation: "core_replenishment_policy_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_external_purchase_orders: {
+        Row: {
+          amount_paid: number
+          approved_at: string | null
+          approved_by: string | null
+          balance_due: number
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          estimated_delivery_date: string | null
+          id: string
+          notes: string | null
+          order_number: string
+          ordered_at: string | null
+          ordered_by: string | null
+          other_cost: number
+          payment_status: string
+          received_at: string | null
+          received_by: string | null
+          shipping_cost: number
+          status: string
+          subtotal: number
+          supplier_id: string | null
+          supplier_name_normalized: string
+          supplier_name_snapshot: string
+          supplier_order_reference: string | null
+          total: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          amount_paid?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          balance_due?: number
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          estimated_delivery_date?: string | null
+          id?: string
+          notes?: string | null
+          order_number: string
+          ordered_at?: string | null
+          ordered_by?: string | null
+          other_cost?: number
+          payment_status?: string
+          received_at?: string | null
+          received_by?: string | null
+          shipping_cost?: number
+          status?: string
+          subtotal?: number
+          supplier_id?: string | null
+          supplier_name_normalized: string
+          supplier_name_snapshot: string
+          supplier_order_reference?: string | null
+          total?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          amount_paid?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          balance_due?: number
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          estimated_delivery_date?: string | null
+          id?: string
+          notes?: string | null
+          order_number?: string
+          ordered_at?: string | null
+          ordered_by?: string | null
+          other_cost?: number
+          payment_status?: string
+          received_at?: string | null
+          received_by?: string | null
+          shipping_cost?: number
+          status?: string
+          subtotal?: number
+          supplier_id?: string | null
+          supplier_name_normalized?: string
+          supplier_name_snapshot?: string
+          supplier_order_reference?: string | null
+          total?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       core_fabrication_fund_movements: {
         Row: {
           amount: number
@@ -7837,7 +8023,58 @@ export type Database = {
         Args: { p_date: string; p_employee_id: string }
         Returns: undefined
       }
+      core_approve_external_purchase_order: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
+      core_cancel_external_purchase_order: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: Json
+      }
+      core_create_external_purchase_orders_from_events: {
+        Args: { p_dry_run?: boolean; p_event_ids: string[]; p_overrides?: Json }
+        Returns: Json
+      }
+      core_ext_po_audit: {
+        Args: {
+          p_action: string
+          p_new: Json
+          p_old: Json
+          p_order_id: string
+          p_order_number: string
+        }
+        Returns: undefined
+      }
+      core_mark_external_purchase_order_ordered: {
+        Args: {
+          p_eta?: string
+          p_notes?: string
+          p_order_id: string
+          p_reference?: string
+        }
+        Returns: Json
+      }
+      core_normalize_supplier_name: {
+        Args: { p_name: string }
+        Returns: string
+      }
+      core_receive_external_purchase_order: {
+        Args: { p_lines: Json; p_order_id: string }
+        Returns: Json
+      }
       core_reconcile_woo_core_map: { Args: never; Returns: Json }
+      core_reopen_external_purchase_order: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
+      core_update_external_purchase_order_draft: {
+        Args: { p_header?: Json; p_lines?: Json; p_order_id: string }
+        Returns: Json
+      }
+      core_update_external_purchase_order_payment: {
+        Args: { p_amount_paid: number; p_order_id: string }
+        Returns: Json
+      }
       esp_apply_material_movement: {
         Args: {
           p_allow_negative?: boolean
@@ -8107,6 +8344,7 @@ export type Database = {
         }
         Returns: Json
       }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "manager" | "partner" | "rrpp" | "marketing"
