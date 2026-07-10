@@ -83,7 +83,7 @@ export default function CoreWooCoreMap() {
   const [filterBrand, setFilterBrand] = useState<string>("all");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [dialog, setDialog] = useState<DialogState>(null);
-  const [noRestockDialog, setNoRestockDialog] = useState<{ open: boolean; initialCtx?: RowCtx | null }>({ open: false });
+  const [noRestockDialog, setNoRestockDialog] = useState<{ open: boolean; initialCtx?: RowCtx | null; initialStatus?: "no_restock" | "exit" | "replaced" }>({ open: false });
   const [importing, setImporting] = useState(false);
   const [reconciling, setReconciling] = useState(false);
 
