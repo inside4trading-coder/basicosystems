@@ -464,8 +464,78 @@ export default function CoreWooCoreMap() {
           </div>
         </TabsContent>
         <TabsContent value="norestock" className="space-y-3">
-          <p className="text-sm text-muted-foreground">Productos en <b>No restock</b> o <b>En salida</b>. Aquí eliges reemplazo y comportamiento.</p>
-          {renderMainTable(noRestockRows)}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-sm text-muted-foreground">
+              Productos en <b>No restock</b>, <b>En salida</b> o <b>Reemplazados</b>. Elige el producto Woo/Core existente y define la política.
+            </p>
+            <Button size="sm" onClick={() => setNoRestockDialog({ open: true })}>
+              <Repeat className="h-4 w-4 mr-1" /> Agregar producto
+            </Button>
+          </div>
+          {noRestockRows.length === 0 ? (
+            mapRows.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm border rounded-lg">
+                No hay productos Woo importados. Presiona <b>Importar Woo</b> para traer el catálogo.
+              </div>
+            ) : (
+              <div className="p-8 text-center text-muted-foreground text-sm border rounded-lg space-y-3">
+                <div>No hay productos configurados como <b>No restock</b>, <b>En salida</b> o <b>Reemplazados</b>.</div>
+                <Button size="sm" onClick={() => setNoRestockDialog({ open: true })}>
+                  <Repeat className="h-4 w-4 mr-1" /> Agregar producto
+                </Button>
+              </div>
+            )
+          ) : (
+            <div className="overflow-x-auto border rounded-lg">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50 border-b">
+                  <tr className="text-left">
+                    <th className="p-2">Producto</th>
+                    <th className="p-2">Woo ID</th>
+                    <th className="p-2">Core</th>
+                    <th className="p-2">Estado</th>
+                    <th className="p-2">Reemplazo</th>
+                    <th className="p-2">Comportamiento</th>
+                    <th className="p-2">Actualizado</th>
+                    <th className="p-2 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {noRestockRows.map(ctx => {
+                    const p = ctx.policy;
+                    const replLabel = p?.replacement_product_id
+                      ? (coreById.get(p.replacement_product_id)?.core_sku ?? "Core")
+                      : (p?.replacement_woo_product_id ? `Woo #${p.replacement_woo_product_id}` : "—");
+                    return (
+                      <tr key={ctx.map.id} className="border-b hover:bg-muted/30">
+                        <td className="p-2 max-w-[260px]">
+                          <div className="font-medium truncate" title={ctx.map.woo_product_name ?? ""}>{ctx.map.woo_product_name ?? "—"}</div>
+                          <div className="text-[10px] text-muted-foreground truncate">{ctx.map.woo_product_sku ?? "sin SKU"}</div>
+                        </td>
+                        <td className="p-2 font-mono text-[10px]">{ctx.map.woo_product_id}</td>
+                        <td className="p-2">{ctx.core ? <Badge className="text-[10px]">Conectado</Badge> : <Badge variant="outline" className="text-[10px]">Sin Core</Badge>}</td>
+                        <td className="p-2">{badge(LIFECYCLE_LABELS[p?.lifecycle_status ?? "active"], "destructive")}</td>
+                        <td className="p-2">{replLabel}</td>
+                        <td className="p-2">{p?.replacement_behavior ? (REPLACEMENT_BEHAVIOR_LABELS[p.replacement_behavior] ?? p.replacement_behavior) : "—"}</td>
+                        <td className="p-2 text-[10px] text-muted-foreground">{p?.updated_at ? new Date(p.updated_at).toLocaleDateString() : "—"}</td>
+                        <td className="p-2 text-right">
+                          <div className="flex gap-1 justify-end flex-wrap">
+                            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setNoRestockDialog({ open: true, initialCtx: ctx })}>Editar</Button>
+                            {p?.replacement_product_id && (
+                              <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => {
+                                const target = rowsCtx.find(r => r.core?.id === p.replacement_product_id) ?? null;
+                                if (target) setNoRestockDialog({ open: true, initialCtx: target });
+                              }}>Ver reemplazo</Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </TabsContent>
         <TabsContent value="review">
           <PolicyReviewPanel />
