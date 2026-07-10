@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { toast as sonner } from "sonner";
-import { Loader2, ExternalLink, Copy, Play } from "lucide-react";
+import { Loader2, ExternalLink, Copy, Play, Wand2 } from "lucide-react";
 import { POLICY_ACTION_LABELS, describePolicyAction } from "@/lib/policyBlocked";
+import { ReplacementApplicationDialog } from "./ReplacementApplicationDialog";
 
 type Event = {
   id: string;
@@ -35,6 +36,8 @@ type Event = {
   replacement_woo_product_id: number | null;
   external_supplier_name: string | null;
   external_supplier_unit_cost_usd: number | null;
+  replacement_behavior?: string | null;
+  resolution_data?: any;
 };
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -69,6 +72,7 @@ export function PolicyReviewPanel() {
   const [processing, setProcessing] = useState(false);
   const [preview, setPreview] = useState<any>(null);
   const [confirming, setConfirming] = useState(false);
+  const [replacementEvent, setReplacementEvent] = useState<Event | null>(null);
 
   const preset = PRESETS.find((p) => p.key === presetKey) ?? PRESETS[0];
 
@@ -333,6 +337,16 @@ export function PolicyReviewPanel() {
                     <td className="p-2"><Badge variant="outline">{r.status}</Badge></td>
                     <td className="p-2">
                       <div className="flex flex-col gap-1 min-w-[160px]">
+                        {r.action === "suggest_replacement" && r.status !== "resolved" && (
+                          <Button size="sm" onClick={() => setReplacementEvent(r)}>
+                            <Wand2 className="w-3 h-3 mr-1" />Aplicar reemplazo
+                          </Button>
+                        )}
+                        {r.action === "suggest_replacement" && r.status === "resolved" && (
+                          <Button size="sm" variant="outline" onClick={() => setReplacementEvent(r)}>
+                            Ver resumen
+                          </Button>
+                        )}
                         {r.status !== "reviewed" && (
                           <Button size="sm" variant="outline" onClick={() => setEventStatus(r.id, "reviewed")}>
                             Revisado
@@ -428,6 +442,12 @@ export function PolicyReviewPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ReplacementApplicationDialog
+        event={replacementEvent as any}
+        open={!!replacementEvent}
+        onOpenChange={(v) => { if (!v) setReplacementEvent(null); }}
+      />
     </div>
   );
 }

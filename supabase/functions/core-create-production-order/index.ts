@@ -110,17 +110,31 @@ async function audit(
   }
 }
 
-// Fase 2B-1: política de reposición
+// Fase 2B-1: política de reposición (vía motor central en modo preview)
 async function resolvePolicy(
   supabase: any, core_product_id: string | null, core_variant_id: string | null,
   woo_product_id: number | null, woo_variation_id: number | null,
 ) {
-  const { data } = await supabase.rpc("resolve_core_replenishment_action", {
+  const { data } = await supabase.rpc("route_core_replenishment_candidate", {
+    p_source_type: "production_order_preview",
     p_core_product_id: core_product_id, p_core_variant_id: core_variant_id,
     p_woo_product_id: woo_product_id, p_woo_variation_id: woo_variation_id,
+    p_dry_run: true,
   });
-  const row = Array.isArray(data) ? data[0] : data;
-  return row ?? { action: "allow_internal_factory", severity: "allow" };
+  // route_core_replenishment_candidate returns jsonb (not row); shape it back
+  if (!data) return { action: "allow_internal_factory", severity: "allow" };
+  return {
+    action: data.route_action ?? "allow_internal_factory",
+    severity: data.severity ?? "allow",
+    policy_id: data.policy_id ?? null,
+    message: data.message ?? null,
+    warning: data.warning ?? null,
+    replacement_product_id: data.replacement_product_id ?? null,
+    replacement_woo_product_id: data.replacement_woo_product_id ?? null,
+    replacement_behavior: data.replacement_behavior ?? null,
+    external_supplier_name: data.external_supplier_name ?? null,
+    external_supplier_unit_cost_usd: data.external_supplier_unit_cost_usd ?? null,
+  };
 }
 
 async function logPolicyEvent(supabase: any, row: any) {

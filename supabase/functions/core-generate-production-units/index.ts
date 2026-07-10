@@ -210,28 +210,20 @@ Deno.serve(async (req) => {
           line.core_product_id ? supa.from("core_products").select("woo_product_id").eq("id", line.core_product_id).maybeSingle() : Promise.resolve({ data: null }),
           line.core_variant_id ? supa.from("core_product_variants").select("woo_variation_id").eq("id", line.core_variant_id).maybeSingle() : Promise.resolve({ data: null }),
         ]);
-        const { data: polData } = await supa.rpc("resolve_core_replenishment_action", {
+        const { data: polData } = await supa.rpc("route_core_replenishment_candidate", {
+          p_source_type: "production_units_preview",
           p_core_product_id: line.core_product_id ?? null,
           p_core_variant_id: line.core_variant_id ?? null,
           p_woo_product_id: (p as any)?.woo_product_id ?? null,
           p_woo_variation_id: (v as any)?.woo_variation_id ?? null,
+          p_dry_run: true,
         });
-        const pol = Array.isArray(polData) ? polData[0] : polData;
-        if (pol && pol.action !== "allow_internal_factory") {
-          blocked.push({ line_id: line.id, sku: line.sku, variant_sku: line.variant_sku, action: pol.action, message: pol.message });
-          await supa.from("core_replenishment_policy_events").insert({
-            source_type: "production_order", source_id: production_order_id,
-            core_product_id: line.core_product_id ?? null, core_variant_id: line.core_variant_id ?? null,
-            woo_product_id: (p as any)?.woo_product_id ?? null, woo_variation_id: (v as any)?.woo_variation_id ?? null,
-            policy_id: pol.policy_id ?? null, action: pol.action, severity: pol.severity ?? "block",
-            message: pol.message, warning: pol.warning, quantity: line.quantity_ordered,
-            replacement_product_id: pol.replacement_product_id ?? null,
-            replacement_woo_product_id: pol.replacement_woo_product_id ?? null,
-            replacement_behavior: pol.replacement_behavior ?? null,
-            external_supplier_name: pol.external_supplier_name ?? null,
-            external_supplier_unit_cost_usd: pol.external_supplier_unit_cost_usd ?? null,
-            status: "open", created_by: userId,
-          }).then(() => {}, () => {});
+        const pol = polData as any;
+        const polAction = pol?.route_action ?? pol?.action ?? "allow_internal_factory";
+        if (pol && polAction !== "allow_internal_factory") {
+          blocked.push({ line_id: line.id, sku: line.sku, variant_sku: line.variant_sku, action: polAction, message: pol.message });
+          // Nota: no se hace insert manual en core_replenishment_policy_events.
+          // El motor central ya lo hará cuando se ejecute la generación real (no-dry-run).
         }
       }
       if (blocked.length) {
