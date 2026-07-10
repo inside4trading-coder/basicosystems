@@ -141,17 +141,61 @@ export function ReplacementApplicationDialog({
     },
   });
 
-  // 4) Core variants for replacement
+  // 4) Core variants for replacement (with stock)
   const { data: replacementVariants = [], refetch: refetchVariants } = useQuery({
     queryKey: ["replacement_variants", replacementProduct?.id],
     enabled: !!replacementProduct?.id,
     queryFn: async () => {
       const { data } = await supabase
         .from("core_product_variants")
-        .select("id, size, variant_label, woo_variation_id, variant_sku")
+        .select("id, size, variant_label, color, woo_variation_id, variant_sku, woo_stock_quantity")
         .eq("core_product_id", replacementProduct!.id)
         .order("sort_order", { ascending: true });
       return data ?? [];
+    },
+  });
+
+  const variantIds = useMemo(
+    () => (replacementVariants as any[]).map((v: any) => v.id).sort(),
+    [replacementVariants],
+  );
+
+  // Production units currently in fabrication — same source as CoreInventory, excludes cancelled/lost/entered_inventory
+  const { data: unitsInFabByVariant = {}, refetch: refetchUnits } = useQuery({
+    queryKey: ["replacement_variants_units", variantIds],
+    enabled: variantIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("core_production_units")
+        .select("core_variant_id")
+        .in("core_variant_id", variantIds)
+        .not("status", "in", "(cancelled,lost,entered_inventory)");
+      const map: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => {
+        if (!r.core_variant_id) return;
+        map[r.core_variant_id] = (map[r.core_variant_id] ?? 0) + 1;
+      });
+      return map;
+    },
+  });
+
+  // Open production needs — quantity_pending = needed - already converted to OP, evita doble conteo con unidades
+  const { data: needsPendingByVariant = {}, refetch: refetchNeeds } = useQuery({
+    queryKey: ["replacement_variants_needs", variantIds],
+    enabled: variantIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("core_production_needs")
+        .select("core_variant_id, quantity_pending, status")
+        .in("core_variant_id", variantIds)
+        .not("status", "in", "(cancelled,completed,resolved,rejected)");
+      const map: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => {
+        if (!r.core_variant_id) return;
+        const q = Number(r.quantity_pending ?? 0);
+        if (q > 0) map[r.core_variant_id] = (map[r.core_variant_id] ?? 0) + q;
+      });
+      return map;
     },
   });
 
