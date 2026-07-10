@@ -711,7 +711,7 @@ export function ReplacementApplicationDialog({
           )}
           {!isResolved && !behaviorBlocked && (
             <>
-              <Button variant="outline" onClick={runPreview} disabled={running || !canPreview}>
+              <Button variant="outline" onClick={() => runPreview()} disabled={running || !canPreview}>
                 {running && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
                 Generar preview
               </Button>
