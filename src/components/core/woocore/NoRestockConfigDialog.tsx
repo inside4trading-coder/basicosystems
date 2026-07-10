@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,120 @@ interface Props {
   initialStatus?: LifecycleChoice;
 }
 
+/** Normaliza texto: minúsculas, sin acentos, trim. */
+function norm(s: string | null | undefined): string {
+  if (!s) return "";
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+}
+
+interface FabricableCandidate {
+  core_id: string;
+  core_sku: string;
+  core_name: string;
+  product_type: string | null;
+  woo_product_id: number | null;
+  woo_product_name: string | null;
+  woo_product_sku: string | null;
+  woo_image: string | null;
+  variants_count: number;
+  has_variants_synced: boolean;
+  has_cost_structure: boolean;
+  blocked_reason: string | null;
+}
+
+/**
+ * Fuente: Catálogo de Fabricación (core_products fabricables).
+ * Enriquecido con identidad Woo y política efectiva.
+ */
+function useFabricableReplacementCandidates(open: boolean) {
+  return useQuery({
+    queryKey: ["fabricable-replacement-candidates"],
+    enabled: open,
+    queryFn: async (): Promise<FabricableCandidate[]> => {
+      const { data: products, error: pErr } = await supabase
+        .from("core_products")
+        .select("id, core_sku, name, product_type, commercial_status, is_restockable, woo_product_id, woo_product_name, cost_structure_id")
+        .eq("commercial_status", "active")
+        .eq("is_restockable", true)
+        .order("name", { ascending: true })
+        .limit(5000);
+      if (pErr) throw pErr;
+      const rows = (products ?? []) as any[];
+      const coreIds = rows.map(r => r.id);
+      const wooIds = Array.from(new Set(rows.map(r => r.woo_product_id).filter((x): x is number => !!x)));
+
+      const [mapRes, policyRes, variantsRes] = await Promise.all([
+        wooIds.length
+          ? supabase.from("core_woo_product_map")
+              .select("woo_product_id, woo_product_name, woo_product_sku, woo_raw_payload, core_product_id")
+              .in("woo_product_id", wooIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+        coreIds.length
+          ? supabase.from("core_replenishment_policies")
+              .select("core_product_id, woo_product_id, lifecycle_status, replenishment_route, restock_enabled")
+              .or(
+                [
+                  `core_product_id.in.(${coreIds.map(id => `"${id}"`).join(",")})`,
+                  wooIds.length ? `woo_product_id.in.(${wooIds.join(",")})` : "",
+                ].filter(Boolean).join(",")
+              )
+          : Promise.resolve({ data: [] as any[], error: null }),
+        coreIds.length
+          ? supabase.from("core_product_variants")
+              .select("core_product_id, status")
+              .in("core_product_id", coreIds)
+              .eq("status", "active")
+          : Promise.resolve({ data: [] as any[], error: null }),
+      ]);
+      if (mapRes.error) throw mapRes.error;
+      if (policyRes.error) throw policyRes.error;
+      if (variantsRes.error) throw variantsRes.error;
+
+      const mapByWoo = new Map<number, any>();
+      for (const m of ((mapRes.data as any[]) ?? [])) mapByWoo.set(m.woo_product_id, m);
+      const policyByCore = new Map<string, any>();
+      const policyByWoo = new Map<number, any>();
+      for (const pol of ((policyRes.data as any[]) ?? [])) {
+        if (pol.core_product_id) policyByCore.set(pol.core_product_id, pol);
+        if (pol.woo_product_id) policyByWoo.set(pol.woo_product_id, pol);
+      }
+      const variantCount = new Map<string, number>();
+      for (const v of ((variantsRes.data as any[]) ?? [])) {
+        variantCount.set(v.core_product_id, (variantCount.get(v.core_product_id) ?? 0) + 1);
+      }
+
+      const BLOCKED_LC = new Set(["no_restock", "exit", "ignored", "replaced"]);
+
+      return rows.map((r): FabricableCandidate => {
+        const wooMap = r.woo_product_id ? mapByWoo.get(r.woo_product_id) : null;
+        const pol = policyByCore.get(r.id) ?? (r.woo_product_id ? policyByWoo.get(r.woo_product_id) : null);
+        const lc = pol?.lifecycle_status ?? "active";
+        const route = pol?.replenishment_route ?? "internal_factory";
+        const isVariable = (r.product_type ?? "").toLowerCase() === "variable";
+        const vc = variantCount.get(r.id) ?? 0;
+        let blocked: string | null = null;
+        if (route === "external_supplier") blocked = "Ruta: proveedor externo.";
+        else if (BLOCKED_LC.has(lc)) blocked = `Política: ${lc}.`;
+        else if (isVariable && vc === 0) blocked = "Producto variable sin variantes sincronizadas.";
+        return {
+          core_id: r.id,
+          core_sku: r.core_sku,
+          core_name: r.name,
+          product_type: r.product_type ?? null,
+          woo_product_id: r.woo_product_id ?? null,
+          woo_product_name: wooMap?.woo_product_name ?? r.woo_product_name ?? null,
+          woo_product_sku: wooMap?.woo_product_sku ?? null,
+          woo_image: wooMap?.woo_raw_payload?.images?.[0]?.src ?? null,
+          variants_count: vc,
+          has_variants_synced: vc > 0,
+          has_cost_structure: !!r.cost_structure_id,
+          blocked_reason: blocked,
+        };
+      });
+    },
+  });
+}
+
 export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialCtx, initialStatus }: Props) {
 
   const [selected, setSelected] = useState<Ctx | null>(initialCtx ?? null);
@@ -46,17 +161,20 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
   const [replacementDebounced, setReplacementDebounced] = useState("");
 
   const [status, setStatus] = useState<LifecycleChoice>("no_restock");
-  const [replacement, setReplacement] = useState<Ctx | null>(null);
+  const [replacement, setReplacement] = useState<FabricableCandidate | null>(null);
   const [behavior, setBehavior] = useState<string>("suggest_only");
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const { data: fabricableCandidates = [], isLoading: loadingCandidates } =
+    useFabricableReplacementCandidates(open && status === "replaced");
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search.trim().toLowerCase()), 200);
     return () => clearTimeout(t);
   }, [search]);
   useEffect(() => {
-    const t = setTimeout(() => setReplacementDebounced(replacementSearch.trim().toLowerCase()), 200);
+    const t = setTimeout(() => setReplacementDebounced(norm(replacementSearch)), 200);
     return () => clearTimeout(t);
   }, [replacementSearch]);
 
@@ -70,16 +188,23 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
 
     setBehavior(p?.replacement_behavior ?? "suggest_only");
     setReason(p?.decision_reason ?? "");
-    if (p?.replacement_product_id) {
-      const found = rowsCtx.find(r => r.core?.id === p.replacement_product_id);
-      setReplacement(found ?? null);
-    } else if (p?.replacement_woo_product_id) {
-      const found = rowsCtx.find(r => r.map.woo_product_id === p.replacement_woo_product_id);
-      setReplacement(found ?? null);
-    } else {
-      setReplacement(null);
+    setReplacement(null); // will be re-hydrated when candidates load
+  }, [selected, initialStatus]);
+
+  // Rehydrate current replacement from candidates once loaded.
+  useEffect(() => {
+    if (!selected || status !== "replaced" || fabricableCandidates.length === 0) return;
+    const p = selected.policy;
+    if (!p) return;
+    if (replacement) return;
+    if (p.replacement_product_id) {
+      const found = fabricableCandidates.find(c => c.core_id === p.replacement_product_id);
+      if (found) setReplacement(found);
+    } else if (p.replacement_woo_product_id) {
+      const found = fabricableCandidates.find(c => c.woo_product_id === p.replacement_woo_product_id);
+      if (found) setReplacement(found);
     }
-  }, [selected, rowsCtx, initialStatus]);
+  }, [selected, status, fabricableCandidates, replacement]);
 
   function filterRows(term: string, exclude?: { wooId?: number; coreId?: string | null }) {
     const base = rowsCtx.filter(r => {
@@ -98,10 +223,30 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
   }
 
   const results = useMemo(() => filterRows(debounced), [debounced, rowsCtx]);
-  const replacementResults = useMemo(
-    () => filterRows(replacementDebounced, { wooId: selected?.map.woo_product_id, coreId: selected?.core?.id ?? null }),
-    [replacementDebounced, rowsCtx, selected?.map.woo_product_id, selected?.core?.id],
-  );
+
+  const originalCoreId = selected?.core?.id ?? null;
+  const originalWooId = selected?.map?.woo_product_id ?? null;
+
+  const filteredCandidates = useMemo(() => {
+    const term = replacementDebounced;
+    return fabricableCandidates
+      .filter(c => {
+        if (originalCoreId && c.core_id === originalCoreId) return false;
+        if (originalWooId && c.woo_product_id === originalWooId) return false;
+        return true;
+      })
+      .filter(c => {
+        if (!term) return true;
+        return (
+          norm(c.core_name).includes(term) ||
+          norm(c.core_sku).includes(term) ||
+          norm(c.woo_product_name).includes(term) ||
+          norm(c.woo_product_sku).includes(term) ||
+          (c.woo_product_id != null && String(c.woo_product_id).includes(term))
+        );
+      })
+      .slice(0, 80);
+  }, [fabricableCandidates, replacementDebounced, originalCoreId, originalWooId]);
 
   function policyLabel(ctx: Ctx) {
     const lc = ctx.policy?.lifecycle_status;
@@ -116,9 +261,13 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
       return;
     }
     if (status === "replaced" && replacement) {
-      const sameWoo = replacement.map.woo_product_id === selected.map.woo_product_id;
-      const sameCore = !!selected.core?.id && replacement.core?.id === selected.core?.id;
-      if (sameWoo || sameCore) {
+      if (replacement.blocked_reason) {
+        toast({ title: "Reemplazo no disponible", description: replacement.blocked_reason, variant: "destructive" });
+        return;
+      }
+      const sameCore = !!selected.core?.id && replacement.core_id === selected.core?.id;
+      const sameWoo = !!originalWooId && replacement.woo_product_id === originalWooId;
+      if (sameCore || sameWoo) {
         toast({
           title: "Configuración inválida",
           description: "Un producto no puede reemplazarse por sí mismo.",
@@ -145,8 +294,8 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
         updated_by: uid,
       };
       if (status === "replaced") {
-        patch.replacement_product_id = replacement?.core?.id ?? null;
-        patch.replacement_woo_product_id = replacement?.map.woo_product_id ?? null;
+        patch.replacement_product_id = replacement?.core_id ?? null;
+        patch.replacement_woo_product_id = replacement?.woo_product_id ?? null;
         patch.replacement_behavior = behavior;
       }
       const { previous } = await upsertPolicy(patch);
@@ -206,6 +355,44 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
         ) : (
           <Button size="sm" onClick={onPick}>Seleccionar</Button>
         )}
+      </div>
+    );
+  }
+
+  function renderCandidate(c: FabricableCandidate) {
+    const blocked = !!c.blocked_reason;
+    return (
+      <div key={c.core_id} className="flex items-center gap-3 p-2 border-b hover:bg-muted/40">
+        {c.woo_image ? (
+          <img src={c.woo_image} alt="" className="h-10 w-10 rounded object-cover border" />
+        ) : (
+          <div className="h-10 w-10 rounded bg-muted border" />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">{c.core_name}</div>
+          <div className="text-[10px] text-muted-foreground truncate">
+            Core: {c.core_sku}
+            {c.woo_product_id ? ` · Woo #${c.woo_product_id}` : " · Sin Woo"}
+            {c.woo_product_sku ? ` · ${c.woo_product_sku}` : ""}
+          </div>
+          <div className="flex gap-1 mt-1 flex-wrap">
+            {blocked ? (
+              <Badge variant="destructive" className="text-[9px]">No disponible</Badge>
+            ) : (
+              <Badge className="text-[9px]">Fabricable</Badge>
+            )}
+            <Badge variant="outline" className="text-[9px]">
+              {c.product_type === "variable" ? `${c.variants_count} variantes` : "Producto simple"}
+            </Badge>
+            {c.has_cost_structure && <Badge variant="outline" className="text-[9px]">Costo</Badge>}
+          </div>
+          {blocked && (
+            <div className="text-[10px] text-destructive mt-1">{c.blocked_reason}</div>
+          )}
+        </div>
+        <Button size="sm" disabled={blocked} onClick={() => !blocked && setReplacement(c)}>
+          Seleccionar
+        </Button>
       </div>
     );
   }
@@ -279,13 +466,24 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
             {status === "replaced" && (
               <div className="space-y-2 border rounded p-2 bg-muted/30">
                 <Label>Producto reemplazo</Label>
+                <p className="text-[10px] text-muted-foreground">
+                  Fuente: Catálogo de Fabricación. Solo productos Core activos y fabricables.
+                </p>
                 {replacement ? (
                   <div className="flex items-center justify-between gap-2 p-2 bg-background border rounded">
                     <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{replacement.map.woo_product_name}</div>
+                      <div className="text-sm font-medium truncate">{replacement.core_name}</div>
                       <div className="text-[10px] text-muted-foreground">
-                        Woo #{replacement.map.woo_product_id}
-                        {replacement.core ? ` · Core: ${replacement.core.core_sku}` : " · Sin Core"}
+                        Core: {replacement.core_sku}
+                        {replacement.woo_product_id ? ` · Woo #${replacement.woo_product_id}` : " · Sin Woo"}
+                      </div>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        <Badge className="text-[9px]">Fabricable</Badge>
+                        <Badge variant="outline" className="text-[9px]">
+                          {replacement.product_type === "variable"
+                            ? `${replacement.variants_count} variantes`
+                            : "Producto simple"}
+                        </Badge>
                       </div>
                     </div>
                     <Button size="sm" variant="outline" onClick={() => setReplacement(null)}>Cambiar</Button>
@@ -295,17 +493,23 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
                     <div className="relative">
                       <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Buscar reemplazo por Woo ID o título…"
+                        placeholder="Buscar por nombre Core, SKU Core, Woo ID, nombre o SKU Woo…"
                         value={replacementSearch}
                         onChange={e => setReplacementSearch(e.target.value)}
                         className="pl-8"
                       />
                     </div>
-                    <div className="max-h-56 overflow-y-auto border rounded bg-background">
-                      {replacementResults.length === 0 ? (
-                        <p className="p-4 text-center text-xs text-muted-foreground">Sin resultados</p>
+                    <div className="max-h-72 overflow-y-auto border rounded bg-background">
+                      {loadingCandidates ? (
+                        <p className="p-4 text-center text-xs text-muted-foreground">
+                          <Loader2 className="inline h-3 w-3 mr-1 animate-spin" /> Cargando catálogo…
+                        </p>
+                      ) : filteredCandidates.length === 0 ? (
+                        <p className="p-4 text-center text-xs text-muted-foreground">
+                          Sin resultados en el Catálogo de Fabricación.
+                        </p>
                       ) : (
-                        replacementResults.map(r => renderResult(r, () => setReplacement(r)))
+                        filteredCandidates.map(renderCandidate)
                       )}
                     </div>
                   </>
