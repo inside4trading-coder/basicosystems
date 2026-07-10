@@ -3422,6 +3422,7 @@ export type Database = {
           replacement_behavior: string | null
           replacement_product_id: string | null
           replacement_woo_product_id: number | null
+          resolution_data: Json
           resolution_notes: string | null
           resolved_at: string | null
           resolved_by: string | null
@@ -3454,6 +3455,7 @@ export type Database = {
           replacement_behavior?: string | null
           replacement_product_id?: string | null
           replacement_woo_product_id?: number | null
+          resolution_data?: Json
           resolution_notes?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
@@ -3486,6 +3488,7 @@ export type Database = {
           replacement_behavior?: string | null
           replacement_product_id?: string | null
           replacement_woo_product_id?: number | null
+          resolution_data?: Json
           resolution_notes?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
@@ -8022,6 +8025,16 @@ export type Database = {
       compute_sublime_daily_shift: {
         Args: { p_date: string; p_employee_id: string }
         Returns: undefined
+      }
+      core_apply_replacement_event: {
+        Args: {
+          p_adjustment_reason?: string
+          p_allocations: Json
+          p_confirmed_quantity?: number
+          p_dry_run?: boolean
+          p_event_id: string
+        }
+        Returns: Json
       }
       core_approve_external_purchase_order: {
         Args: { p_order_id: string }
