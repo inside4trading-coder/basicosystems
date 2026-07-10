@@ -220,6 +220,30 @@ export function ReplacementApplicationDialog({
 
   const hasVariants = replacementVariants.length > 0;
 
+  // Self-replacement guard: a product cannot replace itself
+  const selfReplacement =
+    (!!event?.core_product_id && !!effectiveReplacementCoreId && event.core_product_id === effectiveReplacementCoreId) ||
+    (!!event?.woo_product_id && !!effectiveReplacementWooId && event.woo_product_id === effectiveReplacementWooId);
+
+  // Per-variant projections (stock + en fabricación + por producir)
+  const variantProjections = useMemo(() => {
+    return (replacementVariants as any[]).map((v: any) => {
+      const stock = Number(v.woo_stock_quantity ?? 0);
+      const inFab = Number((unitsInFabByVariant as any)[v.id] ?? 0);
+      const toProduce = Number((needsPendingByVariant as any)[v.id] ?? 0);
+      const projected = stock + inFab + toProduce;
+      return { id: v.id as string, stock, inFab, toProduce, projected };
+    });
+  }, [replacementVariants, unitsInFabByVariant, needsPendingByVariant]);
+
+  const mostNeededId = useMemo(() => {
+    if (variantProjections.length === 0) return null;
+    const min = Math.min(...variantProjections.map((p) => p.projected));
+    const winners = variantProjections.filter((p) => p.projected === min);
+    return winners.length === 1 ? winners[0].id : null;
+  }, [variantProjections]);
+
+
   // Reset when opened / event changes / replacement changes
   useEffect(() => {
     if (!open || !event) return;
