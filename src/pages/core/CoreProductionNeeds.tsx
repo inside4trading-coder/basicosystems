@@ -390,7 +390,24 @@ export default function CoreProductionNeeds() {
         </div>
       </div>
 
+      <PolicyEventsSummaryBar />
+
+      <Tabs defaultValue="internal">
+        <TabsList>
+          <TabsTrigger value="internal">Fabricación interna</TabsTrigger>
+          <TabsTrigger value="attention">
+            Requieren atención <AttentionCountBadge />
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="attention" className="mt-4">
+          <PolicyEventsAttentionPanel />
+        </TabsContent>
+
+        <TabsContent value="internal" className="mt-4">
+
       <Tabs defaultValue="summary">
+
         <TabsList>
           <TabsTrigger value="summary">Resumen</TabsTrigger>
           <TabsTrigger value="open">Abiertas ({openNeeds.length})</TabsTrigger>
