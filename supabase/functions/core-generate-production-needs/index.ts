@@ -209,11 +209,8 @@ serve(async (req) => {
       p_amount: null,
       p_cost_source: null,
       p_created_by: userId,
-      p_dry_run: dryRun || routeOnly === false ? dryRun : true,
-      // NOTE: when routeOnly and !dryRun, we still want events written.
-      // Correction below.
+      p_dry_run: dryRun,
     });
-    // Correct: recompute dry_run flag explicitly
     void routeErr;
     let action: string;
     let allow: boolean;
