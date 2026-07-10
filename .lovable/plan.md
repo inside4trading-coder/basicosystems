@@ -1,71 +1,94 @@
-## Bloque 1 — Motor de Enrutamiento de Reposición (con correcciones aprobadas)
+# Bloque 2 — Reposición Externa / Órdenes a Proveedor (corregido)
 
-Motor único, idempotencia estricta por origen, dry-run 100% lectura.
+Convertir eventos `external_supplier_review` en órdenes reales a proveedor, con ciclo `draft → approved → ordered → (partially_)received → cancelled`. Sin tocar Woo, fábrica interna, QR, nómina, ni inventario automático. Todos los totales se recalculan en backend; sin UPDATE directo desde el cliente sobre montos.
 
-### 1. Motor central (RPC SQL)
+## 1. Migración: 2 tablas + secuencia + RPCs
 
-Crear `public.route_core_replenishment_candidate(...)` en una migración. Reutiliza `resolve_core_replenishment_action` internamente — es el **único** punto de decisión de enrutamiento.
+No existe `core_suppliers`. Se usa `supplier_name_snapshot` desde `core_replenishment_policies.external_supplier_name`; `supplier_id uuid nullable` queda reservado para el futuro catálogo.
 
-Params: `p_source_type text, p_source_id uuid, p_core_product_id uuid, p_core_variant_id uuid, p_woo_product_id bigint, p_woo_variation_id bigint, p_quantity numeric, p_unit_cost numeric, p_amount numeric, p_cost_source text, p_dry_run boolean default false`.
+**`core_external_purchase_orders`** — campos exactos pedidos (`order_number` unique `EXT-000001` via sequence + trigger, `supplier_id`, `supplier_name_snapshot`, `status`, `payment_status`, `currency`, `subtotal`, `shipping_cost`, `other_cost`, `total`, `amount_paid`, `balance_due`, `supplier_order_reference`, `estimated_delivery_date`, `notes`, `cancellation_reason`, timestamps y usuarios de aprobación / pedido / recepción / cancelación, `created_by`/`updated_by`, `created_at`/`updated_at`). CHECKs sobre `status` y `payment_status`. Trigger `updated_at`.
 
-Retorna JSONB: `route_action, severity, allow_internal_need, policy_id, replacement_product_id, replacement_woo_product_id, external_supplier_name, external_supplier_unit_cost_usd, message, warning, event_id, dedupe_key`.
+**`core_external_purchase_order_lines`** — campos exactos pedidos (`order_id` FK cascade, `policy_event_id` FK a eventos, producto/variante Core y Woo, snapshots, `quantity_ordered`, `quantity_received` default 0, `unit_cost`, `line_subtotal`, `cost_source`, `policy_id`, `status` con valor extra `cancelled`, `notes`). CHECKs: `quantity_ordered > 0`, `quantity_received >= 0`, `quantity_received <= quantity_ordered`, `unit_cost >= 0`. **UNIQUE INDEX parcial** `(policy_event_id) WHERE policy_event_id IS NOT NULL` → idempotencia estricta por evento.
 
-Comportamiento:
-- `allow_internal_factory` → `allow_internal_need=true`, sin evento.
-- `external_supplier_review` / `manual_cost_review` / `suggest_replacement` / `block_no_restock` / `block_exit` / `block_ignored` → `allow_internal_need=false` + upsert idempotente en `core_replenishment_policy_events`.
-- Sin política → `allow_internal_need=true` con warning legacy, sin evento.
-- **Si `p_dry_run = true`**: solo calcular y devolver el resultado; **no** insertar/actualizar eventos, necesidades ni auditoría. `event_id` vuelve `null`.
+**GRANT + RLS**: `GRANT SELECT, INSERT, UPDATE ... TO authenticated; GRANT ALL ... TO service_role;`. RLS activo. SELECT para authenticated. Mutaciones sensibles solo a través de RPCs SECURITY DEFINER. Sin DELETE.
 
-### 2. Idempotencia estricta (corregida)
+## 2. RPCs (SECURITY DEFINER, validan admin/manager con `has_role`)
 
-Migración añade a `core_replenishment_policy_events`:
-- Columna `dedupe_key text`.
-- Índice **UNIQUE permanente** (no parcial por status) sobre `dedupe_key`.
+Todas las transiciones toman `FOR UPDATE` sobre orden y líneas.
 
-Formato: `source_type:source_id:coalesce(product_id,'-'):coalesce(variant_id,'-'):action`.
+1. **`core_create_external_purchase_orders_from_events(p_event_ids uuid[], p_overrides jsonb default '{}'::jsonb, p_dry_run boolean default true)`**
+   - Carga eventos, valida `action='external_supplier_review'` y que no tengan línea externa.
+   - Resuelve proveedor+costo desde política; aplica overrides por evento (`quantity_ordered`, `unit_cost`, `notes`) y por proveedor (`supplier_name`, `shipping_cost`, `other_cost`, `currency`, `notes`).
+   - **Agrupación con clave normalizada**: `lower(unaccent(regexp_replace(trim(supplier_name), '\s+', ' ', 'g')))`. Un solo bucket para "Proveedor X"/" proveedor x "/"PROVEEDOR X". Se conserva `supplier_name_snapshot` legible (primera ocurrencia trimmed).
+   - Backend recalcula `line_subtotal`, `subtotal`, `total`, `balance_due`. Nunca confía en cálculo del cliente.
+   - `p_dry_run=true` → devuelve JSON preview idéntico al que se guardaría, sin escribir.
+   - `p_dry_run=false` → crea una orden `draft` por proveedor normalizado, inserta líneas, marca eventos `reviewed` con nota "Convertido en orden externa EXT-XXXXXX". No pasa eventos a `resolved`.
+   - **Preview y confirmación reciben el mismo payload** (`p_event_ids` + `p_overrides`).
 
-`INSERT ... ON CONFLICT (dedupe_key) DO UPDATE SET`:
-- `quantity = EXCLUDED.quantity` (reemplaza, **no acumula**)
-- `unit_cost = EXCLUDED.unit_cost`
-- `amount = EXCLUDED.amount`
-- refresca `external_supplier_name`, `external_supplier_unit_cost_usd`, `replacement_product_id`, `replacement_woo_product_id`, `replacement_behavior`, `cost_source`, `message`, `warning`, `policy_id`, `updated_at = now()`
-- **NO** modifica `status`, `resolved_at`, `resolved_by`, `resolution_notes` (si el evento fue resuelto/ignorado, se conserva ese estado; no se reabre por reejecución del mismo origen).
+2. **`core_update_external_purchase_order_draft(p_order_id uuid, p_header jsonb, p_lines jsonb)`** — única vía de edición.
+   - Solo si `status='draft'`; `SELECT ... FOR UPDATE` sobre orden y líneas.
+   - `p_header`: `supplier_name`, `currency`, `shipping_cost`, `other_cost`, `notes`, `estimated_delivery_date`, `supplier_order_reference`.
+   - `p_lines`: array de `{line_id, quantity_ordered, unit_cost, notes, status}`. `status='cancelled'` retira la línea (no DELETE) y exige `cancellation_notes`.
+   - Valida `quantity_ordered > 0` en líneas activas y `unit_cost >= 0`.
+   - Recalcula `line_subtotal`, `subtotal` (solo líneas no canceladas), `total = subtotal + shipping_cost + other_cost`, `balance_due = total - amount_paid`, refresca `payment_status`, `updated_at`, `updated_by`.
+   - Agregar línea manual nueva: también vía este RPC (item sin `line_id`).
 
-Resultado: reejecutar el mismo `source_id` no crea nuevo evento ni acumula cantidades, y no revive eventos ya resueltos.
+3. **`core_approve_external_purchase_order(p_order_id uuid)`**
+   - Solo desde `draft`. Valida proveedor, ≥1 línea activa, cantidades>0, costos>0, `total>0`.
+   - `status='approved'` + timestamps; eventos vinculados → `resolved` con nota.
 
-### 3. Centralización real en edge functions
+4. **`core_mark_external_purchase_order_ordered(p_order_id uuid, p_reference text, p_eta date, p_notes text)`**
+   - Solo desde `approved`. `status='ordered'`, líneas activas → `ordered`.
 
-Solo se sustituye el **punto de decisión existente**; el resto de cada función queda intacto.
+5. **`core_receive_external_purchase_order(p_order_id uuid, p_lines jsonb)`**
+   - Solo desde `ordered` o `partially_received`. Al menos un `qty_now > 0`. Nunca supera `quantity_ordered - quantity_received`.
+   - Suma recepción, actualiza estado línea (`ordered`/`partially_received`/`received`) y estado orden. Al completar todas → `received_at`/`received_by`.
+   - **No** crea inventario, **no** crea `core_production_units`, **no** crea QR/ficha viajera, **no** escribe Woo.
 
-**`core-process-fabrication-funds`**: reemplazar el bloque actual que consulta política + crea evento por una única llamada a `route_core_replenishment_candidate` (con `source_type='fabrication_fund_movement'`, `source_id=<movement_id>`). Usar `allow_internal_need` para decidir si registra movimiento interno; el evento lo crea el RPC. Eliminar la lógica de política paralela.
+6. **`core_cancel_external_purchase_order(p_order_id uuid, p_reason text)`**
+   - Requiere motivo. Bloquea cancelación si `SUM(quantity_received) > 0` (ni siquiera parcial en esta fase).
+   - `status='cancelled'`. Conserva líneas y auditoría.
 
-**`core-generate-production-needs`**: antes de insertar/actualizar cada `core_production_needs`, llamar al mismo RPC (`source_type='fabrication_fund_movement_group'`, `source_id=<primer movement del grupo>` o UUID determinista). Si `allow_internal_need=true` → flujo actual. Si `false` → skip, sumar a `by_skip_reason['policy_routed:<action>']`, sin insertar necesidad. Añadir modo `route_only: true` que ejecuta enrutador sobre movimientos pendientes sin tocar necesidades; combinado con `dry_run: true` no escribe nada (el RPC respeta `p_dry_run`).
+7. **`core_reopen_external_purchase_order(p_order_id uuid)`**
+   - Solo desde `cancelled` y `SUM(quantity_received)=0`. Vuelve a `draft` reutilizando líneas y eventos vinculados. No crea otra orden.
 
-`core-create-production-order` y `core-generate-production-units`: sin cambios en esta fase (ya bloquean vía `resolve_core_replenishment_action`; migrarán al motor central cuando sus eventos también se unifiquen).
+8. **`core_update_external_purchase_order_payment(p_order_id uuid, p_amount_paid numeric)`**
+   - `p_amount_paid >= 0` y `<= total`. Recalcula `balance_due`, `payment_status`.
 
-### 4. Botón "Procesar políticas de reposición"
+Toda mutación registra en `core_audit_logs`: `external_order_created/approved/ordered/partially_received/received/cancelled/reopened/payment_updated` con `order_id`, `order_number`, `previous_values`, `new_values`, usuario, fecha.
 
-En `PolicyReviewPanel` (`/core/mapa-woo-core` → Revisión de reposición):
-- Botón "Procesar políticas de reposición".
-- Modal preview: invoca `core-generate-production-needs` con `{ route_only: true, dry_run: true }` → devuelve conteos por bucket (interna, externo, manual, no restock, salida, reemplazos, ignorados, errores) sin escribir nada.
-- Confirmación → segunda llamada sin `dry_run` (crea necesidades internas y eventos según política).
+## 3. UI en `/core/mapa-woo-core`
 
-### 5. Mensajes `policy_blocked`
+Renombrar la pestaña **Proveedor externo** → **Reposición externa** con 3 sub-tabs:
 
-Actualizar `POLICY_ACTION_MESSAGES` en `src/lib/policyBlocked.ts` con los textos exactos pedidos. `PolicyBlockedDialog` ya tiene botón "Abrir Revisión de reposición".
+- **Pendientes**: eventos `action='external_supplier_review'`, `status IN ('open','reviewed')`, sin línea externa. Selección múltiple → **Crear orden externa** abre `ExternalOrderPreviewDialog`.
+- **Órdenes**: tabla (Nº, proveedor, estado, productos, unidades, subtotal, envío, total, pagado, pendiente, fecha, ETA, acciones) con filtros por status y acciones Ver/Editar borrador/Aprobar/Marcar pedida/Registrar recepción/Cancelar/Reabrir.
+- **Recibidas**: shortcut a `received` con botón visual **Registrar entrada en inventario** deshabilitado (tooltip "Próxima fase").
 
-### Archivos afectados
+`ExternalOrderPreviewDialog`: llama la RPC con `p_dry_run=true` + `p_overrides`. Muestra grupos por proveedor normalizado. Permite editar cantidad, costo unitario, notas por línea; proveedor, envío, otros, notas por grupo. Cada cambio actualiza el payload local y re-invoca dry-run (debounce) para que el backend recalcule totales. Confirmar → mismo payload con `p_dry_run=false`. Si un producto no tiene proveedor en política: banner "Este producto está marcado como proveedor externo, pero no tiene proveedor configurado" + botón **Configurar proveedor** (abre política).
 
-- **Migración nueva**: RPC `route_core_replenishment_candidate` + columna `dedupe_key` + índice UNIQUE permanente + GRANT EXECUTE.
-- **Editar**: `supabase/functions/core-process-fabrication-funds/index.ts` (sustituir punto de decisión).
-- **Editar**: `supabase/functions/core-generate-production-needs/index.ts` (integración enrutador + modo `route_only`).
-- **Editar**: `src/components/core/woocore/PolicyReviewPanel.tsx` (botón + modal preview).
-- **Editar**: `src/lib/policyBlocked.ts` (textos).
+`ExternalOrderDetailDrawer`: edición de borrador SOLO vía `core_update_external_purchase_order_draft`. Aprobar / marcar pedida / cancelar / reabrir / pagos vía sus RPCs. `ExternalOrderReceiveDialog` usa RPC de recepción.
 
-### Fuera de scope
+Componentes nuevos en `src/components/core/woocore/external/`:
+- `ExternalReplenishmentPanel.tsx`
+- `ExternalPendingEventsList.tsx`
+- `ExternalOrderPreviewDialog.tsx`
+- `ExternalOrdersList.tsx`
+- `ExternalOrderDetailDrawer.tsx`
+- `ExternalOrderReceiveDialog.tsx`
 
-Sin órdenes de compra externas, sin reemplazos automáticos, sin OP automáticas, sin tocar Woo/stock/QR/escaneo/nómina/España/histórico. Sin tablas nuevas (1 columna + 1 índice).
+Hook `src/hooks/useExternalPurchaseOrders.ts` con queries + wrappers de RPCs.
 
-### Pendiente para Bloque 2
+## 4. Archivos afectados
 
-Conversión de eventos `external_supplier_review` en órdenes de compra reales, aplicación confirmada de `suggest_replacement`, y migración de `core-create-production-order` / `core-generate-production-units` al motor central para unificar eventos.
+- Migración nueva: 2 tablas, sequence, triggers, RLS, GRANT, 8 RPCs.
+- Editar `src/pages/core/CoreWooCoreMap.tsx` (renombrar tab + montar panel).
+- Nuevos: 6 componentes + 1 hook.
+
+## Fuera de scope
+
+Sin escritura Woo, sin stock automático al recibir, sin creación de `core_production_units` para recepciones externas, sin OP interna, sin QR/ficha viajera, sin procesos de producción, sin nómina, sin escaneo, sin BASICO ESPAÑA, sin dashboard nuevo, sin módulo financiero completo, sin catálogo de proveedores nuevo, sin reemplazos automáticos, sin reprocesar histórico, sin DELETE (retiro = `status='cancelled'`).
+
+## Pendiente para Bloque 3
+
+Entrada auditable a inventario para recepciones externas mediante **movimientos de inventario o módulo separado de recepción externa** (nunca vía `core_production_units` ni QR interno), catálogo unificado de proveedores + `supplier_id`, integración con `core_fabrication_funds` para egresos de pagos, escritura de stock Woo cuando aplique, aplicación confirmada de `suggest_replacement`, y migración de `core-create-production-order`/`core-generate-production-units` al motor central.
