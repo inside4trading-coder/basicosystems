@@ -359,7 +359,7 @@ export default function CoreWooCoreMap() {
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "manualCost", ctx })}><DollarSign className="h-3 w-3 mr-1" />Costo</Button>
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "route", ctx })}><Truck className="h-3 w-3 mr-1" />Ruta</Button>
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "lifecycle", ctx })}><Ban className="h-3 w-3 mr-1" />Estado</Button>
-                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "replacement", ctx })}><Repeat className="h-3 w-3 mr-1" />Reemplazo</Button>
+                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setNoRestockDialog({ open: true, initialCtx: ctx, initialStatus: "replaced" })}><Repeat className="h-3 w-3 mr-1" />Reemplazo</Button>
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "brandRole", ctx })}><Tag className="h-3 w-3 mr-1" />Rol</Button>
                       </div>
                     </td>
