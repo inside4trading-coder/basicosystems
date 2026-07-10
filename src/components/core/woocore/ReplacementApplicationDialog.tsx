@@ -307,7 +307,7 @@ export function ReplacementApplicationDialog({
     p_adjustment_reason: reason || null,
   });
 
-  const runPreview = async () => {
+  const runPreview = async (opts?: { silent?: boolean }) => {
     if (!event) return;
     setRunning(true);
     setPreview(null);
@@ -318,11 +318,13 @@ export function ReplacementApplicationDialog({
       } as any);
       if (error) throw error;
       setPreview(data);
-      if ((data as any)?.error) {
+      if ((data as any)?.error && !opts?.silent) {
         toast({ title: "No se puede aplicar", description: String((data as any).error), variant: "destructive" });
       }
     } catch (e: any) {
-      toast({ title: "Error en preview", description: e?.message ?? String(e), variant: "destructive" });
+      if (!opts?.silent) {
+        toast({ title: "Error en preview", description: e?.message ?? String(e), variant: "destructive" });
+      }
     } finally {
       setRunning(false);
     }
