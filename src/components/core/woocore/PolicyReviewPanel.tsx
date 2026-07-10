@@ -36,6 +36,8 @@ type Event = {
   replacement_woo_product_id: number | null;
   external_supplier_name: string | null;
   external_supplier_unit_cost_usd: number | null;
+  replacement_behavior?: string | null;
+  resolution_data?: any;
 };
 
 const SEVERITY_STYLES: Record<string, string> = {
