@@ -18,15 +18,26 @@ export function ReplacementPickerDialog({ open, onClose, onDone, ctx, coreProduc
   const [behavior, setBehavior] = useState(p?.replacement_behavior ?? "suggest_only");
   const [saving, setSaving] = useState(false);
 
+  const originalWooId = ctx.map?.woo_product_id ?? ctx.core?.woo_product_id ?? null;
   const candidates = useMemo(() => {
     const s = search.trim().toLowerCase();
     return coreProducts
       .filter(c => c.id !== ctx.core?.id)
+      .filter(c => !originalWooId || c.woo_product_id !== originalWooId)
       .filter(c => !s || c.core_sku.toLowerCase().includes(s) || c.name.toLowerCase().includes(s))
       .slice(0, 100);
-  }, [coreProducts, search, ctx.core?.id]);
+  }, [coreProducts, search, ctx.core?.id, originalWooId]);
 
   async function save() {
+    if (replacementId && (replacementId === ctx.core?.id)) {
+      toast({ title: "Configuración inválida", description: "Un producto no puede reemplazarse por sí mismo.", variant: "destructive" });
+      return;
+    }
+    const chosen = coreProducts.find(c => c.id === replacementId);
+    if (chosen && originalWooId && chosen.woo_product_id === originalWooId) {
+      toast({ title: "Configuración inválida", description: "El reemplazo apunta al mismo producto Woo original.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       const { data: userData } = await supabase.auth.getUser();

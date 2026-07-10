@@ -141,17 +141,61 @@ export function ReplacementApplicationDialog({
     },
   });
 
-  // 4) Core variants for replacement
+  // 4) Core variants for replacement (with stock)
   const { data: replacementVariants = [], refetch: refetchVariants } = useQuery({
     queryKey: ["replacement_variants", replacementProduct?.id],
     enabled: !!replacementProduct?.id,
     queryFn: async () => {
       const { data } = await supabase
         .from("core_product_variants")
-        .select("id, size, variant_label, woo_variation_id, variant_sku")
+        .select("id, size, variant_label, color, woo_variation_id, variant_sku, woo_stock_quantity")
         .eq("core_product_id", replacementProduct!.id)
         .order("sort_order", { ascending: true });
       return data ?? [];
+    },
+  });
+
+  const variantIds = useMemo(
+    () => (replacementVariants as any[]).map((v: any) => v.id).sort(),
+    [replacementVariants],
+  );
+
+  // Production units currently in fabrication — same source as CoreInventory, excludes cancelled/lost/entered_inventory
+  const { data: unitsInFabByVariant = {}, refetch: refetchUnits } = useQuery({
+    queryKey: ["replacement_variants_units", variantIds],
+    enabled: variantIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("core_production_units")
+        .select("core_variant_id")
+        .in("core_variant_id", variantIds)
+        .not("status", "in", "(cancelled,lost,entered_inventory)");
+      const map: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => {
+        if (!r.core_variant_id) return;
+        map[r.core_variant_id] = (map[r.core_variant_id] ?? 0) + 1;
+      });
+      return map;
+    },
+  });
+
+  // Open production needs — quantity_pending = needed - already converted to OP, evita doble conteo con unidades
+  const { data: needsPendingByVariant = {}, refetch: refetchNeeds } = useQuery({
+    queryKey: ["replacement_variants_needs", variantIds],
+    enabled: variantIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("core_production_needs")
+        .select("core_variant_id, quantity_pending, status")
+        .in("core_variant_id", variantIds)
+        .not("status", "in", "(cancelled,completed,resolved,rejected)");
+      const map: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => {
+        if (!r.core_variant_id) return;
+        const q = Number(r.quantity_pending ?? 0);
+        if (q > 0) map[r.core_variant_id] = (map[r.core_variant_id] ?? 0) + q;
+      });
+      return map;
     },
   });
 
@@ -175,6 +219,30 @@ export function ReplacementApplicationDialog({
     replacementVariants.length > 0;
 
   const hasVariants = replacementVariants.length > 0;
+
+  // Self-replacement guard: a product cannot replace itself
+  const selfReplacement =
+    (!!event?.core_product_id && !!effectiveReplacementCoreId && event.core_product_id === effectiveReplacementCoreId) ||
+    (!!event?.woo_product_id && !!effectiveReplacementWooId && event.woo_product_id === effectiveReplacementWooId);
+
+  // Per-variant projections (stock + en fabricación + por producir)
+  const variantProjections = useMemo(() => {
+    return (replacementVariants as any[]).map((v: any) => {
+      const stock = Number(v.woo_stock_quantity ?? 0);
+      const inFab = Number((unitsInFabByVariant as any)[v.id] ?? 0);
+      const toProduce = Number((needsPendingByVariant as any)[v.id] ?? 0);
+      const projected = stock + inFab + toProduce;
+      return { id: v.id as string, stock, inFab, toProduce, projected };
+    });
+  }, [replacementVariants, unitsInFabByVariant, needsPendingByVariant]);
+
+  const mostNeededId = useMemo(() => {
+    if (variantProjections.length === 0) return null;
+    const min = Math.min(...variantProjections.map((p) => p.projected));
+    const winners = variantProjections.filter((p) => p.projected === min);
+    return winners.length === 1 ? winners[0].id : null;
+  }, [variantProjections]);
+
 
   // Reset when opened / event changes / replacement changes
   useEffect(() => {
@@ -224,7 +292,7 @@ export function ReplacementApplicationDialog({
 
   const needReason = confirmedQty !== suggested && (!reason || !reason.trim());
   const totalsMatch = totalAllocated === confirmedQty && confirmedQty > 0;
-  const canPreview = !behaviorBlocked && !isResolved && allocations.length > 0 && totalsMatch && !needReason;
+  const canPreview = !behaviorBlocked && !isResolved && !selfReplacement && allocations.length > 0 && totalsMatch && !needReason;
   const canConfirm = !!preview && !preview.error && canPreview;
 
   const buildPayload = () => ({
@@ -322,7 +390,11 @@ export function ReplacementApplicationDialog({
     qc.invalidateQueries({ queryKey: ["replacement_product"] });
     qc.invalidateQueries({ queryKey: ["replacement_variants"] });
     qc.invalidateQueries({ queryKey: ["replacement_woo_map"] });
-    await Promise.all([refetchPolicy(), refetchReplacement(), refetchVariants()]);
+    qc.invalidateQueries({ queryKey: ["replacement_variants_units"] });
+    qc.invalidateQueries({ queryKey: ["replacement_variants_needs"] });
+    await Promise.all([
+      refetchPolicy(), refetchReplacement(), refetchVariants(), refetchUnits(), refetchNeeds(),
+    ]);
     setPreview(null);
   };
 
@@ -379,6 +451,19 @@ export function ReplacementApplicationDialog({
                 ? "El comportamiento del reemplazo es 'Ignorar'. No aplicable."
                 : "Este reemplazo está configurado como Solo sugerir. Para seleccionar tallas y generar la necesidad del producto sustituto, cambia el comportamiento a Usar en reposición con confirmación."}
             </div>
+          </div>
+        )}
+
+        {selfReplacement && !isResolved && (
+          <div className="p-3 rounded border border-red-500 bg-red-500/10 text-sm flex gap-2">
+            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <div className="font-medium">Configuración inválida</div>
+              <div>Un producto no puede reemplazarse por sí mismo. Edita la política y elige otro producto reemplazo.</div>
+            </div>
+            <Button size="sm" variant="outline" onClick={openPolicyEditor}>
+              <Pencil className="w-3 h-3 mr-1" /> Editar política
+            </Button>
           </div>
         )}
 
@@ -440,27 +525,66 @@ export function ReplacementApplicationDialog({
 
               {/* Variable with Core variants available */}
               {expectsVariants && hasVariants && (
-                <div className="border rounded divide-y">
-                  {replacementVariants.map((v: any) => {
-                    const label = [v.size, v.variant_label].filter(Boolean).join(" · ") || v.variant_sku || v.id.slice(0, 8);
-                    return (
-                      <div key={v.id} className="grid grid-cols-[1fr_140px] gap-2 items-center p-2">
-                        <div className="text-xs">
-                          <div className="font-medium">{label}</div>
-                          <div className="text-muted-foreground">{v.variant_sku ?? "—"}</div>
-                        </div>
-                        <Input
-                          type="number"
-                          value={qtyByVariantId[v.id] ?? 0}
-                          onChange={(e) => {
-                            setQtyByVariantId((prev) => ({ ...prev, [v.id]: Number(e.target.value) }));
-                            invalidatePreview();
-                          }}
-                          min={0}
-                        />
-                      </div>
-                    );
-                  })}
+                <div className="border rounded overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/40 text-muted-foreground">
+                      <tr>
+                        <th className="text-left p-2">Variante</th>
+                        <th className="text-right p-2">Stock</th>
+                        <th className="text-right p-2">En fab.</th>
+                        <th className="text-right p-2">Por producir</th>
+                        <th className="text-right p-2">Proyectado</th>
+                        <th className="text-right p-2">Nueva cant.</th>
+                        <th className="text-right p-2">Después</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(replacementVariants as any[]).map((v: any) => {
+                        const label = [v.size, v.color ?? v.variant_label].filter(Boolean).join(" · ") || v.variant_sku || v.id.slice(0, 8);
+                        const proj = variantProjections.find((p) => p.id === v.id) ?? { stock: 0, inFab: 0, toProduce: 0, projected: 0 };
+                        const newQty = Number(qtyByVariantId[v.id] ?? 0);
+                        const after = proj.projected + newQty;
+                        const isMostNeeded = mostNeededId === v.id;
+                        let badge: { label: string; cls: string } | null = null;
+                        if (proj.projected === 0) badge = { label: "Sin cobertura", cls: "bg-red-500/15 text-red-600 border-red-500/40" };
+                        else if (proj.projected <= 2) badge = { label: "Prioridad alta", cls: "bg-orange-500/15 text-orange-600 border-orange-500/40" };
+                        else badge = { label: "Cubierta", cls: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30" };
+                        return (
+                          <tr key={v.id} className="border-t">
+                            <td className="p-2">
+                              <div className="font-medium">{label}</div>
+                              <div className="text-muted-foreground">{v.variant_sku ?? "—"}</div>
+                              <div className="flex gap-1 mt-1 flex-wrap">
+                                <Badge variant="outline" className={`text-[9px] ${badge.cls}`}>{badge.label}</Badge>
+                                {isMostNeeded && (
+                                  <Badge variant="outline" className="text-[9px] bg-primary/10 border-primary/40 text-primary">
+                                    Más necesaria
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-2 text-right font-mono">{proj.stock}</td>
+                            <td className="p-2 text-right font-mono">{proj.inFab}</td>
+                            <td className="p-2 text-right font-mono">{proj.toProduce}</td>
+                            <td className="p-2 text-right font-mono">{proj.projected}</td>
+                            <td className="p-2 text-right">
+                              <Input
+                                type="number"
+                                className="h-8 w-20 ml-auto"
+                                value={qtyByVariantId[v.id] ?? 0}
+                                onChange={(e) => {
+                                  setQtyByVariantId((prev) => ({ ...prev, [v.id]: Number(e.target.value) }));
+                                  invalidatePreview();
+                                }}
+                                min={0}
+                              />
+                            </td>
+                            <td className="p-2 text-right font-mono">{after}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
@@ -595,7 +719,11 @@ export function ReplacementApplicationDialog({
         onDone={() => {
           qc.invalidateQueries({ queryKey: ["replacement_variants"] });
           qc.invalidateQueries({ queryKey: ["replacement_woo_map"] });
+          qc.invalidateQueries({ queryKey: ["replacement_variants_units"] });
+          qc.invalidateQueries({ queryKey: ["replacement_variants_needs"] });
           refetchVariants();
+          refetchUnits();
+          refetchNeeds();
         }}
         ctx={syncCtx}
       />

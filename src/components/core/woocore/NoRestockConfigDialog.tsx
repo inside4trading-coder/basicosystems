@@ -81,10 +81,14 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
     }
   }, [selected, rowsCtx, initialStatus]);
 
-  function filterRows(term: string, excludeId?: number) {
-    if (!term) return rowsCtx.slice(0, 50);
-    return rowsCtx
-      .filter(r => r.map.woo_product_id !== excludeId)
+  function filterRows(term: string, exclude?: { wooId?: number; coreId?: string | null }) {
+    const base = rowsCtx.filter(r => {
+      if (exclude?.wooId && r.map.woo_product_id === exclude.wooId) return false;
+      if (exclude?.coreId && r.core?.id === exclude.coreId) return false;
+      return true;
+    });
+    if (!term) return base.slice(0, 50);
+    return base
       .filter(r =>
         String(r.map.woo_product_id).includes(term) ||
         (r.map.woo_product_name ?? "").toLowerCase().includes(term) ||
@@ -95,8 +99,8 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
 
   const results = useMemo(() => filterRows(debounced), [debounced, rowsCtx]);
   const replacementResults = useMemo(
-    () => filterRows(replacementDebounced, selected?.map.woo_product_id),
-    [replacementDebounced, rowsCtx, selected?.map.woo_product_id],
+    () => filterRows(replacementDebounced, { wooId: selected?.map.woo_product_id, coreId: selected?.core?.id ?? null }),
+    [replacementDebounced, rowsCtx, selected?.map.woo_product_id, selected?.core?.id],
   );
 
   function policyLabel(ctx: Ctx) {
@@ -110,6 +114,18 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
     if (status === "replaced" && !replacement) {
       toast({ title: "Falta reemplazo", description: "Selecciona un producto reemplazo.", variant: "destructive" });
       return;
+    }
+    if (status === "replaced" && replacement) {
+      const sameWoo = replacement.map.woo_product_id === selected.map.woo_product_id;
+      const sameCore = !!selected.core?.id && replacement.core?.id === selected.core?.id;
+      if (sameWoo || sameCore) {
+        toast({
+          title: "Configuración inválida",
+          description: "Un producto no puede reemplazarse por sí mismo.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     setSaving(true);
     try {
