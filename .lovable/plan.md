@@ -1,77 +1,64 @@
-## Alcance
+## Bugfix: candidatos de reemplazo filtrados por política efectiva real
 
-Frontend only. Todo el trabajo en `src/components/core/woocore/ReplacementApplicationDialog.tsx` (más un pequeño helper para cargar la política efectiva). Sin backend, sin migraciones, sin RPC nuevas, sin cambios financieros.
+Sólo frontend, un archivo: `src/components/core/woocore/NoRestockConfigDialog.tsx`. Reutiliza `LifecycleStatusDialog` y `ReplenishmentRouteDialog` existentes.
 
-## 1. Política actual como fuente de verdad
+### 1. Resolución de política efectiva (determinista, null-safe)
 
-Añadir dentro del diálogo una query `effectivePolicy`:
+En `useFabricableReplacementCandidates`, reemplazar el `.or(...)` combinado por dos queries independientes:
 
-- Key: `["effective-policy", event.policy_id ?? event.woo_product_id ?? event.core_product_id]`.
-- Lookup:
-  1. Si `event.policy_id` → `core_replenishment_policies` por `id`.
-  2. Fallback → por `core_product_id`, luego `woo_product_id`.
-- Los campos efectivos usados por el diálogo (`replacement_behavior`, `replacement_product_id`, `replacement_woo_product_id`, `replenishment_route`) se leen SIEMPRE de `effectivePolicy`, no del `event`. El evento queda solo como snapshot / fallback si la política no existe.
-- `behaviorBlocked` se recalcula con `effectivePolicy.replacement_behavior`.
+- Sólo ejecutar `in('core_product_id', coreIds)` si `coreIds.length > 0`.
+- Sólo ejecutar `in('woo_product_id', wooIds)` si `wooIds.length > 0`.
+- Traer también `restock_enabled`, `updated_at`. Ordenar `.order('updated_at', { ascending: false })` y al hacer `Map.set` sólo escribir si la key aún no existe → nos quedamos con la más reciente por identidad.
+- Construir `policyByCore` y `policyByWoo`.
+- Resolución por candidato con prioridad: (1) `policyByCore[r.id]`, (2) `policyByWoo[r.woo_product_id]`, (3) sin política.
 
-Al guardar `NoRestockConfigDialog`:
+### 2. Criterio de bloqueo (final)
 
-- Invalidar `["replenishment-policies"]` y `["effective-policy", ...]`.
-- Refetch de `effectivePolicy`.
-- Refetch de `replacementProduct` y `replacementVariants` (dependen del nuevo `replacement_product_id` / `replacement_woo_product_id`).
-- Si el nuevo behavior permite aplicar, el diálogo permanece abierto y muestra automáticamente la sección de asignación.
-- No depender de que el `event` cambie.
+Bloquear si cumple **cualquiera**:
 
-## 2. Warning + botones
+- `lifecycle_status ∈ {no_restock, exit, ignored, replaced}`
+- `replenishment_route === 'external_supplier'`
+- `restock_enabled === false` (aunque `lifecycle_status='active'`)
+- Producto Core no fabricable real: variable con `variants_count === 0`.
 
-Cuando `behaviorBlocked`:
+Motivo por prioridad (primer match gana): `Reemplazado`, `No restock`, `En salida`, `Ignorado`, `Proveedor externo`, `Restock deshabilitado`, `Variable sin variantes`, `Producto Core no activo`.
 
-- Copy: "Este reemplazo está configurado como Solo sugerir. Para seleccionar tallas y generar la necesidad del producto sustituto, cambia el comportamiento a Usar en reposición con confirmación."
-- Footer: **Editar política** (abre `NoRestockConfigDialog` con ctx reconstruido: `map` desde `core_woo_product_map` por `event.woo_product_id`, `policy = effectivePolicy`, `core` desde `core_products` por `effectivePolicy.core_product_id`) + **Cerrar**.
+Ningún candidato con `blocked_reason` puede mostrar el badge "Fabricable".
 
-El mismo botón "Editar política" se ofrece también dentro del flujo abierto para cambiar el producto reemplazo (no se abre `ReplacementPickerDialog` desde aquí).
+### 3. Sin política → permitido si Core es fabricable
 
-## 3. Selector de variantes — producto simple vs variable
+`core_products.commercial_status='active'` + `is_restockable=true` + (simple o variable con variantes) → mostrar badge `Fabricable · Sin política explícita`. Mantiene compatibilidad histórica.
 
-Determinar si el reemplazo espera variantes usando información existente sin backend nuevo:
+### 4. Visibilidad en el selector
 
-- Query `replacementWooMap` a `core_woo_product_map` por `woo_product_id = replacementProduct.woo_product_id ?? effectivePolicy.replacement_woo_product_id`. Traer `woo_product_type`, `woo_variations_count`, `variants_sync_status`.
-- `expectsVariants = woo_product_type === "variable" || (woo_variations_count ?? 0) > 0`.
+- Ocultar bloqueados en resultados normales.
+- Si el término coincide **exactamente** con `core_sku`, `woo_product_sku` o `String(woo_product_id)`, mostrar el bloqueado deshabilitado con badge `No disponible` + motivo.
+- Exclusión null-safe del producto original por `core_id` y `woo_product_id`.
 
-Comportamiento:
+### 5. Acción "Abrir política de {sku}" — reutilizar diálogos existentes
 
-- **Simple** (`!expectsVariants`): una única fila sin selector, cantidad editable, `allocations = [{ core_variant_id: null, woo_variation_id: null, quantity }]`.
-- **Variable con variantes Core disponibles** (`replacementVariants.length > 0`): render de una fila por variante con `talla · color · SKU` + input cantidad (default 0). Se mapea internamente a `allocations` filtrando cantidad > 0. No se prellena la talla del original.
-- **Variable sin variantes Core**: bloque de estado con "No se encontraron variantes fabricables para el producto reemplazo." y acciones: Sincronizar variantes, Abrir producto (`/core/productos/:id`), Editar política.
+`NoRestockConfigDialog` sólo gestiona `no_restock/exit/replaced` y siempre guarda `restock_enabled=false`, así que NO sirve para reactivar CAN0001. En su lugar:
 
-## 4. Sincronizar variantes con identidad Woo correcta
+- Cuando el candidato seleccionado esté bloqueado, mostrar dos botones:
+  - `Cambiar estado` → abre `LifecycleStatusDialog` con `ctx` del candidato (permite fijar `lifecycle_status='active'` + `restock_enabled=true`).
+  - `Cambiar ruta` → abre `ReplenishmentRouteDialog` (permite fijar `replenishment_route='internal_factory'`).
+- Construir el `ctx` a partir del candidato: `{ map: coreWooMap por woo_product_id (o placeholder mínimo si no hay Woo), core: {id: core_id, core_sku, name}, policy: policyEfectiva }`.
+- Deshabilitar el toast/guardado del reemplazo mientras esté bloqueado; el mensaje del toast al intentar guardar queda:  
+  `"{core_sku} no puede usarse como reemplazo porque su política actual es {motivo}. Cambia su política a Activo + Fabricación interna con restock habilitado, o selecciona otro producto."`
 
-- `Sincronizar variantes` usa `SyncVariantsDialog` existente pasándole el Woo parent product ID:
-  - Preferencia: `replacementProduct.woo_product_id`.
-  - Fallback: `effectivePolicy.replacement_woo_product_id`.
-- Si ninguno existe: deshabilitar el botón con mensaje "Este producto no tiene un producto Woo vinculado. Revisa su conexión en Mapa Woo/Core."
-- No se crean variantes desde el frontend.
+### 6. Invalidación tras corregir la política del candidato
 
-## 5. Preview con costos del backend
+Al cerrar `LifecycleStatusDialog` o `ReplenishmentRouteDialog` con éxito (`onDone`):
 
-- Fuente principal: respuesta del `dry_run` de `core_apply_replacement_event` (`unit_cost`, `cost_source`, `subtotal`, `estimated_total`, `warnings`, `route_summary`).
-- Costo reservado original: query pequeña a `core_fabrication_fund_movements` cuando `event.source_type === "fabrication_fund_movement"` y `event.source_id` → `amount`. Fallback: ocultar la línea.
-- Bloque de preview muestra:
-  - Original: nombre + `woo_product_id/variation_id` + costo reservado (`amount`).
-  - Reemplazo: por asignación → talla / color / SKU / cantidad / unit_cost del backend / subtotal del backend.
-  - Total destino = `estimated_total`.
-  - Diferencia estimada = `estimated_total − amount` (solo informativa).
-  - Warnings del backend si vienen.
-- No se calculan costos con `unit_cost_override` u otros campos locales.
+- `queryClient.invalidateQueries` para: `["fabricable-replacement-candidates"]`, `["replenishment-policies"]`, `["woo-product-map"]`, `["core-products"]` (y variantes con prefijo si existen).
+- `refetch()` del selector para que el candidato pase de `No disponible · Reemplazado` a `Fabricable` sin recargar ni cerrar el flujo de reemplazo.
 
-## 6. Invalidación del preview
+### 7. Validación
 
-Cualquier cambio en política efectiva, producto reemplazo, lista de variantes, asignaciones, `confirmedQty` o `reason` → `setPreview(null)` + `Confirmar reemplazo` deshabilitado hasta un nuevo `Generar preview` exitoso.
+- Typecheck.
+- CAN0001 `lifecycle_status='replaced'` → oculto por defecto; visible deshabilitado sólo con búsqueda exacta; motivo `Reemplazado`.
+- Tras usar `LifecycleStatusDialog` para dejar CAN0001 `active + restock_enabled=true` y `ReplenishmentRouteDialog` para `internal_factory`, el candidato aparece como `Fabricable` sin recargar y permite guardar SHM019 → CAN0001.
 
-## 7. Confirmación
+### Fuera de alcance
 
-Sin cambios: `core_apply_replacement_event` con `p_dry_run: false` y el mismo payload actual.
-
-## Archivos a tocar
-
-- `src/components/core/woocore/ReplacementApplicationDialog.tsx` — reescritura parcial.
-- Ninguno más. Sin backend. Sin migraciones. Sin RPC. Sin cambios financieros. Sin Woo writes.
+Sin backend, sin migraciones, sin RPC, sin Woo writes, sin tocar reservas ni reemplazos existentes.
