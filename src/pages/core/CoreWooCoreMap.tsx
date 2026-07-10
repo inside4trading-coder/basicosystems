@@ -451,9 +451,15 @@ export default function CoreWooCoreMap() {
           <p className="text-sm text-muted-foreground">Productos sin estructura de costos activa y sin costo manual fallback.</p>
           {renderMainTable(missingCostRows)}
         </TabsContent>
-        <TabsContent value="external" className="space-y-3">
-          <p className="text-sm text-muted-foreground">Productos marcados con ruta <b>Proveedor externo</b>.</p>
-          {renderMainTable(externalRows)}
+        <TabsContent value="external" className="space-y-4">
+          <div>
+            <p className="text-sm text-muted-foreground mb-2">Productos con ruta <b>Proveedor externo</b>.</p>
+            {renderMainTable(externalRows)}
+          </div>
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-semibold mb-2">Órdenes a proveedor</h3>
+            <ExternalReplenishmentPanel />
+          </div>
         </TabsContent>
         <TabsContent value="norestock" className="space-y-3">
           <p className="text-sm text-muted-foreground">Productos en <b>No restock</b> o <b>En salida</b>. Aquí eliges reemplazo y comportamiento.</p>
