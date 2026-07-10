@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -207,8 +207,22 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
     return () => clearTimeout(t);
   }, [replacementSearch]);
 
+  // Track for which `selected` identity we've already performed the initial rehydrate
+  // of `replacement` from the saved policy. Without this, clicking "Cambiar" clears
+  // `replacement` and the effect immediately re-selects it from `selected.policy`.
+  const hydratedForRef = useRef<string | null>(null);
+
+  function selectedIdentity(s: Ctx | null): string | null {
+    if (!s) return null;
+    return s.core?.id ?? (s.map?.woo_product_id != null ? `woo:${s.map.woo_product_id}` : null);
+  }
+
   useEffect(() => {
-    if (!selected) return;
+    if (!selected) {
+      hydratedForRef.current = null;
+      return;
+    }
+    hydratedForRef.current = null;
     const p = selected.policy;
     const lcRaw = p?.lifecycle_status as LifecycleChoice | undefined;
     const validChoices: LifecycleChoice[] = ["no_restock", "exit", "replaced"];
@@ -220,7 +234,8 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
     setReplacement(null);
   }, [selected, initialStatus]);
 
-  // Rehydrate replacement from candidates, refresh if policy changed and item is still there.
+  // Rehydrate replacement from candidates. Initial autoselect runs ONCE per `selected`.
+  // After the user clicks "Cambiar" (setReplacement(null)), do not re-hydrate.
   useEffect(() => {
     if (!selected || status !== "replaced" || fabricableCandidates.length === 0) return;
     if (replacement) {
@@ -228,8 +243,14 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
       if (updated && updated !== replacement) setReplacement(updated);
       return;
     }
+    const identity = selectedIdentity(selected);
+    if (!identity) return;
+    if (hydratedForRef.current === identity) return;
     const p = selected.policy;
-    if (!p) return;
+    if (!p) {
+      hydratedForRef.current = identity;
+      return;
+    }
     if (p.replacement_product_id) {
       const found = fabricableCandidates.find(c => c.core_id === p.replacement_product_id);
       if (found) setReplacement(found);
@@ -237,6 +258,7 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
       const found = fabricableCandidates.find(c => c.woo_product_id === p.replacement_woo_product_id);
       if (found) setReplacement(found);
     }
+    hydratedForRef.current = identity;
   }, [selected, status, fabricableCandidates, replacement]);
 
   function filterRows(term: string, exclude?: { wooId?: number; coreId?: string | null }) {

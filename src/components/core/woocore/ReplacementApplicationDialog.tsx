@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -327,6 +327,28 @@ export function ReplacementApplicationDialog({
       setRunning(false);
     }
   };
+
+  // Auto-generate preview when inputs are valid, so "Confirmar reemplazo" enables
+  // without requiring the user to press "Generar preview" first.
+  const autoPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (autoPreviewTimer.current) {
+      clearTimeout(autoPreviewTimer.current);
+      autoPreviewTimer.current = null;
+    }
+    if (!open || !event) return;
+    if (isResolved) return;
+    if (!canPreview) return;
+    if (preview || running) return;
+    autoPreviewTimer.current = setTimeout(() => { void runPreview(); }, 250);
+    return () => {
+      if (autoPreviewTimer.current) {
+        clearTimeout(autoPreviewTimer.current);
+        autoPreviewTimer.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, event?.id, canPreview, preview, running, confirmedQty, reason, JSON.stringify(allocations)]);
 
   const runConfirm = async () => {
     if (!event || !preview) return;
