@@ -337,11 +337,17 @@ export function PolicyReviewPanel() {
                     <td className="p-2"><Badge variant="outline">{r.status}</Badge></td>
                     <td className="p-2">
                       <div className="flex flex-col gap-1 min-w-[160px]">
-                        {r.status !== "reviewed" && (
-                          <Button size="sm" variant="outline" onClick={() => setEventStatus(r.id, "reviewed")}>
-                            Revisado
+                        {r.action === "suggest_replacement" && r.status !== "resolved" && (
+                          <Button size="sm" onClick={() => setReplacementEvent(r)}>
+                            <Wand2 className="w-3 h-3 mr-1" />Aplicar reemplazo
                           </Button>
                         )}
+                        {r.action === "suggest_replacement" && r.status === "resolved" && (
+                          <Button size="sm" variant="outline" onClick={() => setReplacementEvent(r)}>
+                            Ver resumen
+                          </Button>
+                        )}
+                        {r.status !== "reviewed" && (
                         {r.status !== "resolved" && (
                           <Button size="sm" variant="outline" onClick={() => setEventStatus(r.id, "resolved")}>
                             Resolver
