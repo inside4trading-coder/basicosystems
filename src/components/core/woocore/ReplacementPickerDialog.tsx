@@ -39,6 +39,7 @@ export function ReplacementPickerDialog({ open, onClose, onDone, ctx, coreProduc
       return;
     }
     setSaving(true);
+    try {
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id ?? null;
       const patch: any = {
