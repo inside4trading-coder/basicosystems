@@ -222,6 +222,41 @@ export default function CoreWooCoreMap() {
     }
   }
 
+  async function clearReplacement(ctx: RowCtx) {
+    const p = ctx.policy;
+    if (!p) return;
+    const label = ctx.core?.core_sku ?? ctx.map.woo_product_name ?? `Woo #${ctx.map.woo_product_id}`;
+    if (!window.confirm(`Eliminar el reemplazo configurado para ${label}? Se limpiarán producto reemplazo y comportamiento. El estado del producto no cambia.`)) return;
+    try {
+      const patch: any = {
+        woo_product_id: ctx.map.woo_product_id,
+        core_product_id: ctx.core?.id ?? null,
+        replacement_product_id: null,
+        replacement_woo_product_id: null,
+        replacement_behavior: "suggest_only",
+      };
+      const { previous } = await upsertPolicy(patch);
+      await logStrategyDecision({
+        woo_product_id: ctx.map.woo_product_id,
+        core_product_id: ctx.core?.id ?? null,
+        decision_type: "clear_replacement",
+        previous_values: {
+          replacement_product_id: previous?.replacement_product_id ?? null,
+          replacement_woo_product_id: previous?.replacement_woo_product_id ?? null,
+          replacement_behavior: previous?.replacement_behavior ?? null,
+        },
+        new_values: { replacement_product_id: null, replacement_woo_product_id: null, replacement_behavior: "suggest_only" },
+      });
+      toast({ title: "Reemplazo eliminado" });
+      qc.invalidateQueries({ queryKey: ["replenishment-policies"] });
+      qc.invalidateQueries({ queryKey: ["strategy-audit"] });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  }
+
+
+
   function badge(text: string, variant: "default" | "secondary" | "destructive" | "outline" = "outline") {
     return <Badge variant={variant} className="text-[10px]">{text}</Badge>;
   }
