@@ -342,7 +342,7 @@ export function ReplacementApplicationDialog({
     if (isResolved) return;
     if (!canPreview) return;
     if (preview || running) return;
-    autoPreviewTimer.current = setTimeout(() => { void runPreview(); }, 250);
+    autoPreviewTimer.current = setTimeout(() => { void runPreview({ silent: true }); }, 250);
     return () => {
       if (autoPreviewTimer.current) {
         clearTimeout(autoPreviewTimer.current);
