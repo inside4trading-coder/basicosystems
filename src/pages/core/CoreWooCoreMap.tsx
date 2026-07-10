@@ -403,7 +403,7 @@ export default function CoreWooCoreMap() {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="mapa">Mapa Woo / Core ({rowsCtx.length})</TabsTrigger>
           <TabsTrigger value="missing">Faltan estructura / costo ({missingCostRows.length})</TabsTrigger>
-          <TabsTrigger value="external">Proveedor externo ({externalRows.length})</TabsTrigger>
+          <TabsTrigger value="external">Reposición externa ({externalRows.length})</TabsTrigger>
           <TabsTrigger value="norestock">No restock / Reemplazos ({noRestockRows.length})</TabsTrigger>
           <TabsTrigger value="review">Revisión de reposición</TabsTrigger>
           <TabsTrigger value="audit">Auditoría</TabsTrigger>
