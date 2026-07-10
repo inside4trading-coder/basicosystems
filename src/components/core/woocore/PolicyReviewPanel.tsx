@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { toast as sonner } from "sonner";
-import { Loader2, ExternalLink, Copy, Play } from "lucide-react";
+import { Loader2, ExternalLink, Copy, Play, Wand2 } from "lucide-react";
 import { POLICY_ACTION_LABELS, describePolicyAction } from "@/lib/policyBlocked";
+import { ReplacementApplicationDialog } from "./ReplacementApplicationDialog";
 
 type Event = {
   id: string;
