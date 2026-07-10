@@ -1,37 +1,36 @@
-## Bugfix 1 — "Confirmar reemplazo" queda deshabilitado tras elegir talla
+## Diagnóstico
 
-**Causa** (`ReplacementApplicationDialog.tsx`): `canConfirm` exige `preview != null`. El usuario debe pulsar manualmente **Generar preview** antes de que **Confirmar reemplazo** se habilite, pero nada en la UI lo comunica → parece un botón roto.
+El error no viene de la selección de talla ni del preview automático.
 
-**Arreglo (mínimo, sólo UX)**:
+La causa real está en la función `core_apply_replacement_event`: aunque la UI lee la política efectiva actual y muestra `Usar en reposición (confirmar)`, la función prioriza el snapshot guardado en el evento:
 
-- Auto-ejecutar `runPreview` cuando `canPreview` sea `true` y no haya `preview` ni `running`, con un `useEffect` debounced (~250 ms) que dispare al cambiar `allocations`, `confirmedQty`, `reason`, `effectiveBehavior`, `effectiveReplacementCoreId`.
-- Mantener el botón **Generar preview** como refresh manual.
-- El botón **Confirmar reemplazo** conserva su lógica (`canConfirm`); ahora se habilitará automáticamente cuando el preview termine sin error.
-- Si `canPreview` pasa a `false` (cambia una cantidad, borra razón, etc.), seguir invalidando el preview como hoy.
+```sql
+v_behavior := COALESCE(v_event.replacement_behavior, v_policy.replacement_behavior, NULL);
+```
 
-No se toca `core_apply_replacement_event` ni el flujo de confirmación.
+Si el evento fue creado cuando la política estaba en `suggest_only`, ese valor queda guardado en `core_replenishment_policy_events.replacement_behavior`. Luego, aunque el usuario cambie la política a `use_on_restock_with_confirmation`, la función sigue usando el valor viejo del evento y devuelve `behavior_suggest_only`.
 
-## Bugfix 2 — En "Configurar política", al pulsar "Cambiar" el producto reemplazo se vuelve a autoseleccionar
+## Plan de arreglo
 
-**Causa** (`NoRestockConfigDialog.tsx`, líneas 223-240): el efecto de rehidratación observa `replacement`. Cuando el usuario pulsa **Cambiar** → `setReplacement(null)`. El efecto se re-ejecuta, ve `replacement === null` y `selected.policy.replacement_product_id` sigue apuntando al mismo candidato → lo vuelve a fijar inmediatamente. Visualmente parece que el selector "abre y cierra rapidísimo" y no permite elegir otro producto.
+1. **Actualizar la función de aplicación de reemplazos**
+   - Cambiar la prioridad para que la política actual sea la fuente de verdad:
+     ```sql
+     COALESCE(v_policy.replacement_behavior, v_event.replacement_behavior, NULL)
+     ```
+   - Hacer lo mismo con `replacement_product_id` y `replacement_woo_product_id`, para que si se cambia el producto reemplazo desde la política, la función use el reemplazo actual y no el snapshot viejo del evento.
 
-**Arreglo (mínimo)**:
+2. **Mantener compatibilidad**
+   - Si por algún motivo no existe política actual, usar el snapshot del evento como fallback.
+   - No tocar WooCommerce.
+   - No tocar reservas.
+   - No modificar reemplazos/eventos existentes automáticamente.
 
-- Añadir `const hydratedForRef = useRef<string | null>(null)` que guarde el `selected.map.woo_product_id` (o `selected.core?.id`) para el que ya se hizo la rehidratación inicial.
-- La rehidratación desde `selected.policy` sólo debe correr **una vez por `selected`**: si `hydratedForRef.current === identity`, no volver a autoseleccionar.
-- Resetear `hydratedForRef.current = null` cuando cambie `selected` (en el mismo efecto que hoy resetea `status/behavior/reason/replacement`, líneas 210-221).
-- Mantener el sub-efecto que refresca el objeto `replacement` si el mismo `core_id` viene actualizado desde `fabricableCandidates` (para que al arreglar la política del candidato bloqueado se refleje el nuevo estado). Ese refresh sólo se aplica si `replacement != null`.
+3. **Alinear frontend con backend**
+   - Mantener la UI usando `effectivePolicy` como ya hace.
+   - Quitar la dependencia problemática del preview automático si hace falta, o dejarlo solo cuando el comportamiento efectivo sea aplicable.
+   - Mostrar el mensaje bloqueado solo cuando la función/backend realmente siga bloqueando.
 
-Resultado: pulsar **Cambiar** limpia el selector y el usuario puede buscar/elegir otro candidato sin que la política previa lo restaure.
-
-## Fuera de alcance
-
-- Backend, migraciones, RPC.
-- Cambios en la política guardada ni en `core_apply_replacement_event`.
-- Cambios visuales fuera de estos dos comportamientos.
-
-## Validación
-
-- Typecheck.
-- Flujo A: abrir "Aplicar reemplazo", asignar cantidad a una talla → tras ~250 ms aparece Preview → **Confirmar reemplazo** se habilita sin tocar "Generar preview".
-- Flujo B: en "Configurar política" con estado **Reemplazado** y reemplazo ya guardado, pulsar **Cambiar** → el selector queda vacío, el buscador vuelve, se puede elegir otro producto sin que el original se re-inserte.
+4. **Validación**
+   - Ejecutar typecheck.
+   - Verificar que un evento viejo con snapshot `suggest_only` pueda previsualizar/confirmar después de cambiar la política actual a `use_on_restock_with_confirmation`.
+   - Confirmar que si la política actual sigue en `suggest_only`, el botón no intente aplicar y se mantenga bloqueado con mensaje claro.
