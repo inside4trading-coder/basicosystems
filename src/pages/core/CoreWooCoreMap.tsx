@@ -154,13 +154,32 @@ export default function CoreWooCoreMap() {
     () => rowsCtx.filter(r => r.policy?.replenishment_route === "external_supplier"),
     [rowsCtx],
   );
-  const noRestockRows = useMemo(
+  const needsReplacementActivationRows = useMemo(
     () => rowsCtx.filter(r => {
-      const lc = r.policy?.lifecycle_status;
-      return lc === "no_restock" || lc === "exit" || lc === "replaced";
+      const p = r.policy;
+      const hasRef = !!(p?.replacement_product_id || p?.replacement_woo_product_id);
+      return hasRef && p?.lifecycle_status !== "replaced";
     }),
     [rowsCtx],
   );
+  const noRestockRows = useMemo(
+    () => {
+      const seen = new Set<string>();
+      const out: RowCtx[] = [];
+      for (const r of rowsCtx) {
+        const lc = r.policy?.lifecycle_status;
+        const active = lc === "no_restock" || lc === "exit" || lc === "replaced";
+        const needsAct = !!(r.policy?.replacement_product_id || r.policy?.replacement_woo_product_id) && lc !== "replaced";
+        if ((active || needsAct) && !seen.has(r.map.id)) {
+          seen.add(r.map.id);
+          out.push(r);
+        }
+      }
+      return out;
+    },
+    [rowsCtx],
+  );
+
 
   async function runImport(startPage = 1) {
     setImporting(true);
