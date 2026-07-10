@@ -365,11 +365,32 @@ export default function CoreWooCoreMap() {
                     <td className="p-2">{badge(BRAND_ROLE_LABELS[p?.brand_role ?? "regular"])}</td>
                     <td className="p-2">{badge(LIFECYCLE_LABELS[p?.lifecycle_status ?? "active"], p?.lifecycle_status && p.lifecycle_status !== "active" ? "destructive" : "outline")}</td>
                     <td className="p-2">{badge(ROUTE_LABELS[p?.replenishment_route ?? "internal_factory"])}</td>
-                    <td className="p-2 max-w-[140px]">
-                      {p?.replacement_product_id
-                        ? (coreById.get(p.replacement_product_id)?.core_sku ?? "—")
-                        : (p?.replacement_woo_product_id ? `Woo #${p.replacement_woo_product_id}` : <span className="text-muted-foreground">—</span>)}
+                    <td className="p-2 max-w-[160px]">
+                      {(() => {
+                        const hasRef = !!(p?.replacement_product_id || p?.replacement_woo_product_id);
+                        const needsAct = hasRef && p?.lifecycle_status !== "replaced";
+                        const label = p?.replacement_product_id
+                          ? (coreById.get(p.replacement_product_id)?.core_sku ?? "—")
+                          : (p?.replacement_woo_product_id ? `Woo #${p.replacement_woo_product_id}` : null);
+                        return (
+                          <div className="flex flex-col gap-1">
+                            {label ? <span>{label}</span> : <span className="text-muted-foreground">—</span>}
+                            {needsAct && (
+                              <div className="flex flex-col gap-1">
+                                <Badge variant="destructive" className="text-[9px] w-fit">Reemplazo sin activar</Badge>
+                                <button
+                                  className="text-[10px] underline text-primary text-left"
+                                  onClick={() => setNoRestockDialog({ open: true, initialCtx: ctx, initialStatus: "replaced" })}
+                                >
+                                  Completar política
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
+
                     <td className="p-2 text-right">
                       <div className="flex gap-1 justify-end flex-wrap">
                         {!ctx.core && <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "linkToCore", ctx })}><LinkIcon className="h-3 w-3 mr-1" />Vincular</Button>}
