@@ -144,18 +144,20 @@ serve(async (req) => {
   let periodEnd: string | null = null;
   let mode: string = "process_sales";
   let pendingIds: string[] | undefined;
+  let dryRun = false;
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     if (body?.period_start) periodStart = String(body.period_start);
     if (body?.period_end) periodEnd = String(body.period_end);
     if (body?.mode) mode = String(body.mode);
     if (Array.isArray(body?.pending_ids)) pendingIds = body.pending_ids.map(String);
+    if (body?.dry_run === true) dryRun = true;
   } catch { /* ignore */ }
 
   if (mode === "reprocess_pending") {
     return await runReprocess(supabase, userId, pendingIds);
   }
-  return await runProcessSales(supabase, userId, periodStart, periodEnd);
+  return await runProcessSales(supabase, userId, periodStart, periodEnd, dryRun);
 });
 
 // ============================================================
