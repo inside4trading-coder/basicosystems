@@ -154,7 +154,7 @@ export default function CoreWooCoreMap() {
   const noRestockRows = useMemo(
     () => rowsCtx.filter(r => {
       const lc = r.policy?.lifecycle_status;
-      return lc === "no_restock" || lc === "exit";
+      return lc === "no_restock" || lc === "exit" || lc === "replaced";
     }),
     [rowsCtx],
   );
