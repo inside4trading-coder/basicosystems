@@ -1,36 +1,26 @@
-## Diagnóstico
 
-El error no viene de la selección de talla ni del preview automático.
+## Problema
 
-La causa real está en la función `core_apply_replacement_event`: aunque la UI lee la política efectiva actual y muestra `Usar en reposición (confirmar)`, la función prioriza el snapshot guardado en el evento:
+En "Necesidades → Abiertas" aparece una fila con "-" (sin SKU, nombre de producto ni variante). Es el registro `78ccc659…` creado hace un momento al confirmar un reemplazo.
 
-```sql
-v_behavior := COALESCE(v_event.replacement_behavior, v_policy.replacement_behavior, NULL);
+Causa: la función `core_apply_replacement_event` inserta en `core_production_needs` sólo `core_product_id` y `core_variant_id`, pero deja vacíos `sku`, `product_name`, `variant_label`, `variant_sku` y `size`. La UI de Necesidades lee esos campos denormalizados directamente, por eso muestra "-".
+
+Verificado en BD:
 ```
+sku=∅, product_name=∅, variant_label=∅  ← fila del reemplazo
+```
+Todas las demás necesidades (creadas por `auto_from_movements`) sí tienen esos campos poblados.
 
-Si el evento fue creado cuando la política estaba en `suggest_only`, ese valor queda guardado en `core_replenishment_policy_events.replacement_behavior`. Luego, aunque el usuario cambie la política a `use_on_restock_with_confirmation`, la función sigue usando el valor viejo del evento y devuelve `behavior_suggest_only`.
+## Fix
 
-## Plan de arreglo
+Migración que reemplaza `core_apply_replacement_event` con una única modificación: al `INSERT INTO core_production_needs` (y al `UPDATE` de refresco), poblar los campos denormalizados haciendo lookup en `core_products` y `core_product_variants`:
 
-1. **Actualizar la función de aplicación de reemplazos**
-   - Cambiar la prioridad para que la política actual sea la fuente de verdad:
-     ```sql
-     COALESCE(v_policy.replacement_behavior, v_event.replacement_behavior, NULL)
-     ```
-   - Hacer lo mismo con `replacement_product_id` y `replacement_woo_product_id`, para que si se cambia el producto reemplazo desde la política, la función use el reemplazo actual y no el snapshot viejo del evento.
+- `sku` ← `core_products.core_sku`
+- `product_name` ← `core_products.name`
+- `variant_sku` ← `core_product_variants.variant_sku`
+- `variant_label` ← `core_product_variants.variant_label`
+- `size` ← `core_product_variants.size`
 
-2. **Mantener compatibilidad**
-   - Si por algún motivo no existe política actual, usar el snapshot del evento como fallback.
-   - No tocar WooCommerce.
-   - No tocar reservas.
-   - No modificar reemplazos/eventos existentes automáticamente.
+También backfill de la fila ya creada (`78ccc659-5ea1-47ce-9f04-46881b3b9e63`) con los mismos lookups, para que deje de mostrarse como "-".
 
-3. **Alinear frontend con backend**
-   - Mantener la UI usando `effectivePolicy` como ya hace.
-   - Quitar la dependencia problemática del preview automático si hace falta, o dejarlo solo cuando el comportamiento efectivo sea aplicable.
-   - Mostrar el mensaje bloqueado solo cuando la función/backend realmente siga bloqueando.
-
-4. **Validación**
-   - Ejecutar typecheck.
-   - Verificar que un evento viejo con snapshot `suggest_only` pueda previsualizar/confirmar después de cambiar la política actual a `use_on_restock_with_confirmation`.
-   - Confirmar que si la política actual sigue en `suggest_only`, el botón no intente aplicar y se mantenga bloqueado con mensaje claro.
+Sin cambios de UI ni de otras funciones.
