@@ -115,6 +115,18 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
       toast({ title: "Falta reemplazo", description: "Selecciona un producto reemplazo.", variant: "destructive" });
       return;
     }
+    if (status === "replaced" && replacement) {
+      const sameWoo = replacement.map.woo_product_id === selected.map.woo_product_id;
+      const sameCore = !!selected.core?.id && replacement.core?.id === selected.core?.id;
+      if (sameWoo || sameCore) {
+        toast({
+          title: "Configuración inválida",
+          description: "Un producto no puede reemplazarse por sí mismo.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     setSaving(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
