@@ -36,7 +36,7 @@ import { SyncVariantsDialog } from "@/components/core/woocore/SyncVariantsDialog
 import { ManualCostDialog } from "@/components/core/woocore/ManualCostDialog";
 import { ReplenishmentRouteDialog } from "@/components/core/woocore/ReplenishmentRouteDialog";
 import { LifecycleStatusDialog } from "@/components/core/woocore/LifecycleStatusDialog";
-import { ReplacementPickerDialog } from "@/components/core/woocore/ReplacementPickerDialog";
+
 import { NoRestockConfigDialog } from "@/components/core/woocore/NoRestockConfigDialog";
 import { BrandRoleDialog } from "@/components/core/woocore/BrandRoleDialog";
 import { WooCoreVariantsRow } from "@/components/core/woocore/WooCoreVariantsRow";
@@ -62,7 +62,8 @@ type DialogState =
   | { kind: "manualCost"; ctx: RowCtx }
   | { kind: "route"; ctx: RowCtx }
   | { kind: "lifecycle"; ctx: RowCtx }
-  | { kind: "replacement"; ctx: RowCtx }
+  
+
   | { kind: "brandRole"; ctx: RowCtx }
   | null;
 
@@ -82,7 +83,7 @@ export default function CoreWooCoreMap() {
   const [filterBrand, setFilterBrand] = useState<string>("all");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [dialog, setDialog] = useState<DialogState>(null);
-  const [noRestockDialog, setNoRestockDialog] = useState<{ open: boolean; initialCtx?: RowCtx | null }>({ open: false });
+  const [noRestockDialog, setNoRestockDialog] = useState<{ open: boolean; initialCtx?: RowCtx | null; initialStatus?: "no_restock" | "exit" | "replaced" }>({ open: false });
   const [importing, setImporting] = useState(false);
   const [reconciling, setReconciling] = useState(false);
 
@@ -153,13 +154,32 @@ export default function CoreWooCoreMap() {
     () => rowsCtx.filter(r => r.policy?.replenishment_route === "external_supplier"),
     [rowsCtx],
   );
-  const noRestockRows = useMemo(
+  const needsReplacementActivationRows = useMemo(
     () => rowsCtx.filter(r => {
-      const lc = r.policy?.lifecycle_status;
-      return lc === "no_restock" || lc === "exit" || lc === "replaced";
+      const p = r.policy;
+      const hasRef = !!(p?.replacement_product_id || p?.replacement_woo_product_id);
+      return hasRef && p?.lifecycle_status !== "replaced";
     }),
     [rowsCtx],
   );
+  const noRestockRows = useMemo(
+    () => {
+      const seen = new Set<string>();
+      const out: RowCtx[] = [];
+      for (const r of rowsCtx) {
+        const lc = r.policy?.lifecycle_status;
+        const active = lc === "no_restock" || lc === "exit" || lc === "replaced";
+        const needsAct = !!(r.policy?.replacement_product_id || r.policy?.replacement_woo_product_id) && lc !== "replaced";
+        if ((active || needsAct) && !seen.has(r.map.id)) {
+          seen.add(r.map.id);
+          out.push(r);
+        }
+      }
+      return out;
+    },
+    [rowsCtx],
+  );
+
 
   async function runImport(startPage = 1) {
     setImporting(true);
@@ -345,11 +365,32 @@ export default function CoreWooCoreMap() {
                     <td className="p-2">{badge(BRAND_ROLE_LABELS[p?.brand_role ?? "regular"])}</td>
                     <td className="p-2">{badge(LIFECYCLE_LABELS[p?.lifecycle_status ?? "active"], p?.lifecycle_status && p.lifecycle_status !== "active" ? "destructive" : "outline")}</td>
                     <td className="p-2">{badge(ROUTE_LABELS[p?.replenishment_route ?? "internal_factory"])}</td>
-                    <td className="p-2 max-w-[140px]">
-                      {p?.replacement_product_id
-                        ? (coreById.get(p.replacement_product_id)?.core_sku ?? "—")
-                        : (p?.replacement_woo_product_id ? `Woo #${p.replacement_woo_product_id}` : <span className="text-muted-foreground">—</span>)}
+                    <td className="p-2 max-w-[160px]">
+                      {(() => {
+                        const hasRef = !!(p?.replacement_product_id || p?.replacement_woo_product_id);
+                        const needsAct = hasRef && p?.lifecycle_status !== "replaced";
+                        const label = p?.replacement_product_id
+                          ? (coreById.get(p.replacement_product_id)?.core_sku ?? "—")
+                          : (p?.replacement_woo_product_id ? `Woo #${p.replacement_woo_product_id}` : null);
+                        return (
+                          <div className="flex flex-col gap-1">
+                            {label ? <span>{label}</span> : <span className="text-muted-foreground">—</span>}
+                            {needsAct && (
+                              <div className="flex flex-col gap-1">
+                                <Badge variant="destructive" className="text-[9px] w-fit">Reemplazo sin activar</Badge>
+                                <button
+                                  className="text-[10px] underline text-primary text-left"
+                                  onClick={() => setNoRestockDialog({ open: true, initialCtx: ctx, initialStatus: "replaced" })}
+                                >
+                                  Completar política
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
+
                     <td className="p-2 text-right">
                       <div className="flex gap-1 justify-end flex-wrap">
                         {!ctx.core && <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "linkToCore", ctx })}><LinkIcon className="h-3 w-3 mr-1" />Vincular</Button>}
@@ -358,7 +399,7 @@ export default function CoreWooCoreMap() {
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "manualCost", ctx })}><DollarSign className="h-3 w-3 mr-1" />Costo</Button>
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "route", ctx })}><Truck className="h-3 w-3 mr-1" />Ruta</Button>
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "lifecycle", ctx })}><Ban className="h-3 w-3 mr-1" />Estado</Button>
-                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "replacement", ctx })}><Repeat className="h-3 w-3 mr-1" />Reemplazo</Button>
+                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setNoRestockDialog({ open: true, initialCtx: ctx, initialStatus: "replaced" })}><Repeat className="h-3 w-3 mr-1" />Reemplazo</Button>
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "brandRole", ctx })}><Tag className="h-3 w-3 mr-1" />Rol</Button>
                       </div>
                     </td>
@@ -406,7 +447,7 @@ export default function CoreWooCoreMap() {
           <TabsTrigger value="mapa">Mapa Woo / Core ({rowsCtx.length})</TabsTrigger>
           <TabsTrigger value="missing">Faltan estructura / costo ({missingCostRows.length})</TabsTrigger>
           <TabsTrigger value="external">Reposición externa ({externalRows.length})</TabsTrigger>
-          <TabsTrigger value="norestock">No restock / Reemplazos ({noRestockRows.length})</TabsTrigger>
+          <TabsTrigger value="norestock">No restock / Reemplazos ({noRestockRows.length}{needsReplacementActivationRows.length > 0 ? ` · ${needsReplacementActivationRows.length} sin activar` : ""})</TabsTrigger>
           <TabsTrigger value="review">Revisión de reposición</TabsTrigger>
           <TabsTrigger value="audit">Auditoría</TabsTrigger>
 
@@ -506,6 +547,8 @@ export default function CoreWooCoreMap() {
                     const replLabel = p?.replacement_product_id
                       ? (coreById.get(p.replacement_product_id)?.core_sku ?? "Core")
                       : (p?.replacement_woo_product_id ? `Woo #${p.replacement_woo_product_id}` : "—");
+                    const hasRef = !!(p?.replacement_product_id || p?.replacement_woo_product_id);
+                    const needsAct = hasRef && p?.lifecycle_status !== "replaced";
                     return (
                       <tr key={ctx.map.id} className="border-b hover:bg-muted/30">
                         <td className="p-2 max-w-[260px]">
@@ -514,13 +557,22 @@ export default function CoreWooCoreMap() {
                         </td>
                         <td className="p-2 font-mono text-[10px]">{ctx.map.woo_product_id}</td>
                         <td className="p-2">{ctx.core ? <Badge className="text-[10px]">Conectado</Badge> : <Badge variant="outline" className="text-[10px]">Sin Core</Badge>}</td>
-                        <td className="p-2">{badge(LIFECYCLE_LABELS[p?.lifecycle_status ?? "active"], "destructive")}</td>
+                        <td className="p-2">
+                          <div className="flex flex-col gap-1">
+                            {badge(LIFECYCLE_LABELS[p?.lifecycle_status ?? "active"], needsAct ? "outline" : "destructive")}
+                            {needsAct && <Badge variant="destructive" className="text-[9px] w-fit">Reemplazo sin activar</Badge>}
+                          </div>
+                        </td>
                         <td className="p-2">{replLabel}</td>
                         <td className="p-2">{p?.replacement_behavior ? (REPLACEMENT_BEHAVIOR_LABELS[p.replacement_behavior] ?? p.replacement_behavior) : "—"}</td>
                         <td className="p-2 text-[10px] text-muted-foreground">{p?.updated_at ? new Date(p.updated_at).toLocaleDateString() : "—"}</td>
                         <td className="p-2 text-right">
                           <div className="flex gap-1 justify-end flex-wrap">
-                            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setNoRestockDialog({ open: true, initialCtx: ctx })}>Editar</Button>
+                            {needsAct ? (
+                              <Button size="sm" className="h-6 px-2 text-[10px]" onClick={() => setNoRestockDialog({ open: true, initialCtx: ctx, initialStatus: "replaced" })}>Completar política</Button>
+                            ) : (
+                              <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setNoRestockDialog({ open: true, initialCtx: ctx })}>Editar</Button>
+                            )}
                             {p?.replacement_product_id && (
                               <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => {
                                 const target = rowsCtx.find(r => r.core?.id === p.replacement_product_id) ?? null;
@@ -532,6 +584,7 @@ export default function CoreWooCoreMap() {
                       </tr>
                     );
                   })}
+
                 </tbody>
               </table>
             </div>
@@ -554,14 +607,16 @@ export default function CoreWooCoreMap() {
       {dialog?.kind === "manualCost" && <ManualCostDialog open onClose={() => setDialog(null)} ctx={dialog.ctx} onDone={() => { qc.invalidateQueries({ queryKey: ["replenishment-policies"] }); qc.invalidateQueries({ queryKey: ["core-products-lite"] }); qc.invalidateQueries({ queryKey: ["strategy-audit"] }); }} />}
       {dialog?.kind === "route" && <ReplenishmentRouteDialog open onClose={() => setDialog(null)} ctx={dialog.ctx} onDone={() => { qc.invalidateQueries({ queryKey: ["replenishment-policies"] }); qc.invalidateQueries({ queryKey: ["strategy-audit"] }); }} />}
       {dialog?.kind === "lifecycle" && <LifecycleStatusDialog open onClose={() => setDialog(null)} ctx={dialog.ctx} onDone={() => { qc.invalidateQueries({ queryKey: ["replenishment-policies"] }); qc.invalidateQueries({ queryKey: ["strategy-audit"] }); }} />}
-      {dialog?.kind === "replacement" && <ReplacementPickerDialog open onClose={() => setDialog(null)} ctx={dialog.ctx} coreProducts={coreProducts} onDone={() => { qc.invalidateQueries({ queryKey: ["replenishment-policies"] }); qc.invalidateQueries({ queryKey: ["strategy-audit"] }); }} />}
+      
       {dialog?.kind === "brandRole" && <BrandRoleDialog open onClose={() => setDialog(null)} ctx={dialog.ctx} onDone={() => { qc.invalidateQueries({ queryKey: ["replenishment-policies"] }); qc.invalidateQueries({ queryKey: ["strategy-audit"] }); }} />}
       {noRestockDialog.open && (
         <NoRestockConfigDialog
           open
           onClose={() => setNoRestockDialog({ open: false })}
           initialCtx={noRestockDialog.initialCtx ?? null}
+          initialStatus={noRestockDialog.initialStatus}
           rowsCtx={rowsCtx}
+
           onDone={() => {
             qc.invalidateQueries({ queryKey: ["replenishment-policies"] });
             qc.invalidateQueries({ queryKey: ["strategy-audit"] });
