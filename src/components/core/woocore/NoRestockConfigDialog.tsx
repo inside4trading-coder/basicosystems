@@ -79,7 +79,7 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
     } else {
       setReplacement(null);
     }
-  }, [selected, rowsCtx]);
+  }, [selected, rowsCtx, initialStatus]);
 
   function filterRows(term: string, excludeId?: number) {
     if (!term) return rowsCtx.slice(0, 50);
