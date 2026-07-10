@@ -348,6 +348,10 @@ export function PolicyReviewPanel() {
                           </Button>
                         )}
                         {r.status !== "reviewed" && (
+                          <Button size="sm" variant="outline" onClick={() => setEventStatus(r.id, "reviewed")}>
+                            Revisado
+                          </Button>
+                        )}
                         {r.status !== "resolved" && (
                           <Button size="sm" variant="outline" onClick={() => setEventStatus(r.id, "resolved")}>
                             Resolver
