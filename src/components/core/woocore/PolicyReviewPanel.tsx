@@ -6,9 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { toast as sonner } from "sonner";
-import { Loader2, ExternalLink, Copy } from "lucide-react";
+import { Loader2, ExternalLink, Copy, Play } from "lucide-react";
 import { POLICY_ACTION_LABELS, describePolicyAction } from "@/lib/policyBlocked";
 
 type Event = {
