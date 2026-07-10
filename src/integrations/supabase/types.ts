@@ -971,6 +971,7 @@ export type Database = {
           created_by: string | null
           currency: string
           fabrication_fund_run_id: string | null
+          fund_bucket: string | null
           fund_id: string
           id: string
           movement_type: string
@@ -997,6 +998,7 @@ export type Database = {
           created_by?: string | null
           currency?: string
           fabrication_fund_run_id?: string | null
+          fund_bucket?: string | null
           fund_id: string
           id?: string
           movement_type: string
@@ -1023,6 +1025,7 @@ export type Database = {
           created_by?: string | null
           currency?: string
           fabrication_fund_run_id?: string | null
+          fund_bucket?: string | null
           fund_id?: string
           id?: string
           movement_type?: string
