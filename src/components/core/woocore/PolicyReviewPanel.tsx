@@ -374,6 +374,69 @@ export function PolicyReviewPanel() {
           </table>
         )}
       </Card>
+
+      <Dialog open={processOpen} onOpenChange={setProcessOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Procesar políticas de reposición</DialogTitle>
+            <DialogDescription>
+              Previsualización sin escritura. La confirmación crea necesidades internas y eventos según política.
+            </DialogDescription>
+          </DialogHeader>
+
+          {processing || !preview ? (
+            <div className="p-6 flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" /> Calculando preview…
+            </div>
+          ) : (
+            <div className="space-y-2 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <PreviewLine label="Movimientos revisados" value={preview.movements_checked ?? 0} />
+                <PreviewLine label="Grupos elegibles" value={preview.eligible_groups ?? 0} />
+                <PreviewLine label="Enrutados a interna" value={preview.routed_allowed ?? 0} />
+                <PreviewLine label="No restockeable" value={preview.non_restockable ?? 0} />
+                <PreviewLine label="Reversiones" value={preview.reversals_detected ?? 0} />
+                <PreviewLine label="Ya vinculados" value={preview.skipped_existing ?? 0} />
+              </div>
+              {preview.routing_buckets && Object.keys(preview.routing_buckets).length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold mt-2 mb-1">Por acción de política</div>
+                  <div className="space-y-1">
+                    {Object.entries(preview.routing_buckets).map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-xs">
+                        <span>{POLICY_ACTION_LABELS[k] ?? k}</span>
+                        <span className="font-mono">{v as number}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="text-xs text-muted-foreground pt-2">
+                No se creó nada aún. Confirmar procesará y creará necesidades internas + eventos según política.
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProcessOpen(false)} disabled={confirming}>
+              Cancelar
+            </Button>
+            <Button onClick={runConfirm} disabled={confirming || processing || !preview}>
+              {confirming ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+              Confirmar y procesar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function PreviewLine({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex justify-between border rounded px-2 py-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="font-mono text-sm">{value}</span>
     </div>
   );
 }
