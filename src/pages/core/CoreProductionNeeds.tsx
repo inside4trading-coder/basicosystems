@@ -10,7 +10,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ListChecks, Play, Plus, RotateCcw, History, AlertCircle, CheckCircle2, Ban, Pencil } from "lucide-react";
+import { ListChecks, Play, Plus, RotateCcw, History, AlertCircle, CheckCircle2, Ban, Pencil, AlertTriangle } from "lucide-react";
+import { PolicyEventsAttentionPanel } from "@/components/core/woocore/PolicyEventsAttentionPanel";
+import { useReplenishmentPolicyEvents } from "@/hooks/useReplenishmentPolicyEvents";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { formatDMY } from "@/lib/dateUtils";
@@ -388,7 +390,24 @@ export default function CoreProductionNeeds() {
         </div>
       </div>
 
+      <PolicyEventsSummaryBar />
+
+      <Tabs defaultValue="internal">
+        <TabsList>
+          <TabsTrigger value="internal">Fabricación interna</TabsTrigger>
+          <TabsTrigger value="attention">
+            Requieren atención <AttentionCountBadge />
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="attention" className="mt-4">
+          <PolicyEventsAttentionPanel />
+        </TabsContent>
+
+        <TabsContent value="internal" className="mt-4">
+
       <Tabs defaultValue="summary">
+
         <TabsList>
           <TabsTrigger value="summary">Resumen</TabsTrigger>
           <TabsTrigger value="open">Abiertas ({openNeeds.length})</TabsTrigger>
@@ -694,6 +713,10 @@ export default function CoreProductionNeeds() {
         </TabsContent>
       </Tabs>
 
+        </TabsContent>
+      </Tabs>
+
+
       {/* Adjust dialog */}
       <Dialog open={!!adjustOpen} onOpenChange={(o) => !o && setAdjustOpen(null)}>
         <DialogContent>
@@ -794,6 +817,67 @@ export default function CoreProductionNeeds() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function AttentionCountBadge() {
+  const { counts } = useReplenishmentPolicyEvents();
+  if (!counts.total) return null;
+  return <Badge className="ml-2" variant="destructive">{counts.total}</Badge>;
+}
+
+function PolicyEventsSummaryBar() {
+  const { counts } = useReplenishmentPolicyEvents();
+  const total = counts.total ?? 0;
+  const rep = counts.suggest_replacement ?? 0;
+  const ext = counts.external_supplier_review ?? 0;
+  const man = counts.manual_cost_review ?? 0;
+  const blocked =
+    (counts.block_no_restock ?? 0) + (counts.block_exit ?? 0) + (counts.block_ignored ?? 0);
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <MiniCard label="Reemplazos" value={rep} />
+        <MiniCard label="Proveedor externo" value={ext} />
+        <MiniCard label="Costo manual" value={man} />
+        <MiniCard label="Bloqueadas" value={blocked} />
+        <MiniCard label="Total atención" value={total} highlight={total > 0} />
+      </div>
+      {total > 0 && (
+        <div className="flex items-center gap-2 rounded border border-amber-500 bg-amber-500/10 p-3 text-sm">
+          <AlertTriangle className="w-4 h-4 text-amber-600" />
+          <div className="flex-1">
+            Hay <strong>{total}</strong> reposiciones que requieren atención o fueron desviadas por
+            política.
+            <span className="text-xs text-muted-foreground ml-2">
+              {rep} reemplazos · {ext} proveedor externo · {man} costo manual · {blocked} bloqueadas
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const trigger = document.querySelector<HTMLButtonElement>(
+                '[role="tab"][value="attention"]',
+              );
+              trigger?.click();
+            }}
+          >
+            Revisar ahora
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MiniCard({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+  return (
+    <Card className={`p-3 ${highlight ? "border-amber-500" : ""}`}>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-xl font-bold mt-0.5">{value}</div>
+    </Card>
   );
 }
 
