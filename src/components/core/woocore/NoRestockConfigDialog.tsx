@@ -63,8 +63,11 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
   useEffect(() => {
     if (!selected) return;
     const p = selected.policy;
-    const lc = (p?.lifecycle_status as LifecycleChoice) ?? "no_restock";
-    setStatus((["no_restock", "exit", "replaced"] as LifecycleChoice[]).includes(lc) ? lc : "no_restock");
+    const lcRaw = p?.lifecycle_status as LifecycleChoice | undefined;
+    const validChoices: LifecycleChoice[] = ["no_restock", "exit", "replaced"];
+    const alreadyDefined = lcRaw && validChoices.includes(lcRaw);
+    setStatus(alreadyDefined ? (lcRaw as LifecycleChoice) : (initialStatus ?? "no_restock"));
+
     setBehavior(p?.replacement_behavior ?? "suggest_only");
     setReason(p?.decision_reason ?? "");
     if (p?.replacement_product_id) {
