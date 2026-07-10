@@ -33,9 +33,12 @@ interface Props {
   rowsCtx: Ctx[];
   /** If provided, opens directly in configure mode for that map (edit flow). */
   initialCtx?: Ctx | null;
+  /** Preselect lifecycle status when policy has no explicit no_restock/exit/replaced yet. */
+  initialStatus?: LifecycleChoice;
 }
 
-export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialCtx }: Props) {
+export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialCtx, initialStatus }: Props) {
+
   const [selected, setSelected] = useState<Ctx | null>(initialCtx ?? null);
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
