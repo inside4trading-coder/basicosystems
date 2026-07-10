@@ -719,7 +719,11 @@ export function ReplacementApplicationDialog({
         onDone={() => {
           qc.invalidateQueries({ queryKey: ["replacement_variants"] });
           qc.invalidateQueries({ queryKey: ["replacement_woo_map"] });
+          qc.invalidateQueries({ queryKey: ["replacement_variants_units"] });
+          qc.invalidateQueries({ queryKey: ["replacement_variants_needs"] });
           refetchVariants();
+          refetchUnits();
+          refetchNeeds();
         }}
         ctx={syncCtx}
       />
