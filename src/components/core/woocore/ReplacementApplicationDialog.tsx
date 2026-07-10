@@ -454,6 +454,19 @@ export function ReplacementApplicationDialog({
           </div>
         )}
 
+        {selfReplacement && !isResolved && (
+          <div className="p-3 rounded border border-red-500 bg-red-500/10 text-sm flex gap-2">
+            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <div className="font-medium">Configuración inválida</div>
+              <div>Un producto no puede reemplazarse por sí mismo. Edita la política y elige otro producto reemplazo.</div>
+            </div>
+            <Button size="sm" variant="outline" onClick={openPolicyEditor}>
+              <Pencil className="w-3 h-3 mr-1" /> Editar política
+            </Button>
+          </div>
+        )}
+
         {isResolved && preview && (
           <div className="border rounded p-3 text-sm space-y-1">
             <div className="font-medium">Evento resuelto</div>
