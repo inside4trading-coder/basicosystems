@@ -390,7 +390,11 @@ export function ReplacementApplicationDialog({
     qc.invalidateQueries({ queryKey: ["replacement_product"] });
     qc.invalidateQueries({ queryKey: ["replacement_variants"] });
     qc.invalidateQueries({ queryKey: ["replacement_woo_map"] });
-    await Promise.all([refetchPolicy(), refetchReplacement(), refetchVariants()]);
+    qc.invalidateQueries({ queryKey: ["replacement_variants_units"] });
+    qc.invalidateQueries({ queryKey: ["replacement_variants_needs"] });
+    await Promise.all([
+      refetchPolicy(), refetchReplacement(), refetchVariants(), refetchUnits(), refetchNeeds(),
+    ]);
     setPreview(null);
   };
 
