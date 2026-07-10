@@ -36,7 +36,7 @@ import { SyncVariantsDialog } from "@/components/core/woocore/SyncVariantsDialog
 import { ManualCostDialog } from "@/components/core/woocore/ManualCostDialog";
 import { ReplenishmentRouteDialog } from "@/components/core/woocore/ReplenishmentRouteDialog";
 import { LifecycleStatusDialog } from "@/components/core/woocore/LifecycleStatusDialog";
-import { ReplacementPickerDialog } from "@/components/core/woocore/ReplacementPickerDialog";
+
 import { NoRestockConfigDialog } from "@/components/core/woocore/NoRestockConfigDialog";
 import { BrandRoleDialog } from "@/components/core/woocore/BrandRoleDialog";
 import { WooCoreVariantsRow } from "@/components/core/woocore/WooCoreVariantsRow";
