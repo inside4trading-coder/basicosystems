@@ -713,6 +713,10 @@ export default function CoreProductionNeeds() {
         </TabsContent>
       </Tabs>
 
+        </TabsContent>
+      </Tabs>
+
+
       {/* Adjust dialog */}
       <Dialog open={!!adjustOpen} onOpenChange={(o) => !o && setAdjustOpen(null)}>
         <DialogContent>
