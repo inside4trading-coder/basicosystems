@@ -210,11 +210,13 @@ Deno.serve(async (req) => {
           line.core_product_id ? supa.from("core_products").select("woo_product_id").eq("id", line.core_product_id).maybeSingle() : Promise.resolve({ data: null }),
           line.core_variant_id ? supa.from("core_product_variants").select("woo_variation_id").eq("id", line.core_variant_id).maybeSingle() : Promise.resolve({ data: null }),
         ]);
-        const { data: polData } = await supa.rpc("resolve_core_replenishment_action", {
+        const { data: polData } = await supa.rpc("route_core_replenishment_candidate", {
+          p_source_type: "production_units_preview",
           p_core_product_id: line.core_product_id ?? null,
           p_core_variant_id: line.core_variant_id ?? null,
           p_woo_product_id: (p as any)?.woo_product_id ?? null,
           p_woo_variation_id: (v as any)?.woo_variation_id ?? null,
+          p_dry_run: true,
         });
         const pol = Array.isArray(polData) ? polData[0] : polData;
         if (pol && pol.action !== "allow_internal_factory") {
