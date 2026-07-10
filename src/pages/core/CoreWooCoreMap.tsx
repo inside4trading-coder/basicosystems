@@ -62,7 +62,7 @@ type DialogState =
   | { kind: "manualCost"; ctx: RowCtx }
   | { kind: "route"; ctx: RowCtx }
   | { kind: "lifecycle"; ctx: RowCtx }
-  | { kind: "replacement"; ctx: RowCtx }
+  
 
   | { kind: "brandRole"; ctx: RowCtx }
   | null;
