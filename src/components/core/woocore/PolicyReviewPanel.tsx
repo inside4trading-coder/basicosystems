@@ -201,6 +201,15 @@ export function PolicyReviewPanel() {
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm text-muted-foreground">
+          Motor de enrutamiento: valida política antes de generar necesidades internas.
+        </div>
+        <Button size="sm" onClick={openProcess}>
+          <Play className="w-3 h-3 mr-1" /> Procesar políticas de reposición
+        </Button>
+      </div>
+
       {/* Resumen superior */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <SummaryCard label="Eventos abiertos" value={summary?.total ?? 0} />
