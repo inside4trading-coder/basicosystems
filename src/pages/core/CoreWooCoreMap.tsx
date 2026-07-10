@@ -562,7 +562,9 @@ export default function CoreWooCoreMap() {
           open
           onClose={() => setNoRestockDialog({ open: false })}
           initialCtx={noRestockDialog.initialCtx ?? null}
+          initialStatus={noRestockDialog.initialStatus}
           rowsCtx={rowsCtx}
+
           onDone={() => {
             qc.invalidateQueries({ queryKey: ["replenishment-policies"] });
             qc.invalidateQueries({ queryKey: ["strategy-audit"] });
