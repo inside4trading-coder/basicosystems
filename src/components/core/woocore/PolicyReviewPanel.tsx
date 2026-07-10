@@ -442,6 +442,12 @@ export function PolicyReviewPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ReplacementApplicationDialog
+        event={replacementEvent as any}
+        open={!!replacementEvent}
+        onOpenChange={(v) => { if (!v) setReplacementEvent(null); }}
+      />
     </div>
   );
 }
