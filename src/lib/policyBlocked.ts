@@ -3,17 +3,17 @@
 
 export const POLICY_ACTION_MESSAGES: Record<string, string> = {
   manual_cost_review:
-    "Este producto tiene costo manual, pero no tiene estructura fabricable. Revisa si debe fabricarse o si solo debe usarse como costo referencial.",
+    "Producto con costo manual y sin estructura fabricable. Enviado a revisión de reposición: define si debe fabricarse, comprarse o solo usarse como costo referencial.",
   external_supplier_review:
-    "Este producto está marcado como proveedor externo. No debe entrar a producción interna.",
+    "Producto marcado como proveedor externo. No entra a producción interna. Queda pendiente en la revisión de reposición para futura compra externa.",
   block_no_restock:
-    "Este producto está marcado como no restock. No debe reponerse.",
+    "Producto marcado como no restock. No se repone ni se genera necesidad interna.",
   block_exit:
-    "Este producto está en salida. No debe fabricarse ni reponerse.",
+    "Producto en salida. No se fabrica ni se repone.",
   block_ignored:
-    "Este producto está ignorado por política Core.",
+    "Producto ignorado por política Core. No se genera reposición.",
   suggest_replacement:
-    "Este producto fue reemplazado. Revisa el producto sustituto sugerido.",
+    "Producto reemplazado por otro. Se registró una propuesta de reemplazo; no se aplicó automáticamente. Revisa el sustituto sugerido.",
 };
 
 export const POLICY_ACTION_LABELS: Record<string, string> = {

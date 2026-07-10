@@ -1,81 +1,71 @@
+## Bloque 1 — Motor de Enrutamiento de Reposición (con correcciones aprobadas)
 
-# Fase 2A — Costo fallback operativo desde `core_replenishment_policies`
+Motor único, idempotencia estricta por origen, dry-run 100% lectura.
 
-Conectar el costo manual/proveedor de Mapa Woo/Core al resolver operativo usado por partidas, OP y unidades — sin bloquear rutas, sin crear reposición externa, sin tocar Woo, sin reprocesar histórico.
+### 1. Motor central (RPC SQL)
 
-## 1. Nueva RPC principal
+Crear `public.route_core_replenishment_candidate(...)` en una migración. Reutiliza `resolve_core_replenishment_action` internamente — es el **único** punto de decisión de enrutamiento.
 
-Crear `public.resolve_core_operational_unit_cost(p_core_product_id uuid, p_core_variant_id uuid default null, p_woo_product_id bigint default null, p_woo_variation_id bigint default null)` — `SECURITY DEFINER`, `STABLE`, `search_path = public`.
+Params: `p_source_type text, p_source_id uuid, p_core_product_id uuid, p_core_variant_id uuid, p_woo_product_id bigint, p_woo_variation_id bigint, p_quantity numeric, p_unit_cost numeric, p_amount numeric, p_cost_source text, p_dry_run boolean default false`.
 
-Devuelve tabla:
-`unit_cost numeric, cost_source text, policy_id uuid, core_product_id uuid, core_variant_id uuid, woo_product_id bigint, woo_variation_id bigint, warning text`.
+Retorna JSONB: `route_action, severity, allow_internal_need, policy_id, replacement_product_id, replacement_woo_product_id, external_supplier_name, external_supplier_unit_cost_usd, message, warning, event_id, dedupe_key`.
 
-Resolución de identidad:
-1. Si falta `core_product_id` y hay `woo_product_id` → buscar en `core_woo_product_map.core_product_id`, luego `core_products.woo_product_id`, luego `core_replenishment_policies` por `woo_product_id`.
-2. Si falta `core_variant_id` y hay `woo_variation_id` → buscar en `core_woo_variant_map.core_variant_id`, luego `core_product_variants.woo_variation_id`.
-3. Buscar política por prioridad: `core_product_id` primero, luego `woo_product_id`.
+Comportamiento:
+- `allow_internal_factory` → `allow_internal_need=true`, sin evento.
+- `external_supplier_review` / `manual_cost_review` / `suggest_replacement` / `block_no_restock` / `block_exit` / `block_ignored` → `allow_internal_need=false` + upsert idempotente en `core_replenishment_policy_events`.
+- Sin política → `allow_internal_need=true` con warning legacy, sin evento.
+- **Si `p_dry_run = true`**: solo calcular y devolver el resultado; **no** insertar/actualizar eventos, necesidades ni auditoría. `event_id` vuelve `null`.
 
-Orden final de costo (primero que aplique):
-1. **variant_override** — variante con `cost_override_enabled` + estructura activa.
-2. **product_base** — estructura base activa del producto (por `woo_product_id` o `core_product_id`).
-3. **policy_manual_cost** — `core_replenishment_policies.manual_unit_cost_usd`.
-4. **external_supplier_cost** — `core_replenishment_policies.external_supplier_unit_cost_usd` (solo referencia; `warning` = "proveedor externo, no genera OP interna en esta fase").
-5. **core_product_manual_cost** — `core_products.manual_unit_cost_usd` (espejo compatibilidad).
-6. **product_unit_cost** — `core_products.unit_cost`.
-7. **zero_fallback** — `0` con `warning`.
+### 2. Idempotencia estricta (corregida)
 
-Warnings adicionales:
-- Si `replenishment_route ∈ {no_restock, none, ignored}`: agregar warning "Producto marcado como no_restock/ignored; costo usado solo como referencia." (no bloquear — Fase 2B).
+Migración añade a `core_replenishment_policy_events`:
+- Columna `dedupe_key text`.
+- Índice **UNIQUE permanente** (no parcial por status) sobre `dedupe_key`.
 
-`resolve_core_variant_unit_cost` y `_with_source` existentes se dejan intactos por compatibilidad.
+Formato: `source_type:source_id:coalesce(product_id,'-'):coalesce(variant_id,'-'):action`.
 
-## 2. Actualizar edge functions operativas
+`INSERT ... ON CONFLICT (dedupe_key) DO UPDATE SET`:
+- `quantity = EXCLUDED.quantity` (reemplaza, **no acumula**)
+- `unit_cost = EXCLUDED.unit_cost`
+- `amount = EXCLUDED.amount`
+- refresca `external_supplier_name`, `external_supplier_unit_cost_usd`, `replacement_product_id`, `replacement_woo_product_id`, `replacement_behavior`, `cost_source`, `message`, `warning`, `policy_id`, `updated_at = now()`
+- **NO** modifica `status`, `resolved_at`, `resolved_by`, `resolution_notes` (si el evento fue resuelto/ignorado, se conserva ese estado; no se reabre por reejecución del mismo origen).
 
-### `core-process-fabrication-funds`
-Reemplazar el helper `resolveVariantUnitCost` (que llama `resolve_core_variant_unit_cost`) por llamada a `resolve_core_operational_unit_cost` pasando `core_product_id`, `core_variant_id`, `woo_product_id`, `woo_variation_id` cuando estén disponibles.
+Resultado: reejecutar el mismo `source_id` no crea nuevo evento ni acumula cantidades, y no revive eventos ya resueltos.
 
-- Usar el `unit_cost` devuelto para monto de movimiento (`quantity * unit_cost`).
-- Eliminar el skip por `unit_cost_missing` cuando exista fallback (`policy_manual_cost`, `external_supplier_cost`, `core_product_manual_cost`, `product_unit_cost`); mantener skip solo cuando `cost_source = zero_fallback`.
-- Guardar en `cost_snapshot_data`: `cost_source`, `policy_id`, `resolved_core_product_id`, `resolved_core_variant_id`, `woo_product_id`, `woo_variation_id`, `warning`.
-- Aplica en ambas rutas del archivo (procesamiento principal y actualización de productos ~línea 536).
+### 3. Centralización real en edge functions
 
-### `core-create-production-order`
-Reemplazar llamadas `resolve_core_variant_unit_cost` (líneas ~327 y ~510) por la nueva RPC.
+Solo se sustituye el **punto de decisión existente**; el resto de cada función queda intacto.
 
-- Guardar `estimated_unit_cost` y `cost_source` reales devueltos por la RPC (no derivar heurísticamente comparando con `unit_cost`).
-- Si `cost_source ∈ {policy_manual_cost, external_supplier_cost, core_product_manual_cost}` y la ruta ≠ `internal_factory`: adjuntar `warning` en respuesta pero **no bloquear** creación.
-- No modificar OPs históricas.
+**`core-process-fabrication-funds`**: reemplazar el bloque actual que consulta política + crea evento por una única llamada a `route_core_replenishment_candidate` (con `source_type='fabrication_fund_movement'`, `source_id=<movement_id>`). Usar `allow_internal_need` para decidir si registra movimiento interno; el evento lo crea el RPC. Eliminar la lógica de política paralela.
 
-### `core-generate-production-units`
-No cambia la lógica de procesos: si no hay estructura (base ni variante), **no** materializar procesos falsos desde costo manual. Solo si en algún punto se toma un costo referencial para snapshot, resolverlo con la nueva RPC. Confirmar que costos manuales no crean `core_production_unit_processes`.
+**`core-generate-production-needs`**: antes de insertar/actualizar cada `core_production_needs`, llamar al mismo RPC (`source_type='fabrication_fund_movement_group'`, `source_id=<primer movement del grupo>` o UUID determinista). Si `allow_internal_need=true` → flujo actual. Si `false` → skip, sumar a `by_skip_reason['policy_routed:<action>']`, sin insertar necesidad. Añadir modo `route_only: true` que ejecuta enrutador sobre movimientos pendientes sin tocar necesidades; combinado con `dry_run: true` no escribe nada (el RPC respeta `p_dry_run`).
 
-## 3. UI `/core/mapa-woo-core`
+`core-create-production-order` y `core-generate-production-units`: sin cambios en esta fase (ya bloquean vía `resolve_core_replenishment_action`; migrarán al motor central cuando sus eventos también se unifiquen).
 
-En la celda de costo (`resolveDisplayCost` de `src/lib/coreReplenishment.ts` + `CoreWooCoreMap.tsx`):
-- Cuando la fuente resulte `policy_manual_cost`, `external_supplier_cost` o `core_product_manual_cost`, mostrar badge **"Costo manual operativo"** con tooltip: "Este costo se usará para montos de partidas/necesidades cuando no exista estructura. No reemplaza una estructura de fabricación."
-- Mantener el orden de tiers rojo/amarillo/verde ya existente; el badge es adicional.
+### 4. Botón "Procesar políticas de reposición"
 
-Sin cambios en `/core/estructuras-costos` ni `/core/productos` en esta fase.
+En `PolicyReviewPanel` (`/core/mapa-woo-core` → Revisión de reposición):
+- Botón "Procesar políticas de reposición".
+- Modal preview: invoca `core-generate-production-needs` con `{ route_only: true, dry_run: true }` → devuelve conteos por bucket (interna, externo, manual, no restock, salida, reemplazos, ignorados, errores) sin escribir nada.
+- Confirmación → segunda llamada sin `dry_run` (crea necesidades internas y eventos según política).
 
-## 4. Fuera de scope (Fase 2B)
-- Bloqueo real por `no_restock` / `ignored`.
-- Reemplazos automáticos (`replacement_behavior`).
-- OPs de reposición externa reales / órdenes de compra a proveedor.
-- Creación automática de partidas o necesidades.
-- Reprocesamiento de histórico.
-- Escrituras a WooCommerce.
+### 5. Mensajes `policy_blocked`
 
-## 5. Validación
-Antes de cerrar la fase, correr `supabase--read_query` sobre los 5 casos (A estructura, B policy_manual, C core_product_manual, D external_supplier, E zero) invocando la nueva RPC y verificar `cost_source` esperado. Verificar en `core_fabrication_fund_movements.cost_snapshot_data` y `core_production_order_lines.cost_source` que las corridas nuevas usan la fuente correcta.
+Actualizar `POLICY_ACTION_MESSAGES` en `src/lib/policyBlocked.ts` con los textos exactos pedidos. `PolicyBlockedDialog` ya tiene botón "Abrir Revisión de reposición".
 
-## Detalles técnicos
+### Archivos afectados
 
-**Archivos:**
-- Nueva migración: función `public.resolve_core_operational_unit_cost(...)` + `GRANT EXECUTE ... TO authenticated, service_role`.
-- `supabase/functions/core-process-fabrication-funds/index.ts` — helper reescrito, snapshots ampliados, ambas rutas.
-- `supabase/functions/core-create-production-order/index.ts` — dos call-sites; guardar `cost_source` real y warning.
-- `supabase/functions/core-generate-production-units/index.ts` — verificar que costos manuales no generen procesos falsos (probablemente sin cambios).
-- `src/lib/coreReplenishment.ts` — badge "Costo manual operativo" en `CostResolution` labels.
-- `src/pages/core/CoreWooCoreMap.tsx` — mostrar badge + tooltip.
+- **Migración nueva**: RPC `route_core_replenishment_candidate` + columna `dedupe_key` + índice UNIQUE permanente + GRANT EXECUTE.
+- **Editar**: `supabase/functions/core-process-fabrication-funds/index.ts` (sustituir punto de decisión).
+- **Editar**: `supabase/functions/core-generate-production-needs/index.ts` (integración enrutador + modo `route_only`).
+- **Editar**: `src/components/core/woocore/PolicyReviewPanel.tsx` (botón + modal preview).
+- **Editar**: `src/lib/policyBlocked.ts` (textos).
 
-**Backward-compat:** `resolve_core_variant_unit_cost` y `_with_source` permanecen; solo callers explícitos migran.
+### Fuera de scope
+
+Sin órdenes de compra externas, sin reemplazos automáticos, sin OP automáticas, sin tocar Woo/stock/QR/escaneo/nómina/España/histórico. Sin tablas nuevas (1 columna + 1 índice).
+
+### Pendiente para Bloque 2
+
+Conversión de eventos `external_supplier_review` en órdenes de compra reales, aplicación confirmada de `suggest_replacement`, y migración de `core-create-production-order` / `core-generate-production-units` al motor central para unificar eventos.

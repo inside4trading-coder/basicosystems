@@ -3226,6 +3226,7 @@ export type Database = {
           cost_source: string | null
           created_at: string
           created_by: string | null
+          dedupe_key: string | null
           external_supplier_name: string | null
           external_supplier_unit_cost_usd: number | null
           id: string
@@ -3257,6 +3258,7 @@ export type Database = {
           cost_source?: string | null
           created_at?: string
           created_by?: string | null
+          dedupe_key?: string | null
           external_supplier_name?: string | null
           external_supplier_unit_cost_usd?: number | null
           id?: string
@@ -3288,6 +3290,7 @@ export type Database = {
           cost_source?: string | null
           created_at?: string
           created_by?: string | null
+          dedupe_key?: string | null
           external_supplier_name?: string | null
           external_supplier_unit_cost_usd?: number | null
           id?: string
@@ -8083,6 +8086,26 @@ export type Database = {
           cost_source: string
           unit_cost: number
         }[]
+      }
+      route_core_replenishment_candidate: {
+        Args: {
+          p_amount?: number
+          p_core_product_id?: string
+          p_core_variant_id?: string
+          p_cost_source?: string
+          p_created_by?: string
+          p_dry_run?: boolean
+          p_quantity?: number
+          p_source_id?: string
+          p_source_key?: string
+          p_source_type: string
+          p_unit_cost?: number
+          p_woo_order_id?: number
+          p_woo_order_item_id?: number
+          p_woo_product_id?: number
+          p_woo_variation_id?: number
+        }
+        Returns: Json
       }
     }
     Enums: {
