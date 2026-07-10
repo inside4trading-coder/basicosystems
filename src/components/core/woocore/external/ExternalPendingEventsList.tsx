@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Package } from "lucide-react";
-import { usePendingExternalEvents, useReplenishmentPolicies as _unused } from "@/hooks/useExternalPurchaseOrders";
+import { usePendingExternalEvents } from "@/hooks/useExternalPurchaseOrders";
 import { useReplenishmentPolicies } from "@/hooks/useWooCoreMap";
 import { formatCurrencySafe } from "@/lib/formatCurrency";
 import { ExternalOrderPreviewDialog } from "./ExternalOrderPreviewDialog";
