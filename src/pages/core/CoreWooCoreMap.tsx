@@ -41,6 +41,7 @@ import { BrandRoleDialog } from "@/components/core/woocore/BrandRoleDialog";
 import { WooCoreVariantsRow } from "@/components/core/woocore/WooCoreVariantsRow";
 import { StrategyAuditPanel } from "@/components/core/woocore/StrategyAuditPanel";
 import { PolicyReviewPanel } from "@/components/core/woocore/PolicyReviewPanel";
+import { ExternalReplenishmentPanel } from "@/components/core/woocore/external/ExternalReplenishmentPanel";
 
 
 type RowCtx = {
