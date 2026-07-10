@@ -512,27 +512,66 @@ export function ReplacementApplicationDialog({
 
               {/* Variable with Core variants available */}
               {expectsVariants && hasVariants && (
-                <div className="border rounded divide-y">
-                  {replacementVariants.map((v: any) => {
-                    const label = [v.size, v.variant_label].filter(Boolean).join(" · ") || v.variant_sku || v.id.slice(0, 8);
-                    return (
-                      <div key={v.id} className="grid grid-cols-[1fr_140px] gap-2 items-center p-2">
-                        <div className="text-xs">
-                          <div className="font-medium">{label}</div>
-                          <div className="text-muted-foreground">{v.variant_sku ?? "—"}</div>
-                        </div>
-                        <Input
-                          type="number"
-                          value={qtyByVariantId[v.id] ?? 0}
-                          onChange={(e) => {
-                            setQtyByVariantId((prev) => ({ ...prev, [v.id]: Number(e.target.value) }));
-                            invalidatePreview();
-                          }}
-                          min={0}
-                        />
-                      </div>
-                    );
-                  })}
+                <div className="border rounded overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/40 text-muted-foreground">
+                      <tr>
+                        <th className="text-left p-2">Variante</th>
+                        <th className="text-right p-2">Stock</th>
+                        <th className="text-right p-2">En fab.</th>
+                        <th className="text-right p-2">Por producir</th>
+                        <th className="text-right p-2">Proyectado</th>
+                        <th className="text-right p-2">Nueva cant.</th>
+                        <th className="text-right p-2">Después</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(replacementVariants as any[]).map((v: any) => {
+                        const label = [v.size, v.color ?? v.variant_label].filter(Boolean).join(" · ") || v.variant_sku || v.id.slice(0, 8);
+                        const proj = variantProjections.find((p) => p.id === v.id) ?? { stock: 0, inFab: 0, toProduce: 0, projected: 0 };
+                        const newQty = Number(qtyByVariantId[v.id] ?? 0);
+                        const after = proj.projected + newQty;
+                        const isMostNeeded = mostNeededId === v.id;
+                        let badge: { label: string; cls: string } | null = null;
+                        if (proj.projected === 0) badge = { label: "Sin cobertura", cls: "bg-red-500/15 text-red-600 border-red-500/40" };
+                        else if (proj.projected <= 2) badge = { label: "Prioridad alta", cls: "bg-orange-500/15 text-orange-600 border-orange-500/40" };
+                        else badge = { label: "Cubierta", cls: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30" };
+                        return (
+                          <tr key={v.id} className="border-t">
+                            <td className="p-2">
+                              <div className="font-medium">{label}</div>
+                              <div className="text-muted-foreground">{v.variant_sku ?? "—"}</div>
+                              <div className="flex gap-1 mt-1 flex-wrap">
+                                <Badge variant="outline" className={`text-[9px] ${badge.cls}`}>{badge.label}</Badge>
+                                {isMostNeeded && (
+                                  <Badge variant="outline" className="text-[9px] bg-primary/10 border-primary/40 text-primary">
+                                    Más necesaria
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-2 text-right font-mono">{proj.stock}</td>
+                            <td className="p-2 text-right font-mono">{proj.inFab}</td>
+                            <td className="p-2 text-right font-mono">{proj.toProduce}</td>
+                            <td className="p-2 text-right font-mono">{proj.projected}</td>
+                            <td className="p-2 text-right">
+                              <Input
+                                type="number"
+                                className="h-8 w-20 ml-auto"
+                                value={qtyByVariantId[v.id] ?? 0}
+                                onChange={(e) => {
+                                  setQtyByVariantId((prev) => ({ ...prev, [v.id]: Number(e.target.value) }));
+                                  invalidatePreview();
+                                }}
+                                min={0}
+                              />
+                            </td>
+                            <td className="p-2 text-right font-mono">{after}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
