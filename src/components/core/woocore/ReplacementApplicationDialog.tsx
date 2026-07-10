@@ -292,7 +292,7 @@ export function ReplacementApplicationDialog({
 
   const needReason = confirmedQty !== suggested && (!reason || !reason.trim());
   const totalsMatch = totalAllocated === confirmedQty && confirmedQty > 0;
-  const canPreview = !behaviorBlocked && !isResolved && allocations.length > 0 && totalsMatch && !needReason;
+  const canPreview = !behaviorBlocked && !isResolved && !selfReplacement && allocations.length > 0 && totalsMatch && !needReason;
   const canConfirm = !!preview && !preview.error && canPreview;
 
   const buildPayload = () => ({
