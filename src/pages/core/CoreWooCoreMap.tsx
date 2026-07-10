@@ -555,7 +555,7 @@ export default function CoreWooCoreMap() {
       {dialog?.kind === "manualCost" && <ManualCostDialog open onClose={() => setDialog(null)} ctx={dialog.ctx} onDone={() => { qc.invalidateQueries({ queryKey: ["replenishment-policies"] }); qc.invalidateQueries({ queryKey: ["core-products-lite"] }); qc.invalidateQueries({ queryKey: ["strategy-audit"] }); }} />}
       {dialog?.kind === "route" && <ReplenishmentRouteDialog open onClose={() => setDialog(null)} ctx={dialog.ctx} onDone={() => { qc.invalidateQueries({ queryKey: ["replenishment-policies"] }); qc.invalidateQueries({ queryKey: ["strategy-audit"] }); }} />}
       {dialog?.kind === "lifecycle" && <LifecycleStatusDialog open onClose={() => setDialog(null)} ctx={dialog.ctx} onDone={() => { qc.invalidateQueries({ queryKey: ["replenishment-policies"] }); qc.invalidateQueries({ queryKey: ["strategy-audit"] }); }} />}
-      {dialog?.kind === "replacement" && <ReplacementPickerDialog open onClose={() => setDialog(null)} ctx={dialog.ctx} coreProducts={coreProducts} onDone={() => { qc.invalidateQueries({ queryKey: ["replenishment-policies"] }); qc.invalidateQueries({ queryKey: ["strategy-audit"] }); }} />}
+      
       {dialog?.kind === "brandRole" && <BrandRoleDialog open onClose={() => setDialog(null)} ctx={dialog.ctx} onDone={() => { qc.invalidateQueries({ queryKey: ["replenishment-policies"] }); qc.invalidateQueries({ queryKey: ["strategy-audit"] }); }} />}
       {noRestockDialog.open && (
         <NoRestockConfigDialog
