@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Download, Link as LinkIcon, RefreshCw, DollarSign, Truck, Ban, Repeat, Tag, ChevronRight, ChevronDown, Wand2, Trash2 } from "lucide-react";
+import { Loader2, Download, Link as LinkIcon, RefreshCw, DollarSign, Truck, Ban, Repeat, Tag, ChevronRight, ChevronDown, Wand2, Trash2, EyeOff, Eye } from "lucide-react";
 import { logStrategyDecision, upsertPolicy } from "@/hooks/useWooCoreMap";
 
 import { supabase } from "@/integrations/supabase/client";
