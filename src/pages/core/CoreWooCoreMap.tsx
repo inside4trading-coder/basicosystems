@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Download, Link as LinkIcon, RefreshCw, DollarSign, Truck, Ban, Repeat, Tag, ChevronRight, ChevronDown, Wand2, Trash2 } from "lucide-react";
+import { Loader2, Download, Link as LinkIcon, RefreshCw, DollarSign, Truck, Ban, Repeat, Tag, ChevronRight, ChevronDown, Wand2, Trash2, EyeOff, Eye } from "lucide-react";
 import { logStrategyDecision, upsertPolicy } from "@/hooks/useWooCoreMap";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -119,6 +119,8 @@ export default function CoreWooCoreMap() {
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return rowsCtx.filter(r => {
+      // Ocultar productos marcados como "ignorado" salvo que se filtre explícitamente por ellos
+      if (filterMapping !== "ignored" && r.map.mapping_status === "ignored") return false;
       if (filterMapping !== "all" && r.map.mapping_status !== filterMapping) return false;
       const lc = r.policy?.lifecycle_status ?? "active";
       if (filterLifecycle !== "all" && lc !== filterLifecycle) return false;
@@ -144,8 +146,14 @@ export default function CoreWooCoreMap() {
     });
   }, [rowsCtx, search, filterMapping, filterLifecycle, filterRoute, filterBrand]);
 
+  const ignoredCount = useMemo(
+    () => rowsCtx.filter(r => r.map.mapping_status === "ignored").length,
+    [rowsCtx],
+  );
+
   const missingCostRows = useMemo(
     () => rowsCtx.filter(r => {
+      if (r.map.mapping_status === "ignored") return false;
       const hasStructure = !!r.core?.cost_structure_id || !!r.activeStructure;
       const hasManual = !!(r.policy?.manual_unit_cost_usd || r.core?.manual_unit_cost_usd);
       return !hasStructure && !hasManual;
@@ -153,11 +161,12 @@ export default function CoreWooCoreMap() {
     [rowsCtx],
   );
   const externalRows = useMemo(
-    () => rowsCtx.filter(r => r.policy?.replenishment_route === "external_supplier"),
+    () => rowsCtx.filter(r => r.map.mapping_status !== "ignored" && r.policy?.replenishment_route === "external_supplier"),
     [rowsCtx],
   );
   const needsReplacementActivationRows = useMemo(
     () => rowsCtx.filter(r => {
+      if (r.map.mapping_status === "ignored") return false;
       const p = r.policy;
       const hasRef = !!(p?.replacement_product_id || p?.replacement_woo_product_id);
       return hasRef && p?.lifecycle_status !== "replaced";
@@ -169,6 +178,7 @@ export default function CoreWooCoreMap() {
       const seen = new Set<string>();
       const out: RowCtx[] = [];
       for (const r of rowsCtx) {
+        if (r.map.mapping_status === "ignored") continue;
         const lc = r.policy?.lifecycle_status;
         const active = lc === "no_restock" || lc === "exit" || lc === "replaced";
         const needsAct = !!(r.policy?.replacement_product_id || r.policy?.replacement_woo_product_id) && lc !== "replaced";
@@ -254,6 +264,30 @@ export default function CoreWooCoreMap() {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
   }
+
+  async function toggleIgnored(ctx: RowCtx) {
+    const isIgnored = ctx.map.mapping_status === "ignored";
+    const label = ctx.map.woo_product_name ?? `Woo #${ctx.map.woo_product_id}`;
+    if (isIgnored) {
+      if (!window.confirm(`Restaurar "${label}" en la lista?`)) return;
+    } else {
+      if (!window.confirm(`Ocultar "${label}" de la lista? Se marcará como Ignorado y no aparecerá en Mapa ni en las pestañas de faltantes, externa o no-restock. Podrás restaurarlo desde el filtro "Ignorado".`)) return;
+    }
+    const nextStatus = isIgnored ? (ctx.map.core_product_id ? "mapped" : "unmapped") : "ignored";
+    try {
+      const { error } = await supabase
+        .from("core_woo_product_map")
+        .update({ mapping_status: nextStatus })
+        .eq("id", ctx.map.id);
+      if (error) throw error;
+      toast({ title: isIgnored ? "Producto restaurado" : "Producto ocultado de la lista" });
+      qc.invalidateQueries({ queryKey: ["woo-core-map"] });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  }
+
+
 
 
 
@@ -438,6 +472,17 @@ export default function CoreWooCoreMap() {
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "lifecycle", ctx })}><Ban className="h-3 w-3 mr-1" />Estado</Button>
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setNoRestockDialog({ open: true, initialCtx: ctx, initialStatus: "replaced" })}><Repeat className="h-3 w-3 mr-1" />Reemplazo</Button>
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "brandRole", ctx })}><Tag className="h-3 w-3 mr-1" />Rol</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[10px]"
+                          title={ctx.map.mapping_status === "ignored" ? "Restaurar en la lista" : "Ocultar de la lista (ej. gift cards que no necesitan estructura de costos)"}
+                          onClick={() => toggleIgnored(ctx)}
+                        >
+                          {ctx.map.mapping_status === "ignored"
+                            ? (<><Eye className="h-3 w-3 mr-1" />Restaurar</>)
+                            : (<><EyeOff className="h-3 w-3 mr-1" />Ocultar</>)}
+                        </Button>
                       </div>
                     </td>
                   </tr>
