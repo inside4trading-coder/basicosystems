@@ -472,6 +472,17 @@ export default function CoreWooCoreMap() {
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "lifecycle", ctx })}><Ban className="h-3 w-3 mr-1" />Estado</Button>
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setNoRestockDialog({ open: true, initialCtx: ctx, initialStatus: "replaced" })}><Repeat className="h-3 w-3 mr-1" />Reemplazo</Button>
                         <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => setDialog({ kind: "brandRole", ctx })}><Tag className="h-3 w-3 mr-1" />Rol</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[10px]"
+                          title={ctx.map.mapping_status === "ignored" ? "Restaurar en la lista" : "Ocultar de la lista (ej. gift cards que no necesitan estructura de costos)"}
+                          onClick={() => toggleIgnored(ctx)}
+                        >
+                          {ctx.map.mapping_status === "ignored"
+                            ? (<><Eye className="h-3 w-3 mr-1" />Restaurar</>)
+                            : (<><EyeOff className="h-3 w-3 mr-1" />Ocultar</>)}
+                        </Button>
                       </div>
                     </td>
                   </tr>
