@@ -265,6 +265,30 @@ export default function CoreWooCoreMap() {
     }
   }
 
+  async function toggleIgnored(ctx: RowCtx) {
+    const isIgnored = ctx.map.mapping_status === "ignored";
+    const label = ctx.map.woo_product_name ?? `Woo #${ctx.map.woo_product_id}`;
+    if (isIgnored) {
+      if (!window.confirm(`Restaurar "${label}" en la lista?`)) return;
+    } else {
+      if (!window.confirm(`Ocultar "${label}" de la lista? Se marcará como Ignorado y no aparecerá en Mapa ni en las pestañas de faltantes, externa o no-restock. Podrás restaurarlo desde el filtro "Ignorado".`)) return;
+    }
+    const nextStatus = isIgnored ? (ctx.map.core_product_id ? "mapped" : "unmapped") : "ignored";
+    try {
+      const { error } = await supabase
+        .from("core_woo_product_map")
+        .update({ mapping_status: nextStatus })
+        .eq("id", ctx.map.id);
+      if (error) throw error;
+      toast({ title: isIgnored ? "Producto restaurado" : "Producto ocultado de la lista" });
+      qc.invalidateQueries({ queryKey: ["woo-core-map"] });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  }
+
+
+
 
 
   function badge(text: string, variant: "default" | "secondary" | "destructive" | "outline" = "outline") {
