@@ -119,6 +119,8 @@ export default function CoreWooCoreMap() {
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return rowsCtx.filter(r => {
+      // Ocultar productos marcados como "ignorado" salvo que se filtre explícitamente por ellos
+      if (filterMapping !== "ignored" && r.map.mapping_status === "ignored") return false;
       if (filterMapping !== "all" && r.map.mapping_status !== filterMapping) return false;
       const lc = r.policy?.lifecycle_status ?? "active";
       if (filterLifecycle !== "all" && lc !== filterLifecycle) return false;
@@ -143,6 +145,11 @@ export default function CoreWooCoreMap() {
       return tier(a) - tier(b);
     });
   }, [rowsCtx, search, filterMapping, filterLifecycle, filterRoute, filterBrand]);
+
+  const ignoredCount = useMemo(
+    () => rowsCtx.filter(r => r.map.mapping_status === "ignored").length,
+    [rowsCtx],
+  );
 
   const missingCostRows = useMemo(
     () => rowsCtx.filter(r => {
