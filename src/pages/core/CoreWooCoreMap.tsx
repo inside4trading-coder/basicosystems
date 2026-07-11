@@ -153,6 +153,7 @@ export default function CoreWooCoreMap() {
 
   const missingCostRows = useMemo(
     () => rowsCtx.filter(r => {
+      if (r.map.mapping_status === "ignored") return false;
       const hasStructure = !!r.core?.cost_structure_id || !!r.activeStructure;
       const hasManual = !!(r.policy?.manual_unit_cost_usd || r.core?.manual_unit_cost_usd);
       return !hasStructure && !hasManual;
@@ -160,11 +161,12 @@ export default function CoreWooCoreMap() {
     [rowsCtx],
   );
   const externalRows = useMemo(
-    () => rowsCtx.filter(r => r.policy?.replenishment_route === "external_supplier"),
+    () => rowsCtx.filter(r => r.map.mapping_status !== "ignored" && r.policy?.replenishment_route === "external_supplier"),
     [rowsCtx],
   );
   const needsReplacementActivationRows = useMemo(
     () => rowsCtx.filter(r => {
+      if (r.map.mapping_status === "ignored") return false;
       const p = r.policy;
       const hasRef = !!(p?.replacement_product_id || p?.replacement_woo_product_id);
       return hasRef && p?.lifecycle_status !== "replaced";
@@ -176,6 +178,7 @@ export default function CoreWooCoreMap() {
       const seen = new Set<string>();
       const out: RowCtx[] = [];
       for (const r of rowsCtx) {
+        if (r.map.mapping_status === "ignored") continue;
         const lc = r.policy?.lifecycle_status;
         const active = lc === "no_restock" || lc === "exit" || lc === "replaced";
         const needsAct = !!(r.policy?.replacement_product_id || r.policy?.replacement_woo_product_id) && lc !== "replaced";
