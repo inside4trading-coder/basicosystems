@@ -395,9 +395,7 @@ export default function CoreProductionNeeds() {
       <Tabs defaultValue="internal">
         <TabsList>
           <TabsTrigger value="internal">Fabricación interna</TabsTrigger>
-          <TabsTrigger value="attention">
-            Requieren atención <AttentionCountBadge />
-          </TabsTrigger>
+          <AttentionTabTrigger />
         </TabsList>
 
         <TabsContent value="attention" className="mt-4">
