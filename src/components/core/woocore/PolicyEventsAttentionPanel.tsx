@@ -4,7 +4,17 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, ExternalLink, Wand2, AlertTriangle } from "lucide-react";
+import {
+  Loader2,
+  ExternalLink,
+  Wand2,
+  AlertTriangle,
+  Copy,
+  MapPin,
+  DollarSign,
+  Layers,
+} from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { POLICY_ACTION_LABELS, describePolicyAction } from "@/lib/policyBlocked";
 import { ReplacementApplicationDialog } from "./ReplacementApplicationDialog";
 import { useReplenishmentPolicyEvents, PolicyEvent } from "@/hooks/useReplenishmentPolicyEvents";
@@ -16,7 +26,17 @@ const FILTERS: { key: string; label: string; actions: string[] }[] = [
   { key: "manual", label: "Costo manual", actions: ["manual_cost_review"] },
   { key: "block", label: "No restock / En salida", actions: ["block_no_restock", "block_exit"] },
   { key: "ignored", label: "Ignorados", actions: ["block_ignored"] },
+  { key: "missing_map", label: "Sin mapeo", actions: ["missing_map"] },
+  { key: "missing_cost", label: "Sin costo", actions: ["missing_cost", "financial_review"] },
+  { key: "unclassified", label: "Sin clasificar", actions: ["unclassified_fund"] },
 ];
+
+const EXTRA_ACTION_LABELS: Record<string, string> = {
+  missing_map: "Sin mapeo",
+  missing_cost: "Sin costo",
+  financial_review: "Revisión financiera",
+  unclassified_fund: "Partida sin clasificar",
+};
 
 const SEVERITY_STYLES: Record<string, string> = {
   allow: "bg-emerald-600 text-white",
@@ -24,6 +44,16 @@ const SEVERITY_STYLES: Record<string, string> = {
   review: "bg-yellow-300 text-black",
   block: "bg-red-600 text-white",
 };
+
+function actionLabel(action: string) {
+  return POLICY_ACTION_LABELS[action] ?? EXTRA_ACTION_LABELS[action] ?? action;
+}
+
+function mapaWooLink(wooId: number | null | undefined, sku: string | null | undefined) {
+  if (wooId) return `/core/mapa-woo-core?woo=${wooId}`;
+  if (sku) return `/core/mapa-woo-core?q=${encodeURIComponent(sku)}`;
+  return "/core/mapa-woo-core";
+}
 
 export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: string } = {}) {
   const {
@@ -92,7 +122,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-6 text-center text-muted-foreground">
-            No hay reemplazos, reposiciones externas ni bloqueos pendientes.
+            No hay ventas ni reposiciones que requieran atención.
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -112,6 +142,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
               {filtered.map((r) => {
                 const p = resolveProductLabel(r);
                 const rep = resolveReplacementLabel(r);
+                const isSynthetic = !!r._synthetic;
                 return (
                   <tr key={r.id} className="border-t align-top">
                     <td className="p-2 whitespace-nowrap text-xs">
@@ -122,13 +153,14 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                       <div className="text-xs text-muted-foreground">
                         {p.sku ? `${p.sku} · ` : ""}
                         {p.wooId ? `Woo #${p.wooId}` : ""}
+                        {r.woo_order_id ? ` · Pedido #${r.woo_order_id}` : ""}
                       </div>
                     </td>
                     <td className="p-2 text-xs">{resolveVariantLabel(r)}</td>
                     <td className="p-2 text-right">{r.quantity ?? "—"}</td>
                     <td className="p-2">
                       <Badge className={SEVERITY_STYLES[r.severity] ?? ""}>
-                        {POLICY_ACTION_LABELS[r.action] ?? r.action}
+                        {actionLabel(r.action)}
                       </Badge>
                       <div className="text-xs mt-1">
                         {r.message || describePolicyAction(r.action)}
@@ -147,6 +179,11 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                       {r.unit_cost != null && (
                         <div className="text-muted-foreground">
                           Costo: {Number(r.unit_cost).toFixed(2)}
+                        </div>
+                      )}
+                      {r.amount != null && (
+                        <div className="text-muted-foreground">
+                          Reservado: {Number(r.amount).toFixed(2)}
                         </div>
                       )}
                     </td>
@@ -170,15 +207,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         {r.action === "manual_cost_review" && (
                           <>
                             <Button size="sm" variant="outline" asChild>
-                              <Link
-                                to={
-                                  r.woo_product_id
-                                    ? `/core/mapa-woo-core?woo=${r.woo_product_id}`
-                                    : "/core/mapa-woo-core"
-                                }
-                              >
-                                Ver política
-                              </Link>
+                              <Link to={mapaWooLink(r.woo_product_id, p.sku)}>Ver política</Link>
                             </Button>
                             <Button size="sm" variant="outline" asChild>
                               <Link to="/core/mapa-woo-core?tab=policy-review">
@@ -191,18 +220,45 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                           r.action === "block_exit" ||
                           r.action === "block_ignored") && (
                           <Button size="sm" variant="outline" asChild>
-                            <Link
-                              to={
-                                r.woo_product_id
-                                  ? `/core/mapa-woo-core?woo=${r.woo_product_id}`
-                                  : "/core/mapa-woo-core"
-                              }
-                            >
-                              Ver política
+                            <Link to={mapaWooLink(r.woo_product_id, p.sku)}>Ver política</Link>
+                          </Button>
+                        )}
+                        {r.action === "missing_map" && (
+                          <>
+                            <Button size="sm" variant="outline" asChild>
+                              <Link to={mapaWooLink(r.woo_product_id, p.sku)}>
+                                <MapPin className="w-3 h-3 mr-1" /> Abrir Mapa Woo/Core
+                              </Link>
+                            </Button>
+                            {r.woo_product_id && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(String(r.woo_product_id));
+                                  toast({ title: "Woo ID copiado" });
+                                }}
+                              >
+                                <Copy className="w-3 h-3 mr-1" /> Copiar Woo ID
+                              </Button>
+                            )}
+                          </>
+                        )}
+                        {(r.action === "missing_cost" || r.action === "financial_review") && (
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={mapaWooLink(r.woo_product_id, p.sku)}>
+                              <DollarSign className="w-3 h-3 mr-1" /> Configurar costo
                             </Link>
                           </Button>
                         )}
-                        {r.status !== "reviewed" && (
+                        {r.action === "unclassified_fund" && (
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={mapaWooLink(r.woo_product_id, p.sku)}>
+                              <Layers className="w-3 h-3 mr-1" /> Definir política
+                            </Link>
+                          </Button>
+                        )}
+                        {!isSynthetic && r.status !== "reviewed" && (
                           <Button
                             size="sm"
                             variant="ghost"
@@ -211,7 +267,8 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                             Marcar revisado
                           </Button>
                         )}
-                        {r.status !== "resolved" &&
+                        {!isSynthetic &&
+                          r.status !== "resolved" &&
                           r.action !== "suggest_replacement" && (
                             <Button
                               size="sm"
