@@ -818,10 +818,25 @@ export default function CoreProductionNeeds() {
   );
 }
 
-function AttentionCountBadge() {
+function AttentionTabTrigger() {
   const { counts } = useReplenishmentPolicyEvents();
-  if (!counts.total) return null;
-  return <Badge className="ml-2" variant="destructive">{counts.total}</Badge>;
+  const total = counts.total ?? 0;
+  const active = total > 0;
+  return (
+    <TabsTrigger
+      value="attention"
+      className={
+        active
+          ? "bg-red-600 text-white data-[state=active]:bg-red-600 data-[state=active]:text-white hover:bg-red-600/90 animate-pulse motion-reduce:animate-none"
+          : ""
+      }
+    >
+      Requieren atención
+      {active && (
+        <Badge className="ml-2 bg-white text-red-700 hover:bg-white">{total}</Badge>
+      )}
+    </TabsTrigger>
+  );
 }
 
 function PolicyEventsSummaryBar() {
@@ -832,24 +847,33 @@ function PolicyEventsSummaryBar() {
   const man = counts.manual_cost_review ?? 0;
   const blocked =
     (counts.block_no_restock ?? 0) + (counts.block_exit ?? 0) + (counts.block_ignored ?? 0);
+  const missingMap = counts.missing_map ?? 0;
+  const missingCost = (counts.missing_cost ?? 0) + (counts.financial_review ?? 0);
+  const unclassified = counts.unclassified_fund ?? 0;
+  const configIssues = missingMap + missingCost + unclassified;
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
         <MiniCard label="Reemplazos" value={rep} />
         <MiniCard label="Proveedor externo" value={ext} />
         <MiniCard label="Costo manual" value={man} />
         <MiniCard label="Bloqueadas" value={blocked} />
+        <MiniCard
+          label="Problemas de configuración"
+          value={configIssues}
+          highlight={configIssues > 0}
+        />
         <MiniCard label="Total atención" value={total} highlight={total > 0} />
       </div>
       {total > 0 && (
-        <div className="flex items-center gap-2 rounded border border-amber-500 bg-amber-500/10 p-3 text-sm">
-          <AlertTriangle className="w-4 h-4 text-amber-600" />
+        <div className="flex items-center gap-2 rounded border border-red-500 bg-red-500/10 p-3 text-sm">
+          <AlertTriangle className="w-4 h-4 text-red-600" />
           <div className="flex-1">
-            Hay <strong>{total}</strong> reposiciones que requieren atención o fueron desviadas por
-            política.
+            Hay <strong>{total}</strong> ventas o reposiciones que requieren una decisión.
             <span className="text-xs text-muted-foreground ml-2">
-              {rep} reemplazos · {ext} proveedor externo · {man} costo manual · {blocked} bloqueadas
+              {rep} reemplazos · {ext} proveedor externo · {blocked} bloqueadas · {missingMap} sin
+              mapeo · {missingCost} sin costo · {unclassified} sin clasificar
             </span>
           </div>
           <Button
