@@ -130,18 +130,24 @@ export default function CoreFabricationFunds() {
 
   async function load() {
     setLoading(true);
-    const [{ data: f }, { data: m }, { data: p }, { data: r }, { data: u }] = await Promise.all([
+    const [{ data: f }, { data: m }, { data: p }, { data: r }, { data: u }, { data: ev }] = await Promise.all([
       supabase.from("core_fabrication_funds").select("*").order("fund_type"),
       supabase.from("core_fabrication_fund_movements").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("core_fabrication_fund_pending_items").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("core_fabrication_fund_runs").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.from("core_production_units").select("id, sku, variant_sku, status").limit(5000),
+      supabase.from("core_replenishment_policy_events" as any)
+        .select("id, created_at, action, status, resolution_data, core_product_id, replacement_product_id, woo_product_id, replacement_woo_product_id")
+        .in("action", ["replacement_apply", "apply_replacement", "replacement_confirmed"])
+        .order("created_at", { ascending: false })
+        .limit(500),
     ]);
     setFunds((f as any) ?? []);
     setMovements((m as any) ?? []);
     setPendings((p as any) ?? []);
     setRuns((r as any) ?? []);
     setUnits((u as any) ?? []);
+    setReconEvents((ev as any) ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
