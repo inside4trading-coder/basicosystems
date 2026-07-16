@@ -66,6 +66,9 @@ const MOV_LABEL: Record<string, string> = {
   reversal: "Reverso",
   close: "Cierre",
   correction: "Corrección",
+  replacement_cost_adjustment: "Ajuste por reemplazo",
+  replacement_reclassification_out: "Salida por reclasificación",
+  replacement_reclassification_in: "Entrada por reclasificación",
 };
 const MOV_BADGE: Record<string, string> = {
   sale_generated: "bg-emerald-100 text-emerald-800 border-emerald-300",
@@ -76,6 +79,9 @@ const MOV_BADGE: Record<string, string> = {
   reversal: "bg-destructive/10 text-destructive border-destructive/30",
   close: "bg-muted text-muted-foreground border-border",
   correction: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  replacement_cost_adjustment: "bg-indigo-100 text-indigo-800 border-indigo-300",
+  replacement_reclassification_out: "bg-purple-100 text-purple-800 border-purple-300",
+  replacement_reclassification_in: "bg-purple-100 text-purple-800 border-purple-300",
 };
 const PENDING_REASON_LABEL: Record<string, string> = {
   product_not_in_core: "Producto no existe en Catálogo de Fabricación",
@@ -102,6 +108,9 @@ export default function CoreFabricationFunds() {
   const [pendings, setPendings] = useState<Pending[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [units, setUnits] = useState<ProdUnit[]>([]);
+  const [reconEvents, setReconEvents] = useState<any[]>([]);
+  const [reconFilter, setReconFilter] = useState<"all" | "positive" | "negative" | "reclass" | "pending">("all");
+  const [reconSearch, setReconSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -121,18 +130,25 @@ export default function CoreFabricationFunds() {
 
   async function load() {
     setLoading(true);
-    const [{ data: f }, { data: m }, { data: p }, { data: r }, { data: u }] = await Promise.all([
+    const [{ data: f }, { data: m }, { data: p }, { data: r }, { data: u }, { data: ev }] = await Promise.all([
       supabase.from("core_fabrication_funds").select("*").order("fund_type"),
       supabase.from("core_fabrication_fund_movements").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("core_fabrication_fund_pending_items").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("core_fabrication_fund_runs").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.from("core_production_units").select("id, sku, variant_sku, status").limit(5000),
+      supabase.from("core_replenishment_policy_events" as any)
+        .select("id, created_at, action, status, resolution_data, core_product_id, replacement_product_id, woo_product_id, replacement_woo_product_id, core_variant_id")
+        .eq("action", "suggest_replacement")
+        .in("status", ["resolved", "applied", "reviewed"])
+        .order("created_at", { ascending: false })
+        .limit(500),
     ]);
     setFunds((f as any) ?? []);
     setMovements((m as any) ?? []);
     setPendings((p as any) ?? []);
     setRuns((r as any) ?? []);
     setUnits((u as any) ?? []);
+    setReconEvents((ev as any) ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
@@ -195,6 +211,40 @@ export default function CoreFabricationFunds() {
 
     return { general, nonR, pendingHist, lastRunPend, rangeCount, rangeRevenue, sales, reversals, manuals, lastRun, generatedTotal, executedTotal, availableUnassigned };
   }, [funds, pendings, movements, runs, periodStart, periodEnd, units]);
+
+  // === Partidas principales (cards) ===
+  const partidaCards = useMemo(() => {
+    const pick = (t: string) => funds.find(f => f.fund_type === t && f.currency === "USD" && !f.core_product_id) ?? null;
+    const factory = pick("general");
+    const external = pick("external_supplier");
+    const pending = pick("pending");
+    const movsBy = (fundId?: string | null) => movements.filter(m => fundId && m.fund_id === fundId);
+    const last = (list: Movement[]) => list.length ? list[0].created_at : null;
+    return {
+      factory: { fund: factory, count: movsBy(factory?.id).length, last: last(movsBy(factory?.id)) },
+      external: { fund: external, count: movsBy(external?.id).length, last: last(movsBy(external?.id)) },
+      pending: { fund: pending, count: movsBy(pending?.id).length, last: last(movsBy(pending?.id)) },
+    };
+  }, [funds, movements]);
+
+  // === Conciliaciones de reemplazos ===
+  const reconciliation = useMemo(() => {
+    const posMovs = movements.filter(m => m.movement_type === "replacement_cost_adjustment" && Number(m.amount) > 0);
+    const negMovs = movements.filter(m => m.movement_type === "replacement_cost_adjustment" && Number(m.amount) < 0);
+    const reclassMovs = movements.filter(m => m.movement_type === "replacement_reclassification_out");
+    const positives = posMovs.reduce((s, m) => s + Number(m.amount), 0);
+    const negatives = negMovs.reduce((s, m) => s + Math.abs(Number(m.amount)), 0);
+    const net = positives - negatives;
+    const reclassified = reclassMovs.reduce((s, m) => s + Math.abs(Number(m.amount)), 0);
+    let conciliated = 0;
+    let pendingRec = 0;
+    for (const ev of reconEvents) {
+      const fin = ev?.resolution_data?.financial_reconciliation;
+      if (fin && fin.status === "posted") conciliated += 1;
+      else pendingRec += 1;
+    }
+    return { positives, negatives, net, reclassified, conciliated, pendingRec };
+  }, [movements, reconEvents]);
 
 
   async function processSales() {
@@ -386,10 +436,60 @@ export default function CoreFabricationFunds() {
           <TabsTrigger value="movimientos"><RotateCcw className="h-3.5 w-3.5 mr-1.5" />Movimientos</TabsTrigger>
           <TabsTrigger value="pendientes"><AlertCircle className="h-3.5 w-3.5 mr-1.5" />Pendientes ({pendings.filter(p => p.status === "pending").length})</TabsTrigger>
           <TabsTrigger value="procesamientos"><History className="h-3.5 w-3.5 mr-1.5" />Procesamientos</TabsTrigger>
+          <TabsTrigger value="conciliacion"><ListChecks className="h-3.5 w-3.5 mr-1.5" />Conciliación ({reconciliation.conciliated + reconciliation.pendingRec})</TabsTrigger>
         </TabsList>
 
         {/* RESUMEN */}
         <TabsContent value="resumen" className="space-y-4 mt-4">
+          {/* Cards de las tres partidas principales */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <PartidaCard
+              title="Fábrica"
+              description="Reserva destinada a fabricación interna."
+              fund={partidaCards.factory.fund}
+              movementsCount={partidaCards.factory.count}
+              lastMovementAt={partidaCards.factory.last}
+              tone="emerald"
+            />
+            <PartidaCard
+              title="Proveedores externos"
+              description="Reserva destinada a compras y reposición externa."
+              fund={partidaCards.external.fund}
+              movementsCount={partidaCards.external.count}
+              lastMovementAt={partidaCards.external.last}
+              tone="blue"
+            />
+            <PartidaCard
+              title="Pendiente de clasificación"
+              description="Dinero reservado cuyo origen financiero todavía debe definirse."
+              fund={partidaCards.pending.fund}
+              movementsCount={partidaCards.pending.count}
+              lastMovementAt={partidaCards.pending.last}
+              tone="yellow"
+              alertWhenPositive
+            />
+          </div>
+
+          <p className="text-[11px] text-muted-foreground italic">
+            Estos saldos representan reservas registradas. Los pagos externos todavía no se descuentan automáticamente.
+          </p>
+
+          {/* Resumen de reemplazos */}
+          <Card className="p-4">
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <ListChecks className="h-4 w-4 text-primary" />
+              Conciliación de reemplazos
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+              <KpiCard label="Reemplazos conciliados" value={String(reconciliation.conciliated)} tone="emerald" />
+              <KpiCard label="Conciliaciones pendientes" value={String(reconciliation.pendingRec)} tone="yellow" />
+              <KpiCard label="Ajustes positivos" value={usd(reconciliation.positives)} tone="muted" />
+              <KpiCard label="Ajustes negativos" value={usd(reconciliation.negatives)} tone="muted" />
+              <KpiCard label="Ajuste neto" value={usd(reconciliation.net)} tone={reconciliation.net >= 0 ? "emerald" : "orange"} />
+              <KpiCard label="Reclasificado entre partidas" value={usd(reconciliation.reclassified)} tone="muted" />
+            </div>
+          </Card>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="Partida generada" value={usd(totals.generatedTotal)} sub="Ventas confirmadas posted" tone="emerald" />
             <KpiCard label="Ejecutado en inventario" value={usd(totals.executedTotal)} sub="Unidades ya ingresadas" tone="muted" />
@@ -403,6 +503,9 @@ export default function CoreFabricationFunds() {
             <KpiCard label="Último procesamiento" value={totals.lastRun ? new Date(totals.lastRun.created_at).toLocaleString() : "—"} tone="muted" />
           </div>
         </TabsContent>
+
+
+
 
 
         {/* PARTIDAS */}
@@ -538,7 +641,109 @@ export default function CoreFabricationFunds() {
             </div>
           </Card>
         </TabsContent>
+
+        {/* CONCILIACIÓN */}
+        <TabsContent value="conciliacion" className="mt-4 space-y-3">
+          <Card className="p-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={reconFilter} onValueChange={(v: any) => setReconFilter(v)}>
+                <SelectTrigger className="h-9 w-[200px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="positive">Ajustes positivos</SelectItem>
+                  <SelectItem value="negative">Ajustes negativos</SelectItem>
+                  <SelectItem value="reclass">Reclasificados</SelectItem>
+                  <SelectItem value="pending">Pendientes</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Buscar producto, SKU o Woo ID…"
+                className="h-9 w-[280px]"
+                value={reconSearch}
+                onChange={e => setReconSearch(e.target.value)}
+              />
+              <div className="text-xs text-muted-foreground ml-auto">
+                {reconciliation.conciliated} conciliados · {reconciliation.pendingRec} pendientes
+              </div>
+            </div>
+            <div className="rounded-lg border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Producto original</TableHead>
+                    <TableHead>Producto reemplazo</TableHead>
+                    <TableHead className="text-right">Reserva original</TableHead>
+                    <TableHead className="text-right">Costo destino</TableHead>
+                    <TableHead className="text-right">Diferencia</TableHead>
+                    <TableHead>Partida origen</TableHead>
+                    <TableHead>Partida destino</TableHead>
+                    <TableHead>Estado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(() => {
+                    const rows = reconEvents.map((ev: any) => {
+                      const fin = ev?.resolution_data?.financial_reconciliation ?? null;
+                      const orig = Number(fin?.original_reserved_amount ?? ev?.resolution_data?.original_reserved_amount ?? 0);
+                      const dest = Number(fin?.destination_total ?? ev?.resolution_data?.estimated_total ?? 0);
+                      const diff = Number(fin?.net_difference ?? (dest - orig));
+                      const origBucket = fin?.original_bucket ?? "—";
+                      const targets = fin?.target_totals_by_bucket ?? {};
+                      const targetBucket = Object.keys(targets)[0] ?? ev?.resolution_data?.final_route_action ?? "—";
+                      const isReclass = origBucket !== "—" && targetBucket !== "—" && origBucket !== targetBucket;
+                      const isPosted = fin?.status === "posted";
+                      const status: string = isPosted
+                        ? (isReclass ? "Reclasificado" : diff > 0 ? "Ajuste +" : diff < 0 ? "Liberación" : "Conciliado")
+                        : "Pendiente";
+                      const origLabel = ev.woo_product_id ? `Woo #${ev.woo_product_id}` : (ev.core_product_id ?? "—");
+                      const replLabel = ev.replacement_woo_product_id ? `Woo #${ev.replacement_woo_product_id}` : (ev.replacement_product_id ?? "—");
+                      return { ev, orig, dest, diff, origBucket, targetBucket, isPosted, status, origLabel, replLabel };
+                    });
+                    const filtered = rows.filter(r => {
+                      if (reconFilter === "positive" && !(r.isPosted && r.diff > 0)) return false;
+                      if (reconFilter === "negative" && !(r.isPosted && r.diff < 0)) return false;
+                      if (reconFilter === "reclass" && !(r.isPosted && r.origBucket !== r.targetBucket)) return false;
+                      if (reconFilter === "pending" && r.isPosted) return false;
+                      if (reconSearch.trim()) {
+                        const q = reconSearch.trim().toLowerCase();
+                        const hay = `${r.origLabel} ${r.replLabel}`.toLowerCase();
+                        if (!hay.includes(q)) return false;
+                      }
+                      return true;
+                    });
+                    if (filtered.length === 0) {
+                      return <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Sin conciliaciones que coincidan.</TableCell></TableRow>;
+                    }
+                    return filtered.map(r => (
+                      <TableRow key={r.ev.id}>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(r.ev.created_at).toLocaleString()}</TableCell>
+                        <TableCell className="text-xs">{r.origLabel}</TableCell>
+                        <TableCell className="text-xs">{r.replLabel}</TableCell>
+                        <TableCell className="text-right font-mono text-xs">{usd(r.orig)}</TableCell>
+                        <TableCell className="text-right font-mono text-xs">{usd(r.dest)}</TableCell>
+                        <TableCell className={`text-right font-mono text-xs ${r.diff > 0 ? "text-indigo-700" : r.diff < 0 ? "text-emerald-700" : ""}`}>{usd(r.diff)}</TableCell>
+                        <TableCell className="text-xs">{r.origBucket}</TableCell>
+                        <TableCell className="text-xs">{r.targetBucket}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={
+                            r.status === "Conciliado" ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
+                            r.status === "Ajuste +" ? "bg-indigo-100 text-indigo-800 border-indigo-300" :
+                            r.status === "Liberación" ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
+                            r.status === "Reclasificado" ? "bg-purple-100 text-purple-800 border-purple-300" :
+                            "bg-yellow-100 text-yellow-800 border-yellow-300"
+                          }>{r.status}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ));
+                  })()}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </TabsContent>
       </Tabs>
+
 
       {/* RUN DETAIL DIALOG */}
       <Dialog open={!!runDetail} onOpenChange={(o) => !o && setRunDetail(null)}>
@@ -726,3 +931,51 @@ function KpiCard({ label, value, sub, tone }: { label: string; value: string; su
     </Card>
   );
 }
+
+function PartidaCard({
+  title,
+  description,
+  fund,
+  movementsCount,
+  lastMovementAt,
+  tone,
+  alertWhenPositive,
+}: {
+  title: string;
+  description: string;
+  fund: Fund | null;
+  movementsCount: number;
+  lastMovementAt: string | null;
+  tone: "emerald" | "blue" | "yellow";
+  alertWhenPositive?: boolean;
+}) {
+  const toneCls = {
+    emerald: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20",
+    blue: "bg-blue-50 border-blue-200 dark:bg-blue-950/20",
+    yellow: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20",
+  }[tone];
+  const amount = Number(fund?.available_amount ?? 0);
+  const fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  const showAlert = !!alertWhenPositive && amount > 0;
+  return (
+    <Card className={`p-4 ${toneCls}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{title}</p>
+          <p className="text-2xl font-black mt-1">{fmt.format(amount)}</p>
+        </div>
+        {showAlert && (
+          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+            Requiere atención
+          </Badge>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground mt-2">{description}</p>
+      <div className="flex items-center justify-between mt-3 text-[11px] text-muted-foreground">
+        <span>{movementsCount} movimiento{movementsCount === 1 ? "" : "s"}</span>
+        <span>{lastMovementAt ? `Últ.: ${new Date(lastMovementAt).toLocaleDateString()}` : "Sin movimientos"}</span>
+      </div>
+    </Card>
+  );
+}
+
