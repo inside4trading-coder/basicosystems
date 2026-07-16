@@ -641,7 +641,109 @@ export default function CoreFabricationFunds() {
             </div>
           </Card>
         </TabsContent>
+
+        {/* CONCILIACIÓN */}
+        <TabsContent value="conciliacion" className="mt-4 space-y-3">
+          <Card className="p-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={reconFilter} onValueChange={(v: any) => setReconFilter(v)}>
+                <SelectTrigger className="h-9 w-[200px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="positive">Ajustes positivos</SelectItem>
+                  <SelectItem value="negative">Ajustes negativos</SelectItem>
+                  <SelectItem value="reclass">Reclasificados</SelectItem>
+                  <SelectItem value="pending">Pendientes</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Buscar producto, SKU o Woo ID…"
+                className="h-9 w-[280px]"
+                value={reconSearch}
+                onChange={e => setReconSearch(e.target.value)}
+              />
+              <div className="text-xs text-muted-foreground ml-auto">
+                {reconciliation.conciliated} conciliados · {reconciliation.pendingRec} pendientes
+              </div>
+            </div>
+            <div className="rounded-lg border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Producto original</TableHead>
+                    <TableHead>Producto reemplazo</TableHead>
+                    <TableHead className="text-right">Reserva original</TableHead>
+                    <TableHead className="text-right">Costo destino</TableHead>
+                    <TableHead className="text-right">Diferencia</TableHead>
+                    <TableHead>Partida origen</TableHead>
+                    <TableHead>Partida destino</TableHead>
+                    <TableHead>Estado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(() => {
+                    const rows = reconEvents.map((ev: any) => {
+                      const fin = ev?.resolution_data?.financial_reconciliation ?? null;
+                      const orig = Number(fin?.original_reserved_amount ?? ev?.resolution_data?.original_reserved_amount ?? 0);
+                      const dest = Number(fin?.destination_total ?? ev?.resolution_data?.estimated_total ?? 0);
+                      const diff = Number(fin?.net_difference ?? (dest - orig));
+                      const origBucket = fin?.original_bucket ?? "—";
+                      const targets = fin?.target_totals_by_bucket ?? {};
+                      const targetBucket = Object.keys(targets)[0] ?? ev?.resolution_data?.final_route_action ?? "—";
+                      const isReclass = origBucket !== "—" && targetBucket !== "—" && origBucket !== targetBucket;
+                      const isPosted = fin?.status === "posted";
+                      const status: string = isPosted
+                        ? (isReclass ? "Reclasificado" : diff > 0 ? "Ajuste +" : diff < 0 ? "Liberación" : "Conciliado")
+                        : "Pendiente";
+                      const origLabel = ev.woo_product_id ? `Woo #${ev.woo_product_id}` : (ev.core_product_id ?? "—");
+                      const replLabel = ev.replacement_woo_product_id ? `Woo #${ev.replacement_woo_product_id}` : (ev.replacement_product_id ?? "—");
+                      return { ev, orig, dest, diff, origBucket, targetBucket, isPosted, status, origLabel, replLabel };
+                    });
+                    const filtered = rows.filter(r => {
+                      if (reconFilter === "positive" && !(r.isPosted && r.diff > 0)) return false;
+                      if (reconFilter === "negative" && !(r.isPosted && r.diff < 0)) return false;
+                      if (reconFilter === "reclass" && !(r.isPosted && r.origBucket !== r.targetBucket)) return false;
+                      if (reconFilter === "pending" && r.isPosted) return false;
+                      if (reconSearch.trim()) {
+                        const q = reconSearch.trim().toLowerCase();
+                        const hay = `${r.origLabel} ${r.replLabel}`.toLowerCase();
+                        if (!hay.includes(q)) return false;
+                      }
+                      return true;
+                    });
+                    if (filtered.length === 0) {
+                      return <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Sin conciliaciones que coincidan.</TableCell></TableRow>;
+                    }
+                    return filtered.map(r => (
+                      <TableRow key={r.ev.id}>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(r.ev.created_at).toLocaleString()}</TableCell>
+                        <TableCell className="text-xs">{r.origLabel}</TableCell>
+                        <TableCell className="text-xs">{r.replLabel}</TableCell>
+                        <TableCell className="text-right font-mono text-xs">{usd(r.orig)}</TableCell>
+                        <TableCell className="text-right font-mono text-xs">{usd(r.dest)}</TableCell>
+                        <TableCell className={`text-right font-mono text-xs ${r.diff > 0 ? "text-indigo-700" : r.diff < 0 ? "text-emerald-700" : ""}`}>{usd(r.diff)}</TableCell>
+                        <TableCell className="text-xs">{r.origBucket}</TableCell>
+                        <TableCell className="text-xs">{r.targetBucket}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={
+                            r.status === "Conciliado" ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
+                            r.status === "Ajuste +" ? "bg-indigo-100 text-indigo-800 border-indigo-300" :
+                            r.status === "Liberación" ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
+                            r.status === "Reclasificado" ? "bg-purple-100 text-purple-800 border-purple-300" :
+                            "bg-yellow-100 text-yellow-800 border-yellow-300"
+                          }>{r.status}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ));
+                  })()}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </TabsContent>
       </Tabs>
+
 
       {/* RUN DETAIL DIALOG */}
       <Dialog open={!!runDetail} onOpenChange={(o) => !o && setRunDetail(null)}>
