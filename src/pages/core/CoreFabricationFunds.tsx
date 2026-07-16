@@ -137,8 +137,9 @@ export default function CoreFabricationFunds() {
       supabase.from("core_fabrication_fund_runs").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.from("core_production_units").select("id, sku, variant_sku, status").limit(5000),
       supabase.from("core_replenishment_policy_events" as any)
-        .select("id, created_at, action, status, resolution_data, core_product_id, replacement_product_id, woo_product_id, replacement_woo_product_id")
-        .in("action", ["replacement_apply", "apply_replacement", "replacement_confirmed"])
+        .select("id, created_at, action, status, resolution_data, core_product_id, replacement_product_id, woo_product_id, replacement_woo_product_id, core_variant_id")
+        .eq("action", "suggest_replacement")
+        .in("status", ["resolved", "applied", "reviewed"])
         .order("created_at", { ascending: false })
         .limit(500),
     ]);
