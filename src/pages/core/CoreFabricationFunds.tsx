@@ -212,6 +212,40 @@ export default function CoreFabricationFunds() {
     return { general, nonR, pendingHist, lastRunPend, rangeCount, rangeRevenue, sales, reversals, manuals, lastRun, generatedTotal, executedTotal, availableUnassigned };
   }, [funds, pendings, movements, runs, periodStart, periodEnd, units]);
 
+  // === Partidas principales (cards) ===
+  const partidaCards = useMemo(() => {
+    const pick = (t: string) => funds.find(f => f.fund_type === t && f.currency === "USD" && !f.core_product_id) ?? null;
+    const factory = pick("general");
+    const external = pick("external_supplier");
+    const pending = pick("pending");
+    const movsBy = (fundId?: string | null) => movements.filter(m => fundId && m.fund_id === fundId);
+    const last = (list: Movement[]) => list.length ? list[0].created_at : null;
+    return {
+      factory: { fund: factory, count: movsBy(factory?.id).length, last: last(movsBy(factory?.id)) },
+      external: { fund: external, count: movsBy(external?.id).length, last: last(movsBy(external?.id)) },
+      pending: { fund: pending, count: movsBy(pending?.id).length, last: last(movsBy(pending?.id)) },
+    };
+  }, [funds, movements]);
+
+  // === Conciliaciones de reemplazos ===
+  const reconciliation = useMemo(() => {
+    const posMovs = movements.filter(m => m.movement_type === "replacement_cost_adjustment" && Number(m.amount) > 0);
+    const negMovs = movements.filter(m => m.movement_type === "replacement_cost_adjustment" && Number(m.amount) < 0);
+    const reclassMovs = movements.filter(m => m.movement_type === "replacement_reclassification_out");
+    const positives = posMovs.reduce((s, m) => s + Number(m.amount), 0);
+    const negatives = negMovs.reduce((s, m) => s + Math.abs(Number(m.amount)), 0);
+    const net = positives - negatives;
+    const reclassified = reclassMovs.reduce((s, m) => s + Math.abs(Number(m.amount)), 0);
+    let conciliated = 0;
+    let pendingRec = 0;
+    for (const ev of reconEvents) {
+      const fin = ev?.resolution_data?.financial_reconciliation;
+      if (fin && fin.status === "posted") conciliated += 1;
+      else pendingRec += 1;
+    }
+    return { positives, negatives, net, reclassified, conciliated, pendingRec };
+  }, [movements, reconEvents]);
+
 
   async function processSales() {
     setProcessing(true);
