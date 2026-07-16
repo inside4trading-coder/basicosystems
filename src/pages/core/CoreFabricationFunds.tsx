@@ -931,3 +931,51 @@ function KpiCard({ label, value, sub, tone }: { label: string; value: string; su
     </Card>
   );
 }
+
+function PartidaCard({
+  title,
+  description,
+  fund,
+  movementsCount,
+  lastMovementAt,
+  tone,
+  alertWhenPositive,
+}: {
+  title: string;
+  description: string;
+  fund: Fund | null;
+  movementsCount: number;
+  lastMovementAt: string | null;
+  tone: "emerald" | "blue" | "yellow";
+  alertWhenPositive?: boolean;
+}) {
+  const toneCls = {
+    emerald: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20",
+    blue: "bg-blue-50 border-blue-200 dark:bg-blue-950/20",
+    yellow: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20",
+  }[tone];
+  const amount = Number(fund?.available_amount ?? 0);
+  const fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  const showAlert = !!alertWhenPositive && amount > 0;
+  return (
+    <Card className={`p-4 ${toneCls}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{title}</p>
+          <p className="text-2xl font-black mt-1">{fmt.format(amount)}</p>
+        </div>
+        {showAlert && (
+          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+            Requiere atención
+          </Badge>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground mt-2">{description}</p>
+      <div className="flex items-center justify-between mt-3 text-[11px] text-muted-foreground">
+        <span>{movementsCount} movimiento{movementsCount === 1 ? "" : "s"}</span>
+        <span>{lastMovementAt ? `Últ.: ${new Date(lastMovementAt).toLocaleDateString()}` : "Sin movimientos"}</span>
+      </div>
+    </Card>
+  );
+}
+
