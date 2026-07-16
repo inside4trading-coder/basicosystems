@@ -66,6 +66,9 @@ const MOV_LABEL: Record<string, string> = {
   reversal: "Reverso",
   close: "Cierre",
   correction: "Corrección",
+  replacement_cost_adjustment: "Ajuste por reemplazo",
+  replacement_reclassification_out: "Salida por reclasificación",
+  replacement_reclassification_in: "Entrada por reclasificación",
 };
 const MOV_BADGE: Record<string, string> = {
   sale_generated: "bg-emerald-100 text-emerald-800 border-emerald-300",
@@ -76,6 +79,9 @@ const MOV_BADGE: Record<string, string> = {
   reversal: "bg-destructive/10 text-destructive border-destructive/30",
   close: "bg-muted text-muted-foreground border-border",
   correction: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  replacement_cost_adjustment: "bg-indigo-100 text-indigo-800 border-indigo-300",
+  replacement_reclassification_out: "bg-purple-100 text-purple-800 border-purple-300",
+  replacement_reclassification_in: "bg-purple-100 text-purple-800 border-purple-300",
 };
 const PENDING_REASON_LABEL: Record<string, string> = {
   product_not_in_core: "Producto no existe en Catálogo de Fabricación",
