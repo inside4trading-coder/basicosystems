@@ -436,10 +436,60 @@ export default function CoreFabricationFunds() {
           <TabsTrigger value="movimientos"><RotateCcw className="h-3.5 w-3.5 mr-1.5" />Movimientos</TabsTrigger>
           <TabsTrigger value="pendientes"><AlertCircle className="h-3.5 w-3.5 mr-1.5" />Pendientes ({pendings.filter(p => p.status === "pending").length})</TabsTrigger>
           <TabsTrigger value="procesamientos"><History className="h-3.5 w-3.5 mr-1.5" />Procesamientos</TabsTrigger>
+          <TabsTrigger value="conciliacion"><ListChecks className="h-3.5 w-3.5 mr-1.5" />Conciliación ({reconciliation.conciliated + reconciliation.pendingRec})</TabsTrigger>
         </TabsList>
 
         {/* RESUMEN */}
         <TabsContent value="resumen" className="space-y-4 mt-4">
+          {/* Cards de las tres partidas principales */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <PartidaCard
+              title="Fábrica"
+              description="Reserva destinada a fabricación interna."
+              fund={partidaCards.factory.fund}
+              movementsCount={partidaCards.factory.count}
+              lastMovementAt={partidaCards.factory.last}
+              tone="emerald"
+            />
+            <PartidaCard
+              title="Proveedores externos"
+              description="Reserva destinada a compras y reposición externa."
+              fund={partidaCards.external.fund}
+              movementsCount={partidaCards.external.count}
+              lastMovementAt={partidaCards.external.last}
+              tone="blue"
+            />
+            <PartidaCard
+              title="Pendiente de clasificación"
+              description="Dinero reservado cuyo origen financiero todavía debe definirse."
+              fund={partidaCards.pending.fund}
+              movementsCount={partidaCards.pending.count}
+              lastMovementAt={partidaCards.pending.last}
+              tone="yellow"
+              alertWhenPositive
+            />
+          </div>
+
+          <p className="text-[11px] text-muted-foreground italic">
+            Estos saldos representan reservas registradas. Los pagos externos todavía no se descuentan automáticamente.
+          </p>
+
+          {/* Resumen de reemplazos */}
+          <Card className="p-4">
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <ListChecks className="h-4 w-4 text-primary" />
+              Conciliación de reemplazos
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+              <KpiCard label="Reemplazos conciliados" value={String(reconciliation.conciliated)} tone="emerald" />
+              <KpiCard label="Conciliaciones pendientes" value={String(reconciliation.pendingRec)} tone="yellow" />
+              <KpiCard label="Ajustes positivos" value={usd(reconciliation.positives)} tone="muted" />
+              <KpiCard label="Ajustes negativos" value={usd(reconciliation.negatives)} tone="muted" />
+              <KpiCard label="Ajuste neto" value={usd(reconciliation.net)} tone={reconciliation.net >= 0 ? "emerald" : "orange"} />
+              <KpiCard label="Reclasificado entre partidas" value={usd(reconciliation.reclassified)} tone="muted" />
+            </div>
+          </Card>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="Partida generada" value={usd(totals.generatedTotal)} sub="Ventas confirmadas posted" tone="emerald" />
             <KpiCard label="Ejecutado en inventario" value={usd(totals.executedTotal)} sub="Unidades ya ingresadas" tone="muted" />
@@ -453,6 +503,9 @@ export default function CoreFabricationFunds() {
             <KpiCard label="Último procesamiento" value={totals.lastRun ? new Date(totals.lastRun.created_at).toLocaleString() : "—"} tone="muted" />
           </div>
         </TabsContent>
+
+
+
 
 
         {/* PARTIDAS */}
