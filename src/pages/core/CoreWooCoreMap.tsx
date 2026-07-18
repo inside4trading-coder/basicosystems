@@ -197,6 +197,69 @@ export default function CoreWooCoreMap() {
   );
 
 
+  // Read query params (from Necesidades) and auto-open the appropriate action for the target product.
+  useEffect(() => {
+    const initialSearch = searchParams.get("search");
+    if (initialSearch && !search) setSearch(initialSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (consumedActionRef.current) return;
+    if (loadingMap) return;
+    const wooRaw = searchParams.get("woo_product_id");
+    const action = searchParams.get("action");
+    const searchQ = searchParams.get("search");
+    if (!wooRaw && !searchQ) return;
+
+    let ctx: RowCtx | null = null;
+    if (wooRaw) {
+      const wooId = Number(wooRaw);
+      if (!Number.isFinite(wooId)) return;
+      ctx = rowsCtx.find((r) => r.map.woo_product_id === wooId) ?? null;
+      // Force the row visible even if hidden by "ignored" filter
+      if (ctx && ctx.map.mapping_status === "ignored") setFilterMapping("ignored");
+      // Apply search so the row is filtered/visible
+      if (!search) setSearch(String(wooId));
+      if (!ctx) {
+        toast({
+          title: "Producto no encontrado",
+          description: `No se encontró el producto Woo #${wooId} en Mapa Woo/Core. Intenta importar Woo o buscarlo manualmente.`,
+          variant: "destructive",
+        });
+        consumedActionRef.current = true;
+        // Clean the action param so we don't retry
+        const next = new URLSearchParams(searchParams);
+        next.delete("action");
+        next.delete("woo_product_id");
+        setSearchParams(next, { replace: true });
+        return;
+      }
+      setHighlightedWoo(wooId);
+      setTimeout(() => setHighlightedWoo((cur) => (cur === wooId ? null : cur)), 3000);
+    }
+
+    if (ctx && action) {
+      if (action === "cost") {
+        setDialog({ kind: "manualCost", ctx });
+      } else if (action === "policy") {
+        setDialog({ kind: "route", ctx });
+      } else if (action === "map") {
+        toast({ title: "Producto abierto desde Necesidades" });
+      }
+    } else if (ctx) {
+      toast({ title: "Producto abierto desde Necesidades" });
+    }
+
+    consumedActionRef.current = true;
+    // Clean the action param so refetches don't re-open the dialog. Keep search for row visibility.
+    const next = new URLSearchParams(searchParams);
+    next.delete("action");
+    next.delete("woo_product_id");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingMap, rowsCtx]);
+
   async function runImport(startPage = 1) {
     setImporting(true);
     try {
