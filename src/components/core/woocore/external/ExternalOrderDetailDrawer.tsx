@@ -50,6 +50,33 @@ export function ExternalOrderDetailDrawer({ orderId, onClose }: Props) {
     catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
   };
 
+  const savePayment = async () => {
+    try {
+      const res: any = await m.updatePayment.mutateAsync({ order_id: order.id, amount_paid: Number(payment) || 0 });
+      if (res?.error) {
+        toast({ title: "Error", description: String(res.error), variant: "destructive" });
+        return;
+      }
+      const delta = Number(res?.payment_delta ?? 0);
+      const movAmt = Number(res?.movement_amount ?? 0);
+      const newBal = res?.new_fund_balance;
+      if (delta === 0) {
+        toast({ title: "Pago sin cambios. No se generó movimiento financiero." });
+      } else {
+        toast({
+          title: "Pago actualizado",
+          description:
+            `Pagado: ${res.old_amount_paid} → ${res.new_amount_paid}. ` +
+            `Egreso: ${movAmt >= 0 ? "+" : ""}${movAmt} ${order.currency}. ` +
+            (newBal != null ? `Partida proveedores: ${newBal} USD` : ""),
+        });
+      }
+      setPayment("");
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  };
+
   return (
     <Sheet open={!!orderId} onOpenChange={v => !v && onClose()}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
