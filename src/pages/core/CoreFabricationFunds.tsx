@@ -103,6 +103,31 @@ const PENDING_REASON_LABEL: Record<string, string> = {
 const usd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(Number(n || 0));
 
+// Fecha base desde la cual se reinició el procesamiento de Partidas de Fabricación.
+// No se permite procesar ni seleccionar rangos anteriores a esta fecha.
+const BASELINE_DATE = "2026-07-18";
+const BASELINE_DATE_LABEL = "18/07/2026";
+const todayLocalISO = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+const formatDDMMYYYY = (iso: string) => {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+};
+const addDaysISO = (iso: string, days: number) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
+  dt.setDate(dt.getDate() + days);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+};
+
 type ProdUnit = { id: string; sku: string | null; variant_sku: string | null; status: string };
 
 const normSku = (s: string | null | undefined) =>
@@ -124,8 +149,9 @@ export default function CoreFabricationFunds() {
   const [processing, setProcessing] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [runDetail, setRunDetail] = useState<Run | null>(null);
-  const [periodStart, setPeriodStart] = useState<string>("");
-  const [periodEnd, setPeriodEnd] = useState<string>("");
+  const [periodStart, setPeriodStart] = useState<string>(BASELINE_DATE);
+  const [periodEnd, setPeriodEnd] = useState<string>(todayLocalISO());
+  const [missingDaysOpen, setMissingDaysOpen] = useState(false);
   const [form, setForm] = useState({
     movement_type: "manual_increase",
     fund_id: "",
@@ -255,8 +281,73 @@ export default function CoreFabricationFunds() {
     return { positives, negatives, net, reclassified, conciliated, pendingRec };
   }, [movements, reconEvents]);
 
+  // === Control de días saltados ===
+  // Un día se considera "cerrado" si tiene al menos un run cuyo status pertenece
+  // al conjunto de estados exitosos actualmente en uso: completed / completed_warnings.
+  const SUCCESS_RUN_STATUSES = new Set(["completed", "completed_warnings", "success", "posted"]);
+  const missingDays = useMemo(() => {
+    const closed = new Set<string>();
+    for (const r of runs) {
+      if (!SUCCESS_RUN_STATUSES.has(r.status)) continue;
+      const iso = new Date(r.created_at).toISOString().slice(0, 10);
+      // Normalizamos a fecha local para no desalinear por TZ:
+      const d = new Date(r.created_at);
+      const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      closed.add(local);
+      closed.add(iso);
+    }
+    const today = todayLocalISO();
+    const yesterday = addDaysISO(today, -1);
+    if (yesterday < BASELINE_DATE) return [] as string[];
+    const out: string[] = [];
+    let cur = BASELINE_DATE;
+    while (cur <= yesterday) {
+      if (!closed.has(cur)) out.push(cur);
+      cur = addDaysISO(cur, 1);
+    }
+    return out;
+  }, [runs]);
+
+  function handleStartChange(v: string) {
+    if (v && v < BASELINE_DATE) {
+      toast.error(`Las partidas fueron reiniciadas. El nuevo procesamiento empieza desde ${BASELINE_DATE_LABEL}.`);
+      setPeriodStart(BASELINE_DATE);
+      return;
+    }
+    setPeriodStart(v);
+  }
+  function handleEndChange(v: string) {
+    if (v && v < BASELINE_DATE) {
+      toast.error(`Las partidas fueron reiniciadas. El nuevo procesamiento empieza desde ${BASELINE_DATE_LABEL}.`);
+      return;
+    }
+    setPeriodEnd(v);
+  }
+  function fillNextPendingDay() {
+    if (missingDays.length === 0) return;
+    const d = missingDays[0];
+    setPeriodStart(d);
+    setPeriodEnd(d);
+    toast.info(`Rango preparado para ${formatDDMMYYYY(d)}. Presiona "Procesar ventas confirmadas" para ejecutar.`);
+  }
+
+
+
 
   async function processSales() {
+    // Bloqueo: no procesar fechas anteriores a BASELINE_DATE.
+    if (periodStart && periodStart < BASELINE_DATE) {
+      toast.error(`Las partidas fueron reiniciadas. El nuevo procesamiento empieza desde ${BASELINE_DATE_LABEL}.`);
+      return;
+    }
+    // Bloqueo anti-salto: si hay un día pendiente anterior a periodStart, no procesar.
+    if (missingDays.length > 0 && periodStart) {
+      const firstPending = missingDays[0];
+      if (periodStart > firstPending) {
+        toast.error(`No puedes procesar el ${formatDDMMYYYY(periodStart)} porque el ${formatDDMMYYYY(firstPending)} aún no fue cerrado.`);
+        return;
+      }
+    }
     setProcessing(true);
     try {
       const body: any = {};
@@ -423,20 +514,42 @@ export default function CoreFabricationFunds() {
         <div className="flex flex-wrap gap-2 items-end">
           <div className="flex flex-col">
             <Label className="text-[10px] uppercase text-muted-foreground">Desde</Label>
-            <Input type="date" className="h-9 w-[150px]" value={periodStart} onChange={e => setPeriodStart(e.target.value)} />
+            <Input type="date" className="h-9 w-[150px]" min={BASELINE_DATE} value={periodStart} onChange={e => handleStartChange(e.target.value)} />
           </div>
           <div className="flex flex-col">
             <Label className="text-[10px] uppercase text-muted-foreground">Hasta</Label>
-            <Input type="date" className="h-9 w-[150px]" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} />
+            <Input type="date" className="h-9 w-[150px]" min={BASELINE_DATE} value={periodEnd} onChange={e => handleEndChange(e.target.value)} />
           </div>
           <Button onClick={processSales} disabled={processing}>
             <Play className="h-4 w-4 mr-1" />{processing ? "Procesando…" : "Procesar ventas confirmadas"}
           </Button>
+          {missingDays.length > 0 && (
+            <Button variant="outline" onClick={fillNextPendingDay} title="Prepara el rango con el primer día pendiente">
+              Procesar próximo día pendiente
+            </Button>
+          )}
           <Button variant="outline" onClick={openManual}><Plus className="h-4 w-4 mr-1" />Nuevo ajuste manual</Button>
           <Button variant="outline" onClick={downloadReport}><Download className="h-4 w-4 mr-1" />Generar reporte</Button>
         </div>
 
       </div>
+
+      {missingDays.length > 0 && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <p className="font-semibold text-destructive">
+                Hay días sin cerrar en Partidas. Esto puede dejar dinero de costo sin reservar.
+              </p>
+              <p className="text-xs text-destructive/80 mt-1">
+                {missingDays.length} día{missingDays.length === 1 ? "" : "s"} pendiente{missingDays.length === 1 ? "" : "s"} desde {BASELINE_DATE_LABEL}: {missingDays.slice(0, 6).map(formatDDMMYYYY).join(", ")}{missingDays.length > 6 ? `, … (+${missingDays.length - 6})` : ""}
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setMissingDaysOpen(true)}>Ver días pendientes</Button>
+          </div>
+        </div>
+      )}
+
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex-wrap h-auto">
@@ -450,8 +563,31 @@ export default function CoreFabricationFunds() {
 
         {/* RESUMEN */}
         <TabsContent value="resumen" className="space-y-4 mt-4">
+          {/* Cierre diario */}
+          <Card className={`p-4 border ${missingDays.length === 0 ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20" : "bg-destructive/10 border-destructive/40"}`}>
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Cierre diario</p>
+                <p className={`text-sm font-semibold mt-1 ${missingDays.length === 0 ? "text-emerald-800 dark:text-emerald-300" : "text-destructive"}`}>
+                  {missingDays.length === 0
+                    ? `Todo cerrado desde ${BASELINE_DATE_LABEL}.`
+                    : `${missingDays.length} día${missingDays.length === 1 ? "" : "s"} sin cerrar.`}
+                </p>
+                {missingDays.length > 0 && (
+                  <p className="text-xs text-destructive/80 mt-1">
+                    Primer pendiente: <strong>{formatDDMMYYYY(missingDays[0])}</strong>
+                  </p>
+                )}
+              </div>
+              {missingDays.length > 0 && (
+                <Button size="sm" variant="outline" onClick={() => setMissingDaysOpen(true)}>Ver días pendientes</Button>
+              )}
+            </div>
+          </Card>
+
           {/* Cards de las tres partidas principales */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+
             <PartidaCard
               title="Fábrica"
               description="Reserva destinada a fabricación interna."
@@ -987,9 +1123,38 @@ export default function CoreFabricationFunds() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={missingDaysOpen} onOpenChange={setMissingDaysOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Días sin cerrar desde {BASELINE_DATE_LABEL}</DialogTitle>
+          </DialogHeader>
+          {missingDays.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay días pendientes.</p>
+          ) : (
+            <ul className="text-sm space-y-1 max-h-[60vh] overflow-y-auto">
+              {missingDays.map(d => (
+                <li key={d} className="flex items-center justify-between border rounded px-3 py-1.5">
+                  <span className="font-mono">{formatDDMMYYYY(d)}</span>
+                  <Button size="sm" variant="ghost" onClick={() => { setPeriodStart(d); setPeriodEnd(d); setMissingDaysOpen(false); toast.info(`Rango preparado para ${formatDDMMYYYY(d)}.`); }}>
+                    Preparar
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMissingDaysOpen(false)}>Cerrar</Button>
+            {missingDays.length > 0 && (
+              <Button onClick={() => { fillNextPendingDay(); setMissingDaysOpen(false); }}>Preparar próximo día pendiente</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 
 function KpiCard({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone: "emerald" | "orange" | "yellow" | "muted" }) {
   const toneCls = {
