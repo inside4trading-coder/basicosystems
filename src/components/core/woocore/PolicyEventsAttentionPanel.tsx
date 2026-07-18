@@ -49,10 +49,16 @@ function actionLabel(action: string) {
   return POLICY_ACTION_LABELS[action] ?? EXTRA_ACTION_LABELS[action] ?? action;
 }
 
-function mapaWooLink(wooId: number | null | undefined, sku: string | null | undefined) {
-  if (wooId) return `/core/mapa-woo-core?woo=${wooId}`;
-  if (sku) return `/core/mapa-woo-core?q=${encodeURIComponent(sku)}`;
-  return "/core/mapa-woo-core";
+function mapaWooLink(
+  wooId: number | null | undefined,
+  sku: string | null | undefined,
+  action: "cost" | "policy" | "map",
+) {
+  const params = new URLSearchParams();
+  if (wooId) params.set("woo_product_id", String(wooId));
+  else if (sku) params.set("search", sku);
+  params.set("action", action);
+  return `/core/mapa-woo-core?${params.toString()}`;
 }
 
 export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: string } = {}) {
