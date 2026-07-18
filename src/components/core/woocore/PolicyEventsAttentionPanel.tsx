@@ -252,7 +252,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         )}
                         {(r.action === "missing_cost" || r.action === "financial_review") && (
                           <Button size="sm" variant="outline" asChild>
-                            <Link to={mapaWooLink(r.woo_product_id, p.sku)}>
+                            <Link to={mapaWooLink(r.woo_product_id, p.sku, "cost")}>
                               <DollarSign className="w-3 h-3 mr-1" /> Configurar costo
                             </Link>
                           </Button>
