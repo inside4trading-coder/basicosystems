@@ -563,8 +563,31 @@ export default function CoreFabricationFunds() {
 
         {/* RESUMEN */}
         <TabsContent value="resumen" className="space-y-4 mt-4">
+          {/* Cierre diario */}
+          <Card className={`p-4 border ${missingDays.length === 0 ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20" : "bg-destructive/10 border-destructive/40"}`}>
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Cierre diario</p>
+                <p className={`text-sm font-semibold mt-1 ${missingDays.length === 0 ? "text-emerald-800 dark:text-emerald-300" : "text-destructive"}`}>
+                  {missingDays.length === 0
+                    ? `Todo cerrado desde ${BASELINE_DATE_LABEL}.`
+                    : `${missingDays.length} día${missingDays.length === 1 ? "" : "s"} sin cerrar.`}
+                </p>
+                {missingDays.length > 0 && (
+                  <p className="text-xs text-destructive/80 mt-1">
+                    Primer pendiente: <strong>{formatDDMMYYYY(missingDays[0])}</strong>
+                  </p>
+                )}
+              </div>
+              {missingDays.length > 0 && (
+                <Button size="sm" variant="outline" onClick={() => setMissingDaysOpen(true)}>Ver días pendientes</Button>
+              )}
+            </div>
+          </Card>
+
           {/* Cards de las tres partidas principales */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+
             <PartidaCard
               title="Fábrica"
               description="Reserva destinada a fabricación interna."
