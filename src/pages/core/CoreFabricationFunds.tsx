@@ -476,6 +476,7 @@ export default function CoreFabricationFunds() {
               lastMovementAt={partidaCards.pending.last}
               tone="yellow"
               alertWhenPositive
+              onClick={() => { setMovFilter("pending_classification"); setTab("movimientos"); }}
             />
           </div>
 
