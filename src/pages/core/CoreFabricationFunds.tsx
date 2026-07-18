@@ -281,6 +281,58 @@ export default function CoreFabricationFunds() {
     return { positives, negatives, net, reclassified, conciliated, pendingRec };
   }, [movements, reconEvents]);
 
+  // === Control de días saltados ===
+  // Un día se considera "cerrado" si tiene al menos un run cuyo status pertenece
+  // al conjunto de estados exitosos actualmente en uso: completed / completed_warnings.
+  const SUCCESS_RUN_STATUSES = new Set(["completed", "completed_warnings", "success", "posted"]);
+  const missingDays = useMemo(() => {
+    const closed = new Set<string>();
+    for (const r of runs) {
+      if (!SUCCESS_RUN_STATUSES.has(r.status)) continue;
+      const iso = new Date(r.created_at).toISOString().slice(0, 10);
+      // Normalizamos a fecha local para no desalinear por TZ:
+      const d = new Date(r.created_at);
+      const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      closed.add(local);
+      closed.add(iso);
+    }
+    const today = todayLocalISO();
+    const yesterday = addDaysISO(today, -1);
+    if (yesterday < BASELINE_DATE) return [] as string[];
+    const out: string[] = [];
+    let cur = BASELINE_DATE;
+    while (cur <= yesterday) {
+      if (!closed.has(cur)) out.push(cur);
+      cur = addDaysISO(cur, 1);
+    }
+    return out;
+  }, [runs]);
+
+  function handleStartChange(v: string) {
+    if (v && v < BASELINE_DATE) {
+      toast.error(`Las partidas fueron reiniciadas. El nuevo procesamiento empieza desde ${BASELINE_DATE_LABEL}.`);
+      setPeriodStart(BASELINE_DATE);
+      return;
+    }
+    setPeriodStart(v);
+  }
+  function handleEndChange(v: string) {
+    if (v && v < BASELINE_DATE) {
+      toast.error(`Las partidas fueron reiniciadas. El nuevo procesamiento empieza desde ${BASELINE_DATE_LABEL}.`);
+      return;
+    }
+    setPeriodEnd(v);
+  }
+  function fillNextPendingDay() {
+    if (missingDays.length === 0) return;
+    const d = missingDays[0];
+    setPeriodStart(d);
+    setPeriodEnd(d);
+    toast.info(`Rango preparado para ${formatDDMMYYYY(d)}. Presiona "Procesar ventas confirmadas" para ejecutar.`);
+  }
+
+
+
 
   async function processSales() {
     setProcessing(true);
