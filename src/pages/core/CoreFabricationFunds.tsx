@@ -103,6 +103,31 @@ const PENDING_REASON_LABEL: Record<string, string> = {
 const usd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(Number(n || 0));
 
+// Fecha base desde la cual se reinició el procesamiento de Partidas de Fabricación.
+// No se permite procesar ni seleccionar rangos anteriores a esta fecha.
+const BASELINE_DATE = "2026-07-18";
+const BASELINE_DATE_LABEL = "18/07/2026";
+const todayLocalISO = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+const formatDDMMYYYY = (iso: string) => {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+};
+const addDaysISO = (iso: string, days: number) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
+  dt.setDate(dt.getDate() + days);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+};
+
 type ProdUnit = { id: string; sku: string | null; variant_sku: string | null; status: string };
 
 const normSku = (s: string | null | undefined) =>
