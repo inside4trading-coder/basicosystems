@@ -109,12 +109,14 @@ const normSku = (s: string | null | undefined) =>
   (s ?? "").toString().trim().toUpperCase().replace(/\s+/g, "-").replace(/-+/g, "-");
 
 export default function CoreFabricationFunds() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("resumen");
   const [funds, setFunds] = useState<Fund[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [pendings, setPendings] = useState<Pending[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [units, setUnits] = useState<ProdUnit[]>([]);
+  const [movFilter, setMovFilter] = useState<"all" | "pending_classification">("all");
   const [reconEvents, setReconEvents] = useState<any[]>([]);
   const [reconFilter, setReconFilter] = useState<"all" | "positive" | "negative" | "reclass" | "pending">("all");
   const [reconSearch, setReconSearch] = useState("");
