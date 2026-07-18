@@ -126,6 +126,10 @@ export function useExtPoMutations() {
     qc.invalidateQueries({ queryKey: ["ext-po-orders"] });
     qc.invalidateQueries({ queryKey: ["ext-po-lines"] });
     qc.invalidateQueries({ queryKey: ["ext-po-pending-events"] });
+    qc.invalidateQueries({ queryKey: ["core-fabrication-funds"] });
+    qc.invalidateQueries({ queryKey: ["core-fabrication-fund-movements"] });
+    qc.invalidateQueries({ queryKey: ["core_fabrication_funds"] });
+    qc.invalidateQueries({ queryKey: ["core_fabrication_fund_movements"] });
   };
   return {
     createFromEvents: useMutation({
