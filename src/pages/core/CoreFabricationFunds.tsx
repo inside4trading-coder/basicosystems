@@ -28,6 +28,10 @@ type Movement = {
   amount: number; currency: string; reason: string | null; status: string;
   created_at: string; related_movement_id: string | null;
   fabrication_fund_run_id: string | null;
+  fund_bucket: string | null;
+  woo_product_id: number | null;
+  woo_variation_id: number | null;
+  cost_snapshot_data: any;
 };
 type Pending = {
   id: string; source_order_id: number; source_order_item_id: number | null;
