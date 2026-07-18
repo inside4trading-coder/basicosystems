@@ -49,10 +49,16 @@ function actionLabel(action: string) {
   return POLICY_ACTION_LABELS[action] ?? EXTRA_ACTION_LABELS[action] ?? action;
 }
 
-function mapaWooLink(wooId: number | null | undefined, sku: string | null | undefined) {
-  if (wooId) return `/core/mapa-woo-core?woo=${wooId}`;
-  if (sku) return `/core/mapa-woo-core?q=${encodeURIComponent(sku)}`;
-  return "/core/mapa-woo-core";
+function mapaWooLink(
+  wooId: number | null | undefined,
+  sku: string | null | undefined,
+  action: "cost" | "policy" | "map",
+) {
+  const params = new URLSearchParams();
+  if (wooId) params.set("woo_product_id", String(wooId));
+  else if (sku) params.set("search", sku);
+  params.set("action", action);
+  return `/core/mapa-woo-core?${params.toString()}`;
 }
 
 export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: string } = {}) {
@@ -207,7 +213,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         {r.action === "manual_cost_review" && (
                           <>
                             <Button size="sm" variant="outline" asChild>
-                              <Link to={mapaWooLink(r.woo_product_id, p.sku)}>Ver política</Link>
+                              <Link to={mapaWooLink(r.woo_product_id, p.sku, "policy")}>Ver política</Link>
                             </Button>
                             <Button size="sm" variant="outline" asChild>
                               <Link to="/core/mapa-woo-core?tab=policy-review">
@@ -220,13 +226,13 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                           r.action === "block_exit" ||
                           r.action === "block_ignored") && (
                           <Button size="sm" variant="outline" asChild>
-                            <Link to={mapaWooLink(r.woo_product_id, p.sku)}>Ver política</Link>
+                            <Link to={mapaWooLink(r.woo_product_id, p.sku, "policy")}>Ver política</Link>
                           </Button>
                         )}
                         {r.action === "missing_map" && (
                           <>
                             <Button size="sm" variant="outline" asChild>
-                              <Link to={mapaWooLink(r.woo_product_id, p.sku)}>
+                              <Link to={mapaWooLink(r.woo_product_id, p.sku, "map")}>
                                 <MapPin className="w-3 h-3 mr-1" /> Abrir Mapa Woo/Core
                               </Link>
                             </Button>
@@ -246,14 +252,14 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         )}
                         {(r.action === "missing_cost" || r.action === "financial_review") && (
                           <Button size="sm" variant="outline" asChild>
-                            <Link to={mapaWooLink(r.woo_product_id, p.sku)}>
+                            <Link to={mapaWooLink(r.woo_product_id, p.sku, "cost")}>
                               <DollarSign className="w-3 h-3 mr-1" /> Configurar costo
                             </Link>
                           </Button>
                         )}
                         {r.action === "unclassified_fund" && (
                           <Button size="sm" variant="outline" asChild>
-                            <Link to={mapaWooLink(r.woo_product_id, p.sku)}>
+                            <Link to={mapaWooLink(r.woo_product_id, p.sku, "policy")}>
                               <Layers className="w-3 h-3 mr-1" /> Definir política
                             </Link>
                           </Button>
