@@ -213,7 +213,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         {r.action === "manual_cost_review" && (
                           <>
                             <Button size="sm" variant="outline" asChild>
-                              <Link to={mapaWooLink(r.woo_product_id, p.sku)}>Ver política</Link>
+                              <Link to={mapaWooLink(r.woo_product_id, p.sku, "policy")}>Ver política</Link>
                             </Button>
                             <Button size="sm" variant="outline" asChild>
                               <Link to="/core/mapa-woo-core?tab=policy-review">
