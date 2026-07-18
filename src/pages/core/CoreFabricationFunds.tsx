@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Layers, Play, Plus, Download, RotateCcw, Wallet, AlertCircle, History, ListChecks } from "lucide-react";
+import { Layers, Play, Plus, Download, RotateCcw, Wallet, AlertCircle, History, ListChecks, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
 import PendingResolutionPanel from "@/components/core/PendingResolutionPanel";
