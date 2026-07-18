@@ -950,6 +950,7 @@ function PartidaCard({
   lastMovementAt,
   tone,
   alertWhenPositive,
+  onClick,
 }: {
   title: string;
   description: string;
@@ -958,6 +959,7 @@ function PartidaCard({
   lastMovementAt: string | null;
   tone: "emerald" | "blue" | "yellow";
   alertWhenPositive?: boolean;
+  onClick?: () => void;
 }) {
   const toneCls = {
     emerald: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20",
@@ -967,8 +969,15 @@ function PartidaCard({
   const amount = Number(fund?.available_amount ?? 0);
   const fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
   const showAlert = !!alertWhenPositive && amount > 0;
+  const clickable = !!onClick;
   return (
-    <Card className={`p-4 ${toneCls}`}>
+    <Card
+      className={`p-4 ${toneCls} ${clickable ? "cursor-pointer hover:ring-2 hover:ring-primary/40 transition" : ""}`}
+      onClick={onClick}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.(); } } : undefined}
+    >
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{title}</p>
@@ -985,6 +994,9 @@ function PartidaCard({
         <span>{movementsCount} movimiento{movementsCount === 1 ? "" : "s"}</span>
         <span>{lastMovementAt ? `Últ.: ${new Date(lastMovementAt).toLocaleDateString()}` : "Sin movimientos"}</span>
       </div>
+      {clickable && (
+        <p className="text-[11px] text-primary mt-2 font-semibold">Ver movimientos →</p>
+      )}
     </Card>
   );
 }
