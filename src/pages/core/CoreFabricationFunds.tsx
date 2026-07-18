@@ -83,6 +83,7 @@ const MOV_BADGE: Record<string, string> = {
   replacement_cost_adjustment: "bg-indigo-100 text-indigo-800 border-indigo-300",
   replacement_reclassification_out: "bg-purple-100 text-purple-800 border-purple-300",
   replacement_reclassification_in: "bg-purple-100 text-purple-800 border-purple-300",
+  external_supplier_payment: "bg-rose-100 text-rose-800 border-rose-300",
 };
 const PENDING_REASON_LABEL: Record<string, string> = {
   product_not_in_core: "Producto no existe en Catálogo de Fabricación",
