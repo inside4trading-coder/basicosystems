@@ -475,7 +475,7 @@ export default function CoreWooCoreMap() {
               const isExp = expanded.has(m.woo_product_id);
               return (
                 <>
-                  <tr key={m.id} className="border-b hover:bg-muted/30">
+                  <tr key={m.id} className={`border-b hover:bg-muted/30 ${highlightedWoo === m.woo_product_id ? "bg-yellow-200 dark:bg-yellow-900/40 animate-pulse" : ""}`}>
                     <td className="p-2">
                       <button
                         onClick={() => {
