@@ -558,51 +558,116 @@ export default function CoreFabricationFunds() {
 
         {/* MOVIMIENTOS */}
         <TabsContent value="movimientos" className="mt-4">
-          <Card className="p-4">
-            <div className="rounded-lg border overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Partida</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Producto</TableHead>
-                    <TableHead>Pedido</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
-                    <TableHead className="text-right">Costo</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
-                    <TableHead>Origen</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Cargando…</TableCell></TableRow>
-                  ) : movements.length === 0 ? (
-                    <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Sin movimientos.</TableCell></TableRow>
-                  ) : movements.map(m => {
-                    const f = funds.find(x => x.id === m.fund_id);
-                    const isManual = m.source === "manual";
-                    return (
-                      <TableRow key={m.id} className={isManual ? "bg-yellow-50/40 dark:bg-yellow-950/10" : ""}>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(m.created_at).toLocaleString()}</TableCell>
-                        <TableCell><Badge variant="outline" className={MOV_BADGE[m.movement_type] ?? ""}>{MOV_LABEL[m.movement_type] ?? m.movement_type}</Badge></TableCell>
-                        <TableCell className="text-xs">{f ? FUND_LABEL[f.fund_type] : "—"}</TableCell>
-                        <TableCell className="font-mono text-xs">{m.sku ?? "—"}</TableCell>
-                        <TableCell className="text-xs truncate max-w-[200px]">{m.product_name ?? "—"}</TableCell>
-                        <TableCell className="text-xs font-mono">{m.source_order_id ? `#${m.source_order_id}` : "—"}</TableCell>
-                        <TableCell className="text-right text-xs">{m.quantity ?? "—"}</TableCell>
-                        <TableCell className="text-right text-xs font-mono">{m.unit_cost_snapshot ? usd(m.unit_cost_snapshot) : "—"}</TableCell>
-                        <TableCell className={`text-right font-mono ${Number(m.amount) < 0 ? "text-destructive" : "text-emerald-700"}`}>{usd(m.amount)}</TableCell>
-                        <TableCell className="text-xs">{m.source}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+          <Card className="p-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Label className="text-xs">Filtro rápido:</Label>
+              <Select value={movFilter} onValueChange={(v: any) => setMovFilter(v)}>
+                <SelectTrigger className="h-9 w-[260px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los movimientos</SelectItem>
+                  <SelectItem value="pending_classification">Pendiente de clasificación</SelectItem>
+                </SelectContent>
+              </Select>
+              {movFilter !== "all" && (
+                <Button size="sm" variant="ghost" onClick={() => setMovFilter("all")}>Limpiar</Button>
+              )}
             </div>
+            {(() => {
+              const pendingFundId = partidaCards.pending.fund?.id ?? null;
+              const filtered = movements.filter(m => {
+                if (movFilter === "all") return true;
+                return m.fund_bucket === "pending_classification" || (pendingFundId && m.fund_id === pendingFundId);
+              });
+              const total = filtered.reduce((s, m) => s + Number(m.amount || 0), 0);
+              return (
+                <>
+                  {movFilter === "pending_classification" && (
+                    <div className="text-xs bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 rounded px-3 py-2">
+                      Mostrando <strong>{filtered.length}</strong> movimiento{filtered.length === 1 ? "" : "s"} pendiente{filtered.length === 1 ? "" : "s"} de clasificación · Total <strong className="font-mono">{usd(total)}</strong>
+                    </div>
+                  )}
+                  <div className="rounded-lg border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Producto</TableHead>
+                          <TableHead>SKU</TableHead>
+                          <TableHead>Pedido</TableHead>
+                          <TableHead>Woo prod / var</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                          <TableHead className="text-right">Costo</TableHead>
+                          <TableHead className="text-right">Monto</TableHead>
+                          <TableHead>Partida</TableHead>
+                          <TableHead>Bucket</TableHead>
+                          <TableHead>Motivo / warning</TableHead>
+                          <TableHead></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loading ? (
+                          <TableRow><TableCell colSpan={13} className="text-center py-8 text-muted-foreground">Cargando…</TableCell></TableRow>
+                        ) : filtered.length === 0 ? (
+                          <TableRow><TableCell colSpan={13} className="text-center py-8 text-muted-foreground">Sin movimientos.</TableCell></TableRow>
+                        ) : filtered.map(m => {
+                          const f = funds.find(x => x.id === m.fund_id);
+                          const isManual = m.source === "manual";
+                          const isPending = m.fund_bucket === "pending_classification" || (pendingFundId && m.fund_id === pendingFundId);
+                          const snap: any = m.cost_snapshot_data ?? {};
+                          const warning = snap?.warning ?? snap?.reason ?? null;
+                          const rowMsg = warning ?? m.reason ?? "—";
+                          const searchParam = m.woo_product_id
+                            ? String(m.woo_product_id)
+                            : (m.sku ?? m.product_name ?? "");
+                          return (
+                            <TableRow key={m.id} className={isPending ? "bg-yellow-50/40 dark:bg-yellow-950/10" : isManual ? "bg-yellow-50/40 dark:bg-yellow-950/10" : ""}>
+                              <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(m.created_at).toLocaleString()}</TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-1">
+                                  <Badge variant="outline" className={MOV_BADGE[m.movement_type] ?? ""}>{MOV_LABEL[m.movement_type] ?? m.movement_type}</Badge>
+                                  {isPending && (
+                                    <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300 text-[10px]">Pendiente de clasificación</Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-xs truncate max-w-[200px]">{m.product_name ?? "—"}</TableCell>
+                              <TableCell className="font-mono text-xs">{m.sku ?? "—"}</TableCell>
+                              <TableCell className="text-xs font-mono">{m.source_order_id ? `#${m.source_order_id}` : "—"}</TableCell>
+                              <TableCell className="text-xs font-mono">
+                                {m.woo_product_id ? m.woo_product_id : "—"}
+                                {m.woo_variation_id ? ` / ${m.woo_variation_id}` : ""}
+                              </TableCell>
+                              <TableCell className="text-right text-xs">{m.quantity ?? "—"}</TableCell>
+                              <TableCell className="text-right text-xs font-mono">{m.unit_cost_snapshot ? usd(m.unit_cost_snapshot) : "—"}</TableCell>
+                              <TableCell className={`text-right font-mono ${Number(m.amount) < 0 ? "text-destructive" : "text-emerald-700"}`}>{usd(m.amount)}</TableCell>
+                              <TableCell className="text-xs">{f ? FUND_LABEL[f.fund_type] ?? f.fund_type : "—"}</TableCell>
+                              <TableCell className="text-xs font-mono">{m.fund_bucket ?? "—"}</TableCell>
+                              <TableCell className="text-xs max-w-[240px] truncate" title={String(rowMsg)}>{rowMsg}</TableCell>
+                              <TableCell>
+                                {isPending && searchParam && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => navigate(`/core/mapa-woo-core?search=${encodeURIComponent(String(searchParam))}`)}
+                                  >
+                                    <ExternalLink className="h-3 w-3 mr-1" />
+                                    Resolver en Mapa Woo/Core
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
+              );
+            })()}
           </Card>
         </TabsContent>
+
 
         {/* PENDIENTES - Centro de Resolución */}
         <TabsContent value="pendientes" className="mt-4">
