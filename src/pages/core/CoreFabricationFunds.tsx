@@ -1123,9 +1123,38 @@ export default function CoreFabricationFunds() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={missingDaysOpen} onOpenChange={setMissingDaysOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Días sin cerrar desde {BASELINE_DATE_LABEL}</DialogTitle>
+          </DialogHeader>
+          {missingDays.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay días pendientes.</p>
+          ) : (
+            <ul className="text-sm space-y-1 max-h-[60vh] overflow-y-auto">
+              {missingDays.map(d => (
+                <li key={d} className="flex items-center justify-between border rounded px-3 py-1.5">
+                  <span className="font-mono">{formatDDMMYYYY(d)}</span>
+                  <Button size="sm" variant="ghost" onClick={() => { setPeriodStart(d); setPeriodEnd(d); setMissingDaysOpen(false); toast.info(`Rango preparado para ${formatDDMMYYYY(d)}.`); }}>
+                    Preparar
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMissingDaysOpen(false)}>Cerrar</Button>
+            {missingDays.length > 0 && (
+              <Button onClick={() => { fillNextPendingDay(); setMissingDaysOpen(false); }}>Preparar próximo día pendiente</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 
 function KpiCard({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone: "emerald" | "orange" | "yellow" | "muted" }) {
   const toneCls = {
