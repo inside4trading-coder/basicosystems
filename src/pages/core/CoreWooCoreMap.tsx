@@ -89,6 +89,9 @@ export default function CoreWooCoreMap() {
   const [noRestockDialog, setNoRestockDialog] = useState<{ open: boolean; initialCtx?: RowCtx | null; initialStatus?: "no_restock" | "exit" | "replaced" }>({ open: false });
   const [importing, setImporting] = useState(false);
   const [reconciling, setReconciling] = useState(false);
+  const [highlightedWoo, setHighlightedWoo] = useState<number | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const consumedActionRef = useRef(false);
 
   const coreById = useMemo(() => new Map(coreProducts.map(c => [c.id, c])), [coreProducts]);
   const policyByWoo = useMemo(() => {
