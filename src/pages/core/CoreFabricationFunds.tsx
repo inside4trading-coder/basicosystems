@@ -69,6 +69,7 @@ const MOV_LABEL: Record<string, string> = {
   replacement_cost_adjustment: "Ajuste por reemplazo",
   replacement_reclassification_out: "Salida por reclasificación",
   replacement_reclassification_in: "Entrada por reclasificación",
+  external_supplier_payment: "Pago a proveedor externo",
 };
 const MOV_BADGE: Record<string, string> = {
   sale_generated: "bg-emerald-100 text-emerald-800 border-emerald-300",
