@@ -210,8 +210,7 @@ export function ExternalOrderDetailDrawer({ orderId, onClose }: Props) {
                 <label className="text-xs">Actualizar monto pagado</label>
                 <Input type="number" step="0.01" value={payment} onChange={e => setPayment(e.target.value)} placeholder={String(order.amount_paid)} />
               </div>
-              <Button size="sm" variant="outline" disabled={!payment}
-                onClick={() => doAction(() => m.updatePayment.mutateAsync({ order_id: order.id, amount_paid: Number(payment) || 0 }), "Pago actualizado")}>Guardar pago</Button>
+              <Button size="sm" variant="outline" disabled={!payment || m.updatePayment.isPending} onClick={savePayment}>Guardar pago</Button>
             </div>
           </Card>
         </div>
