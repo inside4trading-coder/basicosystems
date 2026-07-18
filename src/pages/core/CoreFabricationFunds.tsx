@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Layers, Play, Plus, Download, RotateCcw, Wallet, AlertCircle, History, ListChecks } from "lucide-react";
+import { Layers, Play, Plus, Download, RotateCcw, Wallet, AlertCircle, History, ListChecks, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
 import PendingResolutionPanel from "@/components/core/PendingResolutionPanel";
@@ -27,6 +28,10 @@ type Movement = {
   amount: number; currency: string; reason: string | null; status: string;
   created_at: string; related_movement_id: string | null;
   fabrication_fund_run_id: string | null;
+  fund_bucket: string | null;
+  woo_product_id: number | null;
+  woo_variation_id: number | null;
+  cost_snapshot_data: any;
 };
 type Pending = {
   id: string; source_order_id: number; source_order_item_id: number | null;
@@ -104,12 +109,14 @@ const normSku = (s: string | null | undefined) =>
   (s ?? "").toString().trim().toUpperCase().replace(/\s+/g, "-").replace(/-+/g, "-");
 
 export default function CoreFabricationFunds() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("resumen");
   const [funds, setFunds] = useState<Fund[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [pendings, setPendings] = useState<Pending[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [units, setUnits] = useState<ProdUnit[]>([]);
+  const [movFilter, setMovFilter] = useState<"all" | "pending_classification">("all");
   const [reconEvents, setReconEvents] = useState<any[]>([]);
   const [reconFilter, setReconFilter] = useState<"all" | "positive" | "negative" | "reclass" | "pending">("all");
   const [reconSearch, setReconSearch] = useState("");
@@ -469,6 +476,7 @@ export default function CoreFabricationFunds() {
               lastMovementAt={partidaCards.pending.last}
               tone="yellow"
               alertWhenPositive
+              onClick={() => { setMovFilter("pending_classification"); setTab("movimientos"); }}
             />
           </div>
 
@@ -550,51 +558,116 @@ export default function CoreFabricationFunds() {
 
         {/* MOVIMIENTOS */}
         <TabsContent value="movimientos" className="mt-4">
-          <Card className="p-4">
-            <div className="rounded-lg border overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Partida</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Producto</TableHead>
-                    <TableHead>Pedido</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
-                    <TableHead className="text-right">Costo</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
-                    <TableHead>Origen</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Cargando…</TableCell></TableRow>
-                  ) : movements.length === 0 ? (
-                    <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Sin movimientos.</TableCell></TableRow>
-                  ) : movements.map(m => {
-                    const f = funds.find(x => x.id === m.fund_id);
-                    const isManual = m.source === "manual";
-                    return (
-                      <TableRow key={m.id} className={isManual ? "bg-yellow-50/40 dark:bg-yellow-950/10" : ""}>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(m.created_at).toLocaleString()}</TableCell>
-                        <TableCell><Badge variant="outline" className={MOV_BADGE[m.movement_type] ?? ""}>{MOV_LABEL[m.movement_type] ?? m.movement_type}</Badge></TableCell>
-                        <TableCell className="text-xs">{f ? FUND_LABEL[f.fund_type] : "—"}</TableCell>
-                        <TableCell className="font-mono text-xs">{m.sku ?? "—"}</TableCell>
-                        <TableCell className="text-xs truncate max-w-[200px]">{m.product_name ?? "—"}</TableCell>
-                        <TableCell className="text-xs font-mono">{m.source_order_id ? `#${m.source_order_id}` : "—"}</TableCell>
-                        <TableCell className="text-right text-xs">{m.quantity ?? "—"}</TableCell>
-                        <TableCell className="text-right text-xs font-mono">{m.unit_cost_snapshot ? usd(m.unit_cost_snapshot) : "—"}</TableCell>
-                        <TableCell className={`text-right font-mono ${Number(m.amount) < 0 ? "text-destructive" : "text-emerald-700"}`}>{usd(m.amount)}</TableCell>
-                        <TableCell className="text-xs">{m.source}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+          <Card className="p-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Label className="text-xs">Filtro rápido:</Label>
+              <Select value={movFilter} onValueChange={(v: any) => setMovFilter(v)}>
+                <SelectTrigger className="h-9 w-[260px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los movimientos</SelectItem>
+                  <SelectItem value="pending_classification">Pendiente de clasificación</SelectItem>
+                </SelectContent>
+              </Select>
+              {movFilter !== "all" && (
+                <Button size="sm" variant="ghost" onClick={() => setMovFilter("all")}>Limpiar</Button>
+              )}
             </div>
+            {(() => {
+              const pendingFundId = partidaCards.pending.fund?.id ?? null;
+              const filtered = movements.filter(m => {
+                if (movFilter === "all") return true;
+                return m.fund_bucket === "pending_classification" || (pendingFundId && m.fund_id === pendingFundId);
+              });
+              const total = filtered.reduce((s, m) => s + Number(m.amount || 0), 0);
+              return (
+                <>
+                  {movFilter === "pending_classification" && (
+                    <div className="text-xs bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 rounded px-3 py-2">
+                      Mostrando <strong>{filtered.length}</strong> movimiento{filtered.length === 1 ? "" : "s"} pendiente{filtered.length === 1 ? "" : "s"} de clasificación · Total <strong className="font-mono">{usd(total)}</strong>
+                    </div>
+                  )}
+                  <div className="rounded-lg border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Producto</TableHead>
+                          <TableHead>SKU</TableHead>
+                          <TableHead>Pedido</TableHead>
+                          <TableHead>Woo prod / var</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                          <TableHead className="text-right">Costo</TableHead>
+                          <TableHead className="text-right">Monto</TableHead>
+                          <TableHead>Partida</TableHead>
+                          <TableHead>Bucket</TableHead>
+                          <TableHead>Motivo / warning</TableHead>
+                          <TableHead></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loading ? (
+                          <TableRow><TableCell colSpan={13} className="text-center py-8 text-muted-foreground">Cargando…</TableCell></TableRow>
+                        ) : filtered.length === 0 ? (
+                          <TableRow><TableCell colSpan={13} className="text-center py-8 text-muted-foreground">Sin movimientos.</TableCell></TableRow>
+                        ) : filtered.map(m => {
+                          const f = funds.find(x => x.id === m.fund_id);
+                          const isManual = m.source === "manual";
+                          const isPending = m.fund_bucket === "pending_classification" || (pendingFundId && m.fund_id === pendingFundId);
+                          const snap: any = m.cost_snapshot_data ?? {};
+                          const warning = snap?.warning ?? snap?.reason ?? null;
+                          const rowMsg = warning ?? m.reason ?? "—";
+                          const searchParam = m.woo_product_id
+                            ? String(m.woo_product_id)
+                            : (m.sku ?? m.product_name ?? "");
+                          return (
+                            <TableRow key={m.id} className={isPending ? "bg-yellow-50/40 dark:bg-yellow-950/10" : isManual ? "bg-yellow-50/40 dark:bg-yellow-950/10" : ""}>
+                              <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(m.created_at).toLocaleString()}</TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-1">
+                                  <Badge variant="outline" className={MOV_BADGE[m.movement_type] ?? ""}>{MOV_LABEL[m.movement_type] ?? m.movement_type}</Badge>
+                                  {isPending && (
+                                    <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300 text-[10px]">Pendiente de clasificación</Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-xs truncate max-w-[200px]">{m.product_name ?? "—"}</TableCell>
+                              <TableCell className="font-mono text-xs">{m.sku ?? "—"}</TableCell>
+                              <TableCell className="text-xs font-mono">{m.source_order_id ? `#${m.source_order_id}` : "—"}</TableCell>
+                              <TableCell className="text-xs font-mono">
+                                {m.woo_product_id ? m.woo_product_id : "—"}
+                                {m.woo_variation_id ? ` / ${m.woo_variation_id}` : ""}
+                              </TableCell>
+                              <TableCell className="text-right text-xs">{m.quantity ?? "—"}</TableCell>
+                              <TableCell className="text-right text-xs font-mono">{m.unit_cost_snapshot ? usd(m.unit_cost_snapshot) : "—"}</TableCell>
+                              <TableCell className={`text-right font-mono ${Number(m.amount) < 0 ? "text-destructive" : "text-emerald-700"}`}>{usd(m.amount)}</TableCell>
+                              <TableCell className="text-xs">{f ? FUND_LABEL[f.fund_type] ?? f.fund_type : "—"}</TableCell>
+                              <TableCell className="text-xs font-mono">{m.fund_bucket ?? "—"}</TableCell>
+                              <TableCell className="text-xs max-w-[240px] truncate" title={String(rowMsg)}>{rowMsg}</TableCell>
+                              <TableCell>
+                                {isPending && searchParam && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => navigate(`/core/mapa-woo-core?search=${encodeURIComponent(String(searchParam))}`)}
+                                  >
+                                    <ExternalLink className="h-3 w-3 mr-1" />
+                                    Resolver en Mapa Woo/Core
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
+              );
+            })()}
           </Card>
         </TabsContent>
+
 
         {/* PENDIENTES - Centro de Resolución */}
         <TabsContent value="pendientes" className="mt-4">
@@ -942,6 +1015,7 @@ function PartidaCard({
   lastMovementAt,
   tone,
   alertWhenPositive,
+  onClick,
 }: {
   title: string;
   description: string;
@@ -950,6 +1024,7 @@ function PartidaCard({
   lastMovementAt: string | null;
   tone: "emerald" | "blue" | "yellow";
   alertWhenPositive?: boolean;
+  onClick?: () => void;
 }) {
   const toneCls = {
     emerald: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20",
@@ -959,8 +1034,15 @@ function PartidaCard({
   const amount = Number(fund?.available_amount ?? 0);
   const fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
   const showAlert = !!alertWhenPositive && amount > 0;
+  const clickable = !!onClick;
   return (
-    <Card className={`p-4 ${toneCls}`}>
+    <Card
+      className={`p-4 ${toneCls} ${clickable ? "cursor-pointer hover:ring-2 hover:ring-primary/40 transition" : ""}`}
+      onClick={onClick}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.(); } } : undefined}
+    >
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{title}</p>
@@ -977,6 +1059,9 @@ function PartidaCard({
         <span>{movementsCount} movimiento{movementsCount === 1 ? "" : "s"}</span>
         <span>{lastMovementAt ? `Últ.: ${new Date(lastMovementAt).toLocaleDateString()}` : "Sin movimientos"}</span>
       </div>
+      {clickable && (
+        <p className="text-[11px] text-primary mt-2 font-semibold">Ver movimientos →</p>
+      )}
     </Card>
   );
 }
