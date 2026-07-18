@@ -335,6 +335,19 @@ export default function CoreFabricationFunds() {
 
 
   async function processSales() {
+    // Bloqueo: no procesar fechas anteriores a BASELINE_DATE.
+    if (periodStart && periodStart < BASELINE_DATE) {
+      toast.error(`Las partidas fueron reiniciadas. El nuevo procesamiento empieza desde ${BASELINE_DATE_LABEL}.`);
+      return;
+    }
+    // Bloqueo anti-salto: si hay un día pendiente anterior a periodStart, no procesar.
+    if (missingDays.length > 0 && periodStart) {
+      const firstPending = missingDays[0];
+      if (periodStart > firstPending) {
+        toast.error(`No puedes procesar el ${formatDDMMYYYY(periodStart)} porque el ${formatDDMMYYYY(firstPending)} aún no fue cerrado.`);
+        return;
+      }
+    }
     setProcessing(true);
     try {
       const body: any = {};
