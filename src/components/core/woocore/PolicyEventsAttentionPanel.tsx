@@ -226,7 +226,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                           r.action === "block_exit" ||
                           r.action === "block_ignored") && (
                           <Button size="sm" variant="outline" asChild>
-                            <Link to={mapaWooLink(r.woo_product_id, p.sku)}>Ver política</Link>
+                            <Link to={mapaWooLink(r.woo_product_id, p.sku, "policy")}>Ver política</Link>
                           </Button>
                         )}
                         {r.action === "missing_map" && (
