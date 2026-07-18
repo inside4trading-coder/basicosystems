@@ -514,20 +514,42 @@ export default function CoreFabricationFunds() {
         <div className="flex flex-wrap gap-2 items-end">
           <div className="flex flex-col">
             <Label className="text-[10px] uppercase text-muted-foreground">Desde</Label>
-            <Input type="date" className="h-9 w-[150px]" value={periodStart} onChange={e => setPeriodStart(e.target.value)} />
+            <Input type="date" className="h-9 w-[150px]" min={BASELINE_DATE} value={periodStart} onChange={e => handleStartChange(e.target.value)} />
           </div>
           <div className="flex flex-col">
             <Label className="text-[10px] uppercase text-muted-foreground">Hasta</Label>
-            <Input type="date" className="h-9 w-[150px]" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} />
+            <Input type="date" className="h-9 w-[150px]" min={BASELINE_DATE} value={periodEnd} onChange={e => handleEndChange(e.target.value)} />
           </div>
           <Button onClick={processSales} disabled={processing}>
             <Play className="h-4 w-4 mr-1" />{processing ? "Procesando…" : "Procesar ventas confirmadas"}
           </Button>
+          {missingDays.length > 0 && (
+            <Button variant="outline" onClick={fillNextPendingDay} title="Prepara el rango con el primer día pendiente">
+              Procesar próximo día pendiente
+            </Button>
+          )}
           <Button variant="outline" onClick={openManual}><Plus className="h-4 w-4 mr-1" />Nuevo ajuste manual</Button>
           <Button variant="outline" onClick={downloadReport}><Download className="h-4 w-4 mr-1" />Generar reporte</Button>
         </div>
 
       </div>
+
+      {missingDays.length > 0 && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <p className="font-semibold text-destructive">
+                Hay días sin cerrar en Partidas. Esto puede dejar dinero de costo sin reservar.
+              </p>
+              <p className="text-xs text-destructive/80 mt-1">
+                {missingDays.length} día{missingDays.length === 1 ? "" : "s"} pendiente{missingDays.length === 1 ? "" : "s"} desde {BASELINE_DATE_LABEL}: {missingDays.slice(0, 6).map(formatDDMMYYYY).join(", ")}{missingDays.length > 6 ? `, … (+${missingDays.length - 6})` : ""}
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setMissingDaysOpen(true)}>Ver días pendientes</Button>
+          </div>
+        </div>
+      )}
+
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex-wrap h-auto">
