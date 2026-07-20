@@ -371,6 +371,134 @@ export function useReplenishmentPolicyEvents() {
     return true;
   };
 
+  // ------- Pending classification resolution helpers -------
+  const getCurrentUserId = async (): Promise<string | null> => {
+    const { data } = await supabase.auth.getUser();
+    return data.user?.id ?? null;
+  };
+
+  const readMovementResolution = async (movementId: string) => {
+    const { data, error } = await supabase
+      .from("core_fabrication_fund_movements" as any)
+      .select("resolution_data")
+      .eq("id", movementId)
+      .maybeSingle();
+    if (error) throw error;
+    return ((data as any)?.resolution_data ?? {}) as any;
+  };
+
+  const writeMovementResolution = async (movementId: string, mergedResolution: any) => {
+    const current = await readMovementResolution(movementId);
+    const next = {
+      ...current,
+      pending_classification_resolution: {
+        ...(current?.pending_classification_resolution ?? {}),
+        ...mergedResolution,
+      },
+    };
+    const { error } = await supabase
+      .from("core_fabrication_fund_movements" as any)
+      .update({ resolution_data: next })
+      .eq("id", movementId);
+    if (error) throw error;
+  };
+
+  const resolvePendingClassificationNoRestock = async (movementId: string) => {
+    const current = await readMovementResolution(movementId);
+    const existing = current?.pending_classification_resolution;
+    if (existing?.status === "corrected" || existing?.status === "closed") {
+      return true;
+    }
+    const uid = await getCurrentUserId();
+    try {
+      await writeMovementResolution(movementId, {
+        status: "corrected",
+        action: "no_restock",
+        resolved_at: new Date().toISOString(),
+        resolved_by: uid,
+        note: "No hacer restock",
+      });
+      invalidateAll();
+      return true;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return false;
+    }
+  };
+
+  const markPendingClassificationReplaced = async (movementId: string, eventId: string) => {
+    const current = await readMovementResolution(movementId);
+    const existing = current?.pending_classification_resolution;
+    if (existing?.status === "corrected" || existing?.status === "closed") {
+      // update replacement_event_id if missing
+      if (!existing?.replacement_event_id) {
+        try {
+          await writeMovementResolution(movementId, { replacement_event_id: eventId });
+          invalidateAll();
+        } catch (e: any) {
+          toast({ title: "Error", description: e.message, variant: "destructive" });
+          return false;
+        }
+      }
+      return true;
+    }
+    const uid = await getCurrentUserId();
+    try {
+      await writeMovementResolution(movementId, {
+        status: "corrected",
+        action: "replace",
+        replacement_event_id: eventId,
+        resolved_at: new Date().toISOString(),
+        resolved_by: uid,
+        note: "Reemplazado por otra prenda",
+      });
+      invalidateAll();
+      return true;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return false;
+    }
+  };
+
+  const setPendingClassificationBridgeEventId = async (
+    movementId: string,
+    eventId: string,
+  ) => {
+    try {
+      await writeMovementResolution(movementId, { replacement_event_id: eventId });
+      invalidateAll();
+      return true;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return false;
+    }
+  };
+
+  const closePendingClassification = async (movementId: string) => {
+    const current = await readMovementResolution(movementId);
+    const existing = current?.pending_classification_resolution;
+    if (existing?.status !== "corrected") {
+      toast({
+        title: "Acción no disponible",
+        description: "Sólo se pueden cerrar filas ya corregidas.",
+      });
+      return false;
+    }
+    const uid = await getCurrentUserId();
+    try {
+      await writeMovementResolution(movementId, {
+        status: "closed",
+        closed_at: new Date().toISOString(),
+        closed_by: uid,
+      });
+      invalidateAll();
+      return true;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return false;
+    }
+  };
+
   return {
     rows,
     isLoading:
@@ -381,5 +509,9 @@ export function useReplenishmentPolicyEvents() {
     resolveReplacementLabel,
     setEventStatus,
     invalidateAll,
+    resolvePendingClassificationNoRestock,
+    markPendingClassificationReplaced,
+    setPendingClassificationBridgeEventId,
+    closePendingClassification,
   };
 }
