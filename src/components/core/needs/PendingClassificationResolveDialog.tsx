@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,12 +7,18 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Ban, Repeat, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { useCoreProducts, type CoreProductLite } from "@/hooks/useWooCoreMap";
 import {
   useReplenishmentPolicyEvents,
   type PolicyEvent,
 } from "@/hooks/useReplenishmentPolicyEvents";
 import { ReplacementApplicationDialog } from "@/components/core/woocore/ReplacementApplicationDialog";
+
+type FabricableCandidate = {
+  id: string;
+  core_sku: string;
+  name: string;
+  woo_product_id: number | null;
+};
 
 type Props = {
   row: PolicyEvent | null;
