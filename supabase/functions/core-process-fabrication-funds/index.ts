@@ -416,6 +416,8 @@ async function runProcessSales(
         const iid = it.line_item_id;
         const order = orderById.get(oid);
         if (!order) continue;
+        const isLate = lateOrderIds.has(oid);
+        if (isLate) summary.late_confirmed_items_checked += 1;
 
         const skuLower = (it.sku || it.parent_sku || "").toString().trim().toLowerCase();
         const wooProdId = it.product_id ? Number(it.product_id) : null;
