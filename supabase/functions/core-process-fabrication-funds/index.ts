@@ -447,6 +447,7 @@ async function runProcessSales(
               fabrication_fund_run_id: runId,
             });
             pendByKey.set(key, { id: "queued", status: "pending" });
+            if (isLate) summary.late_confirmed_pending_items_created += 1;
           }
           summary.pending_items_created += 1;
           incReason(reason);
