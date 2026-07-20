@@ -1,134 +1,63 @@
-## Parche mínimo — Rezagados confirmados desde 2026-07-16
+# Conciliación Woo vs Partidas — herramienta read-only (v3)
 
-**Archivo único a modificar:**
-`supabase/functions/core-process-fabrication-funds/index.ts` (función `runProcessSales`)
+## Objetivo
+Añadir en `/core/partidas-fabricacion` una acción **"Conciliar rango"** que compare las ventas Woo del rango con lo que las Partidas registraron. 100% read-only: solo `select`. Cero `insert/update/upsert/delete/rpc/invoke`, cero migraciones, cero RPC, cero tablas nuevas.
 
-**Sin cambios en:** UI, migraciones, RPC, WooCommerce, stock, OP, QR, nómina, `CONFIRMED_STATUSES`, `REVERTING_STATUSES`.
+## Archivos
+- `src/pages/core/CoreFabricationFunds.tsx` — botón "Conciliar rango", dialog con resumen, filtros y tabla.
+- `src/lib/coreReconciliation.ts` (**nuevo**) — helpers puros: constantes de status, detección shipping/fee, clasificación por línea, CSV, conversión VE↔UTC.
 
----
+## UX
+1. Botón **"Conciliar rango"** junto a "Procesar ventas confirmadas". Usa el `periodStart`/`periodEnd` ya existentes.
+2. `Dialog` grande con:
+   - **Rango VE** (`DD/MM/YYYY 00:00 → DD/MM/YYYY 23:59`) y **Rango UTC** (VE = UTC-4).
+   - Aviso si abarca >1 día: "Este rango incluye X días. Para comparar con Woo, exporta exactamente el mismo rango."
+   - Nota: "Antes de conciliar o procesar, sincroniza Woo para incluir pedidos recientes."
+   - Cards resumen (11 métricas).
+   - Filtros: Todos / Movimientos / Pendientes / Sin costo / Sin mapeo / Excluidos / Rezagados / Diferencias.
+   - Tabla: Pedido, Fecha VE, Status Woo, SKU, Producto, Woo product/variation, Qty, Resultado Hub, Costo, Monto, Partida/bucket, Motivo. Badge "Rezagado confirmado" cuando aplique.
+   - Botón **"Exportar conciliación Hub"** → CSV de las filas visibles.
 
-### Cambios puntuales
+## Datos (solo `select`, paginados en bloques de 1000)
 
-1. **Constante nueva** en el módulo:
-   ```ts
-   const LATE_CONFIRMED_BASELINE = "2026-07-16";
-   ```
+Al abrir (React Query, `enabled: open`, key `["reconciliation", from, to]`):
 
-2. **Nuevos contadores** en `summary` (inicializados a 0):
-   - `late_confirmed_orders_found`
-   - `late_confirmed_items_checked`
-   - `late_confirmed_movements_created`
-   - `late_confirmed_pending_items_created`
-   - `late_confirmed_order_ids: number[]`
+1. **Pedidos del rango** — `orders` con `order_datetime BETWEEN periodStart AND periodEnd`. Sin filtrar por `order_status` — la clasificación decide después. Paginar con `.range()`.
+2. **Rezagados confirmados** — `orders` con `order_status IN CONFIRMED_STATUSES` + `order_datetime >= "2026-07-16"` + `order_datetime < periodStart`. Después, en cliente, descartar los que ya tengan movimiento `sale_generated*` en todas sus líneas.
+3. **`order_items`** por `order_id IN (...)` unión de ambos sets. Chunks de ~200 IDs en `.in()`, paginado con `.range()`. Solo se seleccionan columnas conocidas existentes; **no se pide `type`** (heurística por nombre/SKU).
+4. **`core_fabrication_fund_movements`** por `source_order_id IN (...)` con `movement_type IN ('sale_generated','sale_generated_non_restockable')`, paginado.
+5. **`core_fabrication_fund_pending_items`** por `source_order_id IN (...)`, paginado. Activo = `status NOT IN {resolved, ignored, completed, cancelled}`.
 
-3. **Detección de rezagados (antes del `while` de paginación).**  
-   Solo se activa si `periodStart` es `> LATE_CONFIRMED_BASELINE`. Si no, no hay rezagados que agregar (el rango normal ya los cubre).
+**No** se consulta `core_replenishment_policy_events` en esta versión.
 
-   ```ts
-   const lateOrderIds = new Set<number>();
-   if (periodStart && periodStart > LATE_CONFIRMED_BASELINE) {
-     // 1) orders confirmados >= BASELINE y < periodStart
-     const { data: candOrders } = await supabase
-       .from("orders")
-       .select("order_id")
-       .in("order_status", Array.from(CONFIRMED_STATUSES))
-       .gte("order_datetime", LATE_CONFIRMED_BASELINE)
-       .lt("order_datetime", periodStart);
+## Clasificación por línea — `Resultado Hub` (primer match gana)
+1. **Delivery/envío/fee** → `Excluido: delivery/envío`. Prioridad máxima, aunque haya movimiento o status confirmado. Detección **solo por heurística de nombre/SKU** `/env[ií]o|shipping|delivery|fee/i` (no se lee columna `type`).
+2. **Movimiento existe** → `Ya reservado` (muestra `amount`, `unit_cost_snapshot`, `fund_bucket`, `movement_type`).
+3. **Pending activo** → según `reason`:
+   - `unit_cost_missing` / `missing_cost` → `Pendiente sin costo`
+   - `variation_not_mapped` / `product_not_mapped` → `Pendiente sin mapeo`
+   - `pending_classification` → `Pendiente de clasificación`
+4. **`order_status ∉ CONFIRMED_STATUSES`** → `Excluido por status` (cubre `cancelled`, `refunded`, `failed`, `on-hold`, `pending`, etc.).
+5. Sin match → `No procesado`.
 
-     const candIds = (candOrders ?? []).map((o: any) => o.order_id);
-     if (candIds.length) {
-       // 2) reservas existentes por línea para esos orders
-       const { data: existingLineMovs } = await supabase
-         .from("core_fabrication_fund_movements")
-         .select("source_order_id, source_order_item_id, movement_type")
-         .in("source_order_id", candIds)
-         .in("movement_type", ["sale_generated", "sale_generated_non_restockable"])
-         .not("source_order_item_id", "is", null);
+Badge extra **"Rezagado confirmado"** cuando el `order_id` está en el set de rezagados.
 
-       const reservedByOrder = new Map<number, Set<number>>();
-       for (const m of existingLineMovs ?? []) {
-         const s = reservedByOrder.get(m.source_order_id) ?? new Set<number>();
-         s.add(m.source_order_item_id);
-         reservedByOrder.set(m.source_order_id, s);
-       }
+Comparación siempre por `(source_order_id, source_order_item_id)`.
 
-       // 3) líneas por order → incluir order solo si alguna línea NO tiene reserva
-       const { data: candItems } = await supabase
-         .from("order_items")
-         .select("order_id, line_item_id")
-         .in("order_id", candIds);
+## Constantes en `coreReconciliation.ts`
+- `CONFIRMED_STATUSES` y `REVERTING_STATUSES` copiadas 1:1 del edge function.
+- `BASELINE = "2026-07-16"`.
+- `CLOSED_PENDING_STATUSES = new Set(["resolved","ignored","completed","cancelled"])`.
+- Columna real de status en `orders`: **`order_status`** (no `status`).
 
-       const linesByOrder = new Map<number, number[]>();
-       for (const li of candItems ?? []) {
-         const arr = linesByOrder.get(li.order_id) ?? [];
-         arr.push(li.line_item_id);
-         linesByOrder.set(li.order_id, arr);
-       }
-       for (const oid of candIds) {
-         const lines = linesByOrder.get(oid) ?? [];
-         if (lines.length === 0) continue;
-         const reserved = reservedByOrder.get(oid) ?? new Set<number>();
-         const hasMissing = lines.some((iid) => !reserved.has(iid));
-         if (hasMissing) lateOrderIds.add(oid);
-       }
-     }
+## CSV
+Serializa las filas visibles (post-filtro). Blob + `URL.createObjectURL`. Nombre `conciliacion-hub_<from>_<to>.csv`.
 
-     summary.late_confirmed_orders_found = lateOrderIds.size;
-     summary.late_confirmed_order_ids = Array.from(lateOrderIds);
-   }
-   ```
+## Rango UTC
+VE = UTC-4 fijo. `00:00 VE = 04:00 UTC`; `23:59 VE = (día+1) 03:59 UTC`. Inline, sin librerías.
 
-4. **Segundo pase de paginación (mismo pipeline).**  
-   Después de que termina el `while` actual, si hay `lateOrderIds`, se ejecuta un `while` paralelo idéntico salvo por:
-   - No aplica `.gte/.lte("order_datetime", ...)`.
-   - Aplica `.in("order_id", Array.from(lateOrderIds))`.
-   - Mantiene `.in("order_status", CONFIRMED_STATUSES)`.
-   - Incrementa `late_confirmed_items_checked` por cada item procesado.
-   - Antes de cada `movementInserts.push(...)` de tipo `sale_generated*` originado por un order en `lateOrderIds`, incrementa `late_confirmed_movements_created`.
-   - Antes de cada `pendingInserts.push(...)` para un order en `lateOrderIds`, incrementa `late_confirmed_pending_items_created`.
+## Fuera de alcance
+No procesa ventas, no crea movimientos/pending/eventos, no toca fondos, Woo, stock, OP, QR, nómina. No hay migraciones, RPC, tablas ni edge functions nuevas. No se invoca ningún edge function.
 
-   Refactor mínimo: envolver el cuerpo del `while` existente en una función interna `processOrdersPage(orders, items, opts)` para reusar en ambos pases sin duplicar lógica. Alternativamente, mantener dos loops que solo difieren en la query inicial y sumar contadores con un flag `isLatePass`.
-
-5. **Idempotencia** — sin cambios adicionales.  
-   El pipeline actual ya salta las líneas con `existingReserveByLine(oid, iid)` presente (bloque en línea ~408+). Los rezagados con algunas líneas ya reservadas simplemente no generarán duplicado; solo se procesan las líneas faltantes.
-
-6. **Dry run** — sin cambios estructurales.  
-   El segundo pase respeta el mismo `dryRun`: no inserta movimientos, pending_items, runs ni auditoría. El summary sí refleja `late_confirmed_orders_found` y `late_confirmed_order_ids` en dry run.
-
-7. **Cero cambios en:**
-   - `CONFIRMED_STATUSES`, `REVERTING_STATUSES`.
-   - Query normal del rango (se mantiene tal cual).
-   - Lógica de resolución de costo, política, routing, movimientos, buckets.
-   - Auditoría, `core_fabrication_fund_runs`.
-
----
-
-### Validación esperada (34152, 34139, creados el 16/07/2026)
-
-Con un rango `18/07 .. 19/07`:
-- `late_confirmed_orders_found ≥ 2`.
-- `late_confirmed_order_ids` incluye 34152 y 34139.
-- Con costo válido → movimiento `sale_generated` creado (contado en `late_confirmed_movements_created`).
-- Sin costo → aparece en pending_items / Requiere atención → Sin costo.
-- Segunda ejecución con el mismo rango → 0 movimientos nuevos, 0 pending nuevos (idempotencia por `source_order_id + source_order_item_id + movement_type`).
-
----
-
-### Detalles técnicos
-
-- Pedidos con `order_datetime < 2026-07-16` nunca entran al set `lateOrderIds` por el `.gte("order_datetime", LATE_CONFIRMED_BASELINE)`.
-- Si `periodStart` es `null` o `<= BASELINE`, el bloque de rezagados no se ejecuta (rango ya cubre desde el inicio).
-- Paginación de `lateOrderIds` con `pageSize=1000` para respetar límite PostgREST en `.in(...)`.
-- Typecheck al final: `deno check` no aplica en Lovable; se valida con el typecheck automático del build tras editar.
-
-### Respuesta post-implementación (a devolver al usuario)
-
-1. Archivo modificado.
-2. Confirmación de query de rezagados.
-3. `BASELINE_DATE = 2026-07-16`.
-4. Cómo se bloquea `< 16/07`.
-5. Cómo se evita duplicar reservas.
-6. Resultado con 34152 / 34139.
-7. Campos añadidos al summary.
-8. Confirmación de cero migraciones / RPC / backend extra.
-9. Typecheck.
+## Checklist de respuesta al terminar
+1. Archivos modificados.  2. Botón "Conciliar rango".  3. Rango VE y UTC.  4. `CONFIRMED_STATUSES` reales.  5. Rezagados desde 2026-07-16.  6. Delivery/envío excluido con prioridad máxima (heurística por nombre/SKU, sin `type`).  7. Uso de `order_status` (no `status`).  8. Comparación por `order_id + line_item_id`.  9. Resumen + tabla + filtros.  10. CSV exporta filas visibles.  11. Cero escrituras (solo `select`).  12. Sin consulta a `core_replenishment_policy_events`.  13. Typecheck.
