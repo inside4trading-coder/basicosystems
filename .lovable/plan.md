@@ -1,63 +1,117 @@
-# Conciliación Woo vs Partidas — herramienta read-only (v3)
+# Resolver "Partida sin clasificar" desde Necesidades (final)
 
-## Objetivo
-Añadir en `/core/partidas-fabricacion` una acción **"Conciliar rango"** que compare las ventas Woo del rango con lo que las Partidas registraron. 100% read-only: solo `select`. Cero `insert/update/upsert/delete/rpc/invoke`, cero migraciones, cero RPC, cero tablas nuevas.
+Ruta barata: sin migración, sin RPC nuevo, sin edge function. Reutiliza `core_apply_replacement_event` y `ReplacementApplicationDialog`.
 
-## Archivos
-- `src/pages/core/CoreFabricationFunds.tsx` — botón "Conciliar rango", dialog con resumen, filtros y tabla.
-- `src/lib/coreReconciliation.ts` (**nuevo**) — helpers puros: constantes de status, detección shipping/fee, clasificación por línea, CSV, conversión VE↔UTC.
+## Archivos a modificar
 
-## UX
-1. Botón **"Conciliar rango"** junto a "Procesar ventas confirmadas". Usa el `periodStart`/`periodEnd` ya existentes.
-2. `Dialog` grande con:
-   - **Rango VE** (`DD/MM/YYYY 00:00 → DD/MM/YYYY 23:59`) y **Rango UTC** (VE = UTC-4).
-   - Aviso si abarca >1 día: "Este rango incluye X días. Para comparar con Woo, exporta exactamente el mismo rango."
-   - Nota: "Antes de conciliar o procesar, sincroniza Woo para incluir pedidos recientes."
-   - Cards resumen (11 métricas).
-   - Filtros: Todos / Movimientos / Pendientes / Sin costo / Sin mapeo / Excluidos / Rezagados / Diferencias.
-   - Tabla: Pedido, Fecha VE, Status Woo, SKU, Producto, Woo product/variation, Qty, Resultado Hub, Costo, Monto, Partida/bucket, Motivo. Badge "Rezagado confirmado" cuando aplique.
-   - Botón **"Exportar conciliación Hub"** → CSV de las filas visibles.
+1. `src/hooks/useReplenishmentPolicyEvents.ts` — ampliar query + helpers.
+2. `src/components/core/woocore/PolicyEventsAttentionPanel.tsx` — swap del `Link` por botón, badge/botón Cerrar.
+3. `src/components/core/needs/PendingClassificationResolveDialog.tsx` (**nuevo**).
 
-## Datos (solo `select`, paginados en bloques de 1000)
+## 1) Hook `useReplenishmentPolicyEvents.ts`
 
-Al abrir (React Query, `enabled: open`, key `["reconciliation", from, to]`):
+**Query `pendingClassMovsQuery`**: incluir `resolution_data` en el `select`. Filtrar en cliente (JSONB anidado):
+- incluir si `resolution_data.pending_classification_resolution` es null/undefined.
+- incluir si `status === "corrected"`.
+- excluir si `status === "closed"`.
 
-1. **Pedidos del rango** — `orders` con `order_datetime BETWEEN periodStart AND periodEnd`. Sin filtrar por `order_status` — la clasificación decide después. Paginar con `.range()`.
-2. **Rezagados confirmados** — `orders` con `order_status IN CONFIRMED_STATUSES` + `order_datetime >= "2026-07-16"` + `order_datetime < periodStart`. Después, en cliente, descartar los que ya tengan movimiento `sale_generated*` en todas sus líneas.
-3. **`order_items`** por `order_id IN (...)` unión de ambos sets. Chunks de ~200 IDs en `.in()`, paginado con `.range()`. Solo se seleccionan columnas conocidas existentes; **no se pide `type`** (heurística por nombre/SKU).
-4. **`core_fabrication_fund_movements`** por `source_order_id IN (...)` con `movement_type IN ('sale_generated','sale_generated_non_restockable')`, paginado.
-5. **`core_fabrication_fund_pending_items`** por `source_order_id IN (...)`, paginado. Activo = `status NOT IN {resolved, ignored, completed, cancelled}`.
+**Fila sintética (`mv:<id>`)**: además de campos actuales, exponer:
+- `sourceMovementId = m.id`
+- `unit_cost_snapshot` original (además del `unit_cost` ya derivado)
+- `pendingClassificationResolution`
+- `isCorrected = resolution?.status === "corrected"`
+- `canClose = isCorrected`
 
-**No** se consulta `core_replenishment_policy_events` en esta versión.
+**Helpers** (UPDATE sólo sobre `resolution_data`, merge con JSON actual leído en el mismo helper):
+- `resolvePendingClassificationNoRestock(movementId)` — corta si ya `corrected|closed`. Escribe `status: corrected`, `action: no_restock`, `resolved_at`, `resolved_by`, `note: "No hacer restock"`.
+- `markPendingClassificationReplaced(movementId, eventId)` — corta si ya `corrected|closed`. Escribe `status: corrected`, `action: replace`, `replacement_event_id`, `resolved_at`, `resolved_by`, `note: "Reemplazado por otra prenda"`.
+- `closePendingClassification(movementId)` — sólo si `corrected`. Escribe `status: closed`, `closed_at`, `closed_by`.
 
-## Clasificación por línea — `Resultado Hub` (primer match gana)
-1. **Delivery/envío/fee** → `Excluido: delivery/envío`. Prioridad máxima, aunque haya movimiento o status confirmado. Detección **solo por heurística de nombre/SKU** `/env[ií]o|shipping|delivery|fee/i` (no se lee columna `type`).
-2. **Movimiento existe** → `Ya reservado` (muestra `amount`, `unit_cost_snapshot`, `fund_bucket`, `movement_type`).
-3. **Pending activo** → según `reason`:
-   - `unit_cost_missing` / `missing_cost` → `Pendiente sin costo`
-   - `variation_not_mapped` / `product_not_mapped` → `Pendiente sin mapeo`
-   - `pending_classification` → `Pendiente de clasificación`
-4. **`order_status ∉ CONFIRMED_STATUSES`** → `Excluido por status` (cubre `cancelled`, `refunded`, `failed`, `on-hold`, `pending`, etc.).
-5. Sin match → `No procesado`.
+Todos invalidan `["fab_fund_movements","pending_classification"]` y `["replenishment_policy_events"]`.
 
-Badge extra **"Rezagado confirmado"** cuando el `order_id` está en el set de rezagados.
+`resolved_by`/`closed_by` desde `supabase.auth.getUser()`.
 
-Comparación siempre por `(source_order_id, source_order_item_id)`.
+Ampliar tipo `PolicyEvent` con los campos nuevos.
 
-## Constantes en `coreReconciliation.ts`
-- `CONFIRMED_STATUSES` y `REVERTING_STATUSES` copiadas 1:1 del edge function.
-- `BASELINE = "2026-07-16"`.
-- `CLOSED_PENDING_STATUSES = new Set(["resolved","ignored","completed","cancelled"])`.
-- Columna real de status en `orders`: **`order_status`** (no `status`).
+## 2) `PolicyEventsAttentionPanel.tsx`
 
-## CSV
-Serializa las filas visibles (post-filtro). Blob + `URL.createObjectURL`. Nombre `conciliacion-hub_<from>_<to>.csv`.
+Para `r.action === "unclassified_fund"`:
+- Si `!r.isCorrected` → `<Button onClick={() => setResolveRow(r)}>Definir política</Button>` (reemplaza el `Link` actual).
+- Si `r.isCorrected` → en columna Estado, `Badge` verde `Corregido`; en Acción, botón `Cerrar` que llama `closePendingClassification(r.sourceMovementId)`. La fila desaparece porque el hook filtra `closed`.
 
-## Rango UTC
-VE = UTC-4 fijo. `00:00 VE = 04:00 UTC`; `23:59 VE = (día+1) 03:59 UTC`. Inline, sin librerías.
+Estado local: `const [resolveRow, setResolveRow] = useState<PolicyEvent | null>(null)`.
 
-## Fuera de alcance
-No procesa ventas, no crea movimientos/pending/eventos, no toca fondos, Woo, stock, OP, QR, nómina. No hay migraciones, RPC, tablas ni edge functions nuevas. No se invoca ningún edge function.
+Al final del componente renderizar `<PendingClassificationResolveDialog row={resolveRow} open={!!resolveRow} onOpenChange={(v) => !v && setResolveRow(null)} />`.
 
-## Checklist de respuesta al terminar
-1. Archivos modificados.  2. Botón "Conciliar rango".  3. Rango VE y UTC.  4. `CONFIRMED_STATUSES` reales.  5. Rezagados desde 2026-07-16.  6. Delivery/envío excluido con prioridad máxima (heurística por nombre/SKU, sin `type`).  7. Uso de `order_status` (no `status`).  8. Comparación por `order_id + line_item_id`.  9. Resumen + tabla + filtros.  10. CSV exporta filas visibles.  11. Cero escrituras (solo `select`).  12. Sin consulta a `core_replenishment_policy_events`.  13. Typecheck.
+## 3) `PendingClassificationResolveDialog.tsx` (nuevo)
+
+Props: `{ row: PolicyEvent | null; open; onOpenChange }`.
+Estados: `mode: "menu" | "picker" | "apply"`, `pickedCore`, `bridgeEvent`.
+
+Cabecera + resumen (producto, SKU, pedido, cantidad, unit_cost, amount, woo_product_id, woo_variation_id).
+
+### Menú
+- **"No hacer restock"** → `resolvePendingClassificationNoRestock(row.sourceMovementId)` → invalidar → cerrar.
+- **"Reemplazar por otra prenda"** → `mode = "picker"`.
+
+### Picker
+Lista de candidatos del Catálogo de Fabricación con `useCoreProducts()` (mismo que `ReplacementPickerDialog`), filtrando por `commercial_status='active'`, `is_restockable=true`, `replenishment_route='internal_factory'`, excluyendo el propio `core_product_id` y el mismo `woo_product_id`. Sólo UI de búsqueda + selección; **no** se llama al `save()` del picker existente (ese guarda política y no queremos eso).
+
+### Cálculo de cantidad/costo/monto (regla del ajuste)
+```
+quantity  = row.quantity ?? row.qty ?? 1
+unit_cost = row.unit_cost_snapshot ?? row.unit_cost ?? row.cost ?? null
+amount    = row.amount ?? (unit_cost != null ? quantity * unit_cost : null)
+```
+Si `unit_cost == null` **o** `amount == null`: bloquear la opción Reemplazar y mostrar toast/alert:
+> "No se puede reemplazar porque el movimiento no tiene costo reservado válido."
+
+### Idempotencia del bridge event (regla del ajuste)
+Si `row.pendingClassificationResolution?.replacement_event_id` existe:
+- `SELECT * FROM core_replenishment_policy_events WHERE id = eventId`.
+- `status ∈ ('open','reviewed')` → **reutilizar**, guardar en `bridgeEvent`, ir a `mode="apply"`.
+- `status = 'resolved'` → no crear otro; llamar `markPendingClassificationReplaced(row.sourceMovementId, eventId)` si aún no está `corrected`; cerrar modal.
+- `status = 'ignored'` (o cualquier otro) → crear un nuevo event puente (sobrescribiendo `replacement_event_id` en `resolution_data` al finalizar).
+
+Si no hay `replacement_event_id` o corresponde crear uno nuevo, `INSERT INTO core_replenishment_policy_events`:
+- `action: 'suggest_replacement'`
+- `status: 'open'`
+- `severity: 'warning'`
+- `source_type: 'fabrication_fund_movement'` (valor ya soportado por `ReplacementApplicationDialog`; confirmado en `useReplenishmentPolicyEvents.ts` y en `ReplacementApplicationDialog.tsx` línea 205)
+- `source_id: row.sourceMovementId`
+- `quantity`, `unit_cost`, `amount` según regla anterior
+- `core_product_id`, `woo_product_id`, `woo_variation_id`, `woo_order_id`, `woo_order_item_id` de la fila
+- `replacement_product_id: pickedCore.id`
+- `replacement_woo_product_id: pickedCore.woo_product_id`
+- `replacement_behavior: 'use_on_restock_with_confirmation'`
+- `resolution_data`: `{ product_name, sku, bridge_source: 'pending_classification', origin_movement_id: row.sourceMovementId }`
+
+Guardar en `bridgeEvent` y `mode = "apply"`.
+
+### Apply
+Renderizar embebido `<ReplacementApplicationDialog event={bridgeEvent} open onOpenChange={handleApplyClose} />`.
+
+`handleApplyClose(v)` (regla del ajuste):
+1. `SELECT status FROM core_replenishment_policy_events WHERE id = bridgeEvent.id` (refetch fresco, no memoria).
+2. Si `status = 'resolved'` → `markPendingClassificationReplaced(row.sourceMovementId, bridgeEvent.id)` → invalidar queries → cerrar todo el modal exterior.
+3. Si sigue `open|reviewed` → no marcar corregido; simplemente cerrar el sub-dialog (el bridge event queda reutilizable, la próxima apertura entra por la rama de reutilización).
+4. Si hubo error en el RPC del ApplicationDialog → mismo comportamiento que (3), bridge queda reutilizable.
+
+## Idempotencia (resumen)
+
+- **No restock**: cortocircuita si `status ∈ {corrected, closed}`.
+- **Replace**: revisa `replacement_event_id`; reutiliza en `open|reviewed`; cierra ciclo en `resolved`; regenera en `ignored`.
+- **Cerrar**: sólo sobre `corrected`.
+
+## Lo que NO se hace
+
+Cero migraciones, cero RPC, cero edge function. No se toca `amount`, `fund_bucket`, `movement_type` ni `status` del movimiento (sólo `resolution_data`). Nada de cálculo financiero manual; diferencia de costo la aplica `core_apply_replacement_event` ya invocado por `ReplacementApplicationDialog`.
+
+## Validación
+
+- `tsgo --noEmit`.
+- Casos A/B/C manuales:
+  - A: No restock (MSW61 L / #34144) → sin movimientos nuevos, fila `Corregido` → `Cerrar` → oculta.
+  - B: Reemplazo end-to-end vía `ReplacementApplicationDialog` → verificar SELECT fresco y transición a `Corregido`.
+  - C: Doble apertura del mismo movimiento → no crea dos policy_events; reutiliza el existente.
+- Caso extra: movimiento sin `unit_cost_snapshot` → botón "Reemplazar" bloqueado con mensaje.
