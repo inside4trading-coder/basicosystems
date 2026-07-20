@@ -39,7 +39,7 @@ export function PendingClassificationResolveDialog({ row, open, onOpenChange }: 
     queryKey: ["fabricable-candidates-for-pending-classification"],
     enabled: open,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("core_products")
         .select("id, core_sku, name, woo_product_id, commercial_status, is_restockable, replenishment_route")
         .eq("commercial_status", "active")
