@@ -11,10 +11,16 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Layers, Play, Plus, Download, RotateCcw, Wallet, AlertCircle, History, ListChecks, ExternalLink } from "lucide-react";
+import { Layers, Play, Plus, Download, RotateCcw, Wallet, AlertCircle, History, ListChecks, ExternalLink, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
 import PendingResolutionPanel from "@/components/core/PendingResolutionPanel";
+import {
+  CONFIRMED_STATUSES, RECON_BASELINE, CLOSED_PENDING_STATUSES,
+  isShippingLike, classifyLine, veRangeToUtc, veRangeBounds, formatVE,
+  rowsToCsv, downloadCsv, chunk,
+  RESULT_LABEL, RESULT_BADGE, type ReconRow,
+} from "@/lib/coreReconciliation";
 
 type Fund = {
   id: string; fund_type: string; core_product_id: string | null; sku: string | null;
@@ -152,6 +158,7 @@ export default function CoreFabricationFunds() {
   const [periodStart, setPeriodStart] = useState<string>(BASELINE_DATE);
   const [periodEnd, setPeriodEnd] = useState<string>(todayLocalISO());
   const [missingDaysOpen, setMissingDaysOpen] = useState(false);
+  const [reconOpen, setReconOpen] = useState(false);
   const [form, setForm] = useState({
     movement_type: "manual_increase",
     fund_id: "",
@@ -522,6 +529,9 @@ export default function CoreFabricationFunds() {
           </div>
           <Button onClick={processSales} disabled={processing}>
             <Play className="h-4 w-4 mr-1" />{processing ? "Procesando…" : "Procesar ventas confirmadas"}
+          </Button>
+          <Button variant="outline" onClick={() => setReconOpen(true)}>
+            <Scale className="h-4 w-4 mr-1" />Conciliar rango
           </Button>
           {missingDays.length > 0 && (
             <Button variant="outline" onClick={fillNextPendingDay} title="Prepara el rango con el primer día pendiente">
@@ -1151,6 +1161,13 @@ export default function CoreFabricationFunds() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ReconciliationDialog
+        open={reconOpen}
+        onOpenChange={setReconOpen}
+        periodStart={periodStart}
+        periodEnd={periodEnd}
+      />
     </div>
   );
 }
@@ -1229,5 +1246,404 @@ function PartidaCard({
       )}
     </Card>
   );
+}
+
+// ---------- Conciliación Woo vs Partidas (read-only) ----------
+
+type ReconFilter = "all" | "movements" | "pending" | "pending_cost" | "pending_mapping" | "excluded" | "late" | "diff";
+
+function ReconciliationDialog({
+  open, onOpenChange, periodStart, periodEnd,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  periodStart: string;
+  periodEnd: string;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<ReconRow[]>([]);
+  const [filter, setFilter] = useState<ReconFilter>("all");
+
+  const utcRange = useMemo(() => veRangeToUtc(periodStart, periodEnd), [periodStart, periodEnd]);
+  const daysSpan = useMemo(() => {
+    const [ay, am, ad] = periodStart.split("-").map(Number);
+    const [by, bm, bd] = periodEnd.split("-").map(Number);
+    const a = Date.UTC(ay, (am ?? 1) - 1, ad ?? 1);
+    const b = Date.UTC(by, (bm ?? 1) - 1, bd ?? 1);
+    return Math.max(1, Math.round((b - a) / 86400000) + 1);
+  }, [periodStart, periodEnd]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const bounds = veRangeBounds(periodStart, periodEnd);
+
+        // 1. Pedidos del rango (todos los status)
+        const rangeOrders = await paginatedSelect<any>(async (from, to) =>
+          supabase
+            .from("orders")
+            .select("order_id, order_number, order_datetime, order_status")
+            .gte("order_datetime", bounds.gte)
+            .lte("order_datetime", bounds.lte)
+            .order("order_id", { ascending: true })
+            .range(from, to)
+        );
+
+        // 2. Rezagados confirmados: creados >= BASELINE y < periodStart (VE 00:00 UTC)
+        const lateBoundLower = `${RECON_BASELINE}T04:00:00.000Z`;
+        const lateBoundUpper = bounds.gte;
+        const lateOrders = lateBoundLower < lateBoundUpper
+          ? await paginatedSelect<any>(async (from, to) =>
+              supabase
+                .from("orders")
+                .select("order_id, order_number, order_datetime, order_status")
+                .in("order_status", Array.from(CONFIRMED_STATUSES))
+                .gte("order_datetime", lateBoundLower)
+                .lt("order_datetime", lateBoundUpper)
+                .order("order_id", { ascending: true })
+                .range(from, to)
+            )
+          : [];
+
+        // Unir order_ids
+        const orderMap = new Map<number, any>();
+        for (const o of rangeOrders) orderMap.set(o.order_id, o);
+        for (const o of lateOrders) if (!orderMap.has(o.order_id)) orderMap.set(o.order_id, o);
+        const allOrderIds = Array.from(orderMap.keys());
+
+        if (allOrderIds.length === 0) {
+          if (!cancelled) { setRows([]); setLoading(false); }
+          return;
+        }
+
+        // 3. order_items
+        const items: any[] = [];
+        for (const ids of chunk(allOrderIds, 200)) {
+          const chunkRows = await paginatedSelect<any>(async (from, to) =>
+            supabase
+              .from("order_items")
+              .select("order_id, line_item_id, sku, product_name, quantity, line_total, product_id, variation_id")
+              .in("order_id", ids)
+              .order("order_id", { ascending: true })
+              .range(from, to)
+          );
+          items.push(...chunkRows);
+        }
+
+        // 4. Movimientos sale_generated*
+        const movs: any[] = [];
+        for (const ids of chunk(allOrderIds, 200)) {
+          const chunkRows = await paginatedSelect<any>(async (from, to) =>
+            supabase
+              .from("core_fabrication_fund_movements")
+              .select("source_order_id, source_order_item_id, amount, unit_cost_snapshot, fund_bucket, movement_type, currency")
+              .in("source_order_id", ids)
+              .in("movement_type", ["sale_generated", "sale_generated_non_restockable"])
+              .order("source_order_id", { ascending: true })
+              .range(from, to)
+          );
+          movs.push(...chunkRows);
+        }
+        const movByLine = new Map<string, any>();
+        for (const m of movs) {
+          const k = `${m.source_order_id}:${m.source_order_item_id ?? ""}`;
+          if (!movByLine.has(k)) movByLine.set(k, m);
+        }
+
+        // 5. Pending items
+        const pendings: any[] = [];
+        for (const ids of chunk(allOrderIds, 200)) {
+          const chunkRows = await paginatedSelect<any>(async (from, to) =>
+            supabase
+              .from("core_fabrication_fund_pending_items")
+              .select("source_order_id, source_order_item_id, status, reason, woo_sku, product_name, quantity, woo_product_id, woo_variation_id")
+              .in("source_order_id", ids)
+              .order("source_order_id", { ascending: true })
+              .range(from, to)
+          );
+          pendings.push(...chunkRows);
+        }
+        const pendByLine = new Map<string, any>();
+        for (const p of pendings) {
+          const k = `${p.source_order_id}:${p.source_order_item_id ?? ""}`;
+          const existing = pendByLine.get(k);
+          const isActive = p.status && !CLOSED_PENDING_STATUSES.has(p.status);
+          if (!existing || (isActive && !(existing.status && !CLOSED_PENDING_STATUSES.has(existing.status)))) {
+            pendByLine.set(k, p);
+          }
+        }
+
+        // Detectar rezagados reales: pedidos "late" con al menos una línea sin movimiento
+        const lateOrderIdSet = new Set<number>();
+        for (const lo of lateOrders) {
+          const lines = items.filter(it => it.order_id === lo.order_id);
+          if (lines.length === 0) continue;
+          const hasUnreserved = lines.some(l => {
+            if (isShippingLike(l.product_name, l.sku)) return false;
+            return !movByLine.has(`${l.order_id}:${l.line_item_id ?? ""}`);
+          });
+          if (hasUnreserved) lateOrderIdSet.add(lo.order_id);
+        }
+
+        // Construir filas
+        const out: ReconRow[] = [];
+        for (const it of items) {
+          const order = orderMap.get(it.order_id);
+          if (!order) continue;
+          const k = `${it.order_id}:${it.line_item_id ?? ""}`;
+          const mov = movByLine.get(k) ?? null;
+          const pend = pendByLine.get(k) ?? null;
+          const cls = classifyLine({
+            orderStatus: order.order_status,
+            sku: it.sku,
+            productName: it.product_name,
+            movement: mov,
+            pending: pend,
+          });
+          out.push({
+            order_id: it.order_id,
+            order_number: order.order_number,
+            order_datetime: order.order_datetime,
+            order_status: order.order_status,
+            line_item_id: it.line_item_id,
+            sku: it.sku,
+            product_name: it.product_name,
+            woo_product_id: it.product_id ?? null,
+            woo_variation_id: it.variation_id ?? null,
+            quantity: it.quantity,
+            line_total: it.line_total,
+            result: cls.result,
+            is_late_confirmed: lateOrderIdSet.has(it.order_id),
+            movement_amount: mov?.amount ?? null,
+            movement_unit_cost: mov?.unit_cost_snapshot ?? null,
+            movement_bucket: mov?.fund_bucket ?? null,
+            movement_type: mov?.movement_type ?? null,
+            reason: cls.reason,
+          });
+        }
+
+        // Ordenar por order_id desc
+        out.sort((a, b) => b.order_id - a.order_id || (a.line_item_id ?? 0) - (b.line_item_id ?? 0));
+        if (!cancelled) setRows(out);
+      } catch (e: any) {
+        toast.error("Error cargando conciliación: " + (e?.message ?? String(e)));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, periodStart, periodEnd]);
+
+  const summary = useMemo(() => {
+    const s = {
+      orders: new Set<number>(),
+      lines: rows.length,
+      product_lines: 0,
+      shipping_excluded: 0,
+      confirmed_processable: 0,
+      reserved: 0,
+      pending_cost: 0,
+      pending_mapping: 0,
+      pending_classification: 0,
+      excluded_status: 0,
+      late_confirmed: 0,
+      diff: 0,
+    };
+    for (const r of rows) {
+      s.orders.add(r.order_id);
+      if (r.result === "excluded_shipping") { s.shipping_excluded++; continue; }
+      s.product_lines++;
+      if (r.result === "reserved") s.reserved++;
+      else if (r.result === "pending_cost") s.pending_cost++;
+      else if (r.result === "pending_mapping") s.pending_mapping++;
+      else if (r.result === "pending_classification") s.pending_classification++;
+      else if (r.result === "excluded_status") s.excluded_status++;
+      else if (r.result === "not_processed") s.diff++;
+      if (r.result !== "excluded_status") s.confirmed_processable++;
+      if (r.is_late_confirmed) s.late_confirmed++;
+    }
+    return s;
+  }, [rows]);
+
+  const filtered = useMemo(() => {
+    switch (filter) {
+      case "all": return rows;
+      case "movements": return rows.filter(r => r.result === "reserved");
+      case "pending": return rows.filter(r => r.result === "pending_cost" || r.result === "pending_mapping" || r.result === "pending_classification");
+      case "pending_cost": return rows.filter(r => r.result === "pending_cost");
+      case "pending_mapping": return rows.filter(r => r.result === "pending_mapping");
+      case "excluded": return rows.filter(r => r.result === "excluded_status" || r.result === "excluded_shipping");
+      case "late": return rows.filter(r => r.is_late_confirmed);
+      case "diff": return rows.filter(r => r.result === "not_processed");
+    }
+  }, [rows, filter]);
+
+  const handleExport = () => {
+    if (filtered.length === 0) { toast.info("No hay filas para exportar."); return; }
+    const csv = rowsToCsv(filtered);
+    downloadCsv(`conciliacion-hub_${periodStart}_${periodEnd}.csv`, csv);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Scale className="h-5 w-5" /> Conciliar rango Woo ↔ Partidas
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
+            <div>
+              <span className="font-semibold">Rango VE:</span>{" "}
+              <span className="font-mono">
+                {periodStart.split("-").reverse().join("/")} 00:00 → {periodEnd.split("-").reverse().join("/")} 23:59
+              </span>
+            </div>
+            <div>
+              <span className="font-semibold">Rango UTC:</span>{" "}
+              <span className="font-mono">{utcRange.fromUtc} → {utcRange.toUtc}</span>
+            </div>
+            {daysSpan > 1 && (
+              <div className="text-amber-700 dark:text-amber-400">
+                Este rango incluye {daysSpan} días. Para comparar con Woo, exporta exactamente el mismo rango.
+              </div>
+            )}
+            <div className="text-xs text-muted-foreground">
+              Antes de conciliar o procesar, sincroniza Woo para incluir pedidos recientes.
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 text-xs">
+            <SummaryChip label="Pedidos" value={summary.orders.size} />
+            <SummaryChip label="Líneas totales" value={summary.lines} />
+            <SummaryChip label="Productos" value={summary.product_lines} />
+            <SummaryChip label="Delivery/envío" value={summary.shipping_excluded} tone="muted" />
+            <SummaryChip label="Confirmadas procesables" value={summary.confirmed_processable} tone="emerald" />
+            <SummaryChip label="Ya reservadas" value={summary.reserved} tone="emerald" />
+            <SummaryChip label="Sin costo" value={summary.pending_cost} tone="yellow" />
+            <SummaryChip label="Sin mapeo" value={summary.pending_mapping} tone="orange" />
+            <SummaryChip label="Sin clasificar" value={summary.pending_classification} tone="amber" />
+            <SummaryChip label="Excluidas status" value={summary.excluded_status} tone="muted" />
+            <SummaryChip label="Rezagados" value={summary.late_confirmed} tone="blue" />
+            <SummaryChip label="Diferencias" value={summary.diff} tone="red" />
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={filter} onValueChange={(v) => setFilter(v as ReconFilter)}>
+              <SelectTrigger className="w-[220px] h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="movements">Movimientos (ya reservados)</SelectItem>
+                <SelectItem value="pending">Pendientes</SelectItem>
+                <SelectItem value="pending_cost">Sin costo</SelectItem>
+                <SelectItem value="pending_mapping">Sin mapeo</SelectItem>
+                <SelectItem value="excluded">Excluidos</SelectItem>
+                <SelectItem value="late">Rezagados confirmados</SelectItem>
+                <SelectItem value="diff">Diferencias / no procesado</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-1" /> Exportar conciliación Hub
+            </Button>
+            <span className="text-xs text-muted-foreground ml-auto">
+              {loading ? "Cargando…" : `${filtered.length} fila${filtered.length === 1 ? "" : "s"} visibles`}
+            </span>
+          </div>
+
+          <div className="border rounded-md max-h-[50vh] overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Pedido</TableHead>
+                  <TableHead>Fecha VE</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Woo P/V</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead>Resultado</TableHead>
+                  <TableHead className="text-right">Costo</TableHead>
+                  <TableHead className="text-right">Monto</TableHead>
+                  <TableHead>Partida</TableHead>
+                  <TableHead>Motivo</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 && !loading && (
+                  <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-6">Sin datos.</TableCell></TableRow>
+                )}
+                {filtered.map((r, i) => (
+                  <TableRow key={`${r.order_id}:${r.line_item_id ?? i}`}>
+                    <TableCell className="font-mono text-xs">
+                      {r.order_number ?? r.order_id}
+                      {r.is_late_confirmed && (
+                        <Badge variant="outline" className="ml-1 bg-blue-100 text-blue-800 border-blue-300 text-[10px]">Rezagado</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs">{formatVE(r.order_datetime)}</TableCell>
+                    <TableCell className="text-xs">{r.order_status ?? "—"}</TableCell>
+                    <TableCell className="font-mono text-xs">{r.sku ?? "—"}</TableCell>
+                    <TableCell className="text-xs max-w-[200px] truncate" title={r.product_name ?? ""}>{r.product_name ?? "—"}</TableCell>
+                    <TableCell className="text-xs font-mono">{r.woo_product_id ?? "—"}{r.woo_variation_id ? `/${r.woo_variation_id}` : ""}</TableCell>
+                    <TableCell className="text-right text-xs">{r.quantity ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`${RESULT_BADGE[r.result]} text-[10px]`}>{RESULT_LABEL[r.result]}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right text-xs font-mono">{r.movement_unit_cost != null ? usd(Number(r.movement_unit_cost)) : "—"}</TableCell>
+                    <TableCell className="text-right text-xs font-mono">{r.movement_amount != null ? usd(Number(r.movement_amount)) : "—"}</TableCell>
+                    <TableCell className="text-xs">{r.movement_bucket ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate" title={r.reason ?? ""}>{r.reason ?? "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cerrar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SummaryChip({ label, value, tone = "default" }: { label: string; value: number; tone?: "default" | "emerald" | "yellow" | "orange" | "amber" | "muted" | "blue" | "red" }) {
+  const toneCls: Record<string, string> = {
+    default: "bg-muted/30 border-border",
+    emerald: "bg-emerald-50 border-emerald-200 text-emerald-900",
+    yellow: "bg-yellow-50 border-yellow-200 text-yellow-900",
+    orange: "bg-orange-50 border-orange-200 text-orange-900",
+    amber: "bg-amber-50 border-amber-200 text-amber-900",
+    muted: "bg-muted/40 border-border text-muted-foreground",
+    blue: "bg-blue-50 border-blue-200 text-blue-900",
+    red: "bg-destructive/10 border-destructive/30 text-destructive",
+  };
+  return (
+    <div className={`rounded-md border px-2 py-1.5 ${toneCls[tone]}`}>
+      <div className="text-[10px] uppercase tracking-wider font-semibold opacity-80">{label}</div>
+      <div className="text-base font-black leading-tight">{value}</div>
+    </div>
+  );
+}
+
+async function paginatedSelect<T>(fetchPage: (from: number, to: number) => any): Promise<T[]> {
+  const pageSize = 1000;
+  let from = 0;
+  const all: T[] = [];
+  while (true) {
+    const { data, error } = await fetchPage(from, from + pageSize - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as T[];
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
 }
 
