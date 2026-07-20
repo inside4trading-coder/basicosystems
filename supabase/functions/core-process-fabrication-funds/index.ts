@@ -22,6 +22,13 @@ const CONFIRMED_STATUSES = new Set([
   "completed",
 ]);
 
+// Baseline for late-confirmed orders: any Woo order created on/after this date
+// that is currently in a CONFIRMED_STATUS but has never had a sale reserve
+// posted may be picked up by "process sales" even when it falls outside the
+// selected [periodStart, periodEnd] range. Orders older than this baseline
+// are NEVER retroactively reserved.
+const LATE_CONFIRMED_BASELINE = "2026-07-16";
+
 const REVERTING_STATUSES = new Set([
   "cancelled",
   "refunded",
@@ -184,6 +191,12 @@ async function runProcessSales(
     by_reason: {} as Record<string, number>,
     dry_run: dryRun,
     errors: [] as any[],
+    late_confirmed_baseline: LATE_CONFIRMED_BASELINE,
+    late_confirmed_orders_found: 0,
+    late_confirmed_items_checked: 0,
+    late_confirmed_movements_created: 0,
+    late_confirmed_pending_items_created: 0,
+    late_confirmed_order_ids: [] as number[],
   };
 
   let runId: string | null = null;
@@ -292,6 +305,77 @@ async function runProcessSales(
 
     const incReason = (r: string) => { summary.by_reason[r] = (summary.by_reason[r] ?? 0) + 1; };
 
+    // ------------------------------------------------------------
+    // Late-confirmed detection: orders in CONFIRMED_STATUSES created
+    // >= LATE_CONFIRMED_BASELINE and strictly BEFORE periodStart that
+    // still have at least one line without a sale reserve. These are
+    // merged into the same pipeline via .or() so no code path is duplicated.
+    // Skipped when periodStart is null or <= baseline (the normal range
+    // already covers them).
+    // ------------------------------------------------------------
+    const lateOrderIds = new Set<number>();
+    if (periodStart && periodStart > LATE_CONFIRMED_BASELINE) {
+      const lateCandidates: number[] = [];
+      let lp = 0;
+      while (true) {
+        const { data: candOrders, error: candErr } = await supabase
+          .from("orders")
+          .select("order_id")
+          .in("order_status", Array.from(CONFIRMED_STATUSES))
+          .gte("order_datetime", LATE_CONFIRMED_BASELINE)
+          .lt("order_datetime", periodStart)
+          .order("order_id", { ascending: true })
+          .range(lp, lp + 1000 - 1);
+        if (candErr) throw candErr;
+        if (!candOrders || candOrders.length === 0) break;
+        for (const o of candOrders) lateCandidates.push(o.order_id);
+        if (candOrders.length < 1000) break;
+        lp += 1000;
+      }
+
+      if (lateCandidates.length > 0) {
+        // Existing reserves per line for these orders (chunked .in()).
+        const reservedByOrder = new Map<number, Set<number>>();
+        for (let i = 0; i < lateCandidates.length; i += 500) {
+          const slice = lateCandidates.slice(i, i + 500);
+          const { data: movs } = await supabase
+            .from("core_fabrication_fund_movements")
+            .select("source_order_id, source_order_item_id, movement_type")
+            .in("source_order_id", slice)
+            .in("movement_type", ["sale_generated", "sale_generated_non_restockable"])
+            .not("source_order_item_id", "is", null);
+          for (const m of movs ?? []) {
+            const s = reservedByOrder.get(m.source_order_id) ?? new Set<number>();
+            s.add(m.source_order_item_id);
+            reservedByOrder.set(m.source_order_id, s);
+          }
+        }
+        // Order lines (chunked .in()).
+        const linesByOrder = new Map<number, number[]>();
+        for (let i = 0; i < lateCandidates.length; i += 500) {
+          const slice = lateCandidates.slice(i, i + 500);
+          const { data: lis } = await supabase
+            .from("order_items")
+            .select("order_id, line_item_id")
+            .in("order_id", slice);
+          for (const li of lis ?? []) {
+            const arr = linesByOrder.get(li.order_id) ?? [];
+            arr.push(li.line_item_id);
+            linesByOrder.set(li.order_id, arr);
+          }
+        }
+        for (const oid of lateCandidates) {
+          const lines = linesByOrder.get(oid) ?? [];
+          if (lines.length === 0) continue;
+          const reserved = reservedByOrder.get(oid) ?? new Set<number>();
+          const hasMissing = lines.some((iid) => !reserved.has(iid));
+          if (hasMissing) lateOrderIds.add(oid);
+        }
+      }
+      summary.late_confirmed_orders_found = lateOrderIds.size;
+      summary.late_confirmed_order_ids = Array.from(lateOrderIds);
+    }
+
     const pageSize = 1000;
     let from = 0;
     while (true) {
@@ -299,8 +383,21 @@ async function runProcessSales(
         .from("orders")
         .select("order_id, order_status, order_datetime")
         .in("order_status", Array.from(CONFIRMED_STATUSES));
-      if (periodStart) q = q.gte("order_datetime", periodStart);
-      if (periodEnd) q = q.lte("order_datetime", periodEnd);
+      // Combine normal date-range with late-confirmed order_ids via .or().
+      // PostgREST AND-composes .in(order_status) with the OR group.
+      if (lateOrderIds.size > 0) {
+        const rangeParts: string[] = [];
+        if (periodStart) rangeParts.push(`order_datetime.gte.${periodStart}`);
+        if (periodEnd) rangeParts.push(`order_datetime.lte.${periodEnd}`);
+        const rangeClause = rangeParts.length === 2
+          ? `and(${rangeParts.join(",")})`
+          : rangeParts[0];
+        const lateClause = `order_id.in.(${Array.from(lateOrderIds).join(",")})`;
+        q = q.or(rangeClause ? `${rangeClause},${lateClause}` : lateClause);
+      } else {
+        if (periodStart) q = q.gte("order_datetime", periodStart);
+        if (periodEnd) q = q.lte("order_datetime", periodEnd);
+      }
       const { data: orders, error: ordErr } = await q.order("order_id", { ascending: true }).range(from, from + pageSize - 1);
       if (ordErr) throw ordErr;
       if (!orders || orders.length === 0) break;
@@ -319,6 +416,8 @@ async function runProcessSales(
         const iid = it.line_item_id;
         const order = orderById.get(oid);
         if (!order) continue;
+        const isLate = lateOrderIds.has(oid);
+        if (isLate) summary.late_confirmed_items_checked += 1;
 
         const skuLower = (it.sku || it.parent_sku || "").toString().trim().toLowerCase();
         const wooProdId = it.product_id ? Number(it.product_id) : null;
@@ -348,6 +447,7 @@ async function runProcessSales(
               fabrication_fund_run_id: runId,
             });
             pendByKey.set(key, { id: "queued", status: "pending" });
+            if (isLate) summary.late_confirmed_pending_items_created += 1;
           }
           summary.pending_items_created += 1;
           incReason(reason);
@@ -530,6 +630,7 @@ async function runProcessSales(
         });
         summary.by_reserve.created += 1;
         summary.by_bucket[fundBucket] += 1;
+        if (isLate) summary.late_confirmed_movements_created += 1;
         // Legacy counter (kept for compatibility with existing summary consumers).
         if (fundBucket === "internal_factory") summary.by_fund.general += 1;
         else if (fundBucket === "external_supplier") summary.by_fund.non_restockable += 1;
