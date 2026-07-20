@@ -191,6 +191,12 @@ async function runProcessSales(
     by_reason: {} as Record<string, number>,
     dry_run: dryRun,
     errors: [] as any[],
+    late_confirmed_baseline: LATE_CONFIRMED_BASELINE,
+    late_confirmed_orders_found: 0,
+    late_confirmed_items_checked: 0,
+    late_confirmed_movements_created: 0,
+    late_confirmed_pending_items_created: 0,
+    late_confirmed_order_ids: [] as number[],
   };
 
   let runId: string | null = null;
