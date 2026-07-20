@@ -70,11 +70,13 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
     resolveVariantLabel,
     resolveReplacementLabel,
     setEventStatus,
+    closePendingClassification,
   } = useReplenishmentPolicyEvents();
 
   const [filter, setFilter] = useState<string>(initialFilter ?? "all");
   const [search, setSearch] = useState("");
   const [replacementEvent, setReplacementEvent] = useState<PolicyEvent | null>(null);
+  const [resolveRow, setResolveRow] = useState<PolicyEvent | null>(null);
 
   const filtered = useMemo(() => {
     const preset = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
