@@ -17,6 +17,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { POLICY_ACTION_LABELS, describePolicyAction } from "@/lib/policyBlocked";
 import { ReplacementApplicationDialog } from "./ReplacementApplicationDialog";
+import { PendingClassificationResolveDialog } from "@/components/core/needs/PendingClassificationResolveDialog";
 import { useReplenishmentPolicyEvents, PolicyEvent } from "@/hooks/useReplenishmentPolicyEvents";
 
 const FILTERS: { key: string; label: string; actions: string[] }[] = [
@@ -69,11 +70,13 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
     resolveVariantLabel,
     resolveReplacementLabel,
     setEventStatus,
+    closePendingClassification,
   } = useReplenishmentPolicyEvents();
 
   const [filter, setFilter] = useState<string>(initialFilter ?? "all");
   const [search, setSearch] = useState("");
   const [replacementEvent, setReplacementEvent] = useState<PolicyEvent | null>(null);
+  const [resolveRow, setResolveRow] = useState<PolicyEvent | null>(null);
 
   const filtered = useMemo(() => {
     const preset = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
@@ -194,7 +197,11 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                       )}
                     </td>
                     <td className="p-2">
-                      <Badge variant="outline">{r.status}</Badge>
+                      {r.isCorrected ? (
+                        <Badge className="bg-emerald-600 text-white">Corregido</Badge>
+                      ) : (
+                        <Badge variant="outline">{r.status}</Badge>
+                      )}
                     </td>
                     <td className="p-2">
                       <div className="flex flex-col gap-1 min-w-[170px]">
@@ -258,11 +265,22 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                           </Button>
                         )}
                         {r.action === "unclassified_fund" && (
-                          <Button size="sm" variant="outline" asChild>
-                            <Link to={mapaWooLink(r.woo_product_id, p.sku, "policy")}>
+                          r.isCorrected ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                if (!r.sourceMovementId) return;
+                                await closePendingClassification(r.sourceMovementId);
+                              }}
+                            >
+                              Cerrar
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => setResolveRow(r)}>
                               <Layers className="w-3 h-3 mr-1" /> Definir política
-                            </Link>
-                          </Button>
+                            </Button>
+                          )
                         )}
                         {!isSynthetic && r.status !== "reviewed" && (
                           <Button
@@ -303,6 +321,12 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
         event={replacementEvent as any}
         open={!!replacementEvent}
         onOpenChange={(v) => !v && setReplacementEvent(null)}
+      />
+
+      <PendingClassificationResolveDialog
+        row={resolveRow}
+        open={!!resolveRow}
+        onOpenChange={(v) => !v && setResolveRow(null)}
       />
     </div>
   );

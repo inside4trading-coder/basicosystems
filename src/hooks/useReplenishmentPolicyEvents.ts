@@ -32,6 +32,23 @@ export type PolicyEvent = {
   _kind?: "policy_event" | "pending_item" | "pending_classification";
   _synthetic?: boolean;
   _dedupe_key?: string | null;
+  // pending_classification-only
+  sourceMovementId?: string | null;
+  unit_cost_snapshot?: number | null;
+  pendingClassificationResolution?: PendingClassificationResolution | null;
+  isCorrected?: boolean;
+  canClose?: boolean;
+};
+
+export type PendingClassificationResolution = {
+  status?: "corrected" | "closed";
+  action?: "no_restock" | "replace";
+  resolved_at?: string;
+  resolved_by?: string | null;
+  closed_at?: string;
+  closed_by?: string | null;
+  replacement_event_id?: string;
+  note?: string;
 };
 
 const OPEN_STATUSES = ["open", "reviewed"];
@@ -86,14 +103,20 @@ export function useReplenishmentPolicyEvents() {
       const { data, error } = await supabase
         .from("core_fabrication_fund_movements" as any)
         .select(
-          "id, created_at, fund_id, fund_bucket, status, source_order_id, source_order_item_id, woo_product_id, woo_variation_id, core_product_id, core_variant_id, sku, product_name, quantity, unit_cost_snapshot, amount, reason",
+          "id, created_at, fund_id, fund_bucket, status, source_order_id, source_order_item_id, woo_product_id, woo_variation_id, core_product_id, core_variant_id, sku, product_name, quantity, unit_cost_snapshot, amount, reason, resolution_data",
         )
         .eq("fund_bucket", "pending_classification")
         .eq("status", "posted")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
-      return (data ?? []) as any[];
+      const raw = (data ?? []) as any[];
+      return raw.filter((m) => {
+        const res = m.resolution_data?.pending_classification_resolution;
+        if (!res) return true;
+        if (res.status === "corrected") return true;
+        return false; // closed → excluded
+      });
     },
   });
 
@@ -182,7 +205,16 @@ export function useReplenishmentPolicyEvents() {
         _kind: "pending_classification",
         _synthetic: true,
         _dedupe_key: key,
+        sourceMovementId: m.id,
+        unit_cost_snapshot: m.unit_cost_snapshot != null ? Number(m.unit_cost_snapshot) : null,
+        pendingClassificationResolution:
+          m.resolution_data?.pending_classification_resolution ?? null,
+        isCorrected:
+          m.resolution_data?.pending_classification_resolution?.status === "corrected",
+        canClose:
+          m.resolution_data?.pending_classification_resolution?.status === "corrected",
         resolution_data: {
+          ...(m.resolution_data ?? {}),
           product_name: m.product_name,
           woo_sku: m.sku,
         },
@@ -339,6 +371,134 @@ export function useReplenishmentPolicyEvents() {
     return true;
   };
 
+  // ------- Pending classification resolution helpers -------
+  const getCurrentUserId = async (): Promise<string | null> => {
+    const { data } = await supabase.auth.getUser();
+    return data.user?.id ?? null;
+  };
+
+  const readMovementResolution = async (movementId: string) => {
+    const { data, error } = await supabase
+      .from("core_fabrication_fund_movements" as any)
+      .select("resolution_data")
+      .eq("id", movementId)
+      .maybeSingle();
+    if (error) throw error;
+    return ((data as any)?.resolution_data ?? {}) as any;
+  };
+
+  const writeMovementResolution = async (movementId: string, mergedResolution: any) => {
+    const current = await readMovementResolution(movementId);
+    const next = {
+      ...current,
+      pending_classification_resolution: {
+        ...(current?.pending_classification_resolution ?? {}),
+        ...mergedResolution,
+      },
+    };
+    const { error } = await supabase
+      .from("core_fabrication_fund_movements" as any)
+      .update({ resolution_data: next })
+      .eq("id", movementId);
+    if (error) throw error;
+  };
+
+  const resolvePendingClassificationNoRestock = async (movementId: string) => {
+    const current = await readMovementResolution(movementId);
+    const existing = current?.pending_classification_resolution;
+    if (existing?.status === "corrected" || existing?.status === "closed") {
+      return true;
+    }
+    const uid = await getCurrentUserId();
+    try {
+      await writeMovementResolution(movementId, {
+        status: "corrected",
+        action: "no_restock",
+        resolved_at: new Date().toISOString(),
+        resolved_by: uid,
+        note: "No hacer restock",
+      });
+      invalidateAll();
+      return true;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return false;
+    }
+  };
+
+  const markPendingClassificationReplaced = async (movementId: string, eventId: string) => {
+    const current = await readMovementResolution(movementId);
+    const existing = current?.pending_classification_resolution;
+    if (existing?.status === "corrected" || existing?.status === "closed") {
+      // update replacement_event_id if missing
+      if (!existing?.replacement_event_id) {
+        try {
+          await writeMovementResolution(movementId, { replacement_event_id: eventId });
+          invalidateAll();
+        } catch (e: any) {
+          toast({ title: "Error", description: e.message, variant: "destructive" });
+          return false;
+        }
+      }
+      return true;
+    }
+    const uid = await getCurrentUserId();
+    try {
+      await writeMovementResolution(movementId, {
+        status: "corrected",
+        action: "replace",
+        replacement_event_id: eventId,
+        resolved_at: new Date().toISOString(),
+        resolved_by: uid,
+        note: "Reemplazado por otra prenda",
+      });
+      invalidateAll();
+      return true;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return false;
+    }
+  };
+
+  const setPendingClassificationBridgeEventId = async (
+    movementId: string,
+    eventId: string,
+  ) => {
+    try {
+      await writeMovementResolution(movementId, { replacement_event_id: eventId });
+      invalidateAll();
+      return true;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return false;
+    }
+  };
+
+  const closePendingClassification = async (movementId: string) => {
+    const current = await readMovementResolution(movementId);
+    const existing = current?.pending_classification_resolution;
+    if (existing?.status !== "corrected") {
+      toast({
+        title: "Acción no disponible",
+        description: "Sólo se pueden cerrar filas ya corregidas.",
+      });
+      return false;
+    }
+    const uid = await getCurrentUserId();
+    try {
+      await writeMovementResolution(movementId, {
+        status: "closed",
+        closed_at: new Date().toISOString(),
+        closed_by: uid,
+      });
+      invalidateAll();
+      return true;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return false;
+    }
+  };
+
   return {
     rows,
     isLoading:
@@ -349,5 +509,9 @@ export function useReplenishmentPolicyEvents() {
     resolveReplacementLabel,
     setEventStatus,
     invalidateAll,
+    resolvePendingClassificationNoRestock,
+    markPendingClassificationReplaced,
+    setPendingClassificationBridgeEventId,
+    closePendingClassification,
   };
 }
