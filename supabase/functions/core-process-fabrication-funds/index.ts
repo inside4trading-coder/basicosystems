@@ -630,6 +630,7 @@ async function runProcessSales(
         });
         summary.by_reserve.created += 1;
         summary.by_bucket[fundBucket] += 1;
+        if (isLate) summary.late_confirmed_movements_created += 1;
         // Legacy counter (kept for compatibility with existing summary consumers).
         if (fundBucket === "internal_factory") summary.by_fund.general += 1;
         else if (fundBucket === "external_supplier") summary.by_fund.non_restockable += 1;
