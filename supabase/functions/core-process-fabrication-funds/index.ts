@@ -22,6 +22,13 @@ const CONFIRMED_STATUSES = new Set([
   "completed",
 ]);
 
+// Baseline for late-confirmed orders: any Woo order created on/after this date
+// that is currently in a CONFIRMED_STATUS but has never had a sale reserve
+// posted may be picked up by "process sales" even when it falls outside the
+// selected [periodStart, periodEnd] range. Orders older than this baseline
+// are NEVER retroactively reserved.
+const LATE_CONFIRMED_BASELINE = "2026-07-16";
+
 const REVERTING_STATUSES = new Set([
   "cancelled",
   "refunded",
