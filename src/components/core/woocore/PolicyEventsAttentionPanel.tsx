@@ -265,11 +265,22 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                           </Button>
                         )}
                         {r.action === "unclassified_fund" && (
-                          <Button size="sm" variant="outline" asChild>
-                            <Link to={mapaWooLink(r.woo_product_id, p.sku, "policy")}>
+                          r.isCorrected ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                if (!r.sourceMovementId) return;
+                                await closePendingClassification(r.sourceMovementId);
+                              }}
+                            >
+                              Cerrar
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => setResolveRow(r)}>
                               <Layers className="w-3 h-3 mr-1" /> Definir política
-                            </Link>
-                          </Button>
+                            </Button>
+                          )
                         )}
                         {!isSynthetic && r.status !== "reviewed" && (
                           <Button
