@@ -35,12 +35,27 @@ export function PendingClassificationResolveDialog({ row, open, onOpenChange }: 
     setPendingClassificationBridgeEventId,
     invalidateAll,
   } = useReplenishmentPolicyEvents();
-  const coreProductsQuery = useCoreProducts();
-  const coreProducts: CoreProductLite[] = coreProductsQuery.data ?? [];
+  const candidatesQuery = useQuery({
+    queryKey: ["fabricable-candidates-for-pending-classification"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("core_products")
+        .select("id, core_sku, name, woo_product_id, commercial_status, is_restockable, replenishment_route")
+        .eq("commercial_status", "active")
+        .eq("is_restockable", true)
+        .eq("replenishment_route", "internal_factory")
+        .order("name", { ascending: true })
+        .limit(2000);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+  const coreProducts: FabricableCandidate[] = candidatesQuery.data ?? [];
 
   const [mode, setMode] = useState<Mode>("menu");
   const [search, setSearch] = useState("");
-  const [pickedCore, setPickedCore] = useState<CoreProductLite | null>(null);
+  const [pickedCore, setPickedCore] = useState<FabricableCandidate | null>(null);
   const [bridgeEvent, setBridgeEvent] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
 
