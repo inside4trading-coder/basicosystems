@@ -1161,6 +1161,13 @@ export default function CoreFabricationFunds() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ReconciliationDialog
+        open={reconOpen}
+        onOpenChange={setReconOpen}
+        periodStart={periodStart}
+        periodEnd={periodEnd}
+      />
     </div>
   );
 }
