@@ -11,10 +11,16 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Layers, Play, Plus, Download, RotateCcw, Wallet, AlertCircle, History, ListChecks, ExternalLink } from "lucide-react";
+import { Layers, Play, Plus, Download, RotateCcw, Wallet, AlertCircle, History, ListChecks, ExternalLink, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
 import PendingResolutionPanel from "@/components/core/PendingResolutionPanel";
+import {
+  CONFIRMED_STATUSES, RECON_BASELINE, CLOSED_PENDING_STATUSES,
+  isShippingLike, classifyLine, veRangeToUtc, veRangeBounds, formatVE,
+  rowsToCsv, downloadCsv, chunk,
+  RESULT_LABEL, RESULT_BADGE, type ReconRow, type ReconResultKind,
+} from "@/lib/coreReconciliation";
 
 type Fund = {
   id: string; fund_type: string; core_product_id: string | null; sku: string | null;
