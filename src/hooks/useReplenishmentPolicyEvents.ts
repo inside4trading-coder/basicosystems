@@ -32,6 +32,23 @@ export type PolicyEvent = {
   _kind?: "policy_event" | "pending_item" | "pending_classification";
   _synthetic?: boolean;
   _dedupe_key?: string | null;
+  // pending_classification-only
+  sourceMovementId?: string | null;
+  unit_cost_snapshot?: number | null;
+  pendingClassificationResolution?: PendingClassificationResolution | null;
+  isCorrected?: boolean;
+  canClose?: boolean;
+};
+
+export type PendingClassificationResolution = {
+  status?: "corrected" | "closed";
+  action?: "no_restock" | "replace";
+  resolved_at?: string;
+  resolved_by?: string | null;
+  closed_at?: string;
+  closed_by?: string | null;
+  replacement_event_id?: string;
+  note?: string;
 };
 
 const OPEN_STATUSES = ["open", "reviewed"];
