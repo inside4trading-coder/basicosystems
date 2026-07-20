@@ -158,6 +158,7 @@ export default function CoreFabricationFunds() {
   const [periodStart, setPeriodStart] = useState<string>(BASELINE_DATE);
   const [periodEnd, setPeriodEnd] = useState<string>(todayLocalISO());
   const [missingDaysOpen, setMissingDaysOpen] = useState(false);
+  const [reconOpen, setReconOpen] = useState(false);
   const [form, setForm] = useState({
     movement_type: "manual_increase",
     fund_id: "",
