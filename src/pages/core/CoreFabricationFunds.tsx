@@ -1462,7 +1462,7 @@ function ReconciliationDialog({
       else if (r.result === "pending_classification") s.pending_classification++;
       else if (r.result === "excluded_status") s.excluded_status++;
       else if (r.result === "not_processed") s.diff++;
-      if (r.result !== "excluded_status" && r.result !== "excluded_shipping") s.confirmed_processable++;
+      if (r.result !== "excluded_status") s.confirmed_processable++;
       if (r.is_late_confirmed) s.late_confirmed++;
     }
     return s;
