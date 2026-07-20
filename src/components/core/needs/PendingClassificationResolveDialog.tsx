@@ -90,7 +90,7 @@ export function PendingClassificationResolveDialog({ row, open, onOpenChange }: 
   const canReplace = derived.unitCost != null && derived.amount != null;
 
   const candidates = useMemo(() => {
-    if (!row) return [] as CoreProductLite[];
+    if (!row) return [] as FabricableCandidate[];
     const s = search.trim().toLowerCase();
     return coreProducts
       .filter((c: any) => c.commercial_status === "active")
@@ -126,7 +126,7 @@ export function PendingClassificationResolveDialog({ row, open, onOpenChange }: 
     setMode("picker");
   }
 
-  async function handlePickCandidate(candidate: CoreProductLite) {
+  async function handlePickCandidate(candidate: FabricableCandidate) {
     if (!row || !movementId) return;
     setPickedCore(candidate);
     setSaving(true);
