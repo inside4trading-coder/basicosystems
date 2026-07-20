@@ -103,14 +103,20 @@ export function useReplenishmentPolicyEvents() {
       const { data, error } = await supabase
         .from("core_fabrication_fund_movements" as any)
         .select(
-          "id, created_at, fund_id, fund_bucket, status, source_order_id, source_order_item_id, woo_product_id, woo_variation_id, core_product_id, core_variant_id, sku, product_name, quantity, unit_cost_snapshot, amount, reason",
+          "id, created_at, fund_id, fund_bucket, status, source_order_id, source_order_item_id, woo_product_id, woo_variation_id, core_product_id, core_variant_id, sku, product_name, quantity, unit_cost_snapshot, amount, reason, resolution_data",
         )
         .eq("fund_bucket", "pending_classification")
         .eq("status", "posted")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
-      return (data ?? []) as any[];
+      const raw = (data ?? []) as any[];
+      return raw.filter((m) => {
+        const res = m.resolution_data?.pending_classification_resolution;
+        if (!res) return true;
+        if (res.status === "corrected") return true;
+        return false; // closed → excluded
+      });
     },
   });
 
