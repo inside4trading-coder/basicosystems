@@ -322,6 +322,12 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
         open={!!replacementEvent}
         onOpenChange={(v) => !v && setReplacementEvent(null)}
       />
+
+      <PendingClassificationResolveDialog
+        row={resolveRow}
+        open={!!resolveRow}
+        onOpenChange={(v) => !v && setResolveRow(null)}
+      />
     </div>
   );
 }
