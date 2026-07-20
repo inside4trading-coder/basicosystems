@@ -19,7 +19,7 @@ import {
   CONFIRMED_STATUSES, RECON_BASELINE, CLOSED_PENDING_STATUSES,
   isShippingLike, classifyLine, veRangeToUtc, veRangeBounds, formatVE,
   rowsToCsv, downloadCsv, chunk,
-  RESULT_LABEL, RESULT_BADGE, type ReconRow, type ReconResultKind,
+  RESULT_LABEL, RESULT_BADGE, type ReconRow,
 } from "@/lib/coreReconciliation";
 
 type Fund = {
