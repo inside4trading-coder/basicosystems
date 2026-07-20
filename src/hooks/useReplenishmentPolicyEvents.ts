@@ -378,17 +378,17 @@ export function useReplenishmentPolicyEvents() {
   const readMovementResolution = async (movementId: string) => {
     const { data, error } = await supabase
       .from("core_fabrication_fund_movements" as any)
-      .select("resolution_data")
+      .select("cost_snapshot_data")
       .eq("id", movementId)
       .maybeSingle();
     if (error) throw error;
-    return ((data as any)?.resolution_data ?? {}) as any;
+    return ((data as any)?.cost_snapshot_data ?? {}) as any;
   };
 
   const writeMovementResolution = async (movementId: string, mergedResolution: any) => {
     const current = await readMovementResolution(movementId);
     const next = {
-      ...current,
+      ...(current ?? {}),
       pending_classification_resolution: {
         ...(current?.pending_classification_resolution ?? {}),
         ...mergedResolution,
@@ -396,7 +396,7 @@ export function useReplenishmentPolicyEvents() {
     };
     const { error } = await supabase
       .from("core_fabrication_fund_movements" as any)
-      .update({ resolution_data: next })
+      .update({ cost_snapshot_data: next })
       .eq("id", movementId);
     if (error) throw error;
   };
