@@ -530,6 +530,9 @@ export default function CoreFabricationFunds() {
           <Button onClick={processSales} disabled={processing}>
             <Play className="h-4 w-4 mr-1" />{processing ? "Procesando…" : "Procesar ventas confirmadas"}
           </Button>
+          <Button variant="outline" onClick={() => setReconOpen(true)}>
+            <Scale className="h-4 w-4 mr-1" />Conciliar rango
+          </Button>
           {missingDays.length > 0 && (
             <Button variant="outline" onClick={fillNextPendingDay} title="Prepara el rango con el primer día pendiente">
               Procesar próximo día pendiente
