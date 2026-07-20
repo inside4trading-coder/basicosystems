@@ -207,13 +207,12 @@ export function useReplenishmentPolicyEvents() {
         sourceMovementId: m.id,
         unit_cost_snapshot: m.unit_cost_snapshot != null ? Number(m.unit_cost_snapshot) : null,
         pendingClassificationResolution:
-          m.resolution_data?.pending_classification_resolution ?? null,
+          m.cost_snapshot_data?.pending_classification_resolution ?? null,
         isCorrected:
-          m.resolution_data?.pending_classification_resolution?.status === "corrected",
+          m.cost_snapshot_data?.pending_classification_resolution?.status === "corrected",
         canClose:
-          m.resolution_data?.pending_classification_resolution?.status === "corrected",
+          m.cost_snapshot_data?.pending_classification_resolution?.status === "corrected",
         resolution_data: {
-          ...(m.resolution_data ?? {}),
           product_name: m.product_name,
           woo_sku: m.sku,
         },
