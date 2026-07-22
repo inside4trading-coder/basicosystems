@@ -39,16 +39,54 @@ export function PendingClassificationResolveDialog({ row, open, onOpenChange }: 
     queryKey: ["fabricable-candidates-for-pending-classification"],
     enabled: open,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data: products, error } = await (supabase as any)
         .from("core_products")
-        .select("id, core_sku, name, woo_product_id, commercial_status, is_restockable, replenishment_route")
+        .select("id, core_sku, name, woo_product_id, commercial_status, is_restockable")
         .eq("commercial_status", "active")
         .eq("is_restockable", true)
-        .eq("replenishment_route", "internal_factory")
         .order("name", { ascending: true })
         .limit(2000);
       if (error) throw error;
-      return (data ?? []) as any[];
+      const rows = (products ?? []) as any[];
+      const coreIds = rows.map((r) => r.id).filter(Boolean);
+      const wooIds = Array.from(new Set(rows.map((r) => r.woo_product_id).filter((x: any) => !!x)));
+      const [polByCore, polByWoo] = await Promise.all([
+        coreIds.length
+          ? (supabase as any)
+              .from("core_replenishment_policies")
+              .select("core_product_id, woo_product_id, lifecycle_status, replenishment_route, restock_enabled, updated_at")
+              .in("core_product_id", coreIds)
+              .order("updated_at", { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
+        wooIds.length
+          ? (supabase as any)
+              .from("core_replenishment_policies")
+              .select("core_product_id, woo_product_id, lifecycle_status, replenishment_route, restock_enabled, updated_at")
+              .in("woo_product_id", wooIds as any)
+              .order("updated_at", { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      const byCore = new Map<string, any>();
+      for (const p of ((polByCore as any).data ?? [])) {
+        if (p.core_product_id && !byCore.has(p.core_product_id)) byCore.set(p.core_product_id, p);
+      }
+      const byWoo = new Map<number, any>();
+      for (const p of ((polByWoo as any).data ?? [])) {
+        if (p.woo_product_id && !byWoo.has(p.woo_product_id)) byWoo.set(p.woo_product_id, p);
+      }
+      return rows
+        .map((r) => {
+          const pol = byCore.get(r.id) ?? (r.woo_product_id ? byWoo.get(r.woo_product_id) : null);
+          return { ...r, _policy: pol };
+        })
+        .filter((r) => {
+          const p = r._policy;
+          if (!p) return true; // no policy = allowed
+          if (["replaced", "no_restock", "exit", "ignored"].includes(p.lifecycle_status)) return false;
+          if (p.replenishment_route === "external_supplier") return false;
+          if (p.restock_enabled === false) return false;
+          return true;
+        });
     },
   });
   const coreProducts: FabricableCandidate[] = candidatesQuery.data ?? [];
@@ -93,14 +131,12 @@ export function PendingClassificationResolveDialog({ row, open, onOpenChange }: 
     if (!row) return [] as FabricableCandidate[];
     const s = search.trim().toLowerCase();
     return coreProducts
-      .filter((c: any) => c.commercial_status === "active")
-      .filter((c: any) => c.is_restockable === true)
-      .filter((c: any) => c.replenishment_route === "internal_factory")
       .filter((c) => c.id !== row.core_product_id)
       .filter((c) => !row.woo_product_id || c.woo_product_id !== row.woo_product_id)
       .filter((c) => !s || c.core_sku.toLowerCase().includes(s) || c.name.toLowerCase().includes(s))
       .slice(0, 100);
   }, [coreProducts, search, row]);
+
 
   async function handleNoRestock() {
     if (!movementId) return;
