@@ -188,7 +188,7 @@ export function ReplacementApplicationDialog({
         .from("core_production_needs")
         .select("core_variant_id, quantity_pending, status")
         .in("core_variant_id", variantIds)
-        .not("status", "in", "(cancelled,completed,resolved,rejected)");
+        .not("status", "in", "(cancelled,completed,resolved,rejected,ignored,closed)");
       const map: Record<string, number> = {};
       (data ?? []).forEach((r: any) => {
         if (!r.core_variant_id) return;
@@ -556,7 +556,12 @@ export function ReplacementApplicationDialog({
                         <th className="text-left p-2">Variante</th>
                         <th className="text-right p-2">Stock</th>
                         <th className="text-right p-2">En fab.</th>
-                        <th className="text-right p-2">Por producir</th>
+                        <th
+                          className="text-right p-2"
+                          title="Suma de quantity_pending en Necesidades abiertas. Excluye ignoradas, canceladas, resueltas y cerradas. No es Órdenes de Producción."
+                        >
+                          Necesidad pendiente
+                        </th>
                         <th className="text-right p-2">Proyectado</th>
                         <th className="text-right p-2">Nueva cant.</th>
                         <th className="text-right p-2">Después</th>
