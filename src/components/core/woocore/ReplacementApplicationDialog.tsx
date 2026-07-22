@@ -188,7 +188,7 @@ export function ReplacementApplicationDialog({
         .from("core_production_needs")
         .select("core_variant_id, quantity_pending, status")
         .in("core_variant_id", variantIds)
-        .not("status", "in", "(cancelled,completed,resolved,rejected)");
+        .not("status", "in", "(cancelled,completed,resolved,rejected,ignored,closed)");
       const map: Record<string, number> = {};
       (data ?? []).forEach((r: any) => {
         if (!r.core_variant_id) return;
