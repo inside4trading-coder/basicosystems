@@ -298,7 +298,7 @@ export function useReplenishmentPolicyEvents() {
     queryFn: async () => {
       const { data } = await supabase
         .from("core_woo_product_map")
-        .select("woo_product_id,woo_name,woo_sku")
+        .select("woo_product_id,woo_product_name,woo_product_sku")
         .in("woo_product_id", wooIds);
       const map: Record<number, any> = {};
       (data ?? []).forEach((w: any) => (map[w.woo_product_id] = w));
@@ -306,32 +306,87 @@ export function useReplenishmentPolicyEvents() {
     },
   });
 
+  // Order items lookup — richest source for name/sku/variant on exit/no-restock rows
+  const orderItemKeys = useMemo(() => {
+    const pairs = new Set<string>();
+    const orders = new Set<number>();
+    for (const r of rows) {
+      if (r.woo_order_id) orders.add(r.woo_order_id);
+      if (r.woo_order_id && r.woo_order_item_id) {
+        pairs.add(`${r.woo_order_id}::${r.woo_order_item_id}`);
+      }
+    }
+    return { orders: Array.from(orders), pairs: Array.from(pairs) };
+  }, [rows]);
+
+  const { data: orderItemsMap = {} } = useQuery({
+    queryKey: ["policy_events_order_items", orderItemKeys.orders.sort()],
+    enabled: orderItemKeys.orders.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("order_items")
+        .select("order_id,line_item_id,product_id,variation_id,product_name,sku,size")
+        .in("order_id", orderItemKeys.orders);
+      const map: Record<string, any> = {};
+      (data ?? []).forEach((oi: any) => {
+        if (oi.line_item_id != null) map[`${oi.order_id}::${oi.line_item_id}`] = oi;
+        // secondary key by product_id fallback when line_item_id not matched
+        const pkey = `${oi.order_id}#p${oi.product_id}`;
+        if (!map[pkey]) map[pkey] = oi;
+      });
+      return map;
+    },
+  });
+
+  const getOrderItem = (r: PolicyEvent) => {
+    if (!r.woo_order_id) return null;
+    if (r.woo_order_item_id) {
+      const hit = (orderItemsMap as any)[`${r.woo_order_id}::${r.woo_order_item_id}`];
+      if (hit) return hit;
+    }
+    if (r.woo_product_id) {
+      return (orderItemsMap as any)[`${r.woo_order_id}#p${r.woo_product_id}`] ?? null;
+    }
+    return null;
+  };
+
   const resolveProductLabel = (r: PolicyEvent) => {
     const cp = r.core_product_id ? (productsMap as any)[r.core_product_id] : null;
     const wm = r.woo_product_id ? (wooMap as any)[r.woo_product_id] : null;
     const snap = (r.resolution_data ?? {}) as any;
+    const oi = getOrderItem(r);
     return {
       name:
-        cp?.name ??
-        wm?.woo_name ??
+        oi?.product_name ??
         snap?.product_name ??
+        wm?.woo_product_name ??
+        cp?.name ??
         (r.woo_product_id ? `Woo #${r.woo_product_id}` : "—"),
-      sku: cp?.core_sku ?? wm?.woo_sku ?? snap?.woo_sku ?? null,
+      sku:
+        oi?.sku ??
+        snap?.woo_sku ??
+        wm?.woo_product_sku ??
+        cp?.core_sku ??
+        null,
       wooId: r.woo_product_id ?? cp?.woo_product_id ?? null,
+      variationId: r.woo_variation_id ?? oi?.variation_id ?? null,
+      orderId: r.woo_order_id ?? null,
     };
   };
 
   const resolveVariantLabel = (r: PolicyEvent) => {
     const v = r.core_variant_id ? (variantsMap as any)[r.core_variant_id] : null;
-    if (!v) return r.woo_variation_id ? `var ${r.woo_variation_id}` : "—";
-    return v.size ?? v.variant_label ?? v.variant_sku ?? "—";
+    if (v) return v.size ?? v.variant_label ?? v.variant_sku ?? "—";
+    const oi = getOrderItem(r);
+    if (oi?.size) return oi.size;
+    return r.woo_variation_id ? `var ${r.woo_variation_id}` : "—";
   };
 
   const resolveReplacementLabel = (r: PolicyEvent) => {
     const cp = r.replacement_product_id ? (productsMap as any)[r.replacement_product_id] : null;
     const wm = r.replacement_woo_product_id ? (wooMap as any)[r.replacement_woo_product_id] : null;
     if (cp) return cp.name;
-    if (wm) return wm.woo_name;
+    if (wm) return wm.woo_product_name;
     if (r.replacement_woo_product_id) return `Woo #${r.replacement_woo_product_id}`;
     return null;
   };
