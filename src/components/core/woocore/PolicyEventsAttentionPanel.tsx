@@ -160,9 +160,15 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                     <td className="p-2">
                       <div className="font-medium">{p.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {p.sku ? `${p.sku} · ` : ""}
-                        {p.wooId ? `Woo #${p.wooId}` : ""}
-                        {r.woo_order_id ? ` · Pedido #${r.woo_order_id}` : ""}
+                        {[
+                          p.sku,
+                          p.wooId
+                            ? `Woo #${p.wooId}${p.variationId ? ` / var ${p.variationId}` : ""}`
+                            : null,
+                          p.orderId ? `Pedido #${p.orderId}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </div>
                     </td>
                     <td className="p-2 text-xs">{resolveVariantLabel(r)}</td>
