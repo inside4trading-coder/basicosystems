@@ -298,10 +298,42 @@ export function useReplenishmentPolicyEvents() {
     queryFn: async () => {
       const { data } = await supabase
         .from("core_woo_product_map")
-        .select("woo_product_id,woo_name,woo_sku")
+        .select("woo_product_id,woo_product_name,woo_product_sku")
         .in("woo_product_id", wooIds);
       const map: Record<number, any> = {};
       (data ?? []).forEach((w: any) => (map[w.woo_product_id] = w));
+      return map;
+    },
+  });
+
+  // Order items lookup — richest source for name/sku/variant on exit/no-restock rows
+  const orderItemKeys = useMemo(() => {
+    const pairs = new Set<string>();
+    const orders = new Set<number>();
+    for (const r of rows) {
+      if (r.woo_order_id) orders.add(r.woo_order_id);
+      if (r.woo_order_id && r.woo_order_item_id) {
+        pairs.add(`${r.woo_order_id}::${r.woo_order_item_id}`);
+      }
+    }
+    return { orders: Array.from(orders), pairs: Array.from(pairs) };
+  }, [rows]);
+
+  const { data: orderItemsMap = {} } = useQuery({
+    queryKey: ["policy_events_order_items", orderItemKeys.orders.sort()],
+    enabled: orderItemKeys.orders.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("order_items")
+        .select("order_id,line_item_id,product_id,variation_id,product_name,sku,size")
+        .in("order_id", orderItemKeys.orders);
+      const map: Record<string, any> = {};
+      (data ?? []).forEach((oi: any) => {
+        if (oi.line_item_id != null) map[`${oi.order_id}::${oi.line_item_id}`] = oi;
+        // secondary key by product_id fallback when line_item_id not matched
+        const pkey = `${oi.order_id}#p${oi.product_id}`;
+        if (!map[pkey]) map[pkey] = oi;
+      });
       return map;
     },
   });
