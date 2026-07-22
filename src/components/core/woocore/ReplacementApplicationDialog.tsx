@@ -556,7 +556,12 @@ export function ReplacementApplicationDialog({
                         <th className="text-left p-2">Variante</th>
                         <th className="text-right p-2">Stock</th>
                         <th className="text-right p-2">En fab.</th>
-                        <th className="text-right p-2">Por producir</th>
+                        <th
+                          className="text-right p-2"
+                          title="Suma de quantity_pending en Necesidades abiertas. Excluye ignoradas, canceladas, resueltas y cerradas. No es Órdenes de Producción."
+                        >
+                          Necesidad pendiente
+                        </th>
                         <th className="text-right p-2">Proyectado</th>
                         <th className="text-right p-2">Nueva cant.</th>
                         <th className="text-right p-2">Después</th>
