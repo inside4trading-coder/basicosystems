@@ -395,8 +395,9 @@ export function PendingClassificationResolveDialog({ row, open, onOpenChange }: 
                   )}
                 </div>
                 <Badge variant="outline" className="text-[10px]">
-                  Sólo productos activos, restockeables y ruta fábrica interna
+                  Sólo prendas activas y restockeables del catálogo de fabricación
                 </Badge>
+
               </div>
             )}
           </div>
