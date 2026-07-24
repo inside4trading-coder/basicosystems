@@ -167,12 +167,14 @@ export default function Pedidos() {
   };
 
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
+  // Conversión por importe suelto (subtotal, envío, etc). Si la moneda del
+  // pedido no es USD y no hay tasa válida, devolvemos 0 para no inflar totales.
   const toUsd = (amount: number | null | undefined, order: any) => {
     const value = Number(amount || 0);
     if ((order?.order_currency || "USD") === "USD") return value;
     const rate = Number(order?.exchange_rate || 0);
-    if (rate > 0) return value / rate;
-    return value;
+    if (rate <= 0) return 0;
+    return value / rate;
   };
   const fmtDate = (d: string) => d ? formatDMY(d) : "";
   const totalPages = Math.ceil(total / PER_PAGE);
