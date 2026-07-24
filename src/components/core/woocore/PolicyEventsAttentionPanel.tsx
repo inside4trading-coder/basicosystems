@@ -207,11 +207,26 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                     <td className="p-2">
                       {r.isCorrected ? (
                         <div className="flex flex-col gap-1">
-                          <Badge className="bg-emerald-600 text-white w-fit">Corregido</Badge>
-                          {rep && (
-                            <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                              → {rep}
-                            </span>
+                          {r.pendingClassificationResolution?.action === "no_restock" ? (
+                            <>
+                              <Badge className="bg-slate-600 text-white w-fit">
+                                Corregido · No restock
+                              </Badge>
+                              <span className="text-[11px] text-slate-600 dark:text-slate-300">
+                                Sin reposición
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Badge className="bg-emerald-600 text-white w-fit">
+                                Corregido · Reemplazo
+                              </Badge>
+                              {rep && (
+                                <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                                  → {rep}
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                       ) : (
