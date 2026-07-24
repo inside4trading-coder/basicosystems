@@ -179,7 +179,11 @@ export function CustomerOrdersDialog({ customer, open, onOpenChange }: Props) {
                         {statusLabel[o.order_status || ""] || o.order_status}
                       </span>
                     </td>
-                    <td className="py-2.5 text-right font-semibold tabular-nums">{fmt(toUsd(o))}</td>
+                    <td className="py-2.5 text-right font-semibold tabular-nums">
+                      {isUnconvertibleOrder(o)
+                        ? <span title={`${Number(o.total_amount||0).toLocaleString()} ${o.order_currency} (sin tasa)`} className="text-muted-foreground">—</span>
+                        : fmt(toUsd(o))}
+                    </td>
                     <td className="py-2.5 text-muted-foreground text-xs hidden sm:table-cell">{o.payment_method || "—"}</td>
                     <td className="py-2.5 text-right text-muted-foreground text-xs whitespace-nowrap">{fmtDate(o.order_datetime)}</td>
                   </tr>
