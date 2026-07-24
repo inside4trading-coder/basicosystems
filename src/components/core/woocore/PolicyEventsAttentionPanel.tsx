@@ -72,6 +72,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
     resolveReplacementLabel,
     setEventStatus,
     closePendingClassification,
+    resolvePendingItem,
   } = useReplenishmentPolicyEvents();
 
   const [filter, setFilter] = useState<string>(initialFilter ?? "all");
