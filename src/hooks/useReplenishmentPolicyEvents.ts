@@ -123,6 +123,31 @@ export function useReplenishmentPolicyEvents() {
   const pendingItems = pendingItemsQuery.data ?? [];
   const pendingClassMovs = pendingClassMovsQuery.data ?? [];
 
+  // Bridge events referenced by corrected pending_classification movements
+  // (used to show which product replaced the original one).
+  const bridgeEventIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const m of pendingClassMovs) {
+      const rid = m.cost_snapshot_data?.pending_classification_resolution?.replacement_event_id;
+      if (rid) ids.add(rid);
+    }
+    return Array.from(ids);
+  }, [pendingClassMovs]);
+
+  const { data: bridgeEventsMap = {} } = useQuery({
+    queryKey: ["policy_events_bridge_for_pending_class", bridgeEventIds.sort()],
+    enabled: bridgeEventIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("core_replenishment_policy_events" as any)
+        .select("id, replacement_product_id, replacement_woo_product_id, status")
+        .in("id", bridgeEventIds);
+      const map: Record<string, any> = {};
+      (data ?? []).forEach((e: any) => (map[e.id] = e));
+      return map;
+    },
+  });
+
   // Build merged, deduped rows (visual only)
   const rows = useMemo<PolicyEvent[]>(() => {
     const seen = new Set<string>();
