@@ -203,6 +203,10 @@ export function useReplenishmentPolicyEvents() {
       const key = makeDedupeKey(m.source_order_id, m.source_order_item_id);
       if (key && seen.has(key)) continue;
       if (key) seen.add(key);
+      const resolution = m.cost_snapshot_data?.pending_classification_resolution ?? null;
+      const bridge = resolution?.replacement_event_id
+        ? (bridgeEventsMap as any)[resolution.replacement_event_id] ?? null
+        : null;
       out.push({
         id: `mv:${m.id}`,
         created_at: m.created_at,
