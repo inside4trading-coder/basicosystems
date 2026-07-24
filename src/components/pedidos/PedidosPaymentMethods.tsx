@@ -7,7 +7,7 @@ import { PERIOD_OPTIONS, periodBounds, type PeriodKey, CUTOFF } from "./periodFi
 import { isExcludedFromRevenue } from "@/config/orderStatuses";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { formatDMY } from "@/lib/dateUtils";
-import { orderUsd, safeOrderUsd } from "@/lib/orderUsd";
+import { orderUsd } from "@/lib/orderUsd";
 
 type OrderRow = {
   order_id: number;
