@@ -226,8 +226,8 @@ export function useReplenishmentPolicyEvents() {
         woo_variation_id: m.woo_variation_id ?? null,
         woo_order_id: m.source_order_id ?? null,
         woo_order_item_id: m.source_order_item_id ?? null,
-        replacement_product_id: null,
-        replacement_woo_product_id: null,
+        replacement_product_id: bridge?.replacement_product_id ?? null,
+        replacement_woo_product_id: bridge?.replacement_woo_product_id ?? null,
         external_supplier_name: null,
         external_supplier_unit_cost_usd: null,
         _kind: "pending_classification",
@@ -235,12 +235,9 @@ export function useReplenishmentPolicyEvents() {
         _dedupe_key: key,
         sourceMovementId: m.id,
         unit_cost_snapshot: m.unit_cost_snapshot != null ? Number(m.unit_cost_snapshot) : null,
-        pendingClassificationResolution:
-          m.cost_snapshot_data?.pending_classification_resolution ?? null,
-        isCorrected:
-          m.cost_snapshot_data?.pending_classification_resolution?.status === "corrected",
-        canClose:
-          m.cost_snapshot_data?.pending_classification_resolution?.status === "corrected",
+        pendingClassificationResolution: resolution,
+        isCorrected: resolution?.status === "corrected",
+        canClose: resolution?.status === "corrected",
         resolution_data: {
           product_name: m.product_name,
           woo_sku: m.sku,
@@ -249,7 +246,7 @@ export function useReplenishmentPolicyEvents() {
     }
 
     return out;
-  }, [policyRows, pendingItems, pendingClassMovs]);
+  }, [policyRows, pendingItems, pendingClassMovs, bridgeEventsMap]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { total: 0 };
