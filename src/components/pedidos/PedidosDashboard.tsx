@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PERIOD_OPTIONS, periodBounds, type PeriodKey, CUTOFF } from "./periodFilters";
+import { orderUsd, safeOrderUsd, MAX_REASONABLE_USD } from "@/lib/orderUsd";
 import { formatDMY } from "@/lib/dateUtils";
 
 
