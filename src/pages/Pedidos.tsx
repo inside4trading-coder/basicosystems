@@ -10,6 +10,7 @@ import { PedidosChannels } from "@/components/pedidos/PedidosChannels";
 import { PedidosPaymentMethods } from "@/components/pedidos/PedidosPaymentMethods";
 import { toast } from "sonner";
 import { formatDMY } from "@/lib/dateUtils";
+import { isUnconvertibleOrder } from "@/lib/orderUsd";
 
 const STATUS_OPTIONS_RAW = [
   { value: "any", label: "Todos" },
