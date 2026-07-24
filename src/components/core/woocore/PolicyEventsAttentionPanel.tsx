@@ -204,7 +204,14 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                     </td>
                     <td className="p-2">
                       {r.isCorrected ? (
-                        <Badge className="bg-emerald-600 text-white">Corregido</Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge className="bg-emerald-600 text-white w-fit">Corregido</Badge>
+                          {rep && (
+                            <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                              → {rep}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <Badge variant="outline">{r.status}</Badge>
                       )}
