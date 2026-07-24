@@ -81,7 +81,7 @@ const fmtUsd = (n: number) =>
 const fmtDate = (d: string | null) =>
   d ? formatDMY(d) : "";
 
-import { MAX_REASONABLE_USD, orderUsd } from "@/lib/orderUsd";
+
 
 export function PedidosChannels() {
   const [period, setPeriod] = useState<PeriodKey>("this_month");
