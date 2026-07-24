@@ -7,6 +7,7 @@ import { PERIOD_OPTIONS, periodBounds, type PeriodKey, CUTOFF } from "./periodFi
 import { isExcludedFromRevenue } from "@/config/orderStatuses";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { formatDMY } from "@/lib/dateUtils";
+import { MAX_REASONABLE_USD, orderUsd } from "@/lib/orderUsd";
 
 type OrderRow = {
   order_id: number;
@@ -80,7 +81,7 @@ const fmtUsd = (n: number) =>
 const fmtDate = (d: string | null) =>
   d ? formatDMY(d) : "";
 
-const MAX_REASONABLE_USD = 4000;
+
 
 export function PedidosChannels() {
   const [period, setPeriod] = useState<PeriodKey>("this_month");
@@ -118,14 +119,8 @@ export function PedidosChannels() {
     fetchOrders();
   }, [fetchOrders]);
 
-  const toUsd = (o: OrderRow) => {
-    const usd = Number(o.total_amount_usd ?? 0);
-    if (usd > 0) return usd;
-    const amt = Number(o.total_amount ?? 0);
-    if ((o.order_currency || "USD") === "USD") return amt;
-    const rate = Number(o.exchange_rate || 0);
-    return rate > 0 ? amt / rate : amt;
-  };
+  const toUsd = (o: OrderRow) => orderUsd(o);
+
 
   const grouped = useMemo(() => {
     const map = new Map<string, { orders: OrderRow[]; totalUsd: number; revenueOrders: number }>();

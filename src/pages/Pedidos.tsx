@@ -10,6 +10,7 @@ import { PedidosChannels } from "@/components/pedidos/PedidosChannels";
 import { PedidosPaymentMethods } from "@/components/pedidos/PedidosPaymentMethods";
 import { toast } from "sonner";
 import { formatDMY } from "@/lib/dateUtils";
+import { isUnconvertibleOrder } from "@/lib/orderUsd";
 
 const STATUS_OPTIONS_RAW = [
   { value: "any", label: "Todos" },
@@ -166,12 +167,14 @@ export default function Pedidos() {
   };
 
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
+  // Conversión por importe suelto (subtotal, envío, etc). Si la moneda del
+  // pedido no es USD y no hay tasa válida, devolvemos 0 para no inflar totales.
   const toUsd = (amount: number | null | undefined, order: any) => {
     const value = Number(amount || 0);
     if ((order?.order_currency || "USD") === "USD") return value;
     const rate = Number(order?.exchange_rate || 0);
-    if (rate > 0) return value / rate;
-    return value;
+    if (rate <= 0) return 0;
+    return value / rate;
   };
   const fmtDate = (d: string) => d ? formatDMY(d) : "";
   const totalPages = Math.ceil(total / PER_PAGE);
@@ -319,7 +322,11 @@ export default function Pedidos() {
                               <div className="font-semibold text-xs">{o.customer_email || "—"}</div>
                               {o.billing_state && <div className="text-xs text-muted-foreground">{o.billing_state}</div>}
                             </td>
-                            <td className="px-4 py-3 font-bold tabular-nums">{fmt(o.total_amount_usd ?? toUsd(o.total_amount, o))}</td>
+                            <td className="px-4 py-3 font-bold tabular-nums">
+                              {isUnconvertibleOrder(o)
+                                ? <span title={`${Number(o.total_amount||0).toLocaleString()} ${o.order_currency} (sin tasa)`} className="text-muted-foreground font-normal">—</span>
+                                : fmt(o.total_amount_usd ?? toUsd(o.total_amount, o))}
+                            </td>
                             <td className="px-4 py-3">
                               <span className={statusClass[o.order_status] || "status-badge-inactive"}>
                                 {statusLabel[o.order_status] || o.order_status}

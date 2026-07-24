@@ -7,6 +7,7 @@ import { PERIOD_OPTIONS, periodBounds, type PeriodKey, CUTOFF } from "./periodFi
 import { isExcludedFromRevenue } from "@/config/orderStatuses";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { formatDMY } from "@/lib/dateUtils";
+import { orderUsd } from "@/lib/orderUsd";
 
 type OrderRow = {
   order_id: number;
@@ -138,14 +139,8 @@ export function PedidosPaymentMethods() {
     fetchData();
   }, [fetchData]);
 
-  const orderTotalUsd = useCallback((o: OrderRow) => {
-    const usd = Number(o.total_amount_usd ?? 0);
-    if (usd > 0) return usd;
-    const amt = Number(o.total_amount ?? 0);
-    if ((o.order_currency || "USD") === "USD") return amt;
-    const rate = Number(o.exchange_rate || 0);
-    return rate > 0 ? amt / rate : amt;
-  }, []);
+  // Conversión centralizada: VES sin tasa válida → 0 (no se contabiliza).
+  const orderTotalUsd = useCallback((o: OrderRow) => orderUsd(o), []);
 
   const { grouped, totalAppearances, transactionsAnalyzed } = useMemo(() => {
     const paid = orders.filter((o) => !isExcludedFromRevenue(o.order_status || ""));

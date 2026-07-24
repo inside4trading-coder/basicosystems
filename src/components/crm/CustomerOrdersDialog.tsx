@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Loader2, Package, Mail, Phone, MapPin, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDMY } from "@/lib/dateUtils";
+import { orderUsd, safeOrderUsd, isUnconvertibleOrder } from "@/lib/orderUsd";
 
 interface Customer {
   id: number;
@@ -89,17 +90,13 @@ export function CustomerOrdersDialog({ customer, open, onOpenChange }: Props) {
     : customer.username || "Sin nombre";
 
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
-  const toUsd = (o: Order) => {
-    if (o.total_amount_usd) return o.total_amount_usd;
-    const val = Number(o.total_amount || 0);
-    if ((o.order_currency || "USD") === "USD") return val;
-    const rate = Number(o.exchange_rate || 0);
-    return rate > 0 ? val / rate : val;
-  };
+  // Conversión centralizada: VES sin tasa válida → 0 (no se contabiliza).
+  const toUsd = (o: Order) => orderUsd(o);
   const fmtDate = (d: string | null) =>
     d ? formatDMY(d) : "—";
 
-  const totalUsd = orders.reduce((sum, o) => sum + toUsd(o), 0);
+  // Para el total usamos la versión segura (descarta importes irrazonables).
+  const totalUsd = orders.reduce((sum, o) => sum + safeOrderUsd(o), 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -182,7 +179,11 @@ export function CustomerOrdersDialog({ customer, open, onOpenChange }: Props) {
                         {statusLabel[o.order_status || ""] || o.order_status}
                       </span>
                     </td>
-                    <td className="py-2.5 text-right font-semibold tabular-nums">{fmt(toUsd(o))}</td>
+                    <td className="py-2.5 text-right font-semibold tabular-nums">
+                      {isUnconvertibleOrder(o)
+                        ? <span title={`${Number(o.total_amount||0).toLocaleString()} ${o.order_currency} (sin tasa)`} className="text-muted-foreground">—</span>
+                        : fmt(toUsd(o))}
+                    </td>
                     <td className="py-2.5 text-muted-foreground text-xs hidden sm:table-cell">{o.payment_method || "—"}</td>
                     <td className="py-2.5 text-right text-muted-foreground text-xs whitespace-nowrap">{fmtDate(o.order_datetime)}</td>
                   </tr>

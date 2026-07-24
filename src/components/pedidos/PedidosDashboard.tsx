@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PERIOD_OPTIONS, periodBounds, type PeriodKey, CUTOFF } from "./periodFilters";
+import { orderUsd, safeOrderUsd, MAX_REASONABLE_USD } from "@/lib/orderUsd";
 import { formatDMY } from "@/lib/dateUtils";
 
 
@@ -215,22 +216,9 @@ export function PedidosDashboard() {
     }
   };
 
-  const toUsd = (o: OrderRow) => {
-    const usd = Number(o.total_amount_usd ?? 0);
-    if (usd > 0) return usd;
-    const amt = Number(o.total_amount ?? 0);
-    if ((o.order_currency || "USD") === "USD") return amt;
-    const rate = Number(o.exchange_rate || 0);
-    return rate > 0 ? amt / rate : amt;
-  };
-
-  // Sanity threshold: ningún producto > $20, ticket realista < $4000.
-  // Pedidos por encima son errores de conversión BS/USD y no se contabilizan en montos.
-  const MAX_REASONABLE_USD = 4000;
-  const safeRevenue = (o: OrderRow) => {
-    const v = toUsd(o);
-    return v > MAX_REASONABLE_USD ? 0 : v;
-  };
+  // Conversión centralizada: VES sin tasa válida → 0 (no se contabiliza).
+  const toUsd = (o: OrderRow) => orderUsd(o);
+  const safeRevenue = (o: OrderRow) => safeOrderUsd(o);
 
   const bucketed = useMemo(() => {
     const map: Record<BucketKey, OrderRow[]> = {
