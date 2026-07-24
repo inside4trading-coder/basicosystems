@@ -90,17 +90,13 @@ export function CustomerOrdersDialog({ customer, open, onOpenChange }: Props) {
     : customer.username || "Sin nombre";
 
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
-  const toUsd = (o: Order) => {
-    if (o.total_amount_usd) return o.total_amount_usd;
-    const val = Number(o.total_amount || 0);
-    if ((o.order_currency || "USD") === "USD") return val;
-    const rate = Number(o.exchange_rate || 0);
-    return rate > 0 ? val / rate : val;
-  };
+  // Conversión centralizada: VES sin tasa válida → 0 (no se contabiliza).
+  const toUsd = (o: Order) => orderUsd(o);
   const fmtDate = (d: string | null) =>
     d ? formatDMY(d) : "—";
 
-  const totalUsd = orders.reduce((sum, o) => sum + toUsd(o), 0);
+  // Para el total usamos la versión segura (descarta importes irrazonables).
+  const totalUsd = orders.reduce((sum, o) => sum + safeOrderUsd(o), 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
