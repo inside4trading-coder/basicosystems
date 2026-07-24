@@ -53,7 +53,7 @@ function actionLabel(action: string) {
 function mapaWooLink(
   wooId: number | null | undefined,
   sku: string | null | undefined,
-  action: "cost" | "policy" | "map",
+  action: "cost" | "policy" | "map" | "norestock",
 ) {
   const params = new URLSearchParams();
   if (wooId) params.set("woo_product_id", String(wooId));
@@ -61,6 +61,7 @@ function mapaWooLink(
   params.set("action", action);
   return `/core/mapa-woo-core?${params.toString()}`;
 }
+
 
 export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: string } = {}) {
   const {
