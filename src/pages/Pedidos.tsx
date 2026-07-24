@@ -322,7 +322,11 @@ export default function Pedidos() {
                               <div className="font-semibold text-xs">{o.customer_email || "—"}</div>
                               {o.billing_state && <div className="text-xs text-muted-foreground">{o.billing_state}</div>}
                             </td>
-                            <td className="px-4 py-3 font-bold tabular-nums">{fmt(o.total_amount_usd ?? toUsd(o.total_amount, o))}</td>
+                            <td className="px-4 py-3 font-bold tabular-nums">
+                              {isUnconvertibleOrder(o)
+                                ? <span title={`${Number(o.total_amount||0).toLocaleString()} ${o.order_currency} (sin tasa)`} className="text-muted-foreground font-normal">—</span>
+                                : fmt(o.total_amount_usd ?? toUsd(o.total_amount, o))}
+                            </td>
                             <td className="px-4 py-3">
                               <span className={statusClass[o.order_status] || "status-badge-inactive"}>
                                 {statusLabel[o.order_status] || o.order_status}
