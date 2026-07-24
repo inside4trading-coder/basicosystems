@@ -107,7 +107,7 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       // Fetch year-over-year orders (same range, last year)
       const { data: yoyOrders, error: yErr } = await supabase
         .from("orders")
-        .select("order_id, total_amount, total_amount_usd, order_status, customer_email")
+        .select("order_id, total_amount, total_amount_usd, order_status, customer_email, order_currency, exchange_rate")
         .gte("order_date", formatLocalDate(yoy.start))
         .lte("order_date", formatLocalDate(yoy.end));
       if (yErr) throw new Error(yErr.message);
