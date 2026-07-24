@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Loader2, Package, Mail, Phone, MapPin, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDMY } from "@/lib/dateUtils";
+import { orderUsd, safeOrderUsd, isUnconvertibleOrder } from "@/lib/orderUsd";
 
 interface Customer {
   id: number;
