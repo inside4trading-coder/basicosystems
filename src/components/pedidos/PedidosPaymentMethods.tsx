@@ -141,7 +141,6 @@ export function PedidosPaymentMethods() {
 
   // Conversión centralizada: VES sin tasa válida → 0 (no se contabiliza).
   const orderTotalUsd = useCallback((o: OrderRow) => orderUsd(o), []);
-  const safeOrderTotalUsd = useCallback((o: OrderRow) => safeOrderUsd(o), []);
 
   const { grouped, totalAppearances, transactionsAnalyzed } = useMemo(() => {
     const paid = orders.filter((o) => !isExcludedFromRevenue(o.order_status || ""));
