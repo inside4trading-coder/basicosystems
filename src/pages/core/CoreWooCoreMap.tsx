@@ -244,9 +244,12 @@ export default function CoreWooCoreMap() {
         setDialog({ kind: "manualCost", ctx });
       } else if (action === "policy") {
         setDialog({ kind: "route", ctx });
+      } else if (action === "norestock") {
+        setNoRestockDialog({ open: true, initialCtx: ctx });
       } else if (action === "map") {
         toast({ title: "Producto abierto desde Necesidades" });
       }
+
     } else if (ctx) {
       toast({ title: "Producto abierto desde Necesidades" });
     }
