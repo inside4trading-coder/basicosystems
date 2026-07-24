@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isValidOrder, isExcludedFromRevenue } from "@/config/orderStatuses";
 import { formatLocalDate } from "@/lib/dateUtils";
-import { orderUsd, safeOrderUsd, isUnconvertibleOrder } from "@/lib/orderUsd";
+import { safeOrderUsd, isUnconvertibleOrder } from "@/lib/orderUsd";
 
 export type Period = "today" | "week" | "month" | "year" | "custom";
 
