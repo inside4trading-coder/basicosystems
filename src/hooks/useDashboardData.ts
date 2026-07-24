@@ -152,20 +152,19 @@ export function useDashboardData(period: Period, customRange?: { start: Date; en
       });
 
       // Group 2: revenue-eligible orders (also excludes refunded/cancelled/failed,
-      // orders with usd<=0, and VES orders without a valid exchange rate).
+      // orders with usd<=0, y pedidos VES/otras sin tasa válida — se resuelven
+      // vía helper centralizado `orderUsd` que devuelve 0 en esos casos).
       const isRevenueEligible = (o: any) => {
         if (isExcludedFromRevenue(o.order_status || "")) return false;
-        const usd = o.total_amount_usd ?? o.total_amount ?? 0;
-        if (usd <= 0) return false;
-        if (o.order_currency === "VES" && (o.exchange_rate === 1 || o.exchange_rate === 0 || !o.exchange_rate) && (o.total_amount ?? 0) > 100) return false;
-        return true;
+        if (isUnconvertibleOrder(o)) return false;
+        return safeOrderUsd(o) > 0;
       };
       const revenueOrders = paid.filter(isRevenueEligible);
       const prevRevenueOrders = prevPaid.filter(isRevenueEligible);
       const yoyRevenueOrders = yoyPaid.filter(isRevenueEligible);
       const revenueOrderIds = new Set(revenueOrders.map(o => o.order_id));
 
-      const getUsd = (o: any) => o.total_amount_usd ?? o.total_amount ?? 0;
+      const getUsd = (o: any) => safeOrderUsd(o);
       const revenue = revenueOrders.reduce((s, o) => s + getUsd(o), 0);
       const prevRevenue = prevRevenueOrders.reduce((s, o) => s + getUsd(o), 0);
       const yoyRevenue = yoyRevenueOrders.reduce((s, o) => s + getUsd(o), 0);
