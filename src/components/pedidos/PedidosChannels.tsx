@@ -80,7 +80,7 @@ const fmtUsd = (n: number) =>
 const fmtDate = (d: string | null) =>
   d ? formatDMY(d) : "";
 
-const MAX_REASONABLE_USD = 4000;
+import { MAX_REASONABLE_USD, orderUsd } from "@/lib/orderUsd";
 
 export function PedidosChannels() {
   const [period, setPeriod] = useState<PeriodKey>("this_month");
