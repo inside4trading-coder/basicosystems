@@ -293,6 +293,19 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                                 <Copy className="w-3 h-3 mr-1" /> Copiar Woo ID
                               </Button>
                             )}
+                            {r._kind === "pending_item" && r.id.startsWith("pi:") && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={async () => {
+                                  const pid = r.id.slice(3);
+                                  const ok = await resolvePendingItem(pid);
+                                  if (ok) toast({ title: "Marcado como resuelto" });
+                                }}
+                              >
+                                Resolver
+                              </Button>
+                            )}
                           </>
                         )}
                         {(r.action === "missing_cost" || r.action === "financial_review") && (
