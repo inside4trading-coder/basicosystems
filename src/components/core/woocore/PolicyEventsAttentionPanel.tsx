@@ -72,6 +72,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
     resolveReplacementLabel,
     setEventStatus,
     closePendingClassification,
+    resolvePendingItem,
   } = useReplenishmentPolicyEvents();
 
   const [filter, setFilter] = useState<string>(initialFilter ?? "all");
@@ -206,11 +207,26 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                     <td className="p-2">
                       {r.isCorrected ? (
                         <div className="flex flex-col gap-1">
-                          <Badge className="bg-emerald-600 text-white w-fit">Corregido</Badge>
-                          {rep && (
-                            <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                              → {rep}
-                            </span>
+                          {r.pendingClassificationResolution?.action === "no_restock" ? (
+                            <>
+                              <Badge className="bg-slate-600 text-white w-fit">
+                                Corregido · No restock
+                              </Badge>
+                              <span className="text-[11px] text-slate-600 dark:text-slate-300">
+                                Sin reposición
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Badge className="bg-emerald-600 text-white w-fit">
+                                Corregido · Reemplazo
+                              </Badge>
+                              {rep && (
+                                <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                                  → {rep}
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                       ) : (
@@ -275,6 +291,19 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                                 }}
                               >
                                 <Copy className="w-3 h-3 mr-1" /> Copiar Woo ID
+                              </Button>
+                            )}
+                            {r._kind === "pending_item" && r.id.startsWith("pi:") && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={async () => {
+                                  const pid = r.id.slice(3);
+                                  const ok = await resolvePendingItem(pid);
+                                  if (ok) toast({ title: "Marcado como resuelto" });
+                                }}
+                              >
+                                Resolver
                               </Button>
                             )}
                           </>

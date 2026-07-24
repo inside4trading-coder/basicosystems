@@ -578,6 +578,26 @@ export function useReplenishmentPolicyEvents() {
     }
   };
 
+  const resolvePendingItem = async (pendingItemId: string) => {
+    try {
+      const uid = await getCurrentUserId();
+      const { error } = await supabase
+        .from("core_fabrication_fund_pending_items" as any)
+        .update({
+          status: "resolved",
+          resolved_at: new Date().toISOString(),
+          resolved_by: uid,
+        })
+        .eq("id", pendingItemId);
+      if (error) throw error;
+      invalidateAll();
+      return true;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return false;
+    }
+  };
+
   return {
     rows,
     isLoading:
@@ -592,5 +612,6 @@ export function useReplenishmentPolicyEvents() {
     markPendingClassificationReplaced,
     setPendingClassificationBridgeEventId,
     closePendingClassification,
+    resolvePendingItem,
   };
 }
