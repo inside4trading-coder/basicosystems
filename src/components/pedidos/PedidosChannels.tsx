@@ -119,14 +119,8 @@ export function PedidosChannels() {
     fetchOrders();
   }, [fetchOrders]);
 
-  const toUsd = (o: OrderRow) => {
-    const usd = Number(o.total_amount_usd ?? 0);
-    if (usd > 0) return usd;
-    const amt = Number(o.total_amount ?? 0);
-    if ((o.order_currency || "USD") === "USD") return amt;
-    const rate = Number(o.exchange_rate || 0);
-    return rate > 0 ? amt / rate : amt;
-  };
+  const toUsd = (o: OrderRow) => orderUsd(o);
+
 
   const grouped = useMemo(() => {
     const map = new Map<string, { orders: OrderRow[]; totalUsd: number; revenueOrders: number }>();
