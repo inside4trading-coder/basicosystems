@@ -139,14 +139,9 @@ export function PedidosPaymentMethods() {
     fetchData();
   }, [fetchData]);
 
-  const orderTotalUsd = useCallback((o: OrderRow) => {
-    const usd = Number(o.total_amount_usd ?? 0);
-    if (usd > 0) return usd;
-    const amt = Number(o.total_amount ?? 0);
-    if ((o.order_currency || "USD") === "USD") return amt;
-    const rate = Number(o.exchange_rate || 0);
-    return rate > 0 ? amt / rate : amt;
-  }, []);
+  // Conversión centralizada: VES sin tasa válida → 0 (no se contabiliza).
+  const orderTotalUsd = useCallback((o: OrderRow) => orderUsd(o), []);
+  const safeOrderTotalUsd = useCallback((o: OrderRow) => safeOrderUsd(o), []);
 
   const { grouped, totalAppearances, transactionsAnalyzed } = useMemo(() => {
     const paid = orders.filter((o) => !isExcludedFromRevenue(o.order_status || ""));
