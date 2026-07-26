@@ -216,7 +216,9 @@ export function ItemsUnassignedTab() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
+
               </TableBody>
             </Table>
           </div>
