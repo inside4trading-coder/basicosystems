@@ -195,11 +195,15 @@ function MobileCard({
   return (
     <Card className="p-4 space-y-2">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="font-semibold truncate">{item.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {item.codigo_fabricante ?? "sin código"} · {item.sku_web ?? "sin SKU"}
-          </p>
+        <div className="flex items-start gap-3 min-w-0">
+          <ItemThumb item={item} size={56} />
+          <div className="min-w-0">
+            <p className="font-semibold truncate">{item.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {item.codigo_fabricante ?? "sin código"} · {item.sku_web ?? "sin SKU"}
+            </p>
+            <PhotoCounts item={item} />
+          </div>
         </div>
         <Button variant="ghost" size="sm" onClick={onEdit}>
           <Pencil className="h-4 w-4" />
