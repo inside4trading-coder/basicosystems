@@ -18,6 +18,8 @@ import {
 } from "@/hooks/useSublimeMerch";
 import {
   calculateTotalCost,
+  calculateTotalUnits,
+  formatSizeSummary,
   MERCH_ESTADO_LABEL,
   resolvePhotoUrl,
   type MerchEstado,
