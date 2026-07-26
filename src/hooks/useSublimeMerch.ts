@@ -195,6 +195,22 @@ export function useShipmentBoxCounts() {
   });
 }
 
+export async function getNextShipmentNumber(): Promise<string> {
+  const { data, error } = await (supabase as any)
+    .from(T_SHIP)
+    .select("shipment_number");
+  if (error) throw error;
+  let max = 0;
+  for (const row of (data ?? []) as { shipment_number: string }[]) {
+    const m = /^S(\d{3,})$/.exec(row.shipment_number ?? "");
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > max) max = n;
+    }
+  }
+  return `S${String(max + 1).padStart(3, "0")}`;
+}
+
 export function useMerchMutations() {
   const qc = useQueryClient();
 
