@@ -19,6 +19,7 @@ import {
   useInTransitItems,
   useSublimeShipments,
   useSublimeBoxes,
+  useSublimePricingRules,
   type SublimeMerchItem,
   type SublimeMerchShipment,
   type SublimeMerchBox,
@@ -28,11 +29,14 @@ import {
   calculateTotalCost,
   calculateMargin,
   calculateTotalUnits,
+  findPricingRule,
   formatSizeSummary,
+  getFinalPvp,
   MERCH_ESTADO_LABEL,
   resolvePhotoUrl,
   type MerchEstado,
 } from "@/lib/sublimeMerch";
+
 import { ItemEditorSheet } from "./ItemEditorSheet";
 import { AssignToShipmentDialog } from "./AssignToShipmentDialog";
 import { ReceiveItemDialog } from "./ReceiveItemDialog";
