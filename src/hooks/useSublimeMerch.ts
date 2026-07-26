@@ -287,7 +287,11 @@ export function useMerchMutations() {
         no_size: input.no_size,
         unit_count: input.unit_count,
         size_quantities: input.size_quantities,
+        product_type: input.product_type,
+        use_manual_pvp: input.use_manual_pvp,
+        pvp_manual: input.pvp_manual,
         created_by: uid,
+
       };
       const { data, error } = await (supabase as any)
         .from(TABLE)
