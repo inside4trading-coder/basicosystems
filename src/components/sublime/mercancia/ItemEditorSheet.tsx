@@ -918,3 +918,110 @@ function SizesSection({
     </div>
   );
 }
+
+function SuggestedPricePanel({
+  form,
+  rule,
+  shipment,
+  onChange,
+}: {
+  form: MerchItemInput;
+  rule: ReturnType<typeof findPricingRule>;
+  shipment: { cost_per_kg_eur: number | null } | null;
+  onChange: (patch: Partial<MerchItemInput>) => void;
+}) {
+  const totalCost = calculateTotalCost(form, shipment);
+  const units = Math.max(1, calculateTotalUnits(form));
+  const perUnitCost = totalCost / units;
+  const pct = rule ? Number(rule.profit_percentage ?? 0) : 0;
+  const baseSuggested = calculateSuggestedBasePvp(perUnitCost, pct);
+  const iva = calculateIvaAmount(baseSuggested);
+  const suggestedFinal = baseSuggested + iva;
+  const finalPvp = getFinalPvp(form, rule, shipment);
+  const manualBelow =
+    form.use_manual_pvp &&
+    form.pvp_manual != null &&
+    Number(form.pvp_manual) > 0 &&
+    Number(form.pvp_manual) < suggestedFinal;
+
+  return (
+    <div className="space-y-3 rounded-lg border border-border/60 p-3 bg-muted/20">
+      <div>
+        <Label className="text-sm">Precio sugerido</Label>
+        <p className="text-xs text-muted-foreground mt-1">
+          Se calcula desde el costo total, la ganancia del tipo y el IVA 16%.
+        </p>
+      </div>
+      <div className="text-xs space-y-1">
+        <Row k="Tipo de artículo" v={rule?.label ?? "—"} />
+        <Row k={`Costo total (lote, ${units}u)`} v={`${totalCost.toFixed(2)} €`} />
+        <Row k="Costo unitario" v={`${perUnitCost.toFixed(2)} €`} />
+        <Row k="Ganancia configurada" v={`${pct}%`} />
+        <Row k="PVP base sugerido" v={`${baseSuggested.toFixed(2)} €`} />
+        <Row k={`IVA ${(IVA_RATE * 100).toFixed(0)}%`} v={`${iva.toFixed(2)} €`} />
+        <Row
+          k="PVP sugerido final (unit.)"
+          v={<span className="font-semibold">{suggestedFinal.toFixed(2)} €</span>}
+        />
+      </div>
+      {!shipment ? (
+        <p className="text-[11px] text-muted-foreground italic">
+          Este costo puede cambiar cuando se asigne un envío con costo por kg.
+        </p>
+      ) : null}
+
+      <Separator />
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-0.5">
+          <Label className="text-sm">Usar PVP manual</Label>
+          <p className="text-[11px] text-muted-foreground">
+            Ignora el sugerido y usa un precio propio.
+          </p>
+        </div>
+        <Switch
+          checked={form.use_manual_pvp}
+          onCheckedChange={(v) => onChange({ use_manual_pvp: v })}
+        />
+      </div>
+
+      {form.use_manual_pvp ? (
+        <div className="space-y-2">
+          <Label>PVP manual (unit.)</Label>
+          <Input
+            type="number"
+            step="0.01"
+            min={0}
+            value={form.pvp_manual ?? ""}
+            onChange={(e) =>
+              onChange({
+                pvp_manual: e.target.value === "" ? null : Number(e.target.value),
+              })
+            }
+          />
+          {manualBelow ? (
+            <p className="text-[11px] text-amber-600 dark:text-amber-500">
+              Este PVP está por debajo del sugerido para este tipo de artículo.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="rounded-md border border-border/60 bg-background p-2 text-xs flex items-center justify-between">
+        <span className="text-muted-foreground">PVP final aplicado (unit.)</span>
+        <span className="font-semibold">
+          {finalPvp != null ? `${finalPvp.toFixed(2)} €` : "—"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Row({ k, v }: { k: string; v: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-muted-foreground">{k}</span>
+      <span>{v}</span>
+    </div>
+  );
+}
