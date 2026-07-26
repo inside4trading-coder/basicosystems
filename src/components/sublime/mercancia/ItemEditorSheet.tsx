@@ -66,6 +66,8 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
   const { createItem, updateItem, addPhotoToItem, addWebPhotoUrl } = useMerchMutations();
   const isEdit = Boolean(item?.id);
   const wasUploaded = Boolean(item?.subido_al_sistema);
+  const { data: liveItem } = useSublimeItem(isEdit && open ? item?.id : null);
+  const currentItem = liveItem ?? item ?? null;
 
   const [pendingOrigen, setPendingOrigen] = useState<PendingFile[]>([]);
   const [pendingWebFiles, setPendingWebFiles] = useState<PendingFile[]>([]);
