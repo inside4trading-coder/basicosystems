@@ -270,6 +270,7 @@ export function ShipmentsManagerDialog({ open, onOpenChange }: Props) {
                       onEdit={() => openEditShip(s)}
                       onCreateBox={() => openNewBox(s.id)}
                       onEditBox={openEditBox}
+                      onReceiveBox={(b) => setConfirmBox(b)}
                     />
                   ))}
                 </TableBody>
@@ -290,6 +291,37 @@ export function ShipmentsManagerDialog({ open, onOpenChange }: Props) {
         box={editingBox}
         defaultShipmentId={boxShipmentId}
       />
+
+      <AlertDialog
+        open={Boolean(confirmBox)}
+        onOpenChange={(v) => !v && setConfirmBox(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar caja recibida</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmBox
+                ? `¿Confirmas que la caja ${confirmBox.box_number} llegó a Venezuela? Todos sus productos (no cancelados) pasarán a estado "recibido".`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                doReceiveBox();
+              }}
+              disabled={markBoxReceived.isPending}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
+  );
+}
+
   );
 }
