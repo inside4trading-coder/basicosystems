@@ -293,7 +293,7 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
     }
   };
 
-  const totalEst = calculateTotalCost(form, null);
+  void calculateTotalCost;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
