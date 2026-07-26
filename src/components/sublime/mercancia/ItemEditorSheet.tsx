@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -13,10 +13,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Upload, Camera, Link as LinkIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   canMarkUploaded,
   calculateTotalCost,
+  validatePhotoFile,
+  validatePhotoUrl,
+  uploadSublimeMerchPhoto,
 } from "@/lib/sublimeMerch";
 import {
   useMerchMutations,
@@ -42,11 +46,27 @@ const empty = (): MerchItemInput => ({
   subido_al_sistema: false,
 });
 
+interface PendingFile {
+  file: File;
+  previewUrl: string;
+}
+
 export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
   const [form, setForm] = useState<MerchItemInput>(empty());
-  const { createItem, updateItem } = useMerchMutations();
+  const { createItem, updateItem, addPhotoToItem, addWebPhotoUrl } = useMerchMutations();
   const isEdit = Boolean(item?.id);
   const wasUploaded = Boolean(item?.subido_al_sistema);
+
+  const [pendingOrigen, setPendingOrigen] = useState<PendingFile[]>([]);
+  const [pendingWebFiles, setPendingWebFiles] = useState<PendingFile[]>([]);
+  const [pendingWebUrls, setPendingWebUrls] = useState<string[]>([]);
+  const [webUrlInput, setWebUrlInput] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const revokeAll = () => {
+    pendingOrigen.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    pendingWebFiles.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+  };
 
   useEffect(() => {
     if (open) {
@@ -65,8 +85,23 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
             }
           : empty(),
       );
+      setPendingOrigen([]);
+      setPendingWebFiles([]);
+      setPendingWebUrls([]);
+      setWebUrlInput("");
+    } else {
+      revokeAll();
+      setPendingOrigen([]);
+      setPendingWebFiles([]);
+      setPendingWebUrls([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, item]);
+
+  useEffect(() => {
+    return () => revokeAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const set = <K extends keyof MerchItemInput>(k: K, v: MerchItemInput[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -84,6 +119,53 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
     set("subido_al_sistema", true);
   };
 
+  const addPending = (
+    files: FileList | null,
+    kind: "origen" | "web",
+  ) => {
+    if (!files) return;
+    const accepted: PendingFile[] = [];
+    for (const file of Array.from(files)) {
+      const check = validatePhotoFile(file);
+      if (!check.ok) {
+        toast.error(check.message);
+        continue;
+      }
+      accepted.push({ file, previewUrl: URL.createObjectURL(file) });
+    }
+    if (accepted.length === 0) return;
+    if (kind === "origen") setPendingOrigen((p) => [...p, ...accepted]);
+    else setPendingWebFiles((p) => [...p, ...accepted]);
+  };
+
+  const removePending = (idx: number, kind: "origen" | "web") => {
+    if (kind === "origen") {
+      setPendingOrigen((p) => {
+        const removed = p[idx];
+        if (removed) URL.revokeObjectURL(removed.previewUrl);
+        return p.filter((_, i) => i !== idx);
+      });
+    } else {
+      setPendingWebFiles((p) => {
+        const removed = p[idx];
+        if (removed) URL.revokeObjectURL(removed.previewUrl);
+        return p.filter((_, i) => i !== idx);
+      });
+    }
+  };
+
+  const addPendingWebUrl = () => {
+    const trimmed = webUrlInput.trim();
+    const check = validatePhotoUrl(trimmed);
+    if (!check.ok) return toast.error(check.message);
+    if (pendingWebUrls.includes(trimmed)) {
+      setWebUrlInput("");
+      return;
+    }
+    setPendingWebUrls((p) => [...p, trimmed]);
+    setWebUrlInput("");
+  };
+
   const submit = async () => {
     if (!form.name.trim()) return toast.error("El nombre es obligatorio.");
     if (form.precio_compra < 0)
@@ -97,15 +179,47 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
       if (!check.ok) return toast.error(check.message);
     }
 
+    setSaving(true);
     try {
       if (isEdit && item) {
         await updateItem.mutateAsync({ id: item.id, input: form, wasUploaded });
         toast.success("Producto actualizado.");
+        onOpenChange(false);
       } else {
-        await createItem.mutateAsync(form);
-        toast.success("Producto creado.");
+        const created = await createItem.mutateAsync(form);
+        let failures = 0;
+        for (const p of pendingOrigen) {
+          try {
+            const url = await uploadSublimeMerchPhoto(created.id, "origen", p.file);
+            await addPhotoToItem.mutateAsync({ itemId: created.id, type: "origen", url });
+          } catch {
+            failures++;
+          }
+        }
+        for (const p of pendingWebFiles) {
+          try {
+            const url = await uploadSublimeMerchPhoto(created.id, "web", p.file);
+            await addPhotoToItem.mutateAsync({ itemId: created.id, type: "web", url });
+          } catch {
+            failures++;
+          }
+        }
+        for (const u of pendingWebUrls) {
+          try {
+            await addWebPhotoUrl.mutateAsync({ itemId: created.id, url: u });
+          } catch {
+            failures++;
+          }
+        }
+        if (failures > 0) {
+          toast.warning(
+            "Producto creado, pero algunas fotos no pudieron subirse. Puedes agregarlas editando el producto.",
+          );
+        } else {
+          toast.success("Producto creado.");
+        }
+        onOpenChange(false);
       }
-      onOpenChange(false);
     } catch (e: any) {
       const msg = e?.message ?? "Error al guardar";
       if (msg.includes("sublime_merch_items_sku_web_key") || msg.includes("duplicate key")) {
@@ -113,6 +227,8 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
       } else {
         toast.error(msg);
       }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -247,9 +363,12 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
                 photos={item.fotos_origen ?? []}
               />
             ) : (
-              <p className="text-xs text-muted-foreground italic">
-                Guarda el producto primero para poder subir fotos.
-              </p>
+              <PendingPhotoPicker
+                kind="origen"
+                pending={pendingOrigen}
+                onAdd={(files) => addPending(files, "origen")}
+                onRemove={(i) => removePending(i, "origen")}
+              />
             )}
           </div>
 
@@ -269,9 +388,62 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
                 showBankTools
               />
             ) : (
-              <p className="text-xs text-muted-foreground italic">
-                Guarda el producto primero para poder subir fotos.
-              </p>
+              <div className="space-y-3">
+                <PendingPhotoPicker
+                  kind="web"
+                  pending={pendingWebFiles}
+                  onAdd={(files) => addPending(files, "web")}
+                  onRemove={(i) => removePending(i, "web")}
+                />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="https://…"
+                    value={webUrlInput}
+                    onChange={(e) => setWebUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addPendingWebUrl();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={addPendingWebUrl}
+                    disabled={!webUrlInput.trim()}
+                  >
+                    <LinkIcon className="h-4 w-4 mr-2" />
+                    Agregar
+                  </Button>
+                </div>
+                {pendingWebUrls.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {pendingWebUrls.map((u, i) => (
+                      <div
+                        key={u}
+                        className="relative group rounded-lg border border-border/60 overflow-hidden bg-muted/30 aspect-square"
+                      >
+                        <img src={u} alt="" className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPendingWebUrls((p) => p.filter((_, idx) => idx !== i))
+                          }
+                          className="absolute top-1 right-1 rounded bg-destructive/90 text-destructive-foreground p-1 opacity-0 group-hover:opacity-100 transition"
+                          title="Quitar"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground italic">
+                  Puedes tomar o adjuntar fotos ahora. Se subirán automáticamente al
+                  guardar el producto.
+                </p>
+              </div>
             )}
           </div>
 
@@ -286,12 +458,100 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
           </Button>
           <Button
             onClick={submit}
-            disabled={createItem.isPending || updateItem.isPending}
+            disabled={createItem.isPending || updateItem.isPending || saving}
           >
             {isEdit ? "Guardar cambios" : "Crear producto"}
           </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function PendingPhotoPicker({
+  kind,
+  pending,
+  onAdd,
+  onRemove,
+}: {
+  kind: "origen" | "web";
+  pending: PendingFile[];
+  onAdd: (files: FileList | null) => void;
+  onRemove: (idx: number) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            onAdd(e.target.files);
+            if (fileRef.current) fileRef.current.value = "";
+          }}
+        />
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => {
+            onAdd(e.target.files);
+            if (cameraRef.current) cameraRef.current.value = "";
+          }}
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => fileRef.current?.click()}
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          Subir
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => cameraRef.current?.click()}
+        >
+          <Camera className="h-4 w-4 mr-2" />
+          Cámara
+        </Button>
+      </div>
+
+      <p className="text-xs text-muted-foreground italic">
+        Puedes tomar o adjuntar fotos ahora. Se subirán automáticamente al guardar el
+        producto.
+      </p>
+
+      {pending.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {pending.map((p, i) => (
+            <div
+              key={`${kind}-${i}-${p.previewUrl}`}
+              className="relative group rounded-lg border border-border/60 overflow-hidden bg-muted/30 aspect-square"
+            >
+              <img src={p.previewUrl} alt="" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => onRemove(i)}
+                className="absolute top-1 right-1 rounded bg-destructive/90 text-destructive-foreground p-1 opacity-0 group-hover:opacity-100 transition"
+                title="Quitar"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
