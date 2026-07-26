@@ -72,6 +72,8 @@ function PhotoCounts({ item }: { item: SublimeMerchItem }) {
 
 export function ItemsUnassignedTab() {
   const { data: items = [], isLoading } = useUnassignedItems();
+  const { data: pricingRules = [] } = useSublimePricingRules();
+
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<SublimeMerchItem | null>(null);
   const [assigning, setAssigning] = useState<SublimeMerchItem | null>(null);
