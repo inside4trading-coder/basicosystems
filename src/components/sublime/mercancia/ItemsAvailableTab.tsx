@@ -18,6 +18,7 @@ import {
   useAvailableItems,
   useSublimeShipments,
   useSublimeBoxes,
+  useSublimePricingRules,
   useMerchMutations,
   type SublimeMerchItem,
   type SublimeMerchShipment,
@@ -28,12 +29,15 @@ import {
   calculateTotalCost,
   calculateMargin,
   calculateTotalUnits,
+  findPricingRule,
   formatSizeSummary,
+  getFinalPvp,
   canMarkUploaded,
   MERCH_ESTADO_LABEL,
   resolvePhotoUrl,
   type MerchEstado,
 } from "@/lib/sublimeMerch";
+
 import { ItemEditorSheet } from "./ItemEditorSheet";
 
 function ItemThumb({ item, size = 40 }: { item: SublimeMerchItem; size?: number }) {
