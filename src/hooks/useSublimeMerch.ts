@@ -110,6 +110,24 @@ export function useUnassignedItems() {
   });
 }
 
+export function useSublimeItem(itemId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["sublime-merch", "item", itemId ?? "none"],
+    enabled: Boolean(itemId),
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from(TABLE)
+        .select("*")
+        .eq("id", itemId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as SublimeMerchItem | null;
+    },
+  });
+}
+
+
+
 export function useInTransitItems() {
   return useQuery({
     queryKey: ["sublime-merch", "in-transit"],

@@ -26,6 +26,7 @@ import {
   useMerchMutations,
   useSublimeBoxes,
   useSublimeShipments,
+  useSublimeItem,
   type MerchItemInput,
   type SublimeMerchItem,
 } from "@/hooks/useSublimeMerch";
@@ -65,6 +66,8 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
   const { createItem, updateItem, addPhotoToItem, addWebPhotoUrl } = useMerchMutations();
   const isEdit = Boolean(item?.id);
   const wasUploaded = Boolean(item?.subido_al_sistema);
+  const { data: liveItem } = useSublimeItem(isEdit && open ? item?.id : null);
+  const currentItem = liveItem ?? item ?? null;
 
   const [pendingOrigen, setPendingOrigen] = useState<PendingFile[]>([]);
   const [pendingWebFiles, setPendingWebFiles] = useState<PendingFile[]>([]);
@@ -365,11 +368,11 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
                 identifique la prenda al recibirla.
               </p>
             </div>
-            {isEdit && item ? (
+            {isEdit && currentItem ? (
               <PhotoGallery
-                itemId={item.id}
+                itemId={currentItem.id}
                 type="origen"
-                photos={item.fotos_origen ?? []}
+                photos={currentItem.fotos_origen ?? []}
               />
             ) : (
               <PendingPhotoPicker
@@ -388,11 +391,11 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
                 Fotos que se usarán para subir el producto a la web.
               </p>
             </div>
-            {isEdit && item ? (
+            {isEdit && currentItem ? (
               <PhotoGallery
-                itemId={item.id}
+                itemId={currentItem.id}
                 type="web"
-                photos={item.fotos_web ?? []}
+                photos={currentItem.fotos_web ?? []}
                 allowUrlInput
                 showBankTools
               />
