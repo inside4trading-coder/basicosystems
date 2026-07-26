@@ -82,10 +82,17 @@ interface PendingFile {
 export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
   const [form, setForm] = useState<MerchItemInput>(empty());
   const { createItem, updateItem, addPhotoToItem, addWebPhotoUrl } = useMerchMutations();
+  const { data: pricingRules = [] } = useSublimePricingRules();
   const isEdit = Boolean(item?.id);
   const wasUploaded = Boolean(item?.subido_al_sistema);
   const { data: liveItem } = useSublimeItem(isEdit && open ? item?.id : null);
   const currentItem = liveItem ?? item ?? null;
+  const { data: shipmentsForCalc = [] } = useSublimeShipments();
+  const currentShipment =
+    currentItem?.shipment_id
+      ? shipmentsForCalc.find((s) => s.id === currentItem.shipment_id) ?? null
+      : null;
+
 
   const [pendingOrigen, setPendingOrigen] = useState<PendingFile[]>([]);
   const [pendingWebFiles, setPendingWebFiles] = useState<PendingFile[]>([]);
