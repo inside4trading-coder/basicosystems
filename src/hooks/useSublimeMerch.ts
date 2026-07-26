@@ -1,5 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  uploadSublimeMerchPhoto,
+  deleteSublimeMerchPhotoFromStorage,
+  type PhotoType,
+} from "@/lib/sublimeMerch";
 
 export interface SublimeMerchItem {
   id: string;
