@@ -323,5 +323,4 @@ export function ShipmentsManagerDialog({ open, onOpenChange }: Props) {
   );
 }
 
-  );
-}
+
