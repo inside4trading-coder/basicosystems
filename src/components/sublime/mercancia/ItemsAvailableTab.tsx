@@ -117,12 +117,15 @@ export function ItemsAvailableTab() {
 
   const doToggleUploaded = async (i: SublimeMerchItem, value: boolean) => {
     if (value) {
-      const check = canMarkUploaded(i);
+      const rule = findPricingRule(pricingRules, i.product_type);
+      const ship = i.shipment_id ? shipments.find((s) => s.id === i.shipment_id) ?? null : null;
+      const check = canMarkUploaded(i, rule, ship);
       if (!check.ok) {
         toast.error(check.message ?? "Faltan datos para marcar como subido");
         return;
       }
     }
+
     try {
       await toggleItemUploaded.mutateAsync({ itemId: i.id, value });
     } catch (e) {
