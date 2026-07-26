@@ -447,9 +447,13 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
             )}
           </div>
 
-          <div className="rounded-lg border border-dashed border-border/60 p-3 text-xs text-muted-foreground">
-            Asignación a envío/caja disponible en la siguiente fase.
-          </div>
+          {isEdit && item ? (
+            <ShipmentBoxAssigner item={item} />
+          ) : (
+            <div className="rounded-lg border border-dashed border-border/60 p-3 text-xs text-muted-foreground">
+              Guarda el producto para poder asignarlo a un envío/caja.
+            </div>
+          )}
         </div>
 
         <SheetFooter className="gap-2">
