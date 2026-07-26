@@ -710,3 +710,81 @@ export async function fetchAllSublimeMerchItemsForCsv(): Promise<SublimeMerchIte
   return (data ?? []) as SublimeMerchItem[];
 }
 
+
+const T_RULES = "sublime_merch_pricing_rules";
+
+export function useSublimePricingRules() {
+  return useQuery({
+    queryKey: ["sublime-merch", "pricing-rules"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from(T_RULES)
+        .select("*")
+        .order("label", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as SublimePricingRule[];
+    },
+  });
+}
+
+export function usePricingRulesMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["sublime-merch", "pricing-rules"] });
+
+  const createRule = useMutation({
+    mutationFn: async (input: PricingRuleInput) => {
+      const { slugifyProductType } = await import("@/lib/sublimeMerch");
+      const slug = (input.product_type?.trim() || slugifyProductType(input.label));
+      if (!slug) throw new Error("El nombre del tipo es requerido.");
+      if (!input.label.trim()) throw new Error("El nombre del tipo es requerido.");
+      if (input.profit_percentage < 0) throw new Error("El porcentaje no puede ser negativo.");
+      const payload = {
+        product_type: slug,
+        label: input.label.trim(),
+        profit_percentage: input.profit_percentage,
+        active: input.active ?? true,
+      };
+      const { data, error } = await (supabase as any)
+        .from(T_RULES)
+        .insert(payload)
+        .select()
+        .single();
+      if (error) {
+        if (String(error.message ?? "").includes("duplicate") || (error as any).code === "23505") {
+          throw new Error("Ya existe un tipo de artículo con ese nombre.");
+        }
+        throw error;
+      }
+      return data as SublimePricingRule;
+    },
+    onSuccess: invalidate,
+  });
+
+  const updateRule = useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Partial<Pick<SublimePricingRule, "label" | "profit_percentage" | "active">>;
+    }) => {
+      if (patch.profit_percentage != null && patch.profit_percentage < 0) {
+        throw new Error("El porcentaje no puede ser negativo.");
+      }
+      if (patch.label != null && !patch.label.trim()) {
+        throw new Error("El nombre no puede estar vacío.");
+      }
+      const { data, error } = await (supabase as any)
+        .from(T_RULES)
+        .update(patch)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as SublimePricingRule;
+    },
+    onSuccess: invalidate,
+  });
+
+  return { createRule, updateRule };
+}
