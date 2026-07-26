@@ -202,6 +202,27 @@ export function ShipmentsManagerDialog({ open, onOpenChange }: Props) {
     setOpenBox(true);
   };
 
+  const { markBoxReceived } = useMerchMutations();
+  const [confirmBox, setConfirmBox] = useState<SublimeMerchBox | null>(null);
+
+  const doReceiveBox = async () => {
+    if (!confirmBox) return;
+    try {
+      const res = await markBoxReceived.mutateAsync(confirmBox.id);
+      const shipMsg =
+        res.shipStatus === "received"
+          ? " Envío marcado como recibido."
+          : res.shipStatus === "partially_received"
+            ? " Envío parcialmente recibido."
+            : "";
+      toast.success(`Caja recibida.${shipMsg}`);
+      setConfirmBox(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo recibir la caja");
+    }
+  };
+
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
