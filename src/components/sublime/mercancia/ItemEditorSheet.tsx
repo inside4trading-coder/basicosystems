@@ -353,6 +353,12 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
             />
           </div>
 
+          <SizesSection
+            form={form}
+            onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+          />
+
+
           <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Costo total estimado</span>
