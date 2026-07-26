@@ -236,6 +236,9 @@ function MobileCard({
             <p className="text-xs text-muted-foreground">
               {item.codigo_fabricante ?? "sin código"} · {item.sku_web ?? "sin SKU"}
             </p>
+            <p className="text-xs text-muted-foreground">
+              {formatSizeSummary(item)} · {calculateTotalUnits(item)} uds
+            </p>
             <PhotoCounts item={item} />
           </div>
         </div>
