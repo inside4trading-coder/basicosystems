@@ -168,6 +168,9 @@ export function ItemsAvailableTab() {
                         {shipment?.shipment_number ?? "—"} · {box?.box_number ?? "—"} ·{" "}
                         Recibido: {fmtDate(i.received_at)}
                       </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatSizeSummary(i)} · {calculateTotalUnits(i)} uds
+                      </p>
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => openEdit(i)}>
