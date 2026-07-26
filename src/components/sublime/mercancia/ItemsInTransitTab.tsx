@@ -254,6 +254,9 @@ export function ItemsInTransitTab() {
                             <div className="text-[10px] text-muted-foreground">
                               {i.codigo_fabricante ?? "—"}
                             </div>
+                            <div className="text-[10px] text-muted-foreground truncate">
+                              {formatSizeSummary(i)} · {calculateTotalUnits(i)} uds
+                            </div>
                           </div>
                         </div>
                       </TableCell>
