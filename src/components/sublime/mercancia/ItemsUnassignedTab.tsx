@@ -147,6 +147,9 @@ export function ItemsUnassignedTab() {
                         <ItemThumb item={i} />
                         <div className="min-w-0">
                           <div className="truncate">{i.name}</div>
+                          <div className="text-[11px] text-muted-foreground truncate">
+                            {formatSizeSummary(i)} · {calculateTotalUnits(i)} uds
+                          </div>
                           <PhotoCounts item={i} />
                         </div>
                       </div>
