@@ -298,19 +298,23 @@ export default function CoreProductEditor() {
         toast.warning("Woo no devolvió variantes utilizables (¿producto simple o sin atributo de talla?)");
         return;
       }
-      // Merge: por woo_variation_id, luego por size. No duplicar.
+      // Merge: por woo_variation_id, luego por (talla+color) normalizados. No duplicar.
       setVariants(prev => {
         const byVarId = new Map<number, number>();
-        const bySize = new Map<string, number>();
+        const byKey = new Map<string, number>();
         prev.forEach((v, i) => {
           if (v.woo_variation_id) byVarId.set(Number(v.woo_variation_id), i);
-          if (v.size) bySize.set(v.size.toUpperCase(), i);
+          const k = `${normVar(v.size)}|${normVar(v.color)}`;
+          if (k !== "|") byKey.set(k, i);
         });
         const next = [...prev];
         for (const v of incoming) {
-          const idx = (v.woo_variation_id && byVarId.get(v.woo_variation_id)) ?? bySize.get(String(v.size).toUpperCase()) ?? -1;
+          const k = `${normVar(v.size)}|${normVar(v.color)}`;
+          const idx = (v.woo_variation_id && byVarId.get(v.woo_variation_id)) ?? byKey.get(k) ?? -1;
           const payload = {
             size: v.size,
+            color: v.color ?? null,
+            normalized_color: v.normalized_color ?? (normVar(v.color) || null),
             variant_label: v.variant_label,
             status: "active" as const,
             woo_variation_id: v.woo_variation_id,
