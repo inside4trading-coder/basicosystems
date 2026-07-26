@@ -141,13 +141,27 @@ function ShipmentRow({
                           {Number(b.weight_kg).toFixed(2)} kg
                         </span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEditBox(b)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        {b.status !== "received" ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7"
+                            onClick={() => onReceiveBox(b)}
+                          >
+                            <PackageCheck className="h-3.5 w-3.5 mr-1" />
+                            Recibida
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEditBox(b)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+
                     </div>
                   ))}
                 </div>
