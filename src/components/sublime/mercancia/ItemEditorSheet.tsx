@@ -109,7 +109,11 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
               no_size: Boolean(item.no_size),
               unit_count: Math.max(1, Number(item.unit_count ?? 1)),
               size_quantities: (item.size_quantities as Record<string, number>) ?? {},
+              product_type: (item.product_type as string) ?? "franelas_hoodies",
+              use_manual_pvp: Boolean(item.use_manual_pvp),
+              pvp_manual: item.pvp_manual == null ? null : Number(item.pvp_manual),
             }
+
           : empty(),
       );
       setPendingOrigen([]);
