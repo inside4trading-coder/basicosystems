@@ -23,6 +23,7 @@ import {
   type MerchItemInput,
   type SublimeMerchItem,
 } from "@/hooks/useSublimeMerch";
+import { PhotoGallery } from "./PhotoGallery";
 
 interface Props {
   open: boolean;
