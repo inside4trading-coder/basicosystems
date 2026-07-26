@@ -83,6 +83,8 @@ export function ItemsAvailableTab() {
   const { data: items = [], isLoading } = useAvailableItems();
   const { data: shipments = [] } = useSublimeShipments();
   const { data: allBoxes = [] } = useSublimeBoxes(null);
+  const { data: pricingRules = [] } = useSublimePricingRules();
+
   const { markItemAvailable, toggleItemUploaded } = useMerchMutations();
   const [editing, setEditing] = useState<SublimeMerchItem | null>(null);
   const [openEditor, setOpenEditor] = useState(false);
