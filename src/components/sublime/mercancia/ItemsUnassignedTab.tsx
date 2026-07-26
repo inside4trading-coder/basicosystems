@@ -111,7 +111,12 @@ export function ItemsUnassignedTab() {
       ) : isMobile ? (
         <div className="space-y-3">
           {items.map((i) => (
-            <MobileCard key={i.id} item={i} onEdit={() => openEdit(i)} />
+            <MobileCard
+              key={i.id}
+              item={i}
+              onEdit={() => openEdit(i)}
+              onAssign={() => openAssignFor(i)}
+            />
           ))}
         </div>
       ) : (
@@ -171,13 +176,23 @@ export function ItemsUnassignedTab() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEdit(i)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Asignar a envío"
+                          onClick={() => openAssignFor(i)}
+                        >
+                          <Truck className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEdit(i)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -188,6 +203,11 @@ export function ItemsUnassignedTab() {
       )}
 
       <ItemEditorSheet open={open} onOpenChange={setOpen} item={editing} />
+      <AssignToShipmentDialog
+        open={openAssign}
+        onOpenChange={setOpenAssign}
+        item={assigning}
+      />
     </div>
   );
 }
@@ -195,9 +215,11 @@ export function ItemsUnassignedTab() {
 function MobileCard({
   item,
   onEdit,
+  onAssign,
 }: {
   item: SublimeMerchItem;
   onEdit: () => void;
+  onAssign: () => void;
 }) {
   return (
     <Card className="p-4 space-y-2">
@@ -212,9 +234,14 @@ function MobileCard({
             <PhotoCounts item={item} />
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onEdit}>
-          <Pencil className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={onAssign} title="Asignar a envío">
+            <Truck className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onEdit}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       <div className="grid grid-cols-3 gap-2 text-xs">
         <div>
