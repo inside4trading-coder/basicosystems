@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Sheet,
   SheetContent,
@@ -19,6 +19,11 @@ import {
   canMarkUploaded,
   calculateTotalCost,
   calculateTotalUnits,
+  calculateSuggestedBasePvp,
+  calculateIvaAmount,
+  getFinalPvp,
+  findPricingRule,
+  IVA_RATE,
   getDefaultSizesForGroup,
   normalizeSizeQuantities,
   validatePhotoFile,
@@ -30,9 +35,11 @@ import {
   useSublimeBoxes,
   useSublimeShipments,
   useSublimeItem,
+  useSublimePricingRules,
   type MerchItemInput,
   type SublimeMerchItem,
 } from "@/hooks/useSublimeMerch";
+
 import {
   Select,
   SelectContent,
@@ -61,7 +68,11 @@ const empty = (): MerchItemInput => ({
   no_size: false,
   unit_count: 1,
   size_quantities: {},
+  product_type: "franelas_hoodies",
+  use_manual_pvp: false,
+  pvp_manual: null,
 });
+
 
 interface PendingFile {
   file: File;
@@ -71,10 +82,17 @@ interface PendingFile {
 export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
   const [form, setForm] = useState<MerchItemInput>(empty());
   const { createItem, updateItem, addPhotoToItem, addWebPhotoUrl } = useMerchMutations();
+  const { data: pricingRules = [] } = useSublimePricingRules();
   const isEdit = Boolean(item?.id);
   const wasUploaded = Boolean(item?.subido_al_sistema);
   const { data: liveItem } = useSublimeItem(isEdit && open ? item?.id : null);
   const currentItem = liveItem ?? item ?? null;
+  const { data: shipmentsForCalc = [] } = useSublimeShipments();
+  const currentShipment =
+    currentItem?.shipment_id
+      ? shipmentsForCalc.find((s) => s.id === currentItem.shipment_id) ?? null
+      : null;
+
 
   const [pendingOrigen, setPendingOrigen] = useState<PendingFile[]>([]);
   const [pendingWebFiles, setPendingWebFiles] = useState<PendingFile[]>([]);
@@ -105,7 +123,11 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
               no_size: Boolean(item.no_size),
               unit_count: Math.max(1, Number(item.unit_count ?? 1)),
               size_quantities: (item.size_quantities as Record<string, number>) ?? {},
+              product_type: (item.product_type as string) ?? "franelas_hoodies",
+              use_manual_pvp: Boolean(item.use_manual_pvp),
+              pvp_manual: item.pvp_manual == null ? null : Number(item.pvp_manual),
             }
+
           : empty(),
       );
       setPendingOrigen([]);
@@ -129,18 +151,20 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
   const set = <K extends keyof MerchItemInput>(k: K, v: MerchItemInput[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  const currentRule = findPricingRule(pricingRules, form.product_type);
   const toggleUploaded = (checked: boolean) => {
     if (!checked) {
       set("subido_al_sistema", false);
       return;
     }
-    const check = canMarkUploaded(form);
+    const check = canMarkUploaded(form, currentRule, currentShipment);
     if (!check.ok) {
       toast.error(check.message);
       return;
     }
     set("subido_al_sistema", true);
   };
+
 
   const addPending = (
     files: FileList | null,
@@ -212,7 +236,7 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
     }
 
     if (form.subido_al_sistema) {
-      const check = canMarkUploaded(form);
+      const check = canMarkUploaded(form, currentRule, currentShipment);
       if (!check.ok) return toast.error(check.message);
     }
 
@@ -269,7 +293,7 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
     }
   };
 
-  const totalEst = calculateTotalCost(form, null);
+  void calculateTotalCost;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -322,26 +346,44 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>PVP</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                value={form.pvp ?? ""}
-                onChange={(e) =>
-                  set("pvp", e.target.value === "" ? null : Number(e.target.value))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>SKU web</Label>
-              <Input
-                value={form.sku_web ?? ""}
-                onChange={(e) => set("sku_web", e.target.value.trim() || null)}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>SKU web</Label>
+            <Input
+              value={form.sku_web ?? ""}
+              onChange={(e) => set("sku_web", e.target.value.trim() || null)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Tipo de artículo</Label>
+            <Select
+              value={form.product_type}
+              onValueChange={(v) => set("product_type", v)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(pricingRules.filter((r) => r.active).length
+                  ? pricingRules.filter((r) => r.active)
+                  : []
+                ).map((r) => (
+                  <SelectItem key={r.product_type} value={r.product_type}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+                {/* Mostrar tipo inactivo si el producto lo tiene */}
+                {currentRule && currentRule.active === false ? (
+                  <SelectItem value={currentRule.product_type}>
+                    {currentRule.label} (inactivo)
+                  </SelectItem>
+                ) : null}
+                {/* Fallback si no cargó nada */}
+                {pricingRules.length === 0 ? (
+                  <SelectItem value="franelas_hoodies">Franelas / Hoodies</SelectItem>
+                ) : null}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -358,17 +400,13 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
             onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
           />
 
+          <SuggestedPricePanel
+            form={form}
+            rule={currentRule}
+            shipment={currentShipment}
+            onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+          />
 
-          <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Costo total estimado (lote)</span>
-              <span className="font-semibold">{totalEst.toFixed(2)} €</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Unidades: {calculateTotalUnits(form)} · Precio compra y PVP se toman por unidad.
-              El peso se toma como peso total del lote.
-            </p>
-          </div>
 
           <Separator />
 
@@ -376,7 +414,7 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
             <div className="space-y-1">
               <Label className="text-sm">Subido al sistema</Label>
               <p className="text-xs text-muted-foreground">
-                Requiere SKU web y PVP asignados.
+                Requiere SKU web y PVP final válido (sugerido o manual).
               </p>
             </div>
             <Switch
@@ -877,6 +915,113 @@ function SizesSection({
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function SuggestedPricePanel({
+  form,
+  rule,
+  shipment,
+  onChange,
+}: {
+  form: MerchItemInput;
+  rule: ReturnType<typeof findPricingRule>;
+  shipment: { cost_per_kg_eur: number | null } | null;
+  onChange: (patch: Partial<MerchItemInput>) => void;
+}) {
+  const totalCost = calculateTotalCost(form, shipment);
+  const units = Math.max(1, calculateTotalUnits(form));
+  const perUnitCost = totalCost / units;
+  const pct = rule ? Number(rule.profit_percentage ?? 0) : 0;
+  const baseSuggested = calculateSuggestedBasePvp(perUnitCost, pct);
+  const iva = calculateIvaAmount(baseSuggested);
+  const suggestedFinal = baseSuggested + iva;
+  const finalPvp = getFinalPvp(form, rule, shipment);
+  const manualBelow =
+    form.use_manual_pvp &&
+    form.pvp_manual != null &&
+    Number(form.pvp_manual) > 0 &&
+    Number(form.pvp_manual) < suggestedFinal;
+
+  return (
+    <div className="space-y-3 rounded-lg border border-border/60 p-3 bg-muted/20">
+      <div>
+        <Label className="text-sm">Precio sugerido</Label>
+        <p className="text-xs text-muted-foreground mt-1">
+          Se calcula desde el costo total, la ganancia del tipo y el IVA 16%.
+        </p>
+      </div>
+      <div className="text-xs space-y-1">
+        <Row k="Tipo de artículo" v={rule?.label ?? "—"} />
+        <Row k={`Costo total (lote, ${units}u)`} v={`${totalCost.toFixed(2)} €`} />
+        <Row k="Costo unitario" v={`${perUnitCost.toFixed(2)} €`} />
+        <Row k="Ganancia configurada" v={`${pct}%`} />
+        <Row k="PVP base sugerido" v={`${baseSuggested.toFixed(2)} €`} />
+        <Row k={`IVA ${(IVA_RATE * 100).toFixed(0)}%`} v={`${iva.toFixed(2)} €`} />
+        <Row
+          k="PVP sugerido final (unit.)"
+          v={<span className="font-semibold">{suggestedFinal.toFixed(2)} €</span>}
+        />
+      </div>
+      {!shipment ? (
+        <p className="text-[11px] text-muted-foreground italic">
+          Este costo puede cambiar cuando se asigne un envío con costo por kg.
+        </p>
+      ) : null}
+
+      <Separator />
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-0.5">
+          <Label className="text-sm">Usar PVP manual</Label>
+          <p className="text-[11px] text-muted-foreground">
+            Ignora el sugerido y usa un precio propio.
+          </p>
+        </div>
+        <Switch
+          checked={form.use_manual_pvp}
+          onCheckedChange={(v) => onChange({ use_manual_pvp: v })}
+        />
+      </div>
+
+      {form.use_manual_pvp ? (
+        <div className="space-y-2">
+          <Label>PVP manual (unit.)</Label>
+          <Input
+            type="number"
+            step="0.01"
+            min={0}
+            value={form.pvp_manual ?? ""}
+            onChange={(e) =>
+              onChange({
+                pvp_manual: e.target.value === "" ? null : Number(e.target.value),
+              })
+            }
+          />
+          {manualBelow ? (
+            <p className="text-[11px] text-amber-600 dark:text-amber-500">
+              Este PVP está por debajo del sugerido para este tipo de artículo.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="rounded-md border border-border/60 bg-background p-2 text-xs flex items-center justify-between">
+        <span className="text-muted-foreground">PVP final aplicado (unit.)</span>
+        <span className="font-semibold">
+          {finalPvp != null ? `${finalPvp.toFixed(2)} €` : "—"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Row({ k, v }: { k: string; v: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-muted-foreground">{k}</span>
+      <span>{v}</span>
     </div>
   );
 }

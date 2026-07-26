@@ -19,6 +19,7 @@ import {
   useInTransitItems,
   useSublimeShipments,
   useSublimeBoxes,
+  useSublimePricingRules,
   type SublimeMerchItem,
   type SublimeMerchShipment,
   type SublimeMerchBox,
@@ -28,11 +29,14 @@ import {
   calculateTotalCost,
   calculateMargin,
   calculateTotalUnits,
+  findPricingRule,
   formatSizeSummary,
+  getFinalPvp,
   MERCH_ESTADO_LABEL,
   resolvePhotoUrl,
   type MerchEstado,
 } from "@/lib/sublimeMerch";
+
 import { ItemEditorSheet } from "./ItemEditorSheet";
 import { AssignToShipmentDialog } from "./AssignToShipmentDialog";
 import { ReceiveItemDialog } from "./ReceiveItemDialog";
@@ -81,6 +85,8 @@ export function ItemsInTransitTab() {
   const { data: items = [], isLoading } = useInTransitItems();
   const { data: shipments = [] } = useSublimeShipments();
   const { data: allBoxes = [] } = useSublimeBoxes(null);
+  const { data: pricingRules = [] } = useSublimePricingRules();
+
   const [editing, setEditing] = useState<SublimeMerchItem | null>(null);
   const [openEditor, setOpenEditor] = useState(false);
   const [assigning, setAssigning] = useState<SublimeMerchItem | null>(null);
@@ -145,7 +151,10 @@ export function ItemsInTransitTab() {
             const box = i.box_id ? boxMap.get(i.box_id) : null;
             const shippingCost = calculateShippingCost(i, shipment ?? null);
             const total = calculateTotalCost(i, shipment ?? null);
-            const margin = calculateMargin(i, shipment ?? null);
+            const rule = findPricingRule(pricingRules, i.product_type);
+            const finalPvp = getFinalPvp(i, rule, shipment ?? null);
+            const margin = calculateMargin(i, shipment ?? null, rule);
+
             return (
               <Card key={i.id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
@@ -243,7 +252,10 @@ export function ItemsInTransitTab() {
                   const box = i.box_id ? boxMap.get(i.box_id) : null;
                   const shippingCost = calculateShippingCost(i, shipment ?? null);
                   const total = calculateTotalCost(i, shipment ?? null);
-                  const margin = calculateMargin(i, shipment ?? null);
+                  const rule = findPricingRule(pricingRules, i.product_type);
+                  const finalPvp = getFinalPvp(i, rule, shipment ?? null);
+                  const margin = calculateMargin(i, shipment ?? null, rule);
+
                   return (
                     <TableRow key={i.id}>
                       <TableCell className="font-medium">
@@ -289,7 +301,7 @@ export function ItemsInTransitTab() {
                         {total.toFixed(2)} €
                       </TableCell>
                       <TableCell className="text-right">
-                        {i.pvp == null ? "—" : `${Number(i.pvp).toFixed(2)} €`}
+                        {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
                       </TableCell>
                       <TableCell className="text-right">
                         {margin == null ? "—" : `${margin.toFixed(2)} €`}

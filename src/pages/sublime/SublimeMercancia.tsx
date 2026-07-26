@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, Plus, Truck, FileDown } from "lucide-react";
+import { Package, Plus, Truck, FileDown, Percent } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,10 +9,12 @@ import { ItemsInTransitTab } from "@/components/sublime/mercancia/ItemsInTransit
 import { ItemsAvailableTab } from "@/components/sublime/mercancia/ItemsAvailableTab";
 import { ShipmentEditorDialog } from "@/components/sublime/mercancia/ShipmentEditorDialog";
 import { ShipmentsManagerDialog } from "@/components/sublime/mercancia/ShipmentsManagerDialog";
+import { PricingRulesDialog } from "@/components/sublime/mercancia/PricingRulesDialog";
 import {
   useItemsCounts,
   useSublimeShipments,
   useSublimeBoxes,
+  useSublimePricingRules,
   fetchAllSublimeMerchItemsForCsv,
 } from "@/hooks/useSublimeMerch";
 import { downloadSublimeMerchCsv } from "@/lib/sublimeMerch";
@@ -21,8 +23,10 @@ export default function SublimeMercancia() {
   const { data: counts } = useItemsCounts();
   const { data: shipments = [] } = useSublimeShipments();
   const { data: allBoxes = [] } = useSublimeBoxes(null);
+  const { data: pricingRules = [] } = useSublimePricingRules();
   const [openNewShip, setOpenNewShip] = useState(false);
   const [openManage, setOpenManage] = useState(false);
+  const [openPricing, setOpenPricing] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   const handleExportCsv = async () => {
@@ -33,7 +37,7 @@ export default function SublimeMercancia() {
         toast.info("No hay productos para exportar.");
         return;
       }
-      downloadSublimeMerchCsv(items, shipments, allBoxes);
+      downloadSublimeMerchCsv(items, shipments, allBoxes, pricingRules);
       toast.success(`CSV exportado (${items.length} productos)`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al exportar");
@@ -41,6 +45,7 @@ export default function SublimeMercancia() {
       setExporting(false);
     }
   };
+
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
@@ -63,6 +68,10 @@ export default function SublimeMercancia() {
             <FileDown className="h-4 w-4 mr-2" />
             {exporting ? "Exportando…" : "Exportar CSV"}
           </Button>
+          <Button variant="outline" onClick={() => setOpenPricing(true)}>
+            <Percent className="h-4 w-4 mr-2" />
+            Configurar precios
+          </Button>
           <Button variant="outline" onClick={() => setOpenManage(true)}>
             <Truck className="h-4 w-4 mr-2" />
             Gestionar envíos
@@ -72,6 +81,7 @@ export default function SublimeMercancia() {
             Nuevo envío
           </Button>
         </div>
+
       </div>
 
       <Tabs defaultValue="unassigned" className="space-y-4">
@@ -110,6 +120,8 @@ export default function SublimeMercancia() {
 
       <ShipmentEditorDialog open={openNewShip} onOpenChange={setOpenNewShip} />
       <ShipmentsManagerDialog open={openManage} onOpenChange={setOpenManage} />
+      <PricingRulesDialog open={openPricing} onOpenChange={setOpenPricing} />
+
     </div>
   );
 }

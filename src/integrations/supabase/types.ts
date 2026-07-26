@@ -7812,7 +7812,9 @@ export type Database = {
           notas: string | null
           peso_kg: number
           precio_compra: number
+          product_type: string
           pvp: number | null
+          pvp_manual: number | null
           received_at: string | null
           received_by: string | null
           shipment_id: string | null
@@ -7827,6 +7829,7 @@ export type Database = {
           updated_at: string
           uploaded_at: string | null
           uploaded_by: string | null
+          use_manual_pvp: boolean
         }
         Insert: {
           box_id?: string | null
@@ -7842,7 +7845,9 @@ export type Database = {
           notas?: string | null
           peso_kg?: number
           precio_compra?: number
+          product_type?: string
           pvp?: number | null
+          pvp_manual?: number | null
           received_at?: string | null
           received_by?: string | null
           shipment_id?: string | null
@@ -7857,6 +7862,7 @@ export type Database = {
           updated_at?: string
           uploaded_at?: string | null
           uploaded_by?: string | null
+          use_manual_pvp?: boolean
         }
         Update: {
           box_id?: string | null
@@ -7872,7 +7878,9 @@ export type Database = {
           notas?: string | null
           peso_kg?: number
           precio_compra?: number
+          product_type?: string
           pvp?: number | null
+          pvp_manual?: number | null
           received_at?: string | null
           received_by?: string | null
           shipment_id?: string | null
@@ -7887,6 +7895,7 @@ export type Database = {
           updated_at?: string
           uploaded_at?: string | null
           uploaded_by?: string | null
+          use_manual_pvp?: boolean
         }
         Relationships: [
           {
@@ -7904,6 +7913,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sublime_merch_pricing_rules: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          label: string
+          product_type: string
+          profit_percentage: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          label: string
+          product_type: string
+          profit_percentage?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          label?: string
+          product_type?: string
+          profit_percentage?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       sublime_merch_shipments: {
         Row: {

@@ -14,16 +14,20 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   useUnassignedItems,
+  useSublimePricingRules,
   type SublimeMerchItem,
 } from "@/hooks/useSublimeMerch";
 import {
   calculateTotalCost,
   calculateTotalUnits,
+  findPricingRule,
   formatSizeSummary,
+  getFinalPvp,
   MERCH_ESTADO_LABEL,
   resolvePhotoUrl,
   type MerchEstado,
 } from "@/lib/sublimeMerch";
+
 import { ItemEditorSheet } from "./ItemEditorSheet";
 import { AssignToShipmentDialog } from "./AssignToShipmentDialog";
 
@@ -68,6 +72,8 @@ function PhotoCounts({ item }: { item: SublimeMerchItem }) {
 
 export function ItemsUnassignedTab() {
   const { data: items = [], isLoading } = useUnassignedItems();
+  const { data: pricingRules = [] } = useSublimePricingRules();
+
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<SublimeMerchItem | null>(null);
   const [assigning, setAssigning] = useState<SublimeMerchItem | null>(null);
@@ -112,14 +118,20 @@ export function ItemsUnassignedTab() {
         </Card>
       ) : isMobile ? (
         <div className="space-y-3">
-          {items.map((i) => (
-            <MobileCard
-              key={i.id}
-              item={i}
-              onEdit={() => openEdit(i)}
-              onAssign={() => openAssignFor(i)}
-            />
-          ))}
+          {items.map((i) => {
+            const rule = findPricingRule(pricingRules, i.product_type);
+            const finalPvp = getFinalPvp(i, rule, null);
+            return (
+              <MobileCard
+                key={i.id}
+                item={i}
+                finalPvp={finalPvp}
+                onEdit={() => openEdit(i)}
+                onAssign={() => openAssignFor(i)}
+              />
+            );
+          })}
+
         </div>
       ) : (
         <Card className="overflow-hidden">
@@ -140,7 +152,10 @@ export function ItemsUnassignedTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((i) => (
+                {items.map((i) => {
+                  const rule = findPricingRule(pricingRules, i.product_type);
+                  const finalPvp = getFinalPvp(i, rule, null);
+                  return (
                   <TableRow key={i.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
@@ -162,8 +177,9 @@ export function ItemsUnassignedTab() {
                       {Number(i.peso_kg).toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {i.pvp == null ? "—" : `${Number(i.pvp).toFixed(2)} €`}
+                      {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
                     </TableCell>
+
                     <TableCell>{i.sku_web ?? "—"}</TableCell>
                     <TableCell className="text-right">
                       {calculateTotalCost(i, null).toFixed(2)} €
@@ -200,7 +216,9 @@ export function ItemsUnassignedTab() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
+
               </TableBody>
             </Table>
           </div>
@@ -219,13 +237,16 @@ export function ItemsUnassignedTab() {
 
 function MobileCard({
   item,
+  finalPvp,
   onEdit,
   onAssign,
 }: {
   item: SublimeMerchItem;
+  finalPvp: number | null;
   onEdit: () => void;
   onAssign: () => void;
 }) {
+
   return (
     <Card className="p-4 space-y-2">
       <div className="flex items-start justify-between gap-2">
@@ -263,8 +284,9 @@ function MobileCard({
         <div>
           <p className="text-muted-foreground">PVP</p>
           <p className="font-medium">
-            {item.pvp == null ? "—" : `${Number(item.pvp).toFixed(2)} €`}
+            {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
           </p>
+
         </div>
       </div>
       <div className="flex items-center justify-between pt-1">

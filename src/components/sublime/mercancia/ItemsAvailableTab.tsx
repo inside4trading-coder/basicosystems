@@ -18,6 +18,7 @@ import {
   useAvailableItems,
   useSublimeShipments,
   useSublimeBoxes,
+  useSublimePricingRules,
   useMerchMutations,
   type SublimeMerchItem,
   type SublimeMerchShipment,
@@ -28,12 +29,15 @@ import {
   calculateTotalCost,
   calculateMargin,
   calculateTotalUnits,
+  findPricingRule,
   formatSizeSummary,
+  getFinalPvp,
   canMarkUploaded,
   MERCH_ESTADO_LABEL,
   resolvePhotoUrl,
   type MerchEstado,
 } from "@/lib/sublimeMerch";
+
 import { ItemEditorSheet } from "./ItemEditorSheet";
 
 function ItemThumb({ item, size = 40 }: { item: SublimeMerchItem; size?: number }) {
@@ -79,6 +83,8 @@ export function ItemsAvailableTab() {
   const { data: items = [], isLoading } = useAvailableItems();
   const { data: shipments = [] } = useSublimeShipments();
   const { data: allBoxes = [] } = useSublimeBoxes(null);
+  const { data: pricingRules = [] } = useSublimePricingRules();
+
   const { markItemAvailable, toggleItemUploaded } = useMerchMutations();
   const [editing, setEditing] = useState<SublimeMerchItem | null>(null);
   const [openEditor, setOpenEditor] = useState(false);
@@ -111,12 +117,15 @@ export function ItemsAvailableTab() {
 
   const doToggleUploaded = async (i: SublimeMerchItem, value: boolean) => {
     if (value) {
-      const check = canMarkUploaded(i);
+      const rule = findPricingRule(pricingRules, i.product_type);
+      const ship = i.shipment_id ? shipments.find((s) => s.id === i.shipment_id) ?? null : null;
+      const check = canMarkUploaded(i, rule, ship);
       if (!check.ok) {
         toast.error(check.message ?? "Faltan datos para marcar como subido");
         return;
       }
     }
+
     try {
       await toggleItemUploaded.mutateAsync({ itemId: i.id, value });
     } catch (e) {
@@ -153,7 +162,10 @@ export function ItemsAvailableTab() {
             const box = i.box_id ? boxMap.get(i.box_id) : null;
             const shipping = calculateShippingCost(i, shipment ?? null);
             const total = calculateTotalCost(i, shipment ?? null);
-            const margin = calculateMargin(i, shipment ?? null);
+            const rule = findPricingRule(pricingRules, i.product_type);
+            const finalPvp = getFinalPvp(i, rule, shipment ?? null);
+            const margin = calculateMargin(i, shipment ?? null, rule);
+
             return (
               <Card key={i.id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
@@ -219,7 +231,8 @@ export function ItemsAvailableTab() {
                 ) : null}
                 <p className="text-[10px] text-muted-foreground">
                   Envío €{shipping.toFixed(2)} · PVP{" "}
-                  {i.pvp == null ? "—" : `${Number(i.pvp).toFixed(2)} €`}
+                  {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
+
                 </p>
               </Card>
             );
@@ -252,7 +265,10 @@ export function ItemsAvailableTab() {
                   const box = i.box_id ? boxMap.get(i.box_id) : null;
                   const shipping = calculateShippingCost(i, shipment ?? null);
                   const total = calculateTotalCost(i, shipment ?? null);
-                  const margin = calculateMargin(i, shipment ?? null);
+                  const rule = findPricingRule(pricingRules, i.product_type);
+                  const finalPvp = getFinalPvp(i, rule, shipment ?? null);
+                  const margin = calculateMargin(i, shipment ?? null, rule);
+
                   return (
                     <TableRow key={i.id}>
                       <TableCell className="font-medium">
@@ -291,7 +307,7 @@ export function ItemsAvailableTab() {
                         {total.toFixed(2)} €
                       </TableCell>
                       <TableCell className="text-right">
-                        {i.pvp == null ? "—" : `${Number(i.pvp).toFixed(2)} €`}
+                        {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
                       </TableCell>
                       <TableCell className="text-right">
                         {margin == null ? "—" : `${margin.toFixed(2)} €`}

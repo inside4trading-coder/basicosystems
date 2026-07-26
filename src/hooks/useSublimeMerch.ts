@@ -32,6 +32,9 @@ export interface SublimeMerchItem {
   no_size: boolean;
   unit_count: number;
   size_quantities: Record<string, number>;
+  product_type: string;
+  use_manual_pvp: boolean;
+  pvp_manual: number | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -51,7 +54,28 @@ export interface MerchItemInput {
   no_size: boolean;
   unit_count: number;
   size_quantities: Record<string, number>;
+  product_type: string;
+  use_manual_pvp: boolean;
+  pvp_manual: number | null;
 }
+
+export interface SublimePricingRule {
+  id: string;
+  product_type: string;
+  label: string;
+  profit_percentage: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PricingRuleInput {
+  product_type?: string;
+  label: string;
+  profit_percentage: number;
+  active?: boolean;
+}
+
 
 export interface SublimeMerchShipment {
   id: string;
@@ -263,7 +287,11 @@ export function useMerchMutations() {
         no_size: input.no_size,
         unit_count: input.unit_count,
         size_quantities: input.size_quantities,
+        product_type: input.product_type,
+        use_manual_pvp: input.use_manual_pvp,
+        pvp_manual: input.pvp_manual,
         created_by: uid,
+
       };
       const { data, error } = await (supabase as any)
         .from(TABLE)
@@ -301,7 +329,11 @@ export function useMerchMutations() {
         no_size: input.no_size,
         unit_count: input.unit_count,
         size_quantities: input.size_quantities,
+        product_type: input.product_type,
+        use_manual_pvp: input.use_manual_pvp,
+        pvp_manual: input.pvp_manual,
       };
+
       if (input.subido_al_sistema && !wasUploaded) {
         payload.uploaded_at = new Date().toISOString();
         payload.uploaded_by = uid;
@@ -678,3 +710,81 @@ export async function fetchAllSublimeMerchItemsForCsv(): Promise<SublimeMerchIte
   return (data ?? []) as SublimeMerchItem[];
 }
 
+
+const T_RULES = "sublime_merch_pricing_rules";
+
+export function useSublimePricingRules() {
+  return useQuery({
+    queryKey: ["sublime-merch", "pricing-rules"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from(T_RULES)
+        .select("*")
+        .order("label", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as SublimePricingRule[];
+    },
+  });
+}
+
+export function usePricingRulesMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["sublime-merch", "pricing-rules"] });
+
+  const createRule = useMutation({
+    mutationFn: async (input: PricingRuleInput) => {
+      const { slugifyProductType } = await import("@/lib/sublimeMerch");
+      const slug = (input.product_type?.trim() || slugifyProductType(input.label));
+      if (!slug) throw new Error("El nombre del tipo es requerido.");
+      if (!input.label.trim()) throw new Error("El nombre del tipo es requerido.");
+      if (input.profit_percentage < 0) throw new Error("El porcentaje no puede ser negativo.");
+      const payload = {
+        product_type: slug,
+        label: input.label.trim(),
+        profit_percentage: input.profit_percentage,
+        active: input.active ?? true,
+      };
+      const { data, error } = await (supabase as any)
+        .from(T_RULES)
+        .insert(payload)
+        .select()
+        .single();
+      if (error) {
+        if (String(error.message ?? "").includes("duplicate") || (error as any).code === "23505") {
+          throw new Error("Ya existe un tipo de artículo con ese nombre.");
+        }
+        throw error;
+      }
+      return data as SublimePricingRule;
+    },
+    onSuccess: invalidate,
+  });
+
+  const updateRule = useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Partial<Pick<SublimePricingRule, "label" | "profit_percentage" | "active">>;
+    }) => {
+      if (patch.profit_percentage != null && patch.profit_percentage < 0) {
+        throw new Error("El porcentaje no puede ser negativo.");
+      }
+      if (patch.label != null && !patch.label.trim()) {
+        throw new Error("El nombre no puede estar vacío.");
+      }
+      const { data, error } = await (supabase as any)
+        .from(T_RULES)
+        .update(patch)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as SublimePricingRule;
+    },
+    onSuccess: invalidate,
+  });
+
+  return { createRule, updateRule };
+}

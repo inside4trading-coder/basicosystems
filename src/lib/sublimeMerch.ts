@@ -9,7 +9,50 @@ export interface MerchItemLike {
   unit_count?: number | null;
   size_group?: string | null;
   size_quantities?: Record<string, number> | null;
+  product_type?: string | null;
+  use_manual_pvp?: boolean | null;
+  pvp_manual?: number | null;
 }
+
+export interface PricingRuleLike {
+  product_type: string;
+  label: string;
+  profit_percentage: number;
+  active?: boolean;
+}
+
+export const IVA_RATE = 0.16;
+
+export const FALLBACK_PRICING_RULES: PricingRuleLike[] = [
+  { product_type: "franelas_hoodies", label: "Franelas / Hoodies", profit_percentage: 100, active: true },
+  { product_type: "pantalones", label: "Pantalones", profit_percentage: 100, active: true },
+  { product_type: "chaquetas", label: "Chaquetas", profit_percentage: 100, active: true },
+  { product_type: "zapatos", label: "Zapatos", profit_percentage: 100, active: true },
+  { product_type: "gorras", label: "Gorras", profit_percentage: 100, active: true },
+  { product_type: "accesorios", label: "Accesorios", profit_percentage: 100, active: true },
+  { product_type: "otros", label: "Otros", profit_percentage: 100, active: true },
+];
+
+export function slugifyProductType(label: string): string {
+  return label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 64);
+}
+
+export function findPricingRule(
+  rules: PricingRuleLike[] | null | undefined,
+  productType: string | null | undefined,
+): PricingRuleLike | null {
+  if (!productType) return null;
+  const list = rules && rules.length ? rules : FALLBACK_PRICING_RULES;
+  return list.find((r) => r.product_type === productType) ?? null;
+}
+
 
 export interface MerchShipmentLike {
   cost_per_kg_eur: number | null;
@@ -75,13 +118,62 @@ export function calculateTotalCost(
   return precio * units + calculateShippingCost(item, shipment);
 }
 
+export function calculatePurchaseTotal(item: MerchItemLike): number {
+  const precio = Number(item.precio_compra ?? 0);
+  const units = Math.max(1, calculateTotalUnits(item));
+  return precio * units;
+}
+
+export function calculateSuggestedBasePvp(cost: number, profitPercentage: number): number {
+  const pct = Number(profitPercentage ?? 0);
+  return Number(cost ?? 0) * (1 + pct / 100);
+}
+
+export function calculateIvaAmount(basePvp: number, ivaRate: number = IVA_RATE): number {
+  return Number(basePvp ?? 0) * Number(ivaRate ?? 0);
+}
+
+export function calculateSuggestedFinalPvp(cost: number, profitPercentage: number): number {
+  const base = calculateSuggestedBasePvp(cost, profitPercentage);
+  return base + calculateIvaAmount(base);
+}
+
+/** Final PVP (per unit) applied to the item, considering manual override or suggested. */
+export function getFinalPvp(
+  item: MerchItemLike,
+  rule?: PricingRuleLike | null,
+  shipment?: MerchShipmentLike | null,
+): number | null {
+  if (item.use_manual_pvp) {
+    const m = item.pvp_manual != null ? Number(item.pvp_manual) : item.pvp != null ? Number(item.pvp) : null;
+    if (m == null || Number.isNaN(m) || m <= 0) return null;
+    return m;
+  }
+  const cost = calculateTotalCost(item, shipment);
+  const units = Math.max(1, calculateTotalUnits(item));
+  const perUnitCost = cost / units;
+  const pct = rule ? Number(rule.profit_percentage ?? 0) : 0;
+  const suggested = calculateSuggestedFinalPvp(perUnitCost, pct);
+  return suggested > 0 ? suggested : null;
+}
+
 export function calculateMargin(
   item: MerchItemLike,
   shipment?: MerchShipmentLike | null,
+  rule?: PricingRuleLike | null,
 ): number | null {
-  if (item.pvp == null) return null;
+  const pvpUnit = getFinalPvp(item, rule, shipment);
+  if (pvpUnit == null) return null;
   const units = Math.max(1, calculateTotalUnits(item));
-  return Number(item.pvp) * units - calculateTotalCost(item, shipment);
+  return pvpUnit * units - calculateTotalCost(item, shipment);
+}
+
+export function calculateMerchMargin(
+  item: MerchItemLike,
+  rule?: PricingRuleLike | null,
+  shipment?: MerchShipmentLike | null,
+): number | null {
+  return calculateMargin(item, shipment, rule);
 }
 
 export type UploadValidation = {
@@ -90,7 +182,11 @@ export type UploadValidation = {
   message?: string;
 };
 
-export function canMarkUploaded(item: MerchItemLike): UploadValidation {
+export function canMarkUploaded(
+  item: MerchItemLike,
+  rule?: PricingRuleLike | null,
+  shipment?: MerchShipmentLike | null,
+): UploadValidation {
   if (!item.sku_web || !item.sku_web.trim()) {
     return {
       ok: false,
@@ -99,16 +195,20 @@ export function canMarkUploaded(item: MerchItemLike): UploadValidation {
         "Debes asignar un SKU web antes de marcar este producto como subido al sistema.",
     };
   }
-  if (item.pvp == null || Number.isNaN(Number(item.pvp))) {
+  const finalPvp = getFinalPvp(item, rule, shipment);
+  const legacyManual =
+    item.use_manual_pvp && (Number(item.pvp_manual ?? 0) > 0 || Number(item.pvp ?? 0) > 0);
+  if (!(finalPvp && finalPvp > 0) && !legacyManual) {
     return {
       ok: false,
       reason: "missing_pvp",
       message:
-        "Debes asignar un PVP antes de marcar este producto como subido al sistema.",
+        "Debes tener un PVP final válido antes de marcar este producto como subido al sistema.",
     };
   }
   return { ok: true };
 }
+
 
 export const MERCH_ESTADOS = [
   "purchased",
@@ -279,6 +379,9 @@ const CSV_COLUMNS = [
   "sku_web",
   "nombre",
   "codigo_fabricante",
+  "product_type",
+  "product_type_label",
+  "profit_percentage",
   "size_group",
   "no_size",
   "size_quantities",
@@ -290,7 +393,13 @@ const CSV_COLUMNS = [
   "cost_per_kg_eur",
   "shipping_cost_eur",
   "costo_total",
-  "pvp_unitario",
+  "pvp_base_sugerido",
+  "iva_rate",
+  "iva_amount",
+  "pvp_sugerido_final",
+  "use_manual_pvp",
+  "pvp_manual",
+  "pvp_final",
   "pvp_total",
   "margen_estimado",
   "shipment_number",
@@ -300,8 +409,6 @@ const CSV_COLUMNS = [
   "estado",
   "subido_al_sistema",
   "uploaded_at",
-  "tax_enabled",
-  "tax_amount",
   "notas",
   "fotos_origen_count",
   "fotos_web_count",
@@ -311,6 +418,7 @@ export function buildSublimeMerchCsv(
   items: CsvItemLike[],
   shipments: CsvShipmentLike[],
   boxes: CsvBoxLike[],
+  rules: PricingRuleLike[] = FALLBACK_PRICING_RULES,
 ): string {
   const shipMap = new Map<string, CsvShipmentLike>();
   for (const s of shipments) shipMap.set(s.id, s);
@@ -321,28 +429,44 @@ export function buildSublimeMerchCsv(
   for (const it of items) {
     const ship = it.shipment_id ? shipMap.get(it.shipment_id) ?? null : null;
     const box = it.box_id ? boxMap.get(it.box_id) ?? null : null;
+    const rule = findPricingRule(rules, it.product_type ?? null);
     const shipping = calculateShippingCost(it, ship);
     const total = calculateTotalCost(it, ship);
-    const margin = calculateMargin(it, ship);
-    const units = calculateTotalUnits(it);
-    const precioTotal = Number(it.precio_compra ?? 0) * Math.max(1, units);
-    const pvpTotal = it.pvp != null ? Number(it.pvp) * Math.max(1, units) : null;
+    const units = Math.max(1, calculateTotalUnits(it));
+    const perUnitCost = total / units;
+    const pct = rule ? Number(rule.profit_percentage ?? 0) : 0;
+    const baseSuggested = calculateSuggestedBasePvp(perUnitCost, pct);
+    const ivaAmount = calculateIvaAmount(baseSuggested);
+    const suggestedFinal = baseSuggested + ivaAmount;
+    const finalPvp = getFinalPvp(it, rule, ship);
+    const margin = calculateMargin(it, ship, rule);
+    const precioTotal = Number(it.precio_compra ?? 0) * units;
+    const pvpTotal = finalPvp != null ? finalPvp * units : null;
     const row = [
       it.sku_web ?? "",
       it.name ?? "",
       it.codigo_fabricante ?? "",
+      it.product_type ?? "",
+      rule?.label ?? "",
+      rule ? String(pct) : "",
       it.size_group ?? "",
       it.no_size ? "true" : "false",
       JSON.stringify(it.size_quantities ?? {}),
       formatSizeSummary(it),
-      String(units),
+      String(calculateTotalUnits(it)),
       Number(it.precio_compra ?? 0).toFixed(2),
       precioTotal.toFixed(2),
       Number(it.peso_kg ?? 0).toFixed(3),
       ship?.cost_per_kg_eur != null ? Number(ship.cost_per_kg_eur).toFixed(2) : "",
       shipping.toFixed(2),
       total.toFixed(2),
-      it.pvp != null ? Number(it.pvp).toFixed(2) : "",
+      baseSuggested.toFixed(2),
+      IVA_RATE.toFixed(2),
+      ivaAmount.toFixed(2),
+      suggestedFinal.toFixed(2),
+      it.use_manual_pvp ? "true" : "false",
+      it.pvp_manual != null ? Number(it.pvp_manual).toFixed(2) : "",
+      finalPvp != null ? finalPvp.toFixed(2) : "",
       pvpTotal != null ? pvpTotal.toFixed(2) : "",
       margin != null ? margin.toFixed(2) : "",
       ship?.shipment_number ?? "",
@@ -352,8 +476,6 @@ export function buildSublimeMerchCsv(
       it.estado ?? "",
       it.subido_al_sistema ? "true" : "false",
       it.uploaded_at ?? "",
-      it.tax_enabled ? "true" : "false",
-      Number(it.tax_amount ?? 0).toFixed(2),
       it.notas ?? "",
       String(it.fotos_origen?.length ?? 0),
       String(it.fotos_web?.length ?? 0),
@@ -367,8 +489,9 @@ export function downloadSublimeMerchCsv(
   items: CsvItemLike[],
   shipments: CsvShipmentLike[],
   boxes: CsvBoxLike[],
+  rules: PricingRuleLike[] = FALLBACK_PRICING_RULES,
 ): void {
-  const csv = buildSublimeMerchCsv(items, shipments, boxes);
+  const csv = buildSublimeMerchCsv(items, shipments, boxes, rules);
   const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -380,3 +503,4 @@ export function downloadSublimeMerchCsv(
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
