@@ -21,16 +21,29 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Pencil, Plus, Package } from "lucide-react";
+import { ChevronDown, Pencil, Plus, Package, PackageCheck } from "lucide-react";
+import { toast } from "sonner";
 import {
   useSublimeShipments,
   useShipmentBoxCounts,
   useSublimeBoxes,
+  useMerchMutations,
   type SublimeMerchShipment,
   type SublimeMerchBox,
 } from "@/hooks/useSublimeMerch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ShipmentEditorDialog } from "./ShipmentEditorDialog";
 import { BoxEditorDialog } from "./BoxEditorDialog";
+
 
 interface Props {
   open: boolean;
@@ -52,15 +65,21 @@ function ShipmentRow({
   onEdit,
   onCreateBox,
   onEditBox,
+  onReceiveBox,
 }: {
   shipment: SublimeMerchShipment;
   boxCount: number;
   onEdit: () => void;
   onCreateBox: () => void;
   onEditBox: (b: SublimeMerchBox) => void;
+  onReceiveBox: (b: SublimeMerchBox) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { data: boxes = [] } = useSublimeBoxes(expanded ? shipment.id : undefined);
+
+
+
+
 
   return (
     <>
@@ -122,13 +141,27 @@ function ShipmentRow({
                           {Number(b.weight_kg).toFixed(2)} kg
                         </span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEditBox(b)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        {b.status !== "received" ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7"
+                            onClick={() => onReceiveBox(b)}
+                          >
+                            <PackageCheck className="h-3.5 w-3.5 mr-1" />
+                            Recibida
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEditBox(b)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+
                     </div>
                   ))}
                 </div>
@@ -168,6 +201,27 @@ export function ShipmentsManagerDialog({ open, onOpenChange }: Props) {
     setBoxShipmentId(b.shipment_id);
     setOpenBox(true);
   };
+
+  const { markBoxReceived } = useMerchMutations();
+  const [confirmBox, setConfirmBox] = useState<SublimeMerchBox | null>(null);
+
+  const doReceiveBox = async () => {
+    if (!confirmBox) return;
+    try {
+      const res = await markBoxReceived.mutateAsync(confirmBox.id);
+      const shipMsg =
+        res.shipStatus === "received"
+          ? " Envío marcado como recibido."
+          : res.shipStatus === "partially_received"
+            ? " Envío parcialmente recibido."
+            : "";
+      toast.success(`Caja recibida.${shipMsg}`);
+      setConfirmBox(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo recibir la caja");
+    }
+  };
+
 
   return (
     <>
@@ -216,6 +270,7 @@ export function ShipmentsManagerDialog({ open, onOpenChange }: Props) {
                       onEdit={() => openEditShip(s)}
                       onCreateBox={() => openNewBox(s.id)}
                       onEditBox={openEditBox}
+                      onReceiveBox={(b) => setConfirmBox(b)}
                     />
                   ))}
                 </TableBody>
@@ -236,6 +291,36 @@ export function ShipmentsManagerDialog({ open, onOpenChange }: Props) {
         box={editingBox}
         defaultShipmentId={boxShipmentId}
       />
+
+      <AlertDialog
+        open={Boolean(confirmBox)}
+        onOpenChange={(v) => !v && setConfirmBox(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar caja recibida</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmBox
+                ? `¿Confirmas que la caja ${confirmBox.box_number} llegó a Venezuela? Todos sus productos (no cancelados) pasarán a estado "recibido".`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                doReceiveBox();
+              }}
+              disabled={markBoxReceived.isPending}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
+
+

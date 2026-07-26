@@ -184,3 +184,132 @@ export async function copyPhotoUrl(url: string): Promise<void> {
   const resolved = await resolvePhotoUrl(url);
   await navigator.clipboard.writeText(resolved || url);
 }
+
+// -----------------------------
+// CSV export (Fase 3)
+// -----------------------------
+
+export interface CsvItemLike extends MerchItemLike {
+  id: string;
+  name: string;
+  codigo_fabricante: string | null;
+  shipment_id: string | null;
+  box_id: string | null;
+  estado: string;
+  subido_al_sistema: boolean;
+  uploaded_at: string | null;
+  received_at: string | null;
+  tax_enabled: boolean;
+  tax_amount: number;
+  notas: string | null;
+  fotos_origen: string[];
+  fotos_web: string[];
+}
+
+export interface CsvShipmentLike extends MerchShipmentLike {
+  id: string;
+  shipment_number: string;
+  sent_at: string | null;
+}
+
+export interface CsvBoxLike {
+  id: string;
+  box_number: string;
+  shipment_id: string;
+}
+
+function csvEscape(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  const s = String(v);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+const CSV_COLUMNS = [
+  "sku_web",
+  "nombre",
+  "codigo_fabricante",
+  "precio_compra",
+  "peso_kg",
+  "cost_per_kg_eur",
+  "shipping_cost_eur",
+  "costo_total",
+  "pvp",
+  "margen_estimado",
+  "shipment_number",
+  "box_number",
+  "sent_at",
+  "received_at",
+  "estado",
+  "subido_al_sistema",
+  "uploaded_at",
+  "tax_enabled",
+  "tax_amount",
+  "notas",
+  "fotos_origen_count",
+  "fotos_web_count",
+] as const;
+
+export function buildSublimeMerchCsv(
+  items: CsvItemLike[],
+  shipments: CsvShipmentLike[],
+  boxes: CsvBoxLike[],
+): string {
+  const shipMap = new Map<string, CsvShipmentLike>();
+  for (const s of shipments) shipMap.set(s.id, s);
+  const boxMap = new Map<string, CsvBoxLike>();
+  for (const b of boxes) boxMap.set(b.id, b);
+
+  const rows: string[] = [CSV_COLUMNS.join(",")];
+  for (const it of items) {
+    const ship = it.shipment_id ? shipMap.get(it.shipment_id) ?? null : null;
+    const box = it.box_id ? boxMap.get(it.box_id) ?? null : null;
+    const shipping = calculateShippingCost(it, ship);
+    const total = calculateTotalCost(it, ship);
+    const margin = calculateMargin(it, ship);
+    const row = [
+      it.sku_web ?? "",
+      it.name ?? "",
+      it.codigo_fabricante ?? "",
+      Number(it.precio_compra ?? 0).toFixed(2),
+      Number(it.peso_kg ?? 0).toFixed(3),
+      ship?.cost_per_kg_eur != null ? Number(ship.cost_per_kg_eur).toFixed(2) : "",
+      shipping.toFixed(2),
+      total.toFixed(2),
+      it.pvp != null ? Number(it.pvp).toFixed(2) : "",
+      margin != null ? margin.toFixed(2) : "",
+      ship?.shipment_number ?? "",
+      box?.box_number ?? "",
+      ship?.sent_at ?? "",
+      it.received_at ?? "",
+      it.estado ?? "",
+      it.subido_al_sistema ? "true" : "false",
+      it.uploaded_at ?? "",
+      it.tax_enabled ? "true" : "false",
+      Number(it.tax_amount ?? 0).toFixed(2),
+      it.notas ?? "",
+      String(it.fotos_origen?.length ?? 0),
+      String(it.fotos_web?.length ?? 0),
+    ].map(csvEscape);
+    rows.push(row.join(","));
+  }
+  return rows.join("\r\n");
+}
+
+export function downloadSublimeMerchCsv(
+  items: CsvItemLike[],
+  shipments: CsvShipmentLike[],
+  boxes: CsvBoxLike[],
+): void {
+  const csv = buildSublimeMerchCsv(items, shipments, boxes);
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const d = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `sublime-mercancia-costos_${d}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

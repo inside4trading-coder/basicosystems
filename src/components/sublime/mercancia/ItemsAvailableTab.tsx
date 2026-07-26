@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, CheckCircle2, XCircle, ImageIcon, Truck, PackageCheck } from "lucide-react";
-
+import { Pencil, ImageIcon, CheckCircle2, XCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -12,13 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-
+import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
-  useInTransitItems,
+  useAvailableItems,
   useSublimeShipments,
   useSublimeBoxes,
+  useMerchMutations,
   type SublimeMerchItem,
   type SublimeMerchShipment,
   type SublimeMerchBox,
@@ -27,14 +27,12 @@ import {
   calculateShippingCost,
   calculateTotalCost,
   calculateMargin,
+  canMarkUploaded,
   MERCH_ESTADO_LABEL,
   resolvePhotoUrl,
   type MerchEstado,
 } from "@/lib/sublimeMerch";
 import { ItemEditorSheet } from "./ItemEditorSheet";
-import { AssignToShipmentDialog } from "./AssignToShipmentDialog";
-import { ReceiveItemDialog } from "./ReceiveItemDialog";
-
 
 function ItemThumb({ item, size = 40 }: { item: SublimeMerchItem; size?: number }) {
   const [src, setSrc] = useState<string>("");
@@ -75,18 +73,14 @@ function fmtDate(iso: string | null): string {
   }
 }
 
-export function ItemsInTransitTab() {
-  const { data: items = [], isLoading } = useInTransitItems();
+export function ItemsAvailableTab() {
+  const { data: items = [], isLoading } = useAvailableItems();
   const { data: shipments = [] } = useSublimeShipments();
   const { data: allBoxes = [] } = useSublimeBoxes(null);
+  const { markItemAvailable, toggleItemUploaded } = useMerchMutations();
   const [editing, setEditing] = useState<SublimeMerchItem | null>(null);
   const [openEditor, setOpenEditor] = useState(false);
-  const [assigning, setAssigning] = useState<SublimeMerchItem | null>(null);
-  const [openAssign, setOpenAssign] = useState(false);
-  const [receiving, setReceiving] = useState<SublimeMerchItem | null>(null);
-  const [openReceiveDlg, setOpenReceiveDlg] = useState(false);
   const isMobile = useIsMobile();
-
 
   const shipMap = useMemo(() => {
     const m = new Map<string, SublimeMerchShipment>();
@@ -103,15 +97,30 @@ export function ItemsInTransitTab() {
     setEditing(i);
     setOpenEditor(true);
   };
-  const openReassign = (i: SublimeMerchItem) => {
-    setAssigning(i);
-    setOpenAssign(true);
-  };
-  const openReceive = (i: SublimeMerchItem) => {
-    setReceiving(i);
-    setOpenReceiveDlg(true);
+
+  const doMarkAvailable = async (i: SublimeMerchItem) => {
+    try {
+      await markItemAvailable.mutateAsync(i.id);
+      toast.success("Marcado como disponible");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al marcar disponible");
+    }
   };
 
+  const doToggleUploaded = async (i: SublimeMerchItem, value: boolean) => {
+    if (value) {
+      const check = canMarkUploaded(i);
+      if (!check.ok) {
+        toast.error(check.message ?? "Faltan datos para marcar como subido");
+        return;
+      }
+    }
+    try {
+      await toggleItemUploaded.mutateAsync({ itemId: i.id, value });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al actualizar");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -124,8 +133,7 @@ export function ItemsInTransitTab() {
   if (items.length === 0) {
     return (
       <Card className="p-8 text-center text-sm text-muted-foreground">
-        No hay productos en camino. Asigna un producto desde{" "}
-        <span className="font-semibold">Compras sin asignar</span>.
+        Sin productos recibidos aún.
       </Card>
     );
   }
@@ -133,7 +141,7 @@ export function ItemsInTransitTab() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        {items.length} producto{items.length === 1 ? "" : "s"} en camino
+        {items.length} producto{items.length === 1 ? "" : "s"} recibido/disponible
       </p>
 
       {isMobile ? (
@@ -141,7 +149,7 @@ export function ItemsInTransitTab() {
           {items.map((i) => {
             const shipment = i.shipment_id ? shipMap.get(i.shipment_id) : null;
             const box = i.box_id ? boxMap.get(i.box_id) : null;
-            const shippingCost = calculateShippingCost(i, shipment ?? null);
+            const shipping = calculateShippingCost(i, shipment ?? null);
             const total = calculateTotalCost(i, shipment ?? null);
             const margin = calculateMargin(i, shipment ?? null);
             return (
@@ -152,8 +160,11 @@ export function ItemsInTransitTab() {
                     <div className="min-w-0">
                       <p className="font-semibold truncate">{i.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {shipment?.shipment_number ?? "sin envío"} ·{" "}
-                        {box?.box_number ?? "sin caja"}
+                        SKU: {i.sku_web ?? "—"} · Cód: {i.codigo_fabricante ?? "—"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {shipment?.shipment_number ?? "—"} · {box?.box_number ?? "—"} ·{" "}
+                        Recibido: {fmtDate(i.received_at)}
                       </p>
                     </div>
                   </div>
@@ -164,48 +175,47 @@ export function ItemsInTransitTab() {
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <div>
                     <p className="text-muted-foreground">Compra</p>
-                    <p className="font-medium">
-                      {Number(i.precio_compra).toFixed(2)} €
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Envío</p>
-                    <p className="font-medium">{shippingCost.toFixed(2)} €</p>
+                    <p className="font-medium">{Number(i.precio_compra).toFixed(2)} €</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Total</p>
                     <p className="font-medium">{total.toFixed(2)} €</p>
                   </div>
+                  <div>
+                    <p className="text-muted-foreground">Margen</p>
+                    <p className="font-medium">
+                      {margin == null ? "—" : `${margin.toFixed(2)} €`}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between pt-1">
-                  <Badge variant="secondary">
+                  <Badge
+                    variant={i.estado === "available" ? "default" : "secondary"}
+                  >
                     {MERCH_ESTADO_LABEL[i.estado as MerchEstado] ?? i.estado}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    Margen: {margin == null ? "—" : `${margin.toFixed(2)} €`}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Subido</span>
+                    <Switch
+                      checked={i.subido_al_sistema}
+                      onCheckedChange={(v) => doToggleUploaded(i, v)}
+                    />
+                  </div>
                 </div>
-                <div className="flex gap-2 pt-1">
+                {i.estado === "received" ? (
                   <Button
-                    variant="outline"
                     size="sm"
-                    className="flex-1"
-                    onClick={() => openReassign(i)}
+                    className="w-full"
+                    onClick={() => doMarkAvailable(i)}
+                    disabled={markItemAvailable.isPending}
                   >
-                    <Truck className="h-3.5 w-3.5 mr-1" />
-                    Reasignar
+                    Marcar disponible
                   </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => openReceive(i)}
-                  >
-                    <PackageCheck className="h-3.5 w-3.5 mr-1" />
-                    Marcar recibido
-                  </Button>
-
-                </div>
+                ) : null}
+                <p className="text-[10px] text-muted-foreground">
+                  Envío €{shipping.toFixed(2)} · PVP{" "}
+                  {i.pvp == null ? "—" : `${Number(i.pvp).toFixed(2)} €`}
+                </p>
               </Card>
             );
           })}
@@ -218,10 +228,9 @@ export function ItemsInTransitTab() {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Envío / Caja</TableHead>
-                  <TableHead>Fecha envío</TableHead>
+                  <TableHead>Recibido</TableHead>
                   <TableHead className="text-right">Compra</TableHead>
-                  <TableHead className="text-right">Peso kg</TableHead>
-                  <TableHead className="text-right">€/kg</TableHead>
+                  <TableHead className="text-right">Peso</TableHead>
                   <TableHead className="text-right">Envío</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right">PVP</TableHead>
@@ -236,7 +245,7 @@ export function ItemsInTransitTab() {
                 {items.map((i) => {
                   const shipment = i.shipment_id ? shipMap.get(i.shipment_id) : null;
                   const box = i.box_id ? boxMap.get(i.box_id) : null;
-                  const shippingCost = calculateShippingCost(i, shipment ?? null);
+                  const shipping = calculateShippingCost(i, shipment ?? null);
                   const total = calculateTotalCost(i, shipment ?? null);
                   const margin = calculateMargin(i, shipment ?? null);
                   return (
@@ -260,9 +269,7 @@ export function ItemsInTransitTab() {
                           {box?.box_number ?? "—"}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">
-                        {fmtDate(shipment?.sent_at ?? null)}
-                      </TableCell>
+                      <TableCell className="text-xs">{fmtDate(i.received_at)}</TableCell>
                       <TableCell className="text-right">
                         {Number(i.precio_compra).toFixed(2)} €
                       </TableCell>
@@ -270,12 +277,7 @@ export function ItemsInTransitTab() {
                         {Number(i.peso_kg).toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {shipment
-                          ? `${Number(shipment.cost_per_kg_eur).toFixed(2)} €`
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {shippingCost.toFixed(2)} €
+                        {shipping.toFixed(2)} €
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         {total.toFixed(2)} €
@@ -288,36 +290,38 @@ export function ItemsInTransitTab() {
                       </TableCell>
                       <TableCell>{i.sku_web ?? "—"}</TableCell>
                       <TableCell>
-                        {i.subido_al_sistema ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-muted-foreground" />
-                        )}
+                        <div className="flex items-center gap-1">
+                          <Switch
+                            checked={i.subido_al_sistema}
+                            onCheckedChange={(v) => doToggleUploaded(i, v)}
+                          />
+                          {i.subido_al_sistema ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          ) : (
+                            <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">
+                        <Badge
+                          variant={i.estado === "available" ? "default" : "secondary"}
+                        >
                           {MERCH_ESTADO_LABEL[i.estado as MerchEstado] ?? i.estado}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button
-                            variant="default"
-                            size="sm"
-                            title="Marcar recibido"
-                            onClick={() => openReceive(i)}
-                          >
-                            <PackageCheck className="h-4 w-4 mr-1" />
-                            Recibido
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            title="Reasignar"
-                            onClick={() => openReassign(i)}
-                          >
-                            <Truck className="h-4 w-4" />
-                          </Button>
+                          {i.estado === "received" ? (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => doMarkAvailable(i)}
+                              disabled={markItemAvailable.isPending}
+                            >
+                              <Download className="h-3.5 w-3.5 mr-1" />
+                              Disponible
+                            </Button>
+                          ) : null}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -327,7 +331,6 @@ export function ItemsInTransitTab() {
                           </Button>
                         </div>
                       </TableCell>
-
                     </TableRow>
                   );
                 })}
@@ -338,19 +341,6 @@ export function ItemsInTransitTab() {
       )}
 
       <ItemEditorSheet open={openEditor} onOpenChange={setOpenEditor} item={editing} />
-      <AssignToShipmentDialog
-        open={openAssign}
-        onOpenChange={setOpenAssign}
-        item={assigning}
-      />
-      <ReceiveItemDialog
-        open={openReceiveDlg}
-        onOpenChange={setOpenReceiveDlg}
-        item={receiving}
-        shipment={receiving?.shipment_id ? shipMap.get(receiving.shipment_id) ?? null : null}
-        box={receiving?.box_id ? boxMap.get(receiving.box_id) ?? null : null}
-      />
-
     </div>
   );
 }

@@ -508,6 +508,116 @@ export function useMerchMutations() {
     onSuccess: invalidate,
   });
 
+  const markItemReceived = useMutation({
+    mutationFn: async (itemId: string) => {
+      const { data: userRes } = await supabase.auth.getUser();
+      const uid = userRes.user?.id ?? null;
+      const { data, error } = await (supabase as any)
+        .from(TABLE)
+        .update({
+          estado: "received",
+          received_at: new Date().toISOString(),
+          received_by: uid,
+        })
+        .eq("id", itemId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as SublimeMerchItem;
+    },
+    onSuccess: invalidate,
+  });
+
+  const markBoxReceived = useMutation({
+    mutationFn: async (boxId: string) => {
+      const { data: userRes } = await supabase.auth.getUser();
+      const uid = userRes.user?.id ?? null;
+      const now = new Date().toISOString();
+
+      const { data: box, error: boxErr } = await (supabase as any)
+        .from(T_BOX)
+        .select("id, shipment_id")
+        .eq("id", boxId)
+        .single();
+      if (boxErr || !box) throw boxErr ?? new Error("Caja no encontrada");
+
+      const { error: itemsErr } = await (supabase as any)
+        .from(TABLE)
+        .update({ estado: "received", received_at: now, received_by: uid })
+        .eq("box_id", boxId)
+        .neq("estado", "cancelled");
+      if (itemsErr) throw itemsErr;
+
+      const { error: bErr } = await (supabase as any)
+        .from(T_BOX)
+        .update({ status: "received", received_at: now, received_by: uid })
+        .eq("id", boxId);
+      if (bErr) throw bErr;
+
+      const shipmentId = box.shipment_id as string;
+      const { data: siblings, error: sibErr } = await (supabase as any)
+        .from(T_BOX)
+        .select("status")
+        .eq("shipment_id", shipmentId);
+      if (sibErr) throw sibErr;
+      const list = (siblings ?? []) as { status: string }[];
+      const allReceived = list.length > 0 && list.every((b) => b.status === "received");
+      const someReceived = list.some((b) => b.status === "received");
+      const shipStatus = allReceived
+        ? "received"
+        : someReceived
+          ? "partially_received"
+          : null;
+      if (shipStatus) {
+        const payload: Record<string, unknown> = { status: shipStatus };
+        if (allReceived) payload.received_at = now;
+        const { error: shipErr } = await (supabase as any)
+          .from(T_SHIP)
+          .update(payload)
+          .eq("id", shipmentId);
+        if (shipErr) throw shipErr;
+      }
+
+      return { boxId, shipmentId, shipStatus };
+    },
+    onSuccess: invalidate,
+  });
+
+  const markItemAvailable = useMutation({
+    mutationFn: async (itemId: string) => {
+      const { data, error } = await (supabase as any)
+        .from(TABLE)
+        .update({ estado: "available" })
+        .eq("id", itemId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as SublimeMerchItem;
+    },
+    onSuccess: invalidate,
+  });
+
+  const toggleItemUploaded = useMutation({
+    mutationFn: async ({ itemId, value }: { itemId: string; value: boolean }) => {
+      const { data: userRes } = await supabase.auth.getUser();
+      const uid = userRes.user?.id ?? null;
+      const payload: Record<string, unknown> = { subido_al_sistema: value };
+      if (value) {
+        payload.uploaded_at = new Date().toISOString();
+        payload.uploaded_by = uid;
+      }
+      const { data, error } = await (supabase as any)
+        .from(TABLE)
+        .update(payload)
+        .eq("id", itemId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as SublimeMerchItem;
+    },
+    onSuccess: invalidate,
+  });
+
   return {
     createItem,
     updateItem,
@@ -520,5 +630,35 @@ export function useMerchMutations() {
     createBox,
     updateBox,
     assignItemToShipmentBox,
+    markItemReceived,
+    markBoxReceived,
+    markItemAvailable,
+    toggleItemUploaded,
   };
 }
+
+export function useAvailableItems() {
+  return useQuery({
+    queryKey: ["sublime-merch", "available"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from(TABLE)
+        .select("*")
+        .in("estado", ["received", "available"])
+        .order("received_at", { ascending: false, nullsFirst: false });
+      if (error) throw error;
+      return (data ?? []) as SublimeMerchItem[];
+    },
+  });
+}
+
+export async function fetchAllSublimeMerchItemsForCsv(): Promise<SublimeMerchItem[]> {
+  const { data, error } = await (supabase as any)
+    .from(TABLE)
+    .select("*")
+    .neq("estado", "cancelled")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as SublimeMerchItem[];
+}
+
