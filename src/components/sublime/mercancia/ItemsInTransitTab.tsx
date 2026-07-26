@@ -185,25 +185,16 @@ export function ItemsInTransitTab() {
                     <Truck className="h-3.5 w-3.5 mr-1" />
                     Reasignar
                   </Button>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="flex-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            disabled
-                          >
-                            Marcar recibido
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Recepción disponible en Fase 3.
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => openReceive(i)}
+                  >
+                    <PackageCheck className="h-3.5 w-3.5 mr-1" />
+                    Marcar recibido
+                  </Button>
+
                 </div>
               </Card>
             );
