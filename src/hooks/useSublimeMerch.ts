@@ -329,7 +329,11 @@ export function useMerchMutations() {
         no_size: input.no_size,
         unit_count: input.unit_count,
         size_quantities: input.size_quantities,
+        product_type: input.product_type,
+        use_manual_pvp: input.use_manual_pvp,
+        pvp_manual: input.pvp_manual,
       };
+
       if (input.subido_al_sistema && !wasUploaded) {
         payload.uploaded_at = new Date().toISOString();
         payload.uploaded_by = uid;
