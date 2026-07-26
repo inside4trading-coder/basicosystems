@@ -461,10 +461,12 @@ export default function CoreProductEditor() {
       // Save variants: delete-all + insert (simple, atomic-ish)
       await supabase.from("core_product_variants").delete().eq("core_product_id", savedId);
       const cleanVars = variants
-        .filter(v => v.size.trim())
+        .filter(v => v.size.trim() || (v.color ?? "").trim())
         .map((v, i) => ({
           core_product_id: savedId,
           size: v.size.trim(),
+          color: v.color?.trim() || null,
+          normalized_color: normVar(v.color) || null,
           variant_label: v.variant_label || null,
           status: v.status || "active",
           woo_variation_id: v.woo_variation_id || null,
