@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Pencil, CheckCircle2, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Pencil, CheckCircle2, XCircle, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +16,52 @@ import {
   useUnassignedItems,
   type SublimeMerchItem,
 } from "@/hooks/useSublimeMerch";
-import { calculateTotalCost, MERCH_ESTADO_LABEL, type MerchEstado } from "@/lib/sublimeMerch";
+import {
+  calculateTotalCost,
+  MERCH_ESTADO_LABEL,
+  resolvePhotoUrl,
+  type MerchEstado,
+} from "@/lib/sublimeMerch";
 import { ItemEditorSheet } from "./ItemEditorSheet";
+
+function ItemThumb({ item, size = 40 }: { item: SublimeMerchItem; size?: number }) {
+  const [src, setSrc] = useState<string>("");
+  const primary = item.fotos_origen?.[0] ?? item.fotos_web?.[0] ?? null;
+  useEffect(() => {
+    let cancelled = false;
+    if (!primary) {
+      setSrc("");
+      return;
+    }
+    resolvePhotoUrl(primary).then((r) => {
+      if (!cancelled) setSrc(r);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [primary]);
+  return (
+    <div
+      className="rounded-md bg-muted/40 border border-border/60 overflow-hidden flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+    >
+      {src ? (
+        <img src={src} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+      )}
+    </div>
+  );
+}
+
+function PhotoCounts({ item }: { item: SublimeMerchItem }) {
+  return (
+    <div className="flex gap-1 text-[10px] text-muted-foreground">
+      <span>O:{item.fotos_origen?.length ?? 0}</span>
+      <span>W:{item.fotos_web?.length ?? 0}</span>
+    </div>
+  );
+}
 
 export function ItemsUnassignedTab() {
   const { data: items = [], isLoading } = useUnassignedItems();
