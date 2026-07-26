@@ -259,6 +259,10 @@ export function useMerchMutations() {
         subido_al_sistema: input.subido_al_sistema,
         uploaded_at: input.subido_al_sistema ? new Date().toISOString() : null,
         uploaded_by: input.subido_al_sistema ? uid : null,
+        size_group: input.size_group,
+        no_size: input.no_size,
+        unit_count: input.unit_count,
+        size_quantities: input.size_quantities,
         created_by: uid,
       };
       const { data, error } = await (supabase as any)
@@ -293,6 +297,10 @@ export function useMerchMutations() {
         sku_web: input.sku_web,
         notas: input.notas,
         subido_al_sistema: input.subido_al_sistema,
+        size_group: input.size_group,
+        no_size: input.no_size,
+        unit_count: input.unit_count,
+        size_quantities: input.size_quantities,
       };
       if (input.subido_al_sistema && !wasUploaded) {
         payload.uploaded_at = new Date().toISOString();
