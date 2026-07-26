@@ -151,18 +151,20 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
   const set = <K extends keyof MerchItemInput>(k: K, v: MerchItemInput[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  const currentRule = findPricingRule(pricingRules, form.product_type);
   const toggleUploaded = (checked: boolean) => {
     if (!checked) {
       set("subido_al_sistema", false);
       return;
     }
-    const check = canMarkUploaded(form);
+    const check = canMarkUploaded(form, currentRule, currentShipment);
     if (!check.ok) {
       toast.error(check.message);
       return;
     }
     set("subido_al_sistema", true);
   };
+
 
   const addPending = (
     files: FileList | null,
