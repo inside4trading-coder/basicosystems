@@ -27,6 +27,8 @@ import {
   calculateShippingCost,
   calculateTotalCost,
   calculateMargin,
+  calculateTotalUnits,
+  formatSizeSummary,
   canMarkUploaded,
   MERCH_ESTADO_LABEL,
   resolvePhotoUrl,
