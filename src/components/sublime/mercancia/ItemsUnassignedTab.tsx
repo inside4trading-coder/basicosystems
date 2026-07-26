@@ -152,7 +152,10 @@ export function ItemsUnassignedTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((i) => (
+                {items.map((i) => {
+                  const rule = findPricingRule(pricingRules, i.product_type);
+                  const finalPvp = getFinalPvp(i, rule, null);
+                  return (
                   <TableRow key={i.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
@@ -174,8 +177,9 @@ export function ItemsUnassignedTab() {
                       {Number(i.peso_kg).toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {i.pvp == null ? "—" : `${Number(i.pvp).toFixed(2)} €`}
+                      {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
                     </TableCell>
+
                     <TableCell>{i.sku_web ?? "—"}</TableCell>
                     <TableCell className="text-right">
                       {calculateTotalCost(i, null).toFixed(2)} €
