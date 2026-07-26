@@ -302,6 +302,15 @@ export function ItemsInTransitTab() {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button
+                            variant="default"
+                            size="sm"
+                            title="Marcar recibido"
+                            onClick={() => openReceive(i)}
+                          >
+                            <PackageCheck className="h-4 w-4 mr-1" />
+                            Recibido
+                          </Button>
+                          <Button
                             variant="ghost"
                             size="sm"
                             title="Reasignar"
@@ -318,6 +327,7 @@ export function ItemsInTransitTab() {
                           </Button>
                         </div>
                       </TableCell>
+
                     </TableRow>
                   );
                 })}
