@@ -301,7 +301,7 @@ export function ItemsInTransitTab() {
                         {total.toFixed(2)} €
                       </TableCell>
                       <TableCell className="text-right">
-                        {i.pvp == null ? "—" : `${Number(i.pvp).toFixed(2)} €`}
+                        {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
                       </TableCell>
                       <TableCell className="text-right">
                         {margin == null ? "—" : `${margin.toFixed(2)} €`}
