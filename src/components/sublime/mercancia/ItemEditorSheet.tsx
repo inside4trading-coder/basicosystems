@@ -24,9 +24,18 @@ import {
 } from "@/lib/sublimeMerch";
 import {
   useMerchMutations,
+  useSublimeBoxes,
+  useSublimeShipments,
   type MerchItemInput,
   type SublimeMerchItem,
 } from "@/hooks/useSublimeMerch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PhotoGallery } from "./PhotoGallery";
 
 interface Props {
