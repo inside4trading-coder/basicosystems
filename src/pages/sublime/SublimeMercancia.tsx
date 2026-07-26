@@ -1,19 +1,46 @@
 import { useState } from "react";
-import { Package, Plus, Truck } from "lucide-react";
+import { Package, Plus, Truck, FileDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { ItemsUnassignedTab } from "@/components/sublime/mercancia/ItemsUnassignedTab";
 import { ItemsInTransitTab } from "@/components/sublime/mercancia/ItemsInTransitTab";
+import { ItemsAvailableTab } from "@/components/sublime/mercancia/ItemsAvailableTab";
 import { ShipmentEditorDialog } from "@/components/sublime/mercancia/ShipmentEditorDialog";
 import { ShipmentsManagerDialog } from "@/components/sublime/mercancia/ShipmentsManagerDialog";
-import { useItemsCounts } from "@/hooks/useSublimeMerch";
+import {
+  useItemsCounts,
+  useSublimeShipments,
+  useSublimeBoxes,
+  fetchAllSublimeMerchItemsForCsv,
+} from "@/hooks/useSublimeMerch";
+import { downloadSublimeMerchCsv } from "@/lib/sublimeMerch";
 
 export default function SublimeMercancia() {
   const { data: counts } = useItemsCounts();
+  const { data: shipments = [] } = useSublimeShipments();
+  const { data: allBoxes = [] } = useSublimeBoxes(null);
   const [openNewShip, setOpenNewShip] = useState(false);
   const [openManage, setOpenManage] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      const items = await fetchAllSublimeMerchItemsForCsv();
+      if (items.length === 0) {
+        toast.info("No hay productos para exportar.");
+        return;
+      }
+      downloadSublimeMerchCsv(items, shipments, allBoxes);
+      toast.success(`CSV exportado (${items.length} productos)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al exportar");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
@@ -31,7 +58,11 @@ export default function SublimeMercancia() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={handleExportCsv} disabled={exporting}>
+            <FileDown className="h-4 w-4 mr-2" />
+            {exporting ? "Exportando…" : "Exportar CSV"}
+          </Button>
           <Button variant="outline" onClick={() => setOpenManage(true)}>
             <Truck className="h-4 w-4 mr-2" />
             Gestionar envíos
@@ -73,9 +104,7 @@ export default function SublimeMercancia() {
         </TabsContent>
 
         <TabsContent value="available">
-          <Card className="p-8 text-center text-sm text-muted-foreground">
-            Disponible en la siguiente fase.
-          </Card>
+          <ItemsAvailableTab />
         </TabsContent>
       </Tabs>
 
