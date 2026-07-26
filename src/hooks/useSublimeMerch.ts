@@ -32,6 +32,9 @@ export interface SublimeMerchItem {
   no_size: boolean;
   unit_count: number;
   size_quantities: Record<string, number>;
+  product_type: string;
+  use_manual_pvp: boolean;
+  pvp_manual: number | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -51,7 +54,28 @@ export interface MerchItemInput {
   no_size: boolean;
   unit_count: number;
   size_quantities: Record<string, number>;
+  product_type: string;
+  use_manual_pvp: boolean;
+  pvp_manual: number | null;
 }
+
+export interface SublimePricingRule {
+  id: string;
+  product_type: string;
+  label: string;
+  profit_percentage: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PricingRuleInput {
+  product_type?: string;
+  label: string;
+  profit_percentage: number;
+  active?: boolean;
+}
+
 
 export interface SublimeMerchShipment {
   id: string;
