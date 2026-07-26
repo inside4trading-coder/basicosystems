@@ -118,14 +118,20 @@ export function ItemsUnassignedTab() {
         </Card>
       ) : isMobile ? (
         <div className="space-y-3">
-          {items.map((i) => (
-            <MobileCard
-              key={i.id}
-              item={i}
-              onEdit={() => openEdit(i)}
-              onAssign={() => openAssignFor(i)}
-            />
-          ))}
+          {items.map((i) => {
+            const rule = findPricingRule(pricingRules, i.product_type);
+            const finalPvp = getFinalPvp(i, rule, null);
+            return (
+              <MobileCard
+                key={i.id}
+                item={i}
+                finalPvp={finalPvp}
+                onEdit={() => openEdit(i)}
+                onAssign={() => openAssignFor(i)}
+              />
+            );
+          })}
+
         </div>
       ) : (
         <Card className="overflow-hidden">
