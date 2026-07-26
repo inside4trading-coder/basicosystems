@@ -18,6 +18,8 @@ import {
 } from "@/hooks/useSublimeMerch";
 import {
   calculateTotalCost,
+  calculateTotalUnits,
+  formatSizeSummary,
   MERCH_ESTADO_LABEL,
   resolvePhotoUrl,
   type MerchEstado,
@@ -145,6 +147,9 @@ export function ItemsUnassignedTab() {
                         <ItemThumb item={i} />
                         <div className="min-w-0">
                           <div className="truncate">{i.name}</div>
+                          <div className="text-[11px] text-muted-foreground truncate">
+                            {formatSizeSummary(i)} · {calculateTotalUnits(i)} uds
+                          </div>
                           <PhotoCounts item={i} />
                         </div>
                       </div>
@@ -230,6 +235,9 @@ function MobileCard({
             <p className="font-semibold truncate">{item.name}</p>
             <p className="text-xs text-muted-foreground">
               {item.codigo_fabricante ?? "sin código"} · {item.sku_web ?? "sin SKU"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {formatSizeSummary(item)} · {calculateTotalUnits(item)} uds
             </p>
             <PhotoCounts item={item} />
           </div>

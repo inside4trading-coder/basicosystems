@@ -28,6 +28,10 @@ export interface SublimeMerchItem {
   tax_amount: number;
   tax_note: string | null;
   notas: string | null;
+  size_group: string;
+  no_size: boolean;
+  unit_count: number;
+  size_quantities: Record<string, number>;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -43,6 +47,10 @@ export interface MerchItemInput {
   sku_web: string | null;
   notas: string | null;
   subido_al_sistema: boolean;
+  size_group: string;
+  no_size: boolean;
+  unit_count: number;
+  size_quantities: Record<string, number>;
 }
 
 export interface SublimeMerchShipment {
@@ -251,6 +259,10 @@ export function useMerchMutations() {
         subido_al_sistema: input.subido_al_sistema,
         uploaded_at: input.subido_al_sistema ? new Date().toISOString() : null,
         uploaded_by: input.subido_al_sistema ? uid : null,
+        size_group: input.size_group,
+        no_size: input.no_size,
+        unit_count: input.unit_count,
+        size_quantities: input.size_quantities,
         created_by: uid,
       };
       const { data, error } = await (supabase as any)
@@ -285,6 +297,10 @@ export function useMerchMutations() {
         sku_web: input.sku_web,
         notas: input.notas,
         subido_al_sistema: input.subido_al_sistema,
+        size_group: input.size_group,
+        no_size: input.no_size,
+        unit_count: input.unit_count,
+        size_quantities: input.size_quantities,
       };
       if (input.subido_al_sistema && !wasUploaded) {
         payload.uploaded_at = new Date().toISOString();

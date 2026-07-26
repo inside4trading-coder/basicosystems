@@ -1,12 +1,60 @@
+export type SizeGroup = "franelas_hoodies" | "pantalones" | "custom";
+
 export interface MerchItemLike {
   precio_compra: number | null;
   peso_kg: number | null;
   pvp: number | null;
   sku_web: string | null;
+  no_size?: boolean | null;
+  unit_count?: number | null;
+  size_group?: string | null;
+  size_quantities?: Record<string, number> | null;
 }
 
 export interface MerchShipmentLike {
   cost_per_kg_eur: number | null;
+}
+
+export function getDefaultSizesForGroup(sizeGroup: string | null | undefined): string[] {
+  if (sizeGroup === "pantalones") return ["28", "30", "32", "34", "36"];
+  if (sizeGroup === "custom") return [];
+  return ["S", "M", "L", "XL", "U"];
+}
+
+export function normalizeSizeQuantities(
+  input: Record<string, unknown> | null | undefined,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!input) return out;
+  for (const [k, v] of Object.entries(input)) {
+    const key = String(k).trim();
+    if (!key) continue;
+    const n = Math.max(0, Math.floor(Number(v ?? 0)));
+    if (n > 0) out[key] = n;
+  }
+  return out;
+}
+
+export function calculateTotalUnits(item: MerchItemLike): number {
+  if (item.no_size) {
+    const n = Math.max(0, Math.floor(Number(item.unit_count ?? 0)));
+    return n;
+  }
+  const q = item.size_quantities ?? {};
+  let total = 0;
+  for (const v of Object.values(q)) total += Math.max(0, Math.floor(Number(v ?? 0)));
+  return total;
+}
+
+export function formatSizeSummary(item: MerchItemLike): string {
+  const units = calculateTotalUnits(item);
+  if (item.no_size) return `Sin talla · ${units} unidad${units === 1 ? "" : "es"}`;
+  const q = item.size_quantities ?? {};
+  const parts = Object.entries(q)
+    .filter(([, v]) => Number(v ?? 0) > 0)
+    .map(([k, v]) => `${k}:${v}`);
+  if (parts.length === 0) return "Sin cantidades";
+  return parts.join(" · ");
 }
 
 export function calculateShippingCost(
@@ -19,11 +67,12 @@ export function calculateShippingCost(
 }
 
 export function calculateTotalCost(
-  item: Pick<MerchItemLike, "precio_compra" | "peso_kg">,
+  item: MerchItemLike,
   shipment?: MerchShipmentLike | null,
 ): number {
   const precio = Number(item.precio_compra ?? 0);
-  return precio + calculateShippingCost(item, shipment);
+  const units = Math.max(1, calculateTotalUnits(item));
+  return precio * units + calculateShippingCost(item, shipment);
 }
 
 export function calculateMargin(
@@ -31,7 +80,8 @@ export function calculateMargin(
   shipment?: MerchShipmentLike | null,
 ): number | null {
   if (item.pvp == null) return null;
-  return Number(item.pvp) - calculateTotalCost(item, shipment);
+  const units = Math.max(1, calculateTotalUnits(item));
+  return Number(item.pvp) * units - calculateTotalCost(item, shipment);
 }
 
 export type UploadValidation = {
@@ -229,7 +279,14 @@ const CSV_COLUMNS = [
   "sku_web",
   "nombre",
   "codigo_fabricante",
+  "size_group",
+  "no_size",
+  "unit_count",
+  "total_units",
+  "tallas_resumen",
+  "size_quantities",
   "precio_compra",
+  "precio_compra_total",
   "peso_kg",
   "cost_per_kg_eur",
   "shipping_cost_eur",
@@ -267,11 +324,20 @@ export function buildSublimeMerchCsv(
     const shipping = calculateShippingCost(it, ship);
     const total = calculateTotalCost(it, ship);
     const margin = calculateMargin(it, ship);
+    const units = calculateTotalUnits(it);
+    const precioTotal = Number(it.precio_compra ?? 0) * Math.max(1, units);
     const row = [
       it.sku_web ?? "",
       it.name ?? "",
       it.codigo_fabricante ?? "",
+      it.size_group ?? "",
+      it.no_size ? "true" : "false",
+      String(it.unit_count ?? 0),
+      String(units),
+      formatSizeSummary(it),
+      JSON.stringify(it.size_quantities ?? {}),
       Number(it.precio_compra ?? 0).toFixed(2),
+      precioTotal.toFixed(2),
       Number(it.peso_kg ?? 0).toFixed(3),
       ship?.cost_per_kg_eur != null ? Number(ship.cost_per_kg_eur).toFixed(2) : "",
       shipping.toFixed(2),

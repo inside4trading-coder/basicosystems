@@ -27,6 +27,8 @@ import {
   calculateShippingCost,
   calculateTotalCost,
   calculateMargin,
+  calculateTotalUnits,
+  formatSizeSummary,
   canMarkUploaded,
   MERCH_ESTADO_LABEL,
   resolvePhotoUrl,
@@ -166,6 +168,9 @@ export function ItemsAvailableTab() {
                         {shipment?.shipment_number ?? "—"} · {box?.box_number ?? "—"} ·{" "}
                         Recibido: {fmtDate(i.received_at)}
                       </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatSizeSummary(i)} · {calculateTotalUnits(i)} uds
+                      </p>
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => openEdit(i)}>
@@ -257,6 +262,9 @@ export function ItemsAvailableTab() {
                             <div className="truncate">{i.name}</div>
                             <div className="text-[10px] text-muted-foreground">
                               {i.codigo_fabricante ?? "—"}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground truncate">
+                              {formatSizeSummary(i)} · {calculateTotalUnits(i)} uds
                             </div>
                           </div>
                         </div>
