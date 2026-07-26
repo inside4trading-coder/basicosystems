@@ -237,13 +237,16 @@ export function ItemsUnassignedTab() {
 
 function MobileCard({
   item,
+  finalPvp,
   onEdit,
   onAssign,
 }: {
   item: SublimeMerchItem;
+  finalPvp: number | null;
   onEdit: () => void;
   onAssign: () => void;
 }) {
+
   return (
     <Card className="p-4 space-y-2">
       <div className="flex items-start justify-between gap-2">
