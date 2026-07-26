@@ -647,6 +647,7 @@ export default function CoreProductEditor() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Talla</TableHead>
+                    <TableHead>Color</TableHead>
                     <TableHead>Etiqueta</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Woo variation_id</TableHead>
@@ -658,10 +659,11 @@ export default function CoreProductEditor() {
                 </TableHeader>
                 <TableBody>
                   {variants.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">Sin tallas — usa un preset o agrega una.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Sin tallas — usa un preset o agrega una.</TableCell></TableRow>
                   ) : variants.map((v, i) => (
                     <TableRow key={v.id ?? v._local}>
                       <TableCell><Input value={v.size} onChange={e => updateVariant(i, { size: e.target.value })} className="w-20" /></TableCell>
+                      <TableCell><Input value={v.color ?? ""} onChange={e => updateVariant(i, { color: e.target.value, normalized_color: normVar(e.target.value) || null })} className="w-24" placeholder="Negro" /></TableCell>
                       <TableCell><Input value={v.variant_label ?? ""} onChange={e => updateVariant(i, { variant_label: e.target.value })} className="w-32" /></TableCell>
                       <TableCell>
                         <Select value={v.status} onValueChange={val => updateVariant(i, { status: val })}>
@@ -682,7 +684,7 @@ export default function CoreProductEditor() {
                 </TableBody>
               </Table>
             </div>
-            <p className="text-xs text-muted-foreground">Cada producto de fabricación puede tener varias tallas. No se permiten tallas duplicadas dentro del mismo producto.</p>
+            <p className="text-xs text-muted-foreground">Cada producto puede tener varias tallas y colores. No se permiten variantes duplicadas (misma talla y color) dentro del mismo producto.</p>
           </Card>
         </TabsContent>
 
