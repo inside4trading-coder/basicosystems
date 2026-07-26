@@ -279,7 +279,14 @@ const CSV_COLUMNS = [
   "sku_web",
   "nombre",
   "codigo_fabricante",
+  "size_group",
+  "no_size",
+  "unit_count",
+  "total_units",
+  "tallas_resumen",
+  "size_quantities",
   "precio_compra",
+  "precio_compra_total",
   "peso_kg",
   "cost_per_kg_eur",
   "shipping_cost_eur",
@@ -317,11 +324,20 @@ export function buildSublimeMerchCsv(
     const shipping = calculateShippingCost(it, ship);
     const total = calculateTotalCost(it, ship);
     const margin = calculateMargin(it, ship);
+    const units = calculateTotalUnits(it);
+    const precioTotal = Number(it.precio_compra ?? 0) * Math.max(1, units);
     const row = [
       it.sku_web ?? "",
       it.name ?? "",
       it.codigo_fabricante ?? "",
+      it.size_group ?? "",
+      it.no_size ? "true" : "false",
+      String(it.unit_count ?? 0),
+      String(units),
+      formatSizeSummary(it),
+      JSON.stringify(it.size_quantities ?? {}),
       Number(it.precio_compra ?? 0).toFixed(2),
+      precioTotal.toFixed(2),
       Number(it.peso_kg ?? 0).toFixed(3),
       ship?.cost_per_kg_eur != null ? Number(ship.cost_per_kg_eur).toFixed(2) : "",
       shipping.toFixed(2),
