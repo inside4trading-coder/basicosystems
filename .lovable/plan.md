@@ -1,43 +1,46 @@
-## Diagnóstico
+## Patch mínimo — Soporte de variantes talla + color en CoreProductEditor
 
-- Movimientos `replacement_*` se crean correctamente (6 filas, status `posted`, buckets y montos correctos).
-- `core_fabrication_funds.available_amount` NO se actualiza (last `updated_at` es 22-jul, previo a los reemplazos del 24-jul).
-- `CoreFabricationFunds.tsx:200` calcula las cards Fábrica / Pendiente sumando `available_amount` directamente desde `core_fabrication_funds`, no desde movimientos.
-- Todas las demás operaciones (aportes, egresos, transferencias) actualizan `available_amount` explícitamente. El RPC de reemplazo lo omite.
+Un solo archivo: `src/pages/core/CoreProductEditor.tsx`. Sin migraciones, sin edge functions, sin backend.
 
-## Causa raíz
+### Cambios
 
-`core_apply_replacement_event` inserta filas en `core_fabrication_fund_movements` pero olvida el `UPDATE core_fabrication_funds SET available_amount = available_amount + delta` para cada fondo afectado.
+1. **Tipo `Variant`** (líneas 18–31): añadir `color?: string | null` y `normalized_color?: string | null`. Agregar helper local `normVar(s)` que hace trim + strip acentos + upper.
 
-## Patch mínimo recomendado
+2. **Import Woo → merge** (líneas 294–320):
+   - Cambiar la clave de dedupe de `size.toUpperCase()` a `${normVar(size)}|${normVar(color)}`.
+   - Incluir `color: v.color ?? null` y `normalized_color: v.normalized_color ?? normVar(v.color) ?? null` en el payload.
+   - Actualizar el índice `byVarId`/`byKey` en consecuencia.
 
-Migración que redefine `core_apply_replacement_event` añadiendo, dentro de la misma transacción y justo después de los 3 INSERT de movimientos:
+3. **Validación de duplicados en `handleSave`** (líneas 343–345):
+   ```ts
+   const keys = variants
+     .filter(v => v.size.trim() || (v.color ?? "").trim())
+     .map(v => `${normVar(v.size)}|${normVar(v.color)}`);
+   if (new Set(keys).size !== keys.length) return toast.error("Hay variantes duplicadas (misma talla y color)");
+   ```
+   Sigue funcionando para productos solo-talla (color vacío en todas: la clave `SIZE|` sigue siendo única entre tallas distintas).
 
-```sql
-UPDATE public.core_fabrication_funds
-   SET available_amount = available_amount - v_reserved_amount,
-       updated_at = now()
- WHERE id = v_pending_fund_id;
+4. **Tabla UI** (líneas 630–666):
+   - Añadir `<TableHead>Color</TableHead>` justo después de "Etiqueta".
+   - Añadir `<TableCell><Input value={v.color ?? ""} onChange={e => updateVariant(i, { color: e.target.value, normalized_color: normVar(e.target.value) })} className="w-24" /></TableCell>`.
+   - Ajustar el `colSpan={8}` a `colSpan={9}` en la fila vacía.
 
-UPDATE public.core_fabrication_funds
-   SET available_amount = available_amount + v_reserved_amount,
-       updated_at = now()
- WHERE id = v_factory_fund_id;
+5. **Insert al guardar** (líneas 450–464): añadir `color: v.color?.trim() || null` y `normalized_color: normVar(v.color) || null` al objeto insertado.
 
-UPDATE public.core_fabrication_funds
-   SET available_amount = available_amount + v_cost_delta, -- negativo si destino más barato
-       updated_at = now()
- WHERE id = v_factory_fund_id;
-```
+6. **Carga al editar** (línea 163): `setVariants((vs as any) ?? [])` ya trae `color`/`normalized_color` porque el select es `*`. Sin cambios.
 
-(los tres UPDATE se pueden consolidar en dos, uno por fondo, sumando deltas).
+7. **Texto de ayuda** (línea 670): "No se permiten variantes duplicadas (misma talla y color) dentro del mismo producto."
 
-## Backfill
+### Fuera de alcance
 
-Migración one-shot que reajusta `available_amount` de los fondos `07f14689…` (pending) y `96f2b00c…` (general) sumando el neto de todos los movimientos `replacement_*` con `status='posted'` cuya fecha sea posterior al último `updated_at` del fondo.
+Backend, RLS, migraciones, edge functions, WooCommerce, costos, inventario, OP, SKU, plantillas.
 
-## Fuera de alcance
+### Validación
 
-- No cambiar la UI: las cards seguirán leyendo `available_amount`.
-- No tocar otros RPCs.
-- No modificar movimientos ya existentes.
+- Tank Top Men Basics Plain: 8 variantes (S/M/L/XL × Blanco/Negro) deben guardar sin error.
+- Producto solo-talla existente: sigue funcionando (todas con color vacío → sigue detectando repetición de talla).
+- Typecheck posterior a la edición.
+
+### Respuesta final
+
+Al terminar reportaré los 10 puntos del checklist del usuario.

@@ -19,6 +19,8 @@ type Variant = {
   id?: string;
   _local?: string;
   size: string;
+  color?: string | null;
+  normalized_color?: string | null;
   variant_label?: string | null;
   status: string;
   woo_variation_id?: number | null;
@@ -29,6 +31,11 @@ type Variant = {
   notes?: string | null;
   sort_order?: number;
 };
+
+function normVar(s: string | null | undefined): string {
+  if (!s) return "";
+  return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+}
 
 type CostStructure = {
   id: string;
@@ -291,19 +298,23 @@ export default function CoreProductEditor() {
         toast.warning("Woo no devolvió variantes utilizables (¿producto simple o sin atributo de talla?)");
         return;
       }
-      // Merge: por woo_variation_id, luego por size. No duplicar.
+      // Merge: por woo_variation_id, luego por (talla+color) normalizados. No duplicar.
       setVariants(prev => {
         const byVarId = new Map<number, number>();
-        const bySize = new Map<string, number>();
+        const byKey = new Map<string, number>();
         prev.forEach((v, i) => {
           if (v.woo_variation_id) byVarId.set(Number(v.woo_variation_id), i);
-          if (v.size) bySize.set(v.size.toUpperCase(), i);
+          const k = `${normVar(v.size)}|${normVar(v.color)}`;
+          if (k !== "|") byKey.set(k, i);
         });
         const next = [...prev];
         for (const v of incoming) {
-          const idx = (v.woo_variation_id && byVarId.get(v.woo_variation_id)) ?? bySize.get(String(v.size).toUpperCase()) ?? -1;
+          const k = `${normVar(v.size)}|${normVar(v.color)}`;
+          const idx = (v.woo_variation_id && byVarId.get(v.woo_variation_id)) ?? byKey.get(k) ?? -1;
           const payload = {
             size: v.size,
+            color: v.color ?? null,
+            normalized_color: v.normalized_color ?? (normVar(v.color) || null),
             variant_label: v.variant_label,
             status: "active" as const,
             woo_variation_id: v.woo_variation_id,
@@ -340,9 +351,11 @@ export default function CoreProductEditor() {
     if (unitCost < 0) return toast.error("Costo no puede ser negativo");
     if (typeof estimatedSalePrice === "number" && estimatedSalePrice < 0) return toast.error("Precio no puede ser negativo");
 
-    // duplicate sizes
-    const sizes = variants.map(v => v.size.trim()).filter(Boolean);
-    if (new Set(sizes).size !== sizes.length) return toast.error("Hay tallas duplicadas");
+    // duplicate variants (size + color)
+    const keys = variants
+      .filter(v => v.size.trim() || (v.color ?? "").trim())
+      .map(v => `${normVar(v.size)}|${normVar(v.color)}`);
+    if (new Set(keys).size !== keys.length) return toast.error("Hay variantes duplicadas (misma talla y color)");
 
     // duplicate woo_product_id check
     if (wooProductId && (!productId || true)) {
@@ -448,10 +461,12 @@ export default function CoreProductEditor() {
       // Save variants: delete-all + insert (simple, atomic-ish)
       await supabase.from("core_product_variants").delete().eq("core_product_id", savedId);
       const cleanVars = variants
-        .filter(v => v.size.trim())
+        .filter(v => v.size.trim() || (v.color ?? "").trim())
         .map((v, i) => ({
           core_product_id: savedId,
           size: v.size.trim(),
+          color: v.color?.trim() || null,
+          normalized_color: normVar(v.color) || null,
           variant_label: v.variant_label || null,
           status: v.status || "active",
           woo_variation_id: v.woo_variation_id || null,
@@ -632,6 +647,7 @@ export default function CoreProductEditor() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Talla</TableHead>
+                    <TableHead>Color</TableHead>
                     <TableHead>Etiqueta</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Woo variation_id</TableHead>
@@ -643,10 +659,11 @@ export default function CoreProductEditor() {
                 </TableHeader>
                 <TableBody>
                   {variants.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">Sin tallas — usa un preset o agrega una.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Sin tallas — usa un preset o agrega una.</TableCell></TableRow>
                   ) : variants.map((v, i) => (
                     <TableRow key={v.id ?? v._local}>
                       <TableCell><Input value={v.size} onChange={e => updateVariant(i, { size: e.target.value })} className="w-20" /></TableCell>
+                      <TableCell><Input value={v.color ?? ""} onChange={e => updateVariant(i, { color: e.target.value, normalized_color: normVar(e.target.value) || null })} className="w-24" placeholder="Negro" /></TableCell>
                       <TableCell><Input value={v.variant_label ?? ""} onChange={e => updateVariant(i, { variant_label: e.target.value })} className="w-32" /></TableCell>
                       <TableCell>
                         <Select value={v.status} onValueChange={val => updateVariant(i, { status: val })}>
@@ -667,7 +684,7 @@ export default function CoreProductEditor() {
                 </TableBody>
               </Table>
             </div>
-            <p className="text-xs text-muted-foreground">Cada producto de fabricación puede tener varias tallas. No se permiten tallas duplicadas dentro del mismo producto.</p>
+            <p className="text-xs text-muted-foreground">Cada producto puede tener varias tallas y colores. No se permiten variantes duplicadas (misma talla y color) dentro del mismo producto.</p>
           </Card>
         </TabsContent>
 
