@@ -134,11 +134,19 @@ export function ShipmentEditorDialog({ open, onOpenChange, shipment }: Props) {
         <div className="space-y-4 py-2">
           <div className="space-y-2">
             <Label>Número de envío *</Label>
-            <Input
-              value={form.shipment_number}
-              onChange={(e) => set("shipment_number", e.target.value)}
-              placeholder="ENV-2026-001"
-            />
+            <div className="flex gap-2">
+              <Input
+                value={form.shipment_number}
+                readOnly={!isEdit}
+                onChange={(e) => set("shipment_number", e.target.value)}
+                placeholder="S001"
+              />
+              {!isEdit && (
+                <Button type="button" variant="outline" onClick={regenerateNumber}>
+                  Regenerar
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
