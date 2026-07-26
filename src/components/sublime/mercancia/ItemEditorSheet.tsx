@@ -236,7 +236,7 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
     }
 
     if (form.subido_al_sistema) {
-      const check = canMarkUploaded(form);
+      const check = canMarkUploaded(form, currentRule, currentShipment);
       if (!check.ok) return toast.error(check.message);
     }
 
