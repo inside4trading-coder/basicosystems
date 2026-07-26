@@ -77,15 +77,8 @@ function ShipmentRow({
   const [expanded, setExpanded] = useState(false);
   const { data: boxes = [] } = useSublimeBoxes(expanded ? shipment.id : undefined);
 
-  return (
-    <>
-      <TableRow>
-        <TableCell className="w-8">
-          <Collapsible open={expanded} onOpenChange={setExpanded}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 px-1">
-                <ChevronDown
-                  className={`h-4 w-4 transition ${expanded ? "" : "-rotate-90"}`}
+
+
 
 
   return (
