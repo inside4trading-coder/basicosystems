@@ -19,6 +19,8 @@ type Variant = {
   id?: string;
   _local?: string;
   size: string;
+  color?: string | null;
+  normalized_color?: string | null;
   variant_label?: string | null;
   status: string;
   woo_variation_id?: number | null;
@@ -29,6 +31,11 @@ type Variant = {
   notes?: string | null;
   sort_order?: number;
 };
+
+function normVar(s: string | null | undefined): string {
+  if (!s) return "";
+  return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+}
 
 type CostStructure = {
   id: string;
