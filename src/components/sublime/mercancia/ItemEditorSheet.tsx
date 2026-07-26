@@ -710,3 +710,173 @@ function ShipmentBoxAssigner({ item }: { item: SublimeMerchItem }) {
     </div>
   );
 }
+
+function SizesSection({
+  form,
+  onChange,
+}: {
+  form: MerchItemInput;
+  onChange: (patch: Partial<MerchItemInput>) => void;
+}) {
+  const defaults = getDefaultSizesForGroup(form.size_group);
+  const q = form.size_quantities ?? {};
+  const customSizes = form.size_group === "custom" ? Object.keys(q) : [];
+  const [newSize, setNewSize] = useState("");
+  const [newQty, setNewQty] = useState<number>(1);
+
+  const setQty = (size: string, value: number) => {
+    const n = Math.max(0, Math.floor(Number(value) || 0));
+    const next = { ...q, [size]: n };
+    onChange({ size_quantities: next });
+  };
+
+  const setGroup = (g: string) => {
+    onChange({ size_group: g, size_quantities: {} });
+  };
+
+  const addCustom = () => {
+    const key = newSize.trim();
+    if (!key) return toast.error("Talla no puede estar vacía.");
+    if (q[key] != null) return toast.error("Esa talla ya existe.");
+    const n = Math.max(1, Math.floor(Number(newQty) || 1));
+    onChange({ size_quantities: { ...q, [key]: n } });
+    setNewSize("");
+    setNewQty(1);
+  };
+
+  const removeCustom = (key: string) => {
+    const next = { ...q };
+    delete next[key];
+    onChange({ size_quantities: next });
+  };
+
+  return (
+    <div className="space-y-3 rounded-lg border border-border/60 p-3">
+      <div>
+        <Label className="text-sm">Tallas y cantidades</Label>
+        <p className="text-xs text-muted-foreground mt-1">
+          Define cuántas unidades vienen por talla, o marca “Sin talla”.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 rounded-md border border-border/60 p-2">
+        <div className="space-y-0.5">
+          <Label className="text-sm">Sin talla</Label>
+          <p className="text-[11px] text-muted-foreground">
+            Ej. accesorios, artículos únicos sin talla.
+          </p>
+        </div>
+        <Switch
+          checked={form.no_size}
+          onCheckedChange={(v) =>
+            onChange({ no_size: v, size_quantities: v ? {} : form.size_quantities })
+          }
+        />
+      </div>
+
+      {form.no_size ? (
+        <div className="space-y-2">
+          <Label>Unidades</Label>
+          <Input
+            type="number"
+            min={1}
+            step={1}
+            value={form.unit_count}
+            onChange={(e) =>
+              onChange({ unit_count: Math.max(1, Math.floor(Number(e.target.value) || 1)) })
+            }
+          />
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2">
+            <Label>Tipo de tallas</Label>
+            <Select value={form.size_group} onValueChange={setGroup}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="franelas_hoodies">Franelas / Hoodies</SelectItem>
+                <SelectItem value="pantalones">Pantalones</SelectItem>
+                <SelectItem value="custom">Personalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {form.size_group !== "custom" ? (
+            <div className="grid grid-cols-5 gap-2">
+              {defaults.map((s) => (
+                <div key={s} className="space-y-1">
+                  <Label className="text-xs text-center block">{s}</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={q[s] ?? 0}
+                    onChange={(e) => setQty(s, Number(e.target.value))}
+                    className="text-center"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {customSizes.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Sin tallas. Agrega la primera abajo.
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {customSizes.map((s) => (
+                    <div key={s} className="flex items-center gap-2">
+                      <span className="text-sm font-medium w-24 truncate">{s}</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={q[s] ?? 0}
+                        onChange={(e) => setQty(s, Number(e.target.value))}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeCustom(s)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-end gap-2 pt-1">
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs">Nueva talla</Label>
+                  <Input
+                    placeholder="Ej. XXL, 38, One Size"
+                    value={newSize}
+                    onChange={(e) => setNewSize(e.target.value)}
+                  />
+                </div>
+                <div className="w-20 space-y-1">
+                  <Label className="text-xs">Cant.</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={newQty}
+                    onChange={(e) => setNewQty(Number(e.target.value))}
+                  />
+                </div>
+                <Button type="button" size="sm" onClick={addCustom}>
+                  Agregar
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
