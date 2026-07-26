@@ -101,6 +101,10 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
               sku_web: item.sku_web,
               notas: item.notas,
               subido_al_sistema: item.subido_al_sistema,
+              size_group: (item.size_group as string) ?? "franelas_hoodies",
+              no_size: Boolean(item.no_size),
+              unit_count: Math.max(1, Number(item.unit_count ?? 1)),
+              size_quantities: (item.size_quantities as Record<string, number>) ?? {},
             }
           : empty(),
       );
