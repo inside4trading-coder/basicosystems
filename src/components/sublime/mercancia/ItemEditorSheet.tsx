@@ -368,11 +368,11 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
                 identifique la prenda al recibirla.
               </p>
             </div>
-            {isEdit && item ? (
+            {isEdit && currentItem ? (
               <PhotoGallery
-                itemId={item.id}
+                itemId={currentItem.id}
                 type="origen"
-                photos={item.fotos_origen ?? []}
+                photos={currentItem.fotos_origen ?? []}
               />
             ) : (
               <PendingPhotoPicker
@@ -391,11 +391,11 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
                 Fotos que se usarán para subir el producto a la web.
               </p>
             </div>
-            {isEdit && item ? (
+            {isEdit && currentItem ? (
               <PhotoGallery
-                itemId={item.id}
+                itemId={currentItem.id}
                 type="web"
-                photos={item.fotos_web ?? []}
+                photos={currentItem.fotos_web ?? []}
                 allowUrlInput
                 showBankTools
               />
