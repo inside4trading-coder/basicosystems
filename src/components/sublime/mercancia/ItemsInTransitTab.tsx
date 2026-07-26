@@ -343,6 +343,14 @@ export function ItemsInTransitTab() {
         onOpenChange={setOpenAssign}
         item={assigning}
       />
+      <ReceiveItemDialog
+        open={openReceiveDlg}
+        onOpenChange={setOpenReceiveDlg}
+        item={receiving}
+        shipment={receiving?.shipment_id ? shipMap.get(receiving.shipment_id) ?? null : null}
+        box={receiving?.box_id ? boxMap.get(receiving.box_id) ?? null : null}
+      />
+
     </div>
   );
 }
