@@ -14,16 +14,20 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   useUnassignedItems,
+  useSublimePricingRules,
   type SublimeMerchItem,
 } from "@/hooks/useSublimeMerch";
 import {
   calculateTotalCost,
   calculateTotalUnits,
+  findPricingRule,
   formatSizeSummary,
+  getFinalPvp,
   MERCH_ESTADO_LABEL,
   resolvePhotoUrl,
   type MerchEstado,
 } from "@/lib/sublimeMerch";
+
 import { ItemEditorSheet } from "./ItemEditorSheet";
 import { AssignToShipmentDialog } from "./AssignToShipmentDialog";
 
