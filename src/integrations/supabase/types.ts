@@ -7808,6 +7808,7 @@ export type Database = {
           fotos_web: string[]
           id: string
           name: string
+          no_size: boolean
           notas: string | null
           peso_kg: number
           precio_compra: number
@@ -7815,11 +7816,14 @@ export type Database = {
           received_at: string | null
           received_by: string | null
           shipment_id: string | null
+          size_group: string
+          size_quantities: Json
           sku_web: string | null
           subido_al_sistema: boolean
           tax_amount: number
           tax_enabled: boolean
           tax_note: string | null
+          unit_count: number
           updated_at: string
           uploaded_at: string | null
           uploaded_by: string | null
@@ -7834,6 +7838,7 @@ export type Database = {
           fotos_web?: string[]
           id?: string
           name: string
+          no_size?: boolean
           notas?: string | null
           peso_kg?: number
           precio_compra?: number
@@ -7841,11 +7846,14 @@ export type Database = {
           received_at?: string | null
           received_by?: string | null
           shipment_id?: string | null
+          size_group?: string
+          size_quantities?: Json
           sku_web?: string | null
           subido_al_sistema?: boolean
           tax_amount?: number
           tax_enabled?: boolean
           tax_note?: string | null
+          unit_count?: number
           updated_at?: string
           uploaded_at?: string | null
           uploaded_by?: string | null
@@ -7860,6 +7868,7 @@ export type Database = {
           fotos_web?: string[]
           id?: string
           name?: string
+          no_size?: boolean
           notas?: string | null
           peso_kg?: number
           precio_compra?: number
@@ -7867,11 +7876,14 @@ export type Database = {
           received_at?: string | null
           received_by?: string | null
           shipment_id?: string | null
+          size_group?: string
+          size_quantities?: Json
           sku_web?: string | null
           subido_al_sistema?: boolean
           tax_amount?: number
           tax_enabled?: boolean
           tax_note?: string | null
+          unit_count?: number
           updated_at?: string
           uploaded_at?: string | null
           uploaded_by?: string | null
