@@ -7750,6 +7750,194 @@ export type Database = {
         }
         Relationships: []
       }
+      sublime_merch_boxes: {
+        Row: {
+          box_number: string
+          created_at: string
+          id: string
+          notes: string | null
+          received_at: string | null
+          received_by: string | null
+          shipment_id: string
+          status: string
+          updated_at: string
+          weight_kg: number
+        }
+        Insert: {
+          box_number: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          received_by?: string | null
+          shipment_id: string
+          status?: string
+          updated_at?: string
+          weight_kg?: number
+        }
+        Update: {
+          box_number?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          received_by?: string | null
+          shipment_id?: string
+          status?: string
+          updated_at?: string
+          weight_kg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_merch_boxes_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_merch_shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sublime_merch_items: {
+        Row: {
+          box_id: string | null
+          codigo_fabricante: string | null
+          created_at: string
+          created_by: string | null
+          estado: string
+          fotos_origen: string[]
+          fotos_web: string[]
+          id: string
+          name: string
+          notas: string | null
+          peso_kg: number
+          precio_compra: number
+          pvp: number | null
+          received_at: string | null
+          received_by: string | null
+          shipment_id: string | null
+          sku_web: string | null
+          subido_al_sistema: boolean
+          tax_amount: number
+          tax_enabled: boolean
+          tax_note: string | null
+          updated_at: string
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          box_id?: string | null
+          codigo_fabricante?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          fotos_origen?: string[]
+          fotos_web?: string[]
+          id?: string
+          name: string
+          notas?: string | null
+          peso_kg?: number
+          precio_compra?: number
+          pvp?: number | null
+          received_at?: string | null
+          received_by?: string | null
+          shipment_id?: string | null
+          sku_web?: string | null
+          subido_al_sistema?: boolean
+          tax_amount?: number
+          tax_enabled?: boolean
+          tax_note?: string | null
+          updated_at?: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          box_id?: string | null
+          codigo_fabricante?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          fotos_origen?: string[]
+          fotos_web?: string[]
+          id?: string
+          name?: string
+          notas?: string | null
+          peso_kg?: number
+          precio_compra?: number
+          pvp?: number | null
+          received_at?: string | null
+          received_by?: string | null
+          shipment_id?: string | null
+          sku_web?: string | null
+          subido_al_sistema?: boolean
+          tax_amount?: number
+          tax_enabled?: boolean
+          tax_note?: string | null
+          updated_at?: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_merch_items_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_merch_boxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_merch_items_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_merch_shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sublime_merch_shipments: {
+        Row: {
+          carrier: string | null
+          cost_per_kg_eur: number
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          received_at: string | null
+          sent_at: string | null
+          shipment_number: string
+          status: string
+          tracking_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          carrier?: string | null
+          cost_per_kg_eur?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          sent_at?: string | null
+          shipment_number: string
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          carrier?: string | null
+          cost_per_kg_eur?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          sent_at?: string | null
+          shipment_number?: string
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sublime_pin_audit: {
         Row: {
           action: string

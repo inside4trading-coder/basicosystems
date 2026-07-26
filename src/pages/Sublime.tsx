@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
-import { Store, Clock, Building2, ArrowRight, ExternalLink } from "lucide-react";
+import { Store, Clock, Building2, ArrowRight, ExternalLink, Package } from "lucide-react";
 
 export default function Sublime() {
   return (
@@ -61,6 +61,25 @@ export default function Sublime() {
               </p>
               <div className="mt-4 pt-4 border-t border-border/50 flex items-center gap-2 text-xs text-muted-foreground">
                 <span>Obligaciones · Pagos · Vencimientos · Histórico</span>
+              </div>
+            </Card>
+          </Link>
+
+          {/* Mercancía */}
+          <Link to="/sublime/mercancia" className="group">
+            <Card className="p-6 rounded-2xl border-border/60 hover:border-primary/40 hover:shadow-lg transition-all h-full flex flex-col">
+              <div className="flex items-start justify-between mb-5">
+                <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+                  <Package className="h-5 w-5 text-primary" />
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-1">Mercancía</h3>
+              <p className="text-sm text-muted-foreground flex-1">
+                Compras, envíos, cajas y productos disponibles de Sublime.
+              </p>
+              <div className="mt-4 pt-4 border-t border-border/50 flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Compras · En camino · Disponible · CSV</span>
               </div>
             </Card>
           </Link>

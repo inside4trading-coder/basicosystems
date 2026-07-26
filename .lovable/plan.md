@@ -1,46 +1,65 @@
-## Patch mínimo — Soporte de variantes talla + color en CoreProductEditor
 
-Un solo archivo: `src/pages/core/CoreProductEditor.tsx`. Sin migraciones, sin edge functions, sin backend.
+# Fase 1 — Sublime Mercancía MVP
 
-### Cambios
+Aprobar este plan para pasar a build mode y aplicar la migración + código.
 
-1. **Tipo `Variant`** (líneas 18–31): añadir `color?: string | null` y `normalized_color?: string | null`. Agregar helper local `normVar(s)` que hace trim + strip acentos + upper.
+## 1. Migración (una sola)
 
-2. **Import Woo → merge** (líneas 294–320):
-   - Cambiar la clave de dedupe de `size.toUpperCase()` a `${normVar(size)}|${normVar(color)}`.
-   - Incluir `color: v.color ?? null` y `normalized_color: v.normalized_color ?? normVar(v.color) ?? null` en el payload.
-   - Actualizar el índice `byVarId`/`byKey` en consecuencia.
+Función reusable `public.set_updated_at()` + 3 tablas con GRANTs + RLS + triggers `updated_at`.
 
-3. **Validación de duplicados en `handleSave`** (líneas 343–345):
-   ```ts
-   const keys = variants
-     .filter(v => v.size.trim() || (v.color ?? "").trim())
-     .map(v => `${normVar(v.size)}|${normVar(v.color)}`);
-   if (new Set(keys).size !== keys.length) return toast.error("Hay variantes duplicadas (misma talla y color)");
-   ```
-   Sigue funcionando para productos solo-talla (color vacío en todas: la clave `SIZE|` sigue siendo única entre tallas distintas).
+**`public.sublime_merch_shipments`**
+shipment_number (unique), sent_at, received_at, carrier, tracking_number, cost_per_kg_eur (default 0), status CHECK (draft/in_transit/partially_received/received/cancelled), notes, created_by.
 
-4. **Tabla UI** (líneas 630–666):
-   - Añadir `<TableHead>Color</TableHead>` justo después de "Etiqueta".
-   - Añadir `<TableCell><Input value={v.color ?? ""} onChange={e => updateVariant(i, { color: e.target.value, normalized_color: normVar(e.target.value) })} className="w-24" /></TableCell>`.
-   - Ajustar el `colSpan={8}` a `colSpan={9}` en la fila vacía.
+**`public.sublime_merch_boxes`**
+shipment_id (fk cascade), box_number, weight_kg (default 0), status CHECK (pending/in_transit/received), received_at, received_by, notes. UNIQUE(shipment_id, box_number). Índice por shipment_id.
 
-5. **Insert al guardar** (líneas 450–464): añadir `color: v.color?.trim() || null` y `normalized_color: normVar(v.color) || null` al objeto insertado.
+**`public.sublime_merch_items`**
+name, precio_compra, codigo_fabricante, peso_kg, pvp, sku_web (unique), fotos_origen text[], fotos_web text[], shipment_id (fk set null), box_id (fk set null), estado CHECK (purchased/in_transit/received/available/cancelled), subido_al_sistema, uploaded_at, uploaded_by, received_at, received_by, tax_enabled, tax_amount, tax_note, notas, created_by. Índices en shipment_id, box_id, estado, sku_web.
 
-6. **Carga al editar** (línea 163): `setVariants((vs as any) ?? [])` ya trae `color`/`normalized_color` porque el select es `*`. Sin cambios.
+**RLS**: en las 3 tablas, una policy `FOR ALL TO authenticated` con `has_role(auth.uid(),'admin') OR has_role(auth.uid(),'manager')` en USING y WITH CHECK.
+**GRANTs**: SELECT/INSERT/UPDATE/DELETE a `authenticated`; ALL a `service_role`.
 
-7. **Texto de ayuda** (línea 670): "No se permiten variantes duplicadas (misma talla y color) dentro del mismo producto."
+## 2. Ruta
 
-### Fuera de alcance
+- `src/App.tsx`: `<Route path="/sublime/mercancia" element={<SublimeMercancia />} />` dentro del bloque protegido.
+- `src/pages/Sublime.tsx`: nueva card "Mercancía" (icono Package) enlazando a `/sublime/mercancia`.
 
-Backend, RLS, migraciones, edge functions, WooCommerce, costos, inventario, OP, SKU, plantillas.
+## 3. Archivos nuevos
 
-### Validación
+- `src/pages/sublime/SublimeMercancia.tsx` — header + 3 Tabs. Tabs 2 y 3 son placeholders con contador y texto "Disponible en la siguiente fase".
+- `src/components/sublime/mercancia/ItemsUnassignedTab.tsx` — tabla desktop / cards móvil (usa `useIsMobile`), botón "Agregar producto", acción "Editar".
+- `src/components/sublime/mercancia/ItemEditorSheet.tsx` — Sheet lateral. Campos: name, precio_compra, codigo_fabricante, peso_kg, pvp, sku_web, notas + checkbox "Subido al sistema" con validaciones. Bloque colapsado "Impuestos preparados para fase posterior…" y bloque disabled "Asignación a envío/caja disponible en la siguiente fase".
+- `src/hooks/useSublimeMerch.ts` — `useUnassignedItems`, `useItemsCounts`, `createItem`, `updateItem`.
+- `src/lib/sublimeMerch.ts` — `calculateShippingCost`, `calculateTotalCost`, `calculateMargin`, `canMarkUploaded` + mensajes de error.
 
-- Tank Top Men Basics Plain: 8 variantes (S/M/L/XL × Blanco/Negro) deben guardar sin error.
-- Producto solo-talla existente: sigue funcionando (todas con color vacío → sigue detectando repetición de talla).
-- Typecheck posterior a la edición.
+## 4. Validaciones del editor
 
-### Respuesta final
+- `name` requerido; `precio_compra`, `peso_kg` >= 0; `pvp` >= 0 si presente.
+- `sku_web` opcional, único por constraint.
+- Toggle "Subido al sistema":
+  - Sin sku_web → "Debes asignar un SKU web antes de marcar este producto como subido al sistema."
+  - Sin pvp → "Debes asignar un PVP antes de marcar este producto como subido al sistema."
+  - Activar: `subido_al_sistema=true, uploaded_at=now(), uploaded_by=auth.uid()`.
+  - Desactivar: solo `subido_al_sistema=false` (mantener trazabilidad).
 
-Al terminar reportaré los 10 puntos del checklist del usuario.
+## 5. Cálculos derivados
+
+```
+shipping = peso_kg * (shipment?.cost_per_kg_eur ?? 0)
+total    = precio_compra + shipping
+margin   = (pvp ?? 0) - total
+```
+Fase 1: sin shipment → "costo total estimado" = `precio_compra`.
+
+## 6. Fuera de alcance
+
+Fotos, CSV, storage bucket, CRUD envíos/cajas, marcar recibido, tab Disponible operativo, Woo, POS. No se toca Fichaje, Administración, Core.
+
+## 7. Orden al pasar a build mode
+
+1. Aplicar migración.
+2. Regenerar types.
+3. Crear helpers + hook.
+4. Crear editor y tab de compras sin asignar.
+5. Crear página con tabs + registrar ruta + card en `/sublime`.
+6. Typecheck.

@@ -28,6 +28,7 @@ import AdminObligationDetail from "./pages/AdminObligationDetail";
 import SublimeFichajePublico from "./pages/SublimeFichajePublico";
 import Sublime from "./pages/Sublime";
 import SublimeAdminFichaje from "./pages/SublimeAdminFichaje";
+import SublimeMercancia from "./pages/sublime/SublimeMercancia";
 import { AdminScopeProvider } from "@/contexts/AdminScope";
 import CoreLayout from "./pages/core/CoreLayout";
 import CoreDashboard from "./pages/core/CoreDashboard";
@@ -119,6 +120,7 @@ const App = () => (
               <Route path="/configuracion" element={<Configuracion />} />
               <Route path="/sublime" element={<Sublime />} />
               <Route path="/sublime/admin/fichaje" element={<SublimeAdminFichaje />} />
+              <Route path="/sublime/mercancia" element={<SublimeMercancia />} />
               <Route
                 path="/sublime/admin/obligaciones"
                 element={
