@@ -85,6 +85,8 @@ export function ItemsInTransitTab() {
   const { data: items = [], isLoading } = useInTransitItems();
   const { data: shipments = [] } = useSublimeShipments();
   const { data: allBoxes = [] } = useSublimeBoxes(null);
+  const { data: pricingRules = [] } = useSublimePricingRules();
+
   const [editing, setEditing] = useState<SublimeMerchItem | null>(null);
   const [openEditor, setOpenEditor] = useState(false);
   const [assigning, setAssigning] = useState<SublimeMerchItem | null>(null);
