@@ -351,9 +351,11 @@ export default function CoreProductEditor() {
     if (unitCost < 0) return toast.error("Costo no puede ser negativo");
     if (typeof estimatedSalePrice === "number" && estimatedSalePrice < 0) return toast.error("Precio no puede ser negativo");
 
-    // duplicate sizes
-    const sizes = variants.map(v => v.size.trim()).filter(Boolean);
-    if (new Set(sizes).size !== sizes.length) return toast.error("Hay tallas duplicadas");
+    // duplicate variants (size + color)
+    const keys = variants
+      .filter(v => v.size.trim() || (v.color ?? "").trim())
+      .map(v => `${normVar(v.size)}|${normVar(v.color)}`);
+    if (new Set(keys).size !== keys.length) return toast.error("Hay variantes duplicadas (misma talla y color)");
 
     // duplicate woo_product_id check
     if (wooProductId && (!productId || true)) {
