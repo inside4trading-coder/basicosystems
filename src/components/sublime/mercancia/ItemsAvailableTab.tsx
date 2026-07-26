@@ -231,7 +231,8 @@ export function ItemsAvailableTab() {
                 ) : null}
                 <p className="text-[10px] text-muted-foreground">
                   Envío €{shipping.toFixed(2)} · PVP{" "}
-                  {i.pvp == null ? "—" : `${Number(i.pvp).toFixed(2)} €`}
+                  {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
+
                 </p>
               </Card>
             );
