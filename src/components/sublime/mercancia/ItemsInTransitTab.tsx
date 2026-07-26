@@ -33,6 +33,8 @@ import {
 } from "@/lib/sublimeMerch";
 import { ItemEditorSheet } from "./ItemEditorSheet";
 import { AssignToShipmentDialog } from "./AssignToShipmentDialog";
+import { ReceiveItemDialog } from "./ReceiveItemDialog";
+
 
 function ItemThumb({ item, size = 40 }: { item: SublimeMerchItem; size?: number }) {
   const [src, setSrc] = useState<string>("");
