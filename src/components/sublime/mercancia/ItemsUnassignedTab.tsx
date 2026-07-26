@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Pencil, CheckCircle2, XCircle, ImageIcon } from "lucide-react";
+import { Plus, Pencil, CheckCircle2, XCircle, ImageIcon, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import {
   type MerchEstado,
 } from "@/lib/sublimeMerch";
 import { ItemEditorSheet } from "./ItemEditorSheet";
+import { AssignToShipmentDialog } from "./AssignToShipmentDialog";
 
 function ItemThumb({ item, size = 40 }: { item: SublimeMerchItem; size?: number }) {
   const [src, setSrc] = useState<string>("");
@@ -67,6 +68,8 @@ export function ItemsUnassignedTab() {
   const { data: items = [], isLoading } = useUnassignedItems();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<SublimeMerchItem | null>(null);
+  const [assigning, setAssigning] = useState<SublimeMerchItem | null>(null);
+  const [openAssign, setOpenAssign] = useState(false);
   const isMobile = useIsMobile();
 
   const openNew = () => {
@@ -76,6 +79,10 @@ export function ItemsUnassignedTab() {
   const openEdit = (i: SublimeMerchItem) => {
     setEditing(i);
     setOpen(true);
+  };
+  const openAssignFor = (i: SublimeMerchItem) => {
+    setAssigning(i);
+    setOpenAssign(true);
   };
 
   return (
@@ -104,7 +111,12 @@ export function ItemsUnassignedTab() {
       ) : isMobile ? (
         <div className="space-y-3">
           {items.map((i) => (
-            <MobileCard key={i.id} item={i} onEdit={() => openEdit(i)} />
+            <MobileCard
+              key={i.id}
+              item={i}
+              onEdit={() => openEdit(i)}
+              onAssign={() => openAssignFor(i)}
+            />
           ))}
         </div>
       ) : (
@@ -164,13 +176,23 @@ export function ItemsUnassignedTab() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEdit(i)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Asignar a envío"
+                          onClick={() => openAssignFor(i)}
+                        >
+                          <Truck className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEdit(i)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -181,6 +203,11 @@ export function ItemsUnassignedTab() {
       )}
 
       <ItemEditorSheet open={open} onOpenChange={setOpen} item={editing} />
+      <AssignToShipmentDialog
+        open={openAssign}
+        onOpenChange={setOpenAssign}
+        item={assigning}
+      />
     </div>
   );
 }
@@ -188,9 +215,11 @@ export function ItemsUnassignedTab() {
 function MobileCard({
   item,
   onEdit,
+  onAssign,
 }: {
   item: SublimeMerchItem;
   onEdit: () => void;
+  onAssign: () => void;
 }) {
   return (
     <Card className="p-4 space-y-2">
@@ -205,9 +234,14 @@ function MobileCard({
             <PhotoCounts item={item} />
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onEdit}>
-          <Pencil className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={onAssign} title="Asignar a envío">
+            <Truck className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onEdit}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       <div className="grid grid-cols-3 gap-2 text-xs">
         <div>

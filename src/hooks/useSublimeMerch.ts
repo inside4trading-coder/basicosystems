@@ -45,7 +45,54 @@ export interface MerchItemInput {
   subido_al_sistema: boolean;
 }
 
+export interface SublimeMerchShipment {
+  id: string;
+  shipment_number: string;
+  sent_at: string | null;
+  received_at: string | null;
+  carrier: string | null;
+  tracking_number: string | null;
+  cost_per_kg_eur: number;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShipmentInput {
+  shipment_number: string;
+  sent_at: string | null;
+  carrier: string | null;
+  tracking_number: string | null;
+  cost_per_kg_eur: number;
+  status: string;
+  notes: string | null;
+}
+
+export interface SublimeMerchBox {
+  id: string;
+  shipment_id: string;
+  box_number: string;
+  weight_kg: number;
+  status: string;
+  received_at: string | null;
+  received_by: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BoxInput {
+  shipment_id: string;
+  box_number: string;
+  weight_kg: number;
+  status: string;
+  notes: string | null;
+}
+
 const TABLE = "sublime_merch_items";
+const T_SHIP = "sublime_merch_shipments";
+const T_BOX = "sublime_merch_boxes";
 
 export function useUnassignedItems() {
   return useQuery({
@@ -56,6 +103,23 @@ export function useUnassignedItems() {
         .select("*")
         .or("shipment_id.is.null,box_id.is.null")
         .neq("estado", "cancelled")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as SublimeMerchItem[];
+    },
+  });
+}
+
+export function useInTransitItems() {
+  return useQuery({
+    queryKey: ["sublime-merch", "in-transit"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from(TABLE)
+        .select("*")
+        .not("shipment_id", "is", null)
+        .not("box_id", "is", null)
+        .not("estado", "in", "(available,cancelled)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as SublimeMerchItem[];
@@ -79,6 +143,54 @@ export function useItemsCounts() {
         in_transit: inTransit.count ?? 0,
         available: available.count ?? 0,
       };
+    },
+  });
+}
+
+export function useSublimeShipments() {
+  return useQuery({
+    queryKey: ["sublime-merch", "shipments"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from(T_SHIP)
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as SublimeMerchShipment[];
+    },
+  });
+}
+
+export function useSublimeBoxes(shipmentId?: string | null) {
+  return useQuery({
+    queryKey: ["sublime-merch", "boxes", shipmentId ?? "all"],
+    enabled: shipmentId !== undefined,
+    queryFn: async () => {
+      let q = (supabase as any)
+        .from(T_BOX)
+        .select("*")
+        .order("created_at", { ascending: true });
+      if (shipmentId) q = q.eq("shipment_id", shipmentId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as SublimeMerchBox[];
+    },
+  });
+}
+
+export function useShipmentBoxCounts() {
+  return useQuery({
+    queryKey: ["sublime-merch", "box-counts"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from(T_BOX)
+        .select("shipment_id");
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      for (const row of (data ?? []) as { shipment_id: string }[]) {
+        map[row.shipment_id] = (map[row.shipment_id] ?? 0) + 1;
+      }
+      return map;
     },
   });
 }
@@ -239,6 +351,129 @@ export function useMerchMutations() {
     },
   });
 
+  const createShipment = useMutation({
+    mutationFn: async (input: ShipmentInput) => {
+      const payload: Record<string, unknown> = {
+        shipment_number: input.shipment_number.trim(),
+        sent_at: input.sent_at,
+        carrier: input.carrier,
+        tracking_number: input.tracking_number,
+        cost_per_kg_eur: input.cost_per_kg_eur,
+        status: input.status,
+        notes: input.notes,
+      };
+      const { data, error } = await (supabase as any)
+        .from(T_SHIP)
+        .insert(payload)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as SublimeMerchShipment;
+    },
+    onSuccess: invalidate,
+  });
+
+  const updateShipment = useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: ShipmentInput }) => {
+      const payload: Record<string, unknown> = {
+        shipment_number: input.shipment_number.trim(),
+        sent_at: input.sent_at,
+        carrier: input.carrier,
+        tracking_number: input.tracking_number,
+        cost_per_kg_eur: input.cost_per_kg_eur,
+        status: input.status,
+        notes: input.notes,
+      };
+      const { data, error } = await (supabase as any)
+        .from(T_SHIP)
+        .update(payload)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as SublimeMerchShipment;
+    },
+    onSuccess: invalidate,
+  });
+
+  const createBox = useMutation({
+    mutationFn: async (input: BoxInput) => {
+      const payload: Record<string, unknown> = {
+        shipment_id: input.shipment_id,
+        box_number: input.box_number.trim(),
+        weight_kg: input.weight_kg,
+        status: input.status,
+        notes: input.notes,
+      };
+      const { data, error } = await (supabase as any)
+        .from(T_BOX)
+        .insert(payload)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as SublimeMerchBox;
+    },
+    onSuccess: invalidate,
+  });
+
+  const updateBox = useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: BoxInput }) => {
+      const payload: Record<string, unknown> = {
+        shipment_id: input.shipment_id,
+        box_number: input.box_number.trim(),
+        weight_kg: input.weight_kg,
+        status: input.status,
+        notes: input.notes,
+      };
+      const { data, error } = await (supabase as any)
+        .from(T_BOX)
+        .update(payload)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as SublimeMerchBox;
+    },
+    onSuccess: invalidate,
+  });
+
+  const assignItemToShipmentBox = useMutation({
+    mutationFn: async ({
+      itemId,
+      shipmentId,
+      boxId,
+    }: {
+      itemId: string;
+      shipmentId: string;
+      boxId: string;
+    }) => {
+      if (!shipmentId || !boxId) {
+        throw new Error("Selecciona una caja válida para este envío.");
+      }
+      const { data: box, error: boxErr } = await (supabase as any)
+        .from(T_BOX)
+        .select("id, shipment_id")
+        .eq("id", boxId)
+        .single();
+      if (boxErr || !box || box.shipment_id !== shipmentId) {
+        throw new Error("Selecciona una caja válida para este envío.");
+      }
+      const { data, error } = await (supabase as any)
+        .from(TABLE)
+        .update({
+          shipment_id: shipmentId,
+          box_id: boxId,
+          estado: "in_transit",
+        })
+        .eq("id", itemId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as SublimeMerchItem;
+    },
+    onSuccess: invalidate,
+  });
+
   return {
     createItem,
     updateItem,
@@ -246,5 +481,10 @@ export function useMerchMutations() {
     removePhotoFromItem,
     uploadPhotoToItem,
     addWebPhotoUrl,
+    createShipment,
+    updateShipment,
+    createBox,
+    updateBox,
+    assignItemToShipmentBox,
   };
 }

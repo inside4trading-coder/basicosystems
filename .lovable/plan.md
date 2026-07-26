@@ -1,65 +1,32 @@
+# Fase 2 — Sublime Mercancía: Envíos, Cajas y Asignación (aprobado)
 
-# Fase 1 — Sublime Mercancía MVP
+Sin migración (tablas ya existen y confirmadas: `sublime_merch_shipments`, `sublime_merch_boxes`, `sublime_merch_items`). Sin storage, sin RPC, sin edge functions, sin recepción, sin CSV.
 
-Aprobar este plan para pasar a build mode y aplicar la migración + código.
+## Archivos a crear
 
-## 1. Migración (una sola)
+1. **`src/components/sublime/mercancia/ShipmentEditorDialog.tsx`** — Dialog crear/editar envío. Campos: `shipment_number` (req), `sent_at`, `carrier`, `tracking_number`, `cost_per_kg_eur` (≥0), `status` (draft/in_transit/partially_received/received/cancelled), `notes`. Manejo de error de duplicado.
 
-Función reusable `public.set_updated_at()` + 3 tablas con GRANTs + RLS + triggers `updated_at`.
+2. **`src/components/sublime/mercancia/BoxEditorDialog.tsx`** — Dialog crear/editar caja. Campos: `shipment_id` (req, selector; bloqueado en edición), `box_number` (req), `weight_kg` (≥0), `status` (pending/in_transit/received), `notes`. Acepta `defaultShipmentId`.
 
-**`public.sublime_merch_shipments`**
-shipment_number (unique), sent_at, received_at, carrier, tracking_number, cost_per_kg_eur (default 0), status CHECK (draft/in_transit/partially_received/received/cancelled), notes, created_by.
+3. **`src/components/sublime/mercancia/AssignToShipmentDialog.tsx`** — Selector envío → selector caja filtrada por envío → confirmar. Si envío no tiene cajas: mensaje + botón "Crear caja" (abre `BoxEditorDialog` con envío prellenado). Valida en cliente antes de guardar.
 
-**`public.sublime_merch_boxes`**
-shipment_id (fk cascade), box_number, weight_kg (default 0), status CHECK (pending/in_transit/received), received_at, received_by, notes. UNIQUE(shipment_id, box_number). Índice por shipment_id.
+4. **`src/components/sublime/mercancia/ItemsInTransitTab.tsx`** — Lista items con shipment+box y estado ≠ available/cancelled. Desktop: tabla completa (foto, nombre, envío/caja, fecha, compra, peso, €/kg, envío calc, total, PVP, margen, SKU, subido, estado, acciones). Mobile: cards. Acciones: Reasignar (abre AssignToShipment) y Editar (abre ItemEditorSheet). Botón "Marcar recibido" deshabilitado con tooltip "Recepción disponible en Fase 3."
 
-**`public.sublime_merch_items`**
-name, precio_compra, codigo_fabricante, peso_kg, pvp, sku_web (unique), fotos_origen text[], fotos_web text[], shipment_id (fk set null), box_id (fk set null), estado CHECK (purchased/in_transit/received/available/cancelled), subido_al_sistema, uploaded_at, uploaded_by, received_at, received_by, tax_enabled, tax_amount, tax_note, notas, created_by. Índices en shipment_id, box_id, estado, sku_web.
+5. **`src/components/sublime/mercancia/ShipmentsManagerDialog.tsx`** — Dialog compacto (no ruta nueva). Tabla envíos con expand para ver cajas. Acciones: nuevo envío, editar envío, crear caja, editar caja.
 
-**RLS**: en las 3 tablas, una policy `FOR ALL TO authenticated` con `has_role(auth.uid(),'admin') OR has_role(auth.uid(),'manager')` en USING y WITH CHECK.
-**GRANTs**: SELECT/INSERT/UPDATE/DELETE a `authenticated`; ALL a `service_role`.
+## Archivos a modificar
 
-## 2. Ruta
+6. **`src/hooks/useSublimeMerch.ts`** — Añadir tipos `SublimeMerchShipment`, `ShipmentInput`, `SublimeMerchBox`, `BoxInput`. Queries: `useInTransitItems`, `useSublimeShipments`, `useSublimeBoxes(shipmentId?)`, `useShipmentBoxCounts`. Mutations: `createShipment`, `updateShipment`, `createBox`, `updateBox`, `assignItemToShipmentBox` (valida que la caja pertenezca al envío consultando DB; solo escribe `shipment_id`, `box_id`, `estado='in_transit'`; no toca precio/pvp/sku/fotos/subido/uploaded_*).
 
-- `src/App.tsx`: `<Route path="/sublime/mercancia" element={<SublimeMercancia />} />` dentro del bloque protegido.
-- `src/pages/Sublime.tsx`: nueva card "Mercancía" (icono Package) enlazando a `/sublime/mercancia`.
+7. **`src/components/sublime/mercancia/ItemsUnassignedTab.tsx`** — Añadir botón/icono "Asignar a envío" (Truck) por fila y en card mobile → abre `AssignToShipmentDialog`.
 
-## 3. Archivos nuevos
+8. **`src/components/sublime/mercancia/ItemEditorSheet.tsx`** — Reemplazar el placeholder "Asignación a envío/caja disponible en la siguiente fase." por bloque real (solo cuando el item ya existe): selectores shipment + box (filtrada), botón "Guardar asignación" que llama `assignItemToShipmentBox`. Cambio de shipment limpia boxId.
 
-- `src/pages/sublime/SublimeMercancia.tsx` — header + 3 Tabs. Tabs 2 y 3 son placeholders con contador y texto "Disponible en la siguiente fase".
-- `src/components/sublime/mercancia/ItemsUnassignedTab.tsx` — tabla desktop / cards móvil (usa `useIsMobile`), botón "Agregar producto", acción "Editar".
-- `src/components/sublime/mercancia/ItemEditorSheet.tsx` — Sheet lateral. Campos: name, precio_compra, codigo_fabricante, peso_kg, pvp, sku_web, notas + checkbox "Subido al sistema" con validaciones. Bloque colapsado "Impuestos preparados para fase posterior…" y bloque disabled "Asignación a envío/caja disponible en la siguiente fase".
-- `src/hooks/useSublimeMerch.ts` — `useUnassignedItems`, `useItemsCounts`, `createItem`, `updateItem`.
-- `src/lib/sublimeMerch.ts` — `calculateShippingCost`, `calculateTotalCost`, `calculateMargin`, `canMarkUploaded` + mensajes de error.
+9. **`src/pages/sublime/SublimeMercancia.tsx`** — Header: botones "Nuevo envío" y "Gestionar envíos". Tab `in_transit` renderiza `<ItemsInTransitTab />` en lugar del placeholder. Tab `available` sin cambios (placeholder Fase 3).
 
-## 4. Validaciones del editor
+## Validación esperada (ENV-2026-001, 8 €/kg → Caja 1 → Hoodie 20€/0.5kg/PVP 45)
 
-- `name` requerido; `precio_compra`, `peso_kg` >= 0; `pvp` >= 0 si presente.
-- `sku_web` opcional, único por constraint.
-- Toggle "Subido al sistema":
-  - Sin sku_web → "Debes asignar un SKU web antes de marcar este producto como subido al sistema."
-  - Sin pvp → "Debes asignar un PVP antes de marcar este producto como subido al sistema."
-  - Activar: `subido_al_sistema=true, uploaded_at=now(), uploaded_by=auth.uid()`.
-  - Desactivar: solo `subido_al_sistema=false` (mantener trazabilidad).
-
-## 5. Cálculos derivados
-
-```
-shipping = peso_kg * (shipment?.cost_per_kg_eur ?? 0)
-total    = precio_compra + shipping
-margin   = (pvp ?? 0) - total
-```
-Fase 1: sin shipment → "costo total estimado" = `precio_compra`.
-
-## 6. Fuera de alcance
-
-Fotos, CSV, storage bucket, CRUD envíos/cajas, marcar recibido, tab Disponible operativo, Woo, POS. No se toca Fichaje, Administración, Core.
-
-## 7. Orden al pasar a build mode
-
-1. Aplicar migración.
-2. Regenerar types.
-3. Crear helpers + hook.
-4. Crear editor y tab de compras sin asignar.
-5. Crear página con tabs + registrar ruta + card en `/sublime`.
-6. Typecheck.
+- Sale de "Compras sin asignar" y aparece en "En camino".
+- shipment y caja visibles.
+- shipping_cost = 4 €, total = 24 €, margen = 21 €.
+- Typecheck limpio (uso de `(supabase as any)` para las tablas nuevas, sin regeneración de types).

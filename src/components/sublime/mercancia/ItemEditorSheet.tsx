@@ -24,9 +24,18 @@ import {
 } from "@/lib/sublimeMerch";
 import {
   useMerchMutations,
+  useSublimeBoxes,
+  useSublimeShipments,
   type MerchItemInput,
   type SublimeMerchItem,
 } from "@/hooks/useSublimeMerch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PhotoGallery } from "./PhotoGallery";
 
 interface Props {
@@ -447,9 +456,13 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
             )}
           </div>
 
-          <div className="rounded-lg border border-dashed border-border/60 p-3 text-xs text-muted-foreground">
-            Asignación a envío/caja disponible en la siguiente fase.
-          </div>
+          {isEdit && item ? (
+            <ShipmentBoxAssigner item={item} />
+          ) : (
+            <div className="rounded-lg border border-dashed border-border/60 p-3 text-xs text-muted-foreground">
+              Guarda el producto para poder asignarlo a un envío/caja.
+            </div>
+          )}
         </div>
 
         <SheetFooter className="gap-2">
@@ -552,6 +565,113 @@ function PendingPhotoPicker({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ShipmentBoxAssigner({ item }: { item: SublimeMerchItem }) {
+  const [shipmentId, setShipmentId] = useState<string>(item.shipment_id ?? "");
+  const [boxId, setBoxId] = useState<string>(item.box_id ?? "");
+  const [saving, setSaving] = useState(false);
+  const { data: shipments = [] } = useSublimeShipments();
+  const { data: boxes = [] } = useSublimeBoxes(shipmentId || null);
+  const { assignItemToShipmentBox } = useMerchMutations();
+
+  useEffect(() => {
+    if (shipmentId && boxId) {
+      const belongs = boxes.some((b) => b.id === boxId);
+      if (!belongs) setBoxId("");
+    }
+  }, [shipmentId, boxes, boxId]);
+
+  const onChangeShipment = (v: string) => {
+    setShipmentId(v);
+    setBoxId("");
+  };
+
+  const save = async () => {
+    if (!shipmentId) return toast.error("Selecciona un envío.");
+    if (!boxId) return toast.error("Selecciona una caja válida para este envío.");
+    setSaving(true);
+    try {
+      await assignItemToShipmentBox.mutateAsync({
+        itemId: item.id,
+        shipmentId,
+        boxId,
+      });
+      toast.success("Asignación guardada. Producto en camino.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al asignar.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const noBoxes = Boolean(shipmentId) && boxes.length === 0;
+
+  return (
+    <div className="space-y-3 rounded-lg border border-border/60 p-3">
+      <div>
+        <Label className="text-sm">Asignación a envío / caja</Label>
+        <p className="text-xs text-muted-foreground mt-1">
+          Al guardar la asignación, el producto pasa a "En camino".
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label className="text-xs">Envío</Label>
+        <Select value={shipmentId} onValueChange={onChangeShipment}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecciona un envío" />
+          </SelectTrigger>
+          <SelectContent>
+            {shipments.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.shipment_number}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label className="text-xs">Caja</Label>
+        <Select
+          value={boxId}
+          onValueChange={setBoxId}
+          disabled={!shipmentId || boxes.length === 0}
+        >
+          <SelectTrigger>
+            <SelectValue
+              placeholder={
+                !shipmentId
+                  ? "Selecciona un envío primero"
+                  : boxes.length === 0
+                    ? "Sin cajas"
+                    : "Selecciona una caja"
+              }
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {boxes.map((b) => (
+              <SelectItem key={b.id} value={b.id}>
+                {b.box_number}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {noBoxes ? (
+        <p className="text-xs text-muted-foreground italic">
+          Este envío no tiene cajas. Crea una caja desde "Gestionar envíos".
+        </p>
+      ) : null}
+      <Button
+        type="button"
+        size="sm"
+        onClick={save}
+        disabled={saving || !shipmentId || !boxId}
+      >
+        Guardar asignación
+      </Button>
     </div>
   );
 }
