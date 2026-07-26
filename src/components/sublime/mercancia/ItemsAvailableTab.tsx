@@ -265,7 +265,10 @@ export function ItemsAvailableTab() {
                   const box = i.box_id ? boxMap.get(i.box_id) : null;
                   const shipping = calculateShippingCost(i, shipment ?? null);
                   const total = calculateTotalCost(i, shipment ?? null);
-                  const margin = calculateMargin(i, shipment ?? null);
+                  const rule = findPricingRule(pricingRules, i.product_type);
+                  const finalPvp = getFinalPvp(i, rule, shipment ?? null);
+                  const margin = calculateMargin(i, shipment ?? null, rule);
+
                   return (
                     <TableRow key={i.id}>
                       <TableCell className="font-medium">
