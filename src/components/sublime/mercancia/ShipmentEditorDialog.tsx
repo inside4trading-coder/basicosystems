@@ -63,21 +63,33 @@ export function ShipmentEditorDialog({ open, onOpenChange, shipment }: Props) {
 
   useEffect(() => {
     if (open) {
-      setForm(
-        shipment
-          ? {
-              shipment_number: shipment.shipment_number,
-              sent_at: shipment.sent_at,
-              carrier: shipment.carrier,
-              tracking_number: shipment.tracking_number,
-              cost_per_kg_eur: Number(shipment.cost_per_kg_eur ?? 0),
-              status: shipment.status,
-              notes: shipment.notes,
-            }
-          : empty(),
-      );
+      if (shipment) {
+        setForm({
+          shipment_number: shipment.shipment_number,
+          sent_at: shipment.sent_at,
+          carrier: shipment.carrier,
+          tracking_number: shipment.tracking_number,
+          cost_per_kg_eur: Number(shipment.cost_per_kg_eur ?? 0),
+          status: shipment.status,
+          notes: shipment.notes,
+        });
+      } else {
+        setForm(empty());
+        getNextShipmentNumber()
+          .then((n) => setForm((f) => ({ ...f, shipment_number: n })))
+          .catch(() => undefined);
+      }
     }
   }, [open, shipment]);
+
+  const regenerateNumber = async () => {
+    try {
+      const n = await getNextShipmentNumber();
+      setForm((f) => ({ ...f, shipment_number: n }));
+    } catch {
+      toast.error("No se pudo regenerar el número.");
+    }
+  };
 
   const set = <K extends keyof ShipmentInput>(k: K, v: ShipmentInput[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
