@@ -107,6 +107,11 @@ export function ItemsInTransitTab() {
     setAssigning(i);
     setOpenAssign(true);
   };
+  const openReceive = (i: SublimeMerchItem) => {
+    setReceiving(i);
+    setOpenReceiveDlg(true);
+  };
+
 
   if (isLoading) {
     return (
