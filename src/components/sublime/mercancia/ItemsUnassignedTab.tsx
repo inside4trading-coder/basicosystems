@@ -128,7 +128,15 @@ export function ItemsUnassignedTab() {
               <TableBody>
                 {items.map((i) => (
                   <TableRow key={i.id}>
-                    <TableCell className="font-medium">{i.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <ItemThumb item={i} />
+                        <div className="min-w-0">
+                          <div className="truncate">{i.name}</div>
+                          <PhotoCounts item={i} />
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell>{i.codigo_fabricante ?? "—"}</TableCell>
                     <TableCell className="text-right">
                       {Number(i.precio_compra).toFixed(2)} €
