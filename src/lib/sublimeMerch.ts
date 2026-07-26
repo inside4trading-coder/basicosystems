@@ -118,13 +118,62 @@ export function calculateTotalCost(
   return precio * units + calculateShippingCost(item, shipment);
 }
 
+export function calculatePurchaseTotal(item: MerchItemLike): number {
+  const precio = Number(item.precio_compra ?? 0);
+  const units = Math.max(1, calculateTotalUnits(item));
+  return precio * units;
+}
+
+export function calculateSuggestedBasePvp(cost: number, profitPercentage: number): number {
+  const pct = Number(profitPercentage ?? 0);
+  return Number(cost ?? 0) * (1 + pct / 100);
+}
+
+export function calculateIvaAmount(basePvp: number, ivaRate: number = IVA_RATE): number {
+  return Number(basePvp ?? 0) * Number(ivaRate ?? 0);
+}
+
+export function calculateSuggestedFinalPvp(cost: number, profitPercentage: number): number {
+  const base = calculateSuggestedBasePvp(cost, profitPercentage);
+  return base + calculateIvaAmount(base);
+}
+
+/** Final PVP (per unit) applied to the item, considering manual override or suggested. */
+export function getFinalPvp(
+  item: MerchItemLike,
+  rule?: PricingRuleLike | null,
+  shipment?: MerchShipmentLike | null,
+): number | null {
+  if (item.use_manual_pvp) {
+    const m = item.pvp_manual != null ? Number(item.pvp_manual) : item.pvp != null ? Number(item.pvp) : null;
+    if (m == null || Number.isNaN(m) || m <= 0) return null;
+    return m;
+  }
+  const cost = calculateTotalCost(item, shipment);
+  const units = Math.max(1, calculateTotalUnits(item));
+  const perUnitCost = cost / units;
+  const pct = rule ? Number(rule.profit_percentage ?? 0) : 0;
+  const suggested = calculateSuggestedFinalPvp(perUnitCost, pct);
+  return suggested > 0 ? suggested : null;
+}
+
 export function calculateMargin(
   item: MerchItemLike,
   shipment?: MerchShipmentLike | null,
+  rule?: PricingRuleLike | null,
 ): number | null {
-  if (item.pvp == null) return null;
+  const pvpUnit = getFinalPvp(item, rule, shipment);
+  if (pvpUnit == null) return null;
   const units = Math.max(1, calculateTotalUnits(item));
-  return Number(item.pvp) * units - calculateTotalCost(item, shipment);
+  return pvpUnit * units - calculateTotalCost(item, shipment);
+}
+
+export function calculateMerchMargin(
+  item: MerchItemLike,
+  rule?: PricingRuleLike | null,
+  shipment?: MerchShipmentLike | null,
+): number | null {
+  return calculateMargin(item, shipment, rule);
 }
 
 export type UploadValidation = {
@@ -133,7 +182,11 @@ export type UploadValidation = {
   message?: string;
 };
 
-export function canMarkUploaded(item: MerchItemLike): UploadValidation {
+export function canMarkUploaded(
+  item: MerchItemLike,
+  rule?: PricingRuleLike | null,
+  shipment?: MerchShipmentLike | null,
+): UploadValidation {
   if (!item.sku_web || !item.sku_web.trim()) {
     return {
       ok: false,
@@ -142,16 +195,20 @@ export function canMarkUploaded(item: MerchItemLike): UploadValidation {
         "Debes asignar un SKU web antes de marcar este producto como subido al sistema.",
     };
   }
-  if (item.pvp == null || Number.isNaN(Number(item.pvp))) {
+  const finalPvp = getFinalPvp(item, rule, shipment);
+  const legacyManual =
+    item.use_manual_pvp && (Number(item.pvp_manual ?? 0) > 0 || Number(item.pvp ?? 0) > 0);
+  if (!(finalPvp && finalPvp > 0) && !legacyManual) {
     return {
       ok: false,
       reason: "missing_pvp",
       message:
-        "Debes asignar un PVP antes de marcar este producto como subido al sistema.",
+        "Debes tener un PVP final válido antes de marcar este producto como subido al sistema.",
     };
   }
   return { ok: true };
 }
+
 
 export const MERCH_ESTADOS = [
   "purchased",
