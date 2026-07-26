@@ -9,7 +9,50 @@ export interface MerchItemLike {
   unit_count?: number | null;
   size_group?: string | null;
   size_quantities?: Record<string, number> | null;
+  product_type?: string | null;
+  use_manual_pvp?: boolean | null;
+  pvp_manual?: number | null;
 }
+
+export interface PricingRuleLike {
+  product_type: string;
+  label: string;
+  profit_percentage: number;
+  active?: boolean;
+}
+
+export const IVA_RATE = 0.16;
+
+export const FALLBACK_PRICING_RULES: PricingRuleLike[] = [
+  { product_type: "franelas_hoodies", label: "Franelas / Hoodies", profit_percentage: 100, active: true },
+  { product_type: "pantalones", label: "Pantalones", profit_percentage: 100, active: true },
+  { product_type: "chaquetas", label: "Chaquetas", profit_percentage: 100, active: true },
+  { product_type: "zapatos", label: "Zapatos", profit_percentage: 100, active: true },
+  { product_type: "gorras", label: "Gorras", profit_percentage: 100, active: true },
+  { product_type: "accesorios", label: "Accesorios", profit_percentage: 100, active: true },
+  { product_type: "otros", label: "Otros", profit_percentage: 100, active: true },
+];
+
+export function slugifyProductType(label: string): string {
+  return label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 64);
+}
+
+export function findPricingRule(
+  rules: PricingRuleLike[] | null | undefined,
+  productType: string | null | undefined,
+): PricingRuleLike | null {
+  if (!productType) return null;
+  const list = rules && rules.length ? rules : FALLBACK_PRICING_RULES;
+  return list.find((r) => r.product_type === productType) ?? null;
+}
+
 
 export interface MerchShipmentLike {
   cost_per_kg_eur: number | null;
