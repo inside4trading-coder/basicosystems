@@ -18,6 +18,9 @@ import { toast } from "sonner";
 import {
   canMarkUploaded,
   calculateTotalCost,
+  calculateTotalUnits,
+  getDefaultSizesForGroup,
+  normalizeSizeQuantities,
   validatePhotoFile,
   validatePhotoUrl,
   uploadSublimeMerchPhoto,
@@ -54,6 +57,10 @@ const empty = (): MerchItemInput => ({
   sku_web: null,
   notas: null,
   subido_al_sistema: false,
+  size_group: "franelas_hoodies",
+  no_size: false,
+  unit_count: 1,
+  size_quantities: {},
 });
 
 interface PendingFile {
