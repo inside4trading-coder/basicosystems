@@ -346,26 +346,44 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>PVP</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                value={form.pvp ?? ""}
-                onChange={(e) =>
-                  set("pvp", e.target.value === "" ? null : Number(e.target.value))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>SKU web</Label>
-              <Input
-                value={form.sku_web ?? ""}
-                onChange={(e) => set("sku_web", e.target.value.trim() || null)}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>SKU web</Label>
+            <Input
+              value={form.sku_web ?? ""}
+              onChange={(e) => set("sku_web", e.target.value.trim() || null)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Tipo de artículo</Label>
+            <Select
+              value={form.product_type}
+              onValueChange={(v) => set("product_type", v)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(pricingRules.filter((r) => r.active).length
+                  ? pricingRules.filter((r) => r.active)
+                  : []
+                ).map((r) => (
+                  <SelectItem key={r.product_type} value={r.product_type}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+                {/* Mostrar tipo inactivo si el producto lo tiene */}
+                {currentRule && currentRule.active === false ? (
+                  <SelectItem value={currentRule.product_type}>
+                    {currentRule.label} (inactivo)
+                  </SelectItem>
+                ) : null}
+                {/* Fallback si no cargó nada */}
+                {pricingRules.length === 0 ? (
+                  <SelectItem value="franelas_hoodies">Franelas / Hoodies</SelectItem>
+                ) : null}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -382,17 +400,13 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
             onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
           />
 
+          <SuggestedPricePanel
+            form={form}
+            rule={currentRule}
+            shipment={currentShipment}
+            onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+          />
 
-          <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Costo total estimado (lote)</span>
-              <span className="font-semibold">{totalEst.toFixed(2)} €</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Unidades: {calculateTotalUnits(form)} · Precio compra y PVP se toman por unidad.
-              El peso se toma como peso total del lote.
-            </p>
-          </div>
 
           <Separator />
 
