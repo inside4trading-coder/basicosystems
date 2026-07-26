@@ -157,6 +157,9 @@ export function ItemsInTransitTab() {
                         {shipment?.shipment_number ?? "sin envío"} ·{" "}
                         {box?.box_number ?? "sin caja"}
                       </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatSizeSummary(i)} · {calculateTotalUnits(i)} uds
+                      </p>
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => openEdit(i)}>
