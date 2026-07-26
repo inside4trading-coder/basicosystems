@@ -1017,7 +1017,7 @@ function SuggestedPricePanel({
   );
 }
 
-function Row({ k, v }: { k: string; v: React.ReactNode }) {
+function Row({ k, v }: { k: string; v: ReactNode }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-muted-foreground">{k}</span>
