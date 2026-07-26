@@ -34,9 +34,11 @@ export function calculateMargin(
   return Number(item.pvp) - calculateTotalCost(item, shipment);
 }
 
-export type UploadValidation =
-  | { ok: true }
-  | { ok: false; reason: "missing_sku" | "missing_pvp"; message: string };
+export type UploadValidation = {
+  ok: boolean;
+  reason?: "missing_sku" | "missing_pvp";
+  message?: string;
+};
 
 export function canMarkUploaded(item: MerchItemLike): UploadValidation {
   if (!item.sku_web || !item.sku_web.trim()) {
