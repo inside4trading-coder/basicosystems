@@ -361,11 +361,12 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
 
           <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Costo total estimado</span>
+              <span className="text-muted-foreground">Costo total estimado (lote)</span>
               <span className="font-semibold">{totalEst.toFixed(2)} €</span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Sin envío asignado en Fase 1 → costo total = precio de compra.
+              Unidades: {calculateTotalUnits(form)} · Precio compra y PVP se toman por unidad.
+              El peso se toma como peso total del lote.
             </p>
           </div>
 
