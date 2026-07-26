@@ -61,7 +61,11 @@ const empty = (): MerchItemInput => ({
   no_size: false,
   unit_count: 1,
   size_quantities: {},
+  product_type: "franelas_hoodies",
+  use_manual_pvp: false,
+  pvp_manual: null,
 });
+
 
 interface PendingFile {
   file: File;
