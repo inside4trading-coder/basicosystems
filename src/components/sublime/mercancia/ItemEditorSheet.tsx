@@ -414,7 +414,7 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
             <div className="space-y-1">
               <Label className="text-sm">Subido al sistema</Label>
               <p className="text-xs text-muted-foreground">
-                Requiere SKU web y PVP asignados.
+                Requiere SKU web y PVP final válido (sugerido o manual).
               </p>
             </div>
             <Switch
