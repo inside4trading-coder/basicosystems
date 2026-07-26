@@ -83,7 +83,10 @@ export function ItemsInTransitTab() {
   const [openEditor, setOpenEditor] = useState(false);
   const [assigning, setAssigning] = useState<SublimeMerchItem | null>(null);
   const [openAssign, setOpenAssign] = useState(false);
+  const [receiving, setReceiving] = useState<SublimeMerchItem | null>(null);
+  const [openReceiveDlg, setOpenReceiveDlg] = useState(false);
   const isMobile = useIsMobile();
+
 
   const shipMap = useMemo(() => {
     const m = new Map<string, SublimeMerchShipment>();
