@@ -26,6 +26,7 @@ import {
   useMerchMutations,
   useSublimeBoxes,
   useSublimeShipments,
+  useSublimeItem,
   type MerchItemInput,
   type SublimeMerchItem,
 } from "@/hooks/useSublimeMerch";
