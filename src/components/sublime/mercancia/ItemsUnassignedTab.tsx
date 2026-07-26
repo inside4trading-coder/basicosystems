@@ -284,8 +284,9 @@ function MobileCard({
         <div>
           <p className="text-muted-foreground">PVP</p>
           <p className="font-medium">
-            {item.pvp == null ? "—" : `${Number(item.pvp).toFixed(2)} €`}
+            {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
           </p>
+
         </div>
       </div>
       <div className="flex items-center justify-between pt-1">
