@@ -23,6 +23,7 @@ import {
   type MerchItemInput,
   type SublimeMerchItem,
 } from "@/hooks/useSublimeMerch";
+import { PhotoGallery } from "./PhotoGallery";
 
 interface Props {
   open: boolean;
@@ -227,6 +228,51 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
           <div className="rounded-lg border border-dashed border-border/60 p-3 text-xs text-muted-foreground">
             Impuestos preparados para fase posterior. No afectan el costo total
             actualmente.
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3 rounded-lg border border-border/60 p-3">
+            <div>
+              <Label className="text-sm">Fotos referencia / origen</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Fotos tomadas con el teléfono o adjuntadas para que el equipo
+                identifique la prenda al recibirla.
+              </p>
+            </div>
+            {isEdit && item ? (
+              <PhotoGallery
+                itemId={item.id}
+                type="origen"
+                photos={item.fotos_origen ?? []}
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground italic">
+                Guarda el producto primero para poder subir fotos.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-border/60 p-3">
+            <div>
+              <Label className="text-sm">Fotos web / banco de imágenes</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Fotos que se usarán para subir el producto a la web.
+              </p>
+            </div>
+            {isEdit && item ? (
+              <PhotoGallery
+                itemId={item.id}
+                type="web"
+                photos={item.fotos_web ?? []}
+                allowUrlInput
+                showBankTools
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground italic">
+                Guarda el producto primero para poder subir fotos.
+              </p>
+            )}
           </div>
 
           <div className="rounded-lg border border-dashed border-border/60 p-3 text-xs text-muted-foreground">

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Pencil, CheckCircle2, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Pencil, CheckCircle2, XCircle, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +16,52 @@ import {
   useUnassignedItems,
   type SublimeMerchItem,
 } from "@/hooks/useSublimeMerch";
-import { calculateTotalCost, MERCH_ESTADO_LABEL, type MerchEstado } from "@/lib/sublimeMerch";
+import {
+  calculateTotalCost,
+  MERCH_ESTADO_LABEL,
+  resolvePhotoUrl,
+  type MerchEstado,
+} from "@/lib/sublimeMerch";
 import { ItemEditorSheet } from "./ItemEditorSheet";
+
+function ItemThumb({ item, size = 40 }: { item: SublimeMerchItem; size?: number }) {
+  const [src, setSrc] = useState<string>("");
+  const primary = item.fotos_origen?.[0] ?? item.fotos_web?.[0] ?? null;
+  useEffect(() => {
+    let cancelled = false;
+    if (!primary) {
+      setSrc("");
+      return;
+    }
+    resolvePhotoUrl(primary).then((r) => {
+      if (!cancelled) setSrc(r);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [primary]);
+  return (
+    <div
+      className="rounded-md bg-muted/40 border border-border/60 overflow-hidden flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+    >
+      {src ? (
+        <img src={src} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+      )}
+    </div>
+  );
+}
+
+function PhotoCounts({ item }: { item: SublimeMerchItem }) {
+  return (
+    <div className="flex gap-1 text-[10px] text-muted-foreground">
+      <span>O:{item.fotos_origen?.length ?? 0}</span>
+      <span>W:{item.fotos_web?.length ?? 0}</span>
+    </div>
+  );
+}
 
 export function ItemsUnassignedTab() {
   const { data: items = [], isLoading } = useUnassignedItems();
@@ -84,7 +128,15 @@ export function ItemsUnassignedTab() {
               <TableBody>
                 {items.map((i) => (
                   <TableRow key={i.id}>
-                    <TableCell className="font-medium">{i.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <ItemThumb item={i} />
+                        <div className="min-w-0">
+                          <div className="truncate">{i.name}</div>
+                          <PhotoCounts item={i} />
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell>{i.codigo_fabricante ?? "—"}</TableCell>
                     <TableCell className="text-right">
                       {Number(i.precio_compra).toFixed(2)} €
@@ -143,11 +195,15 @@ function MobileCard({
   return (
     <Card className="p-4 space-y-2">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="font-semibold truncate">{item.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {item.codigo_fabricante ?? "sin código"} · {item.sku_web ?? "sin SKU"}
-          </p>
+        <div className="flex items-start gap-3 min-w-0">
+          <ItemThumb item={item} size={56} />
+          <div className="min-w-0">
+            <p className="font-semibold truncate">{item.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {item.codigo_fabricante ?? "sin código"} · {item.sku_web ?? "sin SKU"}
+            </p>
+            <PhotoCounts item={item} />
+          </div>
         </div>
         <Button variant="ghost" size="sm" onClick={onEdit}>
           <Pencil className="h-4 w-4" />

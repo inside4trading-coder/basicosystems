@@ -1,5 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  uploadSublimeMerchPhoto,
+  deleteSublimeMerchPhotoFromStorage,
+  type PhotoType,
+} from "@/lib/sublimeMerch";
 
 export interface SublimeMerchItem {
   id: string;
@@ -151,5 +156,95 @@ export function useMerchMutations() {
     onSuccess: invalidate,
   });
 
-  return { createItem, updateItem };
+  const addPhotoToItem = useMutation({
+    mutationFn: async ({
+      itemId,
+      type,
+      url,
+    }: {
+      itemId: string;
+      type: PhotoType;
+      url: string;
+    }) => {
+      const col = type === "origen" ? "fotos_origen" : "fotos_web";
+      const { data: current, error: readErr } = await (supabase as any)
+        .from(TABLE)
+        .select(col)
+        .eq("id", itemId)
+        .single();
+      if (readErr) throw readErr;
+      const existing: string[] = (current?.[col] as string[]) ?? [];
+      if (existing.includes(url)) return existing;
+      const next = [...existing, url];
+      const { error } = await (supabase as any)
+        .from(TABLE)
+        .update({ [col]: next })
+        .eq("id", itemId);
+      if (error) throw error;
+      return next;
+    },
+    onSuccess: invalidate,
+  });
+
+  const removePhotoFromItem = useMutation({
+    mutationFn: async ({
+      itemId,
+      type,
+      url,
+    }: {
+      itemId: string;
+      type: PhotoType;
+      url: string;
+    }) => {
+      const col = type === "origen" ? "fotos_origen" : "fotos_web";
+      const { data: current, error: readErr } = await (supabase as any)
+        .from(TABLE)
+        .select(col)
+        .eq("id", itemId)
+        .single();
+      if (readErr) throw readErr;
+      const existing: string[] = (current?.[col] as string[]) ?? [];
+      const next = existing.filter((u) => u !== url);
+      const { error } = await (supabase as any)
+        .from(TABLE)
+        .update({ [col]: next })
+        .eq("id", itemId);
+      if (error) throw error;
+      await deleteSublimeMerchPhotoFromStorage(url).catch(() => undefined);
+      return next;
+    },
+    onSuccess: invalidate,
+  });
+
+  const uploadPhotoToItem = useMutation({
+    mutationFn: async ({
+      itemId,
+      type,
+      file,
+    }: {
+      itemId: string;
+      type: PhotoType;
+      file: File;
+    }) => {
+      const url = await uploadSublimeMerchPhoto(itemId, type, file);
+      await addPhotoToItem.mutateAsync({ itemId, type, url });
+      return url;
+    },
+  });
+
+  const addWebPhotoUrl = useMutation({
+    mutationFn: async ({ itemId, url }: { itemId: string; url: string }) => {
+      await addPhotoToItem.mutateAsync({ itemId, type: "web", url });
+      return url;
+    },
+  });
+
+  return {
+    createItem,
+    updateItem,
+    addPhotoToItem,
+    removePhotoFromItem,
+    uploadPhotoToItem,
+    addWebPhotoUrl,
+  };
 }
