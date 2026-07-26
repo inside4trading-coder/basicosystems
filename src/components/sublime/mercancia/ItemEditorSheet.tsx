@@ -197,6 +197,20 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
     if (form.pvp != null && form.pvp < 0)
       return toast.error("PVP no puede ser negativo.");
 
+    // Sizes validation
+    if (form.no_size) {
+      if (!form.unit_count || form.unit_count < 1) {
+        return toast.error("Unidades debe ser al menos 1.");
+      }
+    } else {
+      const normalized = normalizeSizeQuantities(form.size_quantities);
+      const total = Object.values(normalized).reduce((a, b) => a + b, 0);
+      if (total <= 0) {
+        return toast.error("Agrega al menos una talla o marca Sin talla.");
+      }
+      form.size_quantities = normalized;
+    }
+
     if (form.subido_al_sistema) {
       const check = canMarkUploaded(form);
       if (!check.ok) return toast.error(check.message);
