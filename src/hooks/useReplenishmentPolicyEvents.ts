@@ -600,6 +600,53 @@ export function useReplenishmentPolicyEvents() {
     }
   };
 
+  const resolveMissingSkuPendingItem = async (args: {
+    pendingItemId: string;
+    unitCost: number;
+    action: "no_restock" | "replacement_prepare";
+  }): Promise<any | null> => {
+    try {
+      const { data, error } = await (supabase as any).rpc(
+        "core_resolve_missing_sku_pending_item",
+        {
+          p_pending_item_id: args.pendingItemId,
+          p_unit_cost: args.unitCost,
+          p_action: args.action,
+          p_dry_run: false,
+        },
+      );
+      if (error) throw error;
+      invalidateAll();
+      qc.invalidateQueries({ queryKey: ["core_production_needs"] });
+      return data;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return null;
+    }
+  };
+
+  const closeMissingSkuPendingItem = async (args: {
+    pendingItemId: string;
+    replacementEventId: string;
+  }): Promise<boolean> => {
+    try {
+      const { error } = await (supabase as any).rpc(
+        "core_close_missing_sku_pending_item",
+        {
+          p_pending_item_id: args.pendingItemId,
+          p_replacement_event_id: args.replacementEventId,
+        },
+      );
+      if (error) throw error;
+      invalidateAll();
+      qc.invalidateQueries({ queryKey: ["core_production_needs"] });
+      return true;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return false;
+    }
+  };
+
   return {
     rows,
     isLoading:
@@ -615,5 +662,7 @@ export function useReplenishmentPolicyEvents() {
     setPendingClassificationBridgeEventId,
     closePendingClassification,
     resolvePendingItem,
+    resolveMissingSkuPendingItem,
+    closeMissingSkuPendingItem,
   };
 }
