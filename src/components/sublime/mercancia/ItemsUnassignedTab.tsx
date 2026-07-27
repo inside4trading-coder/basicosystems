@@ -143,7 +143,7 @@ export function ItemsUnassignedTab() {
                   <TableHead>Cód. fabricante</TableHead>
                   <TableHead className="text-right">Precio compra</TableHead>
                   <TableHead className="text-right">Peso kg</TableHead>
-                  <TableHead className="text-right">PVP</TableHead>
+                  <TableHead className="text-right">PVP tentativo</TableHead>
                   <TableHead>SKU web</TableHead>
                   <TableHead className="text-right">Costo total est.</TableHead>
                   <TableHead>Subido</TableHead>
