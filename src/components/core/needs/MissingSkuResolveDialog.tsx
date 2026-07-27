@@ -181,6 +181,17 @@ export function MissingSkuResolveDialog({ row, open, onOpenChange }: Props) {
         setSaving(false);
         return;
       }
+      // If pending was already resolved server-side, just close and exit.
+      if ((res as any).already_resolved) {
+        toast({
+          title: "Ya resuelto",
+          description: "Esta venta sin mapeo ya estaba resuelta.",
+        });
+        invalidateAll();
+        onOpenChange(false);
+        setSaving(false);
+        return;
+      }
       const movId = (res.movement_id as string) ?? null;
       if (!movId) {
         toast({
@@ -193,18 +204,35 @@ export function MissingSkuResolveDialog({ row, open, onOpenChange }: Props) {
       }
       setMovementId(movId);
 
-      // Reuse an existing bridge event for this movement if any
+      // Reuse any existing bridge event for this movement (open/reviewed/resolved)
       const { data: existing } = await supabase
         .from("core_replenishment_policy_events" as any)
         .select("*")
         .eq("source_type", "fabrication_fund_movement")
         .eq("source_id", movId)
         .eq("action", "suggest_replacement")
-        .in("status", ["open", "reviewed"])
+        .in("status", ["open", "reviewed", "resolved"])
         .order("created_at", { ascending: false })
         .limit(1);
 
       let ev: any = (existing ?? [])[0] ?? null;
+
+      // If a resolved event already exists → replacement was already applied.
+      // Close the pending item if still open, notify, and exit. Do NOT create a duplicate.
+      if (ev && ev.status === "resolved") {
+        await closeMissingSkuPendingItem({
+          pendingItemId,
+          replacementEventId: ev.id,
+        });
+        toast({
+          title: "Ya reemplazado",
+          description: "Esta venta sin mapeo ya tenía un reemplazo aplicado.",
+        });
+        invalidateAll();
+        onOpenChange(false);
+        setSaving(false);
+        return;
+      }
 
       if (!ev) {
         const { data: userData } = await supabase.auth.getUser();
@@ -252,6 +280,7 @@ export function MissingSkuResolveDialog({ row, open, onOpenChange }: Props) {
       setSaving(false);
     }
   }
+
 
   async function handleApplyClose(v: boolean) {
     if (v) return;
