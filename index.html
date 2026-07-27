@@ -4,39 +4,92 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google" content="notranslate" />
+
+    <!--
+      Las etiquetas van aquí, estáticas, y no por JavaScript: los rastreadores
+      sociales (Facebook, LinkedIn, WhatsApp, X) no ejecutan JS y sólo leen este
+      HTML. Inyectarlas desde React llegaría a Google, que sí renderiza, pero no
+      a la vista previa del enlace, que es lo que se quiere arreglar.
+
+      Al cambiar de dominio hay que tocar canonical, og:url y og:image aquí,
+      más public/sitemap.xml y public/robots.txt. Está listado en el README.
+    -->
+    <title>Basico System — Sistemas operativos a medida para marcas</title>
+    <meta name="description" content="Estudio de sistemas e IA aplicada. Empieza con Basico System, con diez módulos listos, y evoluciona a un sistema 100 % a medida cuando tu operación lo pida." />
+    <link rel="canonical" href="https://basicosystems.lovable.app/" />
+
+    <!-- Iconos. Sin esto el navegador sólo encuentra /favicon.ico por convención
+         y no sabe qué resolución elegir. -->
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#e60012" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#0000AA" />
+
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="BASICO" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <!-- TODO: Set the document title to the name of your application -->
-    <title>Basico System</title>
-    <meta name="description" content="Basico System - Powered by Musa">
-    <meta name="author" content="Lovable" />
 
-    <!-- TODO: Update og:title to match your application name -->
-    
-    
+    <!-- Open Graph. Las URL de imagen han de ser absolutas: los rastreadores no
+         resuelven rutas relativas. -->
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/gtMtz8heOUVqyw6bEA8JXOhGJc32/social-images/social-1774791125589-AI_Builder.webp">
+    <meta property="og:site_name" content="Basico System" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:url" content="https://basicosystems.lovable.app/" />
+    <meta property="og:title" content="Basico System — Sistemas operativos a medida para marcas" />
+    <meta property="og:description" content="Estudio de sistemas e IA aplicada. Empieza con Basico System, con diez módulos listos, y evoluciona a un sistema 100 % a medida cuando tu operación lo pida." />
+    <meta property="og:image" content="https://basicosystems.lovable.app/og-basico-systems.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Basico System: sistemas operativos para marcas que no caben en un SaaS genérico." />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/gtMtz8heOUVqyw6bEA8JXOhGJc32/social-images/social-1774791125589-AI_Builder.webp">
-    
-  
-  
-  
-  
-  
-  
-  
-  <meta property="og:title" content="Basico System">
-  <meta name="twitter:title" content="Basico System">
-  <meta property="og:description" content="Basico System - Powered by Musa">
-  <meta name="twitter:description" content="Basico System - Powered by Musa">
-</head>
+    <meta name="twitter:title" content="Basico System — Sistemas operativos a medida para marcas" />
+    <meta name="twitter:description" content="Estudio de sistemas e IA aplicada. Empieza con Basico System, con diez módulos listos, y evoluciona a un sistema 100 % a medida cuando tu operación lo pida." />
+    <meta name="twitter:image" content="https://basicosystems.lovable.app/og-basico-systems.png" />
+    <meta name="twitter:image:alt" content="Basico System: sistemas operativos para marcas que no caben en un SaaS genérico." />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://basicosystems.lovable.app/#organizacion",
+          "name": "Basico System",
+          "url": "https://basicosystems.lovable.app/",
+          "logo": "https://basicosystems.lovable.app/icon-512.png",
+          "description": "Estudio de sistemas e IA aplicada. Construye sistemas operativos a medida para marcas.",
+          "parentOrganization": { "@type": "Organization", "name": "Basico", "url": "https://basicoclothes.com" }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://basicosystems.lovable.app/#sitio",
+          "url": "https://basicosystems.lovable.app/",
+          "name": "Basico System",
+          "inLanguage": "es-ES",
+          "publisher": { "@id": "https://basicosystems.lovable.app/#organizacion" }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "Basico System",
+          "url": "https://basicosystems.lovable.app/",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "inLanguage": "es-ES",
+          "image": "https://basicosystems.lovable.app/og-basico-systems.png",
+          "description": "Sistema de gestión modular para marcas: pedidos, CRM, planning, RRHH, RRPP, campañas, llamadas, administración, fabricación y retail.",
+          "featureList": [
+            "Pedidos", "CRM", "Planning", "Crew", "RRPP",
+            "Campañas", "Llamadas", "Administración", "Core", "Retail"
+          ],
+          "publisher": { "@id": "https://basicosystems.lovable.app/#organizacion" }
+        }
+      ]
+    }
+    </script>
+  </head>
 
   <body translate="no" class="notranslate">
     <div id="root"></div>

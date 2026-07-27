@@ -2,7 +2,13 @@
 // Does NOT cache API responses, Supabase, auth tokens, or any private data.
 // Only passes through static asset requests to satisfy PWA installability.
 
-const STATIC_CACHE = "basico-static-v1";
+// Subir este número al cambiar cualquier asset estático. El handler de
+// `activate` borra toda caché cuyo nombre no coincida con el actual, así que el
+// nombre ES el mecanismo de invalidación: el fetch es cache-first para .png,
+// .ico y .woff2, y sin cambiarlo los iconos viejos se sirven indefinidamente a
+// quien ya haya visitado el sitio.
+// v2 — iconos y manifest rehechos (favicon legible, iconos cuadrados).
+const STATIC_CACHE = "basico-static-v2";
 const STATIC_ASSETS = ["/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {

@@ -1,0 +1,100 @@
+<!doctype html>
+<!--
+  Fuente del icono de Basico System. De aquí salen el favicon.ico (16/32/48) y
+  los PNG cuadrados de public/.
+
+  Por qué una sola "B" y no el wordmark: en una pestaña el icono son 16 px.
+  "BASICO" son seis letras, menos de tres píxeles cada una — no es cuestión de
+  agrandarlas, es que no caben. Un glifo llenando el cuadro es la letra más
+  grande posible y queda simétrica.
+
+  Por qué Fixedsys: es la misma tipografía que la landing, y siendo bitmap sus
+  trazos son rectos y de grosor uniforme, que es lo que sobrevive al reducir.
+
+  Por qué se mide la caja de tinta en lugar de fiarse del cuerpo de la fuente:
+  Fixedsys reserva mucho espacio muerto alrededor del glifo (interlínea y
+  prosa). Centrando por la caja del texto, la B sale pequeña y descolocada
+  arriba a la izquierda. Midiendo los píxeles que realmente pinta, se puede
+  encajar centrada y al máximo tamaño que permita el margen.
+
+  Uso:  icon.html?size=192&margen=0.10
+  Regenerar todo:  node design/generate-assets.cjs
+-->
+<meta charset="utf-8">
+<title>Basico System — icono</title>
+<style>
+  @font-face {
+    font-family: "Fixedsys Excelsior";
+    src: url("../public/fonts/fixedsys-excelsior-subset.woff2") format("woff2");
+    font-display: block;
+  }
+  html, body { margin: 0; padding: 0; background: transparent; }
+  canvas { display: block; }
+</style>
+<canvas id="out"></canvas>
+<script>
+'use strict';
+const params = new URLSearchParams(location.search);
+const SIZE   = +(params.get('size')   || 512);
+/* Fracción del lado que se deja libre por cada borde. Los iconos `maskable` de
+   Android necesitan ~20 % porque el sistema les recorta un círculo; el favicon
+   quiere el mínimo para que la letra sea lo mayor posible. */
+const MARGEN = +(params.get('margen') || 0.08);
+const FONDO  = params.get('fondo') || '#0000AA';
+const TINTA  = params.get('tinta') || '#ffffff';
+
+const listo = (async () => {
+  await document.fonts.load('400px "Fixedsys Excelsior"');
+  await document.fonts.ready;
+
+  /* 1 · Pintar la B muy grande en un lienzo auxiliar */
+  const G = 512;
+  const aux = document.createElement('canvas');
+  aux.width = aux.height = G * 2;
+  const a = aux.getContext('2d');
+  a.fillStyle = '#fff';
+  a.textBaseline = 'middle';
+  a.textAlign = 'center';
+  a.font = `${G}px "Fixedsys Excelsior", monospace`;
+  a.fillText('B', G, G);
+
+  /* 2 · Caja real de tinta: primer y último píxel con alfa */
+  const d = a.getImageData(0, 0, aux.width, aux.height).data;
+  let x0 = aux.width, y0 = aux.height, x1 = -1, y1 = -1;
+  for (let y = 0; y < aux.height; y++) {
+    for (let x = 0; x < aux.width; x++) {
+      if (d[(y * aux.width + x) * 4 + 3] > 8) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
+  }
+  const gw = x1 - x0 + 1, gh = y1 - y0 + 1;
+
+  /* 3 · Encajar esa caja centrada en el cuadro final */
+  const out = document.getElementById('out');
+  out.width = out.height = SIZE;
+  const o = out.getContext('2d');
+  o.imageSmoothingEnabled = true;
+  o.imageSmoothingQuality = 'high';
+  o.fillStyle = FONDO;
+  o.fillRect(0, 0, SIZE, SIZE);
+
+  const libre = SIZE * (1 - 2 * MARGEN);
+  const k = Math.min(libre / gw, libre / gh);
+  const dw = gw * k, dh = gh * k;
+  o.drawImage(aux, x0, y0, gw, gh,
+              Math.round((SIZE - dw) / 2), Math.round((SIZE - dh) / 2), dw, dh);
+
+  /* La B se pinta en blanco y se recolorea sólo si hace falta otro tinte */
+  if (TINTA.toLowerCase() !== '#ffffff') {
+    o.globalCompositeOperation = 'source-atop';
+    o.fillStyle = TINTA;
+    o.fillRect(0, 0, SIZE, SIZE);
+    o.globalCompositeOperation = 'source-over';
+  }
+  document.body.style.width = document.body.style.height = SIZE + 'px';
+  return { gw, gh, k: +k.toFixed(3) };
+})();
+window.__icono = listo;
+</script>
