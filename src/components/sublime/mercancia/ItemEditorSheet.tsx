@@ -933,14 +933,18 @@ function SuggestedPricePanel({
   shipment: { cost_per_kg_eur: number | null } | null;
   onChange: (patch: Partial<MerchItemInput>) => void;
 }) {
-  const totalCost = calculateTotalCost(form, shipment);
+  const hasShipment = !!(shipment && shipment.cost_per_kg_eur != null);
   const units = Math.max(1, calculateTotalUnits(form));
+  const perUnitBuy = Number(form.precio_compra ?? 0);
+  const buyTotal = perUnitBuy * units;
+  const shippingCost = hasShipment ? calculateShippingCost(form, shipment) : 0;
+  const totalCost = buyTotal + shippingCost;
   const perUnitCost = totalCost / units;
   const pct = rule ? Number(rule.profit_percentage ?? 0) : 0;
   const baseSuggested = calculateSuggestedBasePvp(perUnitCost, pct);
   const iva = calculateIvaAmount(baseSuggested);
   const suggestedFinal = baseSuggested + iva;
-  const finalPvp = getFinalPvp(form, rule, shipment);
+  const finalPvp = getFinalPvp(form, rule, hasShipment ? shipment : null);
   const manualBelow =
     form.use_manual_pvp &&
     form.pvp_manual != null &&
@@ -949,27 +953,53 @@ function SuggestedPricePanel({
 
   return (
     <div className="space-y-3 rounded-lg border border-border/60 p-3 bg-muted/20">
-      <div>
-        <Label className="text-sm">Precio sugerido</Label>
-        <p className="text-xs text-muted-foreground mt-1">
-          Se calcula desde el costo total, la ganancia del tipo y el IVA 16%.
-        </p>
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm">
+          {hasShipment ? "PVP sugerido final con envío" : "PVP sugerido tentativo"}
+        </Label>
+        <Badge variant={hasShipment ? "default" : "secondary"} className="text-[10px]">
+          {hasShipment ? "Final" : "Tentativo"}
+        </Badge>
       </div>
+      <p className="text-xs text-muted-foreground">
+        {hasShipment
+          ? "Este precio incluye el envío calculado por peso y costo por kg del envío asignado."
+          : "Este precio aún no incluye envío. Se calcula con el costo de compra, la ganancia configurada y el IVA 16%. El PVP final puede cambiar al asignar un envío."}
+      </p>
+
       <div className="text-xs space-y-1">
         <Row k="Tipo de artículo" v={rule?.label ?? "—"} />
-        <Row k={`Costo total (lote, ${units}u)`} v={`${totalCost.toFixed(2)} €`} />
-        <Row k="Costo unitario" v={`${perUnitCost.toFixed(2)} €`} />
+        <Row k={`Costo compra lote (${units}u)`} v={`${buyTotal.toFixed(2)} €`} />
+        <Row k="Costo unitario compra" v={`${perUnitBuy.toFixed(2)} €`} />
+        {hasShipment ? (
+          <>
+            <Row k="Peso total" v={`${Number(form.peso_kg ?? 0).toFixed(3)} kg`} />
+            <Row
+              k="Costo por kg del envío"
+              v={`${Number(shipment?.cost_per_kg_eur ?? 0).toFixed(2)} €`}
+            />
+            <Row k="Envío calculado" v={`${shippingCost.toFixed(2)} €`} />
+            <Row k="Costo total con envío" v={`${totalCost.toFixed(2)} €`} />
+          </>
+        ) : null}
         <Row k="Ganancia configurada" v={`${pct}%`} />
-        <Row k="PVP base sugerido" v={`${baseSuggested.toFixed(2)} €`} />
+        <Row
+          k={hasShipment ? "PVP base final" : "PVP base tentativo"}
+          v={`${baseSuggested.toFixed(2)} €`}
+        />
         <Row k={`IVA ${(IVA_RATE * 100).toFixed(0)}%`} v={`${iva.toFixed(2)} €`} />
         <Row
-          k="PVP sugerido final (unit.)"
+          k={
+            hasShipment
+              ? "PVP sugerido final (unit.)"
+              : "PVP sugerido tentativo (unit.)"
+          }
           v={<span className="font-semibold">{suggestedFinal.toFixed(2)} €</span>}
         />
       </div>
-      {!shipment ? (
-        <p className="text-[11px] text-muted-foreground italic">
-          Este costo puede cambiar cuando se asigne un envío con costo por kg.
+      {!hasShipment ? (
+        <p className="text-[11px] text-amber-600 dark:text-amber-500 italic">
+          Falta envío: asigna este producto a un envío para obtener el PVP final.
         </p>
       ) : null}
 
@@ -1011,7 +1041,13 @@ function SuggestedPricePanel({
       ) : null}
 
       <div className="rounded-md border border-border/60 bg-background p-2 text-xs flex items-center justify-between">
-        <span className="text-muted-foreground">PVP final aplicado (unit.)</span>
+        <span className="text-muted-foreground">
+          {form.use_manual_pvp
+            ? "PVP manual aplicado (unit.)"
+            : hasShipment
+              ? "PVP final aplicado (unit.)"
+              : "PVP aplicado tentativo (unit.)"}
+        </span>
         <span className="font-semibold">
           {finalPvp != null ? `${finalPvp.toFixed(2)} €` : "—"}
         </span>
@@ -1019,6 +1055,7 @@ function SuggestedPricePanel({
     </div>
   );
 }
+
 
 function Row({ k, v }: { k: string; v: ReactNode }) {
   return (
