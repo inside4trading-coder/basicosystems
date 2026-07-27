@@ -1,26 +1,26 @@
 <!doctype html>
 <!--
   Tarjeta que se ve al compartir el enlace de Basico System.
-  Se captura a 1200×630 con deviceScaleFactor 2 → public/og-basico-systems.png
-  (2400×1260).
+  Se captura a 1200×630 → public/og-basico-systems.png
 
-  ── Por qué está compuesta así ──────────────────────────────────────────────
-  Esta imagen NUNCA se ve a 1200 px. LinkedIn la muestra a ~552 en el feed, X a
-  ~506 y la miniatura de WhatsApp a ~300. La versión anterior estaba compuesta
-  para verse a tamaño completo y por eso se deshacía: medido, a 300 px sólo
-  sobrevivía el titular y todo lo demás quedaba en manchas de 5 px.
+  ── Dos restricciones que mandan sobre el diseño ────────────────────────────
 
-  De ahí sale la regla que gobierna todos los cuerpos de abajo:
-    · ≥ 28 px  para que se lea a 552 (LinkedIn, X)
-    · ≥ 48 px  para sobrevivir a la miniatura de 300 (WhatsApp)
-  Nada baja de 28.
+  1 · NUNCA se ve a 1200 px. LinkedIn la muestra a ~552 en el feed, X a ~506 y
+      la miniatura de WhatsApp a ~300. De ahí el mínimo de cuerpo: 28 px para
+      leerse a 552, y 48 px para sobrevivir a la miniatura de 300.
 
-  El titular va recortado a dos líneas justamente para poder ir a 110 px. Con
-  las cinco líneas del hero completo no cabría ni a la mitad de cuerpo.
+  2 · WhatsApp RECORTA EL CUADRADO CENTRAL. Medido sobre la versión anterior,
+      que iba alineada a la izquierda: el recorte partía el texto a media
+      palabra y se leía "EMAS / ATIVOS / ARCAS". Por eso todo va centrado y
+      dentro de los 630 px centrales, que es el cuadrado que sobrevive.
+
+  Y el peso importa: WhatsApp sólo monta la vista previa grande por debajo de
+  unos 300 kB. Por encima degrada al thumbnail cuadrado. Por eso se captura a
+  1200×630 y no al doble — subirlo a 2400 llevó el fichero a 529 kB y fue justo
+  lo que rompió la vista previa.
 
   El toroide se dibuja con canvas 2D y semilla fija en lugar de capturar la
-  animación WebGL: así la tarjeta sale idéntica cada vez que se regenera, que es
-  lo que se quiere de un asset versionado.
+  animación WebGL: así la tarjeta sale igual cada vez que se regenera.
 
   Regenerar:  node design/generate-assets.cjs
 -->
@@ -46,39 +46,36 @@
     text-rendering: optimizeSpeed;
     letter-spacing: .06em;
     overflow: hidden;
+    text-align: center;
   }
   canvas { position: absolute; inset: 0; }
 
-  /* Columna de texto: mitad izquierda, el toroide a la derecha.
-     Va en flex con space-between y no con posiciones absolutas: así los tres
-     bloques no pueden solaparse por mucho que crezca el texto. Con posiciones
-     calculadas a ojo, el wordmark acababa pisando la última línea del titular. */
+  /* Pila centrada. El ancho se acota a 630 px —el cuadrado central— para que
+     ninguna línea pueda salirse de la zona que sobrevive al recorte. */
   .txt {
-    position: absolute; inset: 0; width: 600px;
-    padding: 58px 0 58px 68px;
-    display: flex; flex-direction: column; justify-content: space-between;
+    position: absolute; inset: 0; width: 630px; margin: 0 auto;
+    padding: 50px 0;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 26px;
     z-index: 1;
   }
-  /* 30 px: por debajo de 28 no se leería en el feed de LinkedIn. */
   .eyebrow {
     font-size: 30px; letter-spacing: .2em; text-transform: uppercase;
-    color: #FF3B3F; display: flex; align-items: center; gap: 18px; margin: 0;
+    color: #FF3B3F; display: flex; align-items: center; gap: 16px; margin: 0;
   }
-  .eyebrow::before { content: ""; width: 54px; height: 4px; background: #FF3B3F; }
-  /* El elemento que tiene que sobrevivir a la miniatura de 300 px.
-     96 px y no más: Fixedsys avanza ~0,5 em por carácter, así que la línea más
-     larga —"PARA MARCAS", once caracteres— ocupa 549 px de los 600 de columna.
-     A 110 px se salía y el titular se partía en cuatro líneas. */
+  .eyebrow::before, .eyebrow::after {
+    content: ""; width: 40px; height: 3px; background: #FF3B3F;
+  }
+  /* 88 px: Fixedsys avanza ~0,5 em por carácter, así que "PARA MARCAS" —la
+     línea más larga, once caracteres— ocupa 503 px de los 630 disponibles. */
   h1 {
     margin: 0; font-weight: 400; text-transform: uppercase;
-    font-size: 96px; line-height: .94; letter-spacing: .02em;
+    font-size: 88px; line-height: .94; letter-spacing: .02em;
   }
   h1 em { font-style: normal; color: #FF3B3F; }
-  .sub { margin: 30px 0 0; font-size: 34px; color: #c9c9e8; line-height: 1.35; }
-
-  /* La marca, en cuerpo suficiente para leerse también en miniatura. */
+  .sub { margin: 0; font-size: 32px; color: #c9c9e8; line-height: 1.35; }
   .mark {
-    font-size: 48px; letter-spacing: .1em; text-transform: uppercase; margin: 0;
+    margin: 0; font-size: 44px; letter-spacing: .1em; text-transform: uppercase;
   }
   .mark span { color: #FF3B3F; }
 </style>
@@ -86,10 +83,8 @@
   <canvas id="fx" width="1200" height="630"></canvas>
   <div class="txt">
     <p class="eyebrow">Estudio de sistemas</p>
-    <div>
-      <h1>Sistemas<br>operativos<br>para <em>marcas</em></h1>
-      <p class="sub">Empieza en días.<br>Evoluciona a medida.</p>
-    </div>
+    <h1>Sistemas<br>operativos<br>para <em>marcas</em></h1>
+    <p class="sub">Empieza en días.<br>Evoluciona a medida.</p>
     <p class="mark">Basico <span>/</span> Systems</p>
   </div>
 </div>
@@ -98,18 +93,18 @@
 /* Toroide estático, misma geometría y paleta que el componente de la landing.
    Semilla fija: la tarjeta debe salir igual en cada regeneración. */
 const RING = 0.68, TUBE = 0.38, TILT = 0.44;
-/* El aro tiene que caber entero: con la envolvente del toroide (×1,06) más el
-   largo de una pieza, R=250 centrado en 900 lo deja entre 630 y 1170, dentro
-   del encuadre y sin invadir la columna de texto, que acaba en 668. */
-const CX = 900, CY = 315, R = 250;
+const CX = 600, CY = 315, R = 430;
 const RED = '#FF3B3F', GREY = '#B3B3B3', WHITE = '#ffffff', DARK = '#000060';
 
-/* 400 piezas y no 1.500. Cada una es ~2,4 veces más larga en cada eje, así que
-   con la cuarta parte del recuento la densidad visual se mantiene. Lo que se
-   gana es que a 552 px cada pieza mide 10 px y sigue leyéndose como confeti;
-   con las anteriores quedaba en 4 px y el aro entero parecía suciedad. */
-const N = 400;
-const LARGO = 8.4, ANCHO = 3.8;   // px a escala 1200, antes 7.68 × 3.48
+/* Hueco para el texto. Se descartan las piezas que caen dentro de esta elipse,
+   así el aro rodea al mensaje y el texto queda sobre azul plano.
+   El agujero propio del toroide no sirve: es un 28 % del diámetro exterior, muy
+   por debajo del bloque de texto. Definirlo aparte desacopla la legibilidad de
+   cómo se dimensione el aro. */
+const HUECO_X = 372, HUECO_Y = 288;
+
+const N = 620;
+const LARGO = 8.4, ANCHO = 3.8;
 
 let s = 20260727;
 const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
@@ -117,7 +112,6 @@ const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
 const ctx = document.getElementById('fx').getContext('2d');
 const piezas = [];
 for (let i = 0; i < N; i++) {
-  // punto al azar en el tubo del toroide, en el espacio local
   const u = rnd() * Math.PI * 2;      // vuelta por el aro
   const v = rnd() * Math.PI * 2;      // vuelta por el tubo
   const t = Math.cbrt(rnd()) * TUBE;  // raíz cúbica: reparto uniforme en volumen
@@ -129,10 +123,12 @@ for (let i = 0; i < N; i++) {
   const cy = Math.cos(TILT), sy = Math.sin(TILT);
   const py = ly * cy - lz * sy;
   const pz = ly * sy + lz * cy;
+  const x = CX + lx * R, y = CY + py * R;
+  // fuera las que taparían el texto
+  const dx = (x - CX) / HUECO_X, dy = (y - CY) / HUECO_Y;
+  if (dx * dx + dy * dy < 1) continue;
   piezas.push({
-    x: CX + lx * R,
-    y: CY + py * R,
-    z: pz,
+    x, y, z: pz,
     ang: rnd() * Math.PI * 2,
     sc: 0.62 + rnd() * rnd() * 0.9,
     col: i % 10 < 3 ? RED : (i % 10 < 7 ? GREY : WHITE),

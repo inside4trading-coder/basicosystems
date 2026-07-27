@@ -97,16 +97,13 @@ function construirIco(pngs) {
     construirIco([16, 32, 48].map((size) => ({ size, buf: capturas[size] }))));
 
   /* ---------- Tarjeta social ----------
-     Se compone a 1200×630 —la proporción que piden las plataformas— pero se
-     captura al doble, así que el fichero sale a 2400×1260. Cada red reduce
-     desde ese original con sus propios filtros, y las vistas previas en
-     pantallas de alta densidad salen nítidas en vez de interpoladas.
+     1200×630 y NO al doble. Capturarla a 2400×1260 llevó el fichero a 529 kB, y
+     WhatsApp sólo monta la vista previa grande por debajo de unos 300 kB: por
+     encima degrada a un thumbnail cuadrado recortado del centro. 1200×630 es
+     además la medida que documentan todas las plataformas.
      Al cambiar esto hay que actualizar og:image:width/height en index.html:
      si no coinciden con el fichero, algunas plataformas descartan la imagen. */
-  const og = await navegador.newPage({
-    viewport: { width: 1200, height: 630 },
-    deviceScaleFactor: 2,
-  });
+  const og = await navegador.newPage({ viewport: { width: 1200, height: 630 } });
   await og.goto(urlDe("og-card.html"), { waitUntil: "load" });
   await og.evaluate(() => document.fonts.ready);
   await og.waitForTimeout(400);

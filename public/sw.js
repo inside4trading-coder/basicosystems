@@ -10,7 +10,9 @@
 // v2 — iconos y manifest rehechos (favicon legible, iconos cuadrados).
 // v3 — la B pasa de blanca a gris #B3B3B3 y el fondo a círculo.
 // v4 — tarjeta social rehecha para leerse a tamaño de feed, ahora a 2400×1260.
-const STATIC_CACHE = "basico-static-v4";
+// v5 — tarjeta centrada y de vuelta a 1200×630 para no pasar el límite de peso
+//      de WhatsApp, que si no degrada a un thumbnail cuadrado.
+const STATIC_CACHE = "basico-static-v5";
 const STATIC_ASSETS = ["/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
