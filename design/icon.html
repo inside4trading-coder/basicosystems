@@ -43,6 +43,11 @@ const MARGEN = +(params.get('margen') || 0.08);
 const FONDO  = params.get('fondo') || '#0000AA';
 /* Gris claro sobre azul rey: el mismo par que el confeti de la landing. */
 const TINTA  = params.get('tinta') || '#B3B3B3';
+/* `circulo` deja las esquinas transparentes. No vale para todos los destinos:
+   el icono `maskable` y el de iOS tienen que ir a sangre —el sistema les aplica
+   su propia máscara y rellena de negro lo que encuentre transparente—, así que
+   esos dos se piden como `cuadrado`. */
+const FORMA  = params.get('forma') || 'circulo';
 
 const listo = (async () => {
   await document.fonts.load('400px "Fixedsys Excelsior"');
@@ -91,10 +96,33 @@ const listo = (async () => {
   o.imageSmoothingEnabled = true;
   o.imageSmoothingQuality = 'high';
   o.fillStyle = FONDO;
-  o.fillRect(0, 0, SIZE, SIZE);
+  if (FORMA === 'circulo') {
+    o.beginPath();
+    // el radio se queda medio píxel corto del borde para que el antialias del
+    // contorno no se coma la última fila y el círculo no salga recortado
+    o.arc(SIZE / 2, SIZE / 2, SIZE / 2 - 0.5, 0, Math.PI * 2);
+    o.fill();
+    // todo lo que venga después queda confinado al círculo
+    o.clip();
+  } else {
+    o.fillRect(0, 0, SIZE, SIZE);
+  }
 
-  const libre = SIZE * (1 - 2 * MARGEN);
-  const k = Math.min(libre / gw, libre / gh);
+  /* Cuánto se puede agrandar el glifo sin salirse.
+     En cuadrado basta con que quepa por el lado más justo.
+     En círculo lo que tiene que caber son las ESQUINAS de la caja del glifo:
+     con la caja centrada, la condición es (ancho/2)² + (alto/2)² ≤ r². De ahí
+     sale k = 2r / √(gw² + gh²). Encajar en el cuadrado inscrito —lado igual al
+     diámetro entre √2— sería más simple pero deja la letra un 28 % más pequeña
+     de lo que cabe, porque la B es bastante más alta que ancha. */
+  let k;
+  if (FORMA === 'circulo') {
+    const r = (SIZE / 2) * (1 - MARGEN);
+    k = (2 * r) / Math.hypot(gw, gh);
+  } else {
+    const libre = SIZE * (1 - 2 * MARGEN);
+    k = Math.min(libre / gw, libre / gh);
+  }
   const dw = gw * k, dh = gh * k;
   o.drawImage(aux, x0, y0, gw, gh,
               Math.round((SIZE - dw) / 2), Math.round((SIZE - dh) / 2), dw, dh);

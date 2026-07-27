@@ -8,7 +8,7 @@
 // .ico y .woff2, y sin cambiarlo los iconos viejos se sirven indefinidamente a
 // quien ya haya visitado el sitio.
 // v2 — iconos y manifest rehechos (favicon legible, iconos cuadrados).
-// v3 — la B pasa de blanca a gris #B3B3B3.
+// v3 — la B pasa de blanca a gris #B3B3B3 y el fondo a círculo.
 const STATIC_CACHE = "basico-static-v3";
 const STATIC_ASSETS = ["/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
