@@ -310,8 +310,14 @@ export function ItemsAvailableTab() {
                         {total.toFixed(2)} €
                       </TableCell>
                       <TableCell className="text-right">
-                        {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
+                        <div className="flex items-center justify-end gap-1">
+                          <span>{finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}</span>
+                          <Badge variant="outline" className="text-[9px] py-0 px-1">
+                            {i.use_manual_pvp ? "Manual" : "Sugerido"}
+                          </Badge>
+                        </div>
                       </TableCell>
+
                       <TableCell className="text-right">
                         {margin == null ? "—" : `${margin.toFixed(2)} €`}
                       </TableCell>
