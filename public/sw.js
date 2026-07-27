@@ -9,7 +9,8 @@
 // quien ya haya visitado el sitio.
 // v2 — iconos y manifest rehechos (favicon legible, iconos cuadrados).
 // v3 — la B pasa de blanca a gris #B3B3B3 y el fondo a círculo.
-const STATIC_CACHE = "basico-static-v3";
+// v4 — tarjeta social rehecha para leerse a tamaño de feed, ahora a 2400×1260.
+const STATIC_CACHE = "basico-static-v4";
 const STATIC_ASSETS = ["/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
