@@ -368,6 +368,9 @@ export function ReplacementApplicationDialog({
       sonner.success("Reemplazo aplicado");
       qc.invalidateQueries({ queryKey: ["policy_events"] });
       qc.invalidateQueries({ queryKey: ["policy_events_summary"] });
+      qc.invalidateQueries({ queryKey: ["fab_fund_movements"] });
+      qc.invalidateQueries({ queryKey: ["fab_fund_pending_items"] });
+      window.dispatchEvent(new Event("core-needs-refresh"));
       onOpenChange(false);
     } catch (e: any) {
       toast({ title: "Error al confirmar", description: e?.message ?? String(e), variant: "destructive" });
