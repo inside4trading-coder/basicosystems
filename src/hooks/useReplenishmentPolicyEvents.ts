@@ -34,6 +34,7 @@ export type PolicyEvent = {
   _dedupe_key?: string | null;
   // pending_classification-only
   sourceMovementId?: string | null;
+  sourcePendingItemId?: string | null;
   unit_cost_snapshot?: number | null;
   pendingClassificationResolution?: PendingClassificationResolution | null;
   isCorrected?: boolean;
