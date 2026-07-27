@@ -193,6 +193,7 @@ export function useReplenishmentPolicyEvents() {
         _kind: "pending_item",
         _synthetic: true,
         _dedupe_key: key,
+        sourcePendingItemId: p.id,
         resolution_data: {
           product_name: p.product_name,
           woo_sku: p.woo_sku,
