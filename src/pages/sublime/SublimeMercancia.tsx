@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Package, Plus, Truck, FileDown, Percent } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Package, Plus, Truck, FileDown, Percent, ShoppingCart, Ship } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ItemsUnassignedTab } from "@/components/sublime/mercancia/ItemsUnassignedTab";
 import { ItemsInTransitTab } from "@/components/sublime/mercancia/ItemsInTransitTab";
@@ -15,9 +16,15 @@ import {
   useSublimeShipments,
   useSublimeBoxes,
   useSublimePricingRules,
+  useSublimeMerchSummary,
   fetchAllSublimeMerchItemsForCsv,
 } from "@/hooks/useSublimeMerch";
-import { downloadSublimeMerchCsv } from "@/lib/sublimeMerch";
+import {
+  downloadSublimeMerchCsv,
+  calculateStockValuePurchased,
+  calculateStockValueInTransit,
+  type StockValueSummary,
+} from "@/lib/sublimeMerch";
 
 export default function SublimeMercancia() {
   const { data: counts } = useItemsCounts();
@@ -28,6 +35,15 @@ export default function SublimeMercancia() {
   const [openManage, setOpenManage] = useState(false);
   const [openPricing, setOpenPricing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const { data: summaryData } = useSublimeMerchSummary();
+  const { purchased, inTransit } = useMemo(() => {
+    const items = summaryData?.items ?? [];
+    const ships = summaryData?.shipments ?? [];
+    return {
+      purchased: calculateStockValuePurchased(items),
+      inTransit: calculateStockValueInTransit(items, ships),
+    };
+  }, [summaryData]);
 
   const handleExportCsv = async () => {
     setExporting(true);
@@ -84,7 +100,23 @@ export default function SublimeMercancia() {
 
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <StockValueCard
+          label="Stock value merch comprada"
+          hint="Productos comprados sin envío asignado."
+          summary={purchased}
+          icon={ShoppingCart}
+        />
+        <StockValueCard
+          label="Stock value merch en camino"
+          hint="Productos asignados a envío/caja en tránsito."
+          summary={inTransit}
+          icon={Ship}
+        />
+      </div>
+
       <Tabs defaultValue="unassigned" className="space-y-4">
+
         <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="unassigned">Compras sin asignar</TabsTrigger>
           <TabsTrigger value="in_transit">
@@ -123,5 +155,42 @@ export default function SublimeMercancia() {
       <PricingRulesDialog open={openPricing} onOpenChange={setOpenPricing} />
 
     </div>
+  );
+}
+
+function StockValueCard({
+  label,
+  hint,
+  summary,
+  icon: Icon,
+}: {
+  label: string;
+  hint: string;
+  summary: StockValueSummary;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  const amount = new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(summary.amountEur);
+  return (
+    <Card className="p-5 rounded-2xl border-border/60">
+      <div className="flex items-start justify-between mb-3">
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Icon className="h-4 w-4 text-primary" />
+        </div>
+      </div>
+      <div className="text-3xl font-black tabular-nums text-foreground">{amount}</div>
+      <div className="text-xs text-muted-foreground mt-1">
+        {summary.itemCount} producto{summary.itemCount === 1 ? "" : "s"} · {summary.unitCount} unidad
+        {summary.unitCount === 1 ? "" : "es"}
+      </div>
+      <div className="text-xs text-muted-foreground mt-1">{hint}</div>
+    </Card>
   );
 }

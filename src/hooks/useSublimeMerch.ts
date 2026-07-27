@@ -710,6 +710,27 @@ export async function fetchAllSublimeMerchItemsForCsv(): Promise<SublimeMerchIte
   return (data ?? []) as SublimeMerchItem[];
 }
 
+export function useSublimeMerchSummary() {
+  return useQuery({
+    queryKey: ["sublime-merch", "summary"],
+    queryFn: async () => {
+      const [itemsRes, shipRes] = await Promise.all([
+        (supabase as any)
+          .from(TABLE)
+          .select("*")
+          .neq("estado", "cancelled"),
+        (supabase as any).from(T_SHIP).select("id,cost_per_kg_eur"),
+      ]);
+      if (itemsRes.error) throw itemsRes.error;
+      if (shipRes.error) throw shipRes.error;
+      return {
+        items: (itemsRes.data ?? []) as SublimeMerchItem[],
+        shipments: (shipRes.data ?? []) as { id: string; cost_per_kg_eur: number }[],
+      };
+    },
+  });
+}
+
 
 const T_RULES = "sublime_merch_pricing_rules";
 

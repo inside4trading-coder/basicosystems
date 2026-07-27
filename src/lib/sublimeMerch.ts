@@ -229,6 +229,71 @@ export const MERCH_ESTADO_LABEL: Record<MerchEstado, string> = {
 };
 
 // -----------------------------
+// Stock value summary (cards)
+// -----------------------------
+
+export interface StockValueItemLike extends MerchItemLike {
+  estado?: string | null;
+  shipment_id?: string | null;
+  box_id?: string | null;
+}
+
+export interface StockValueSummary {
+  amountEur: number;
+  itemCount: number;
+  unitCount: number;
+}
+
+function unitsOrOne(item: MerchItemLike): number {
+  const u = calculateTotalUnits(item);
+  return u > 0 ? u : 1;
+}
+
+export function isPurchasedNotAssigned(item: StockValueItemLike): boolean {
+  if (item.estado === "cancelled") return false;
+  return !item.shipment_id || !item.box_id;
+}
+
+export function isInTransit(item: StockValueItemLike): boolean {
+  if (item.estado === "cancelled" || item.estado === "available") return false;
+  if (item.estado === "in_transit") return true;
+  return Boolean(item.shipment_id && item.box_id);
+}
+
+export function calculateStockValuePurchased(items: StockValueItemLike[]): StockValueSummary {
+  let amount = 0;
+  let units = 0;
+  let count = 0;
+  for (const it of items) {
+    if (!isPurchasedNotAssigned(it)) continue;
+    const u = unitsOrOne(it);
+    amount += Number(it.precio_compra ?? 0) * u;
+    units += u;
+    count += 1;
+  }
+  return { amountEur: amount, itemCount: count, unitCount: units };
+}
+
+export function calculateStockValueInTransit(
+  items: StockValueItemLike[],
+  shipments: { id: string; cost_per_kg_eur: number | null }[],
+): StockValueSummary {
+  const shipMap = new Map<string, { id: string; cost_per_kg_eur: number | null }>();
+  for (const s of shipments) shipMap.set(s.id, s);
+  let amount = 0;
+  let units = 0;
+  let count = 0;
+  for (const it of items) {
+    if (!isInTransit(it)) continue;
+    const ship = it.shipment_id ? shipMap.get(it.shipment_id) ?? null : null;
+    amount += calculateTotalCost(it, ship);
+    units += unitsOrOne(it);
+    count += 1;
+  }
+  return { amountEur: amount, itemCount: count, unitCount: units };
+}
+
+// -----------------------------
 // Photos (Fase 1.5)
 // -----------------------------
 
