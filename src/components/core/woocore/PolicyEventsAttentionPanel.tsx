@@ -278,6 +278,14 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         )}
                         {r.action === "missing_map" && (
                           <>
+                            {r._kind === "pending_item" && r.sourcePendingItemId && (
+                              <Button
+                                size="sm"
+                                onClick={() => setMissingSkuRow(r)}
+                              >
+                                <Wand2 className="w-3 h-3 mr-1" /> Resolver
+                              </Button>
+                            )}
                             <Button size="sm" variant="outline" asChild>
                               <Link to={mapaWooLink(r.woo_product_id, p.sku, "map")}>
                                 <MapPin className="w-3 h-3 mr-1" /> Abrir Mapa Woo/Core
@@ -295,7 +303,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                                 <Copy className="w-3 h-3 mr-1" /> Copiar Woo ID
                               </Button>
                             )}
-                            {r._kind === "pending_item" && r.id.startsWith("pi:") && (
+                            {r._kind === "pending_item" && !r.sourcePendingItemId && r.id.startsWith("pi:") && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -305,7 +313,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                                   if (ok) toast({ title: "Marcado como resuelto" });
                                 }}
                               >
-                                Resolver
+                                Marcar resuelto
                               </Button>
                             )}
                           </>
