@@ -389,6 +389,12 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
         open={!!resolveRow}
         onOpenChange={(v) => !v && setResolveRow(null)}
       />
+
+      <MissingSkuResolveDialog
+        row={missingSkuRow}
+        open={!!missingSkuRow}
+        onOpenChange={(v) => !v && setMissingSkuRow(null)}
+      />
     </div>
   );
 }
