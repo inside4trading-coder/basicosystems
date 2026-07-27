@@ -392,14 +392,17 @@ const CSV_COLUMNS = [
   "peso_kg",
   "cost_per_kg_eur",
   "shipping_cost_eur",
-  "costo_total",
+  "costo_total_con_envio",
   "pvp_base_sugerido",
   "iva_rate",
   "iva_amount",
+  "pvp_sugerido_tentativo",
   "pvp_sugerido_final",
+  "pvp_tipo",
+  "pvp_modo",
   "use_manual_pvp",
   "pvp_manual",
-  "pvp_final",
+  "pvp_final_aplicado",
   "pvp_total",
   "margen_estimado",
   "shipment_number",
@@ -413,6 +416,7 @@ const CSV_COLUMNS = [
   "fotos_origen_count",
   "fotos_web_count",
 ] as const;
+
 
 export function buildSublimeMerchCsv(
   items: CsvItemLike[],
