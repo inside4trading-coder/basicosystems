@@ -191,14 +191,21 @@ export function ItemsInTransitTab() {
                     <p className="font-medium">{total.toFixed(2)} €</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
                   <Badge variant="secondary">
                     {MERCH_ESTADO_LABEL[i.estado as MerchEstado] ?? i.estado}
                   </Badge>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    PVP final: {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
+                    <Badge variant="outline" className="text-[9px] py-0 px-1">
+                      {i.use_manual_pvp ? "Manual" : "Sugerido"}
+                    </Badge>
+                  </span>
                   <span className="text-xs text-muted-foreground">
                     Margen: {margin == null ? "—" : `${margin.toFixed(2)} €`}
                   </span>
                 </div>
+
                 <div className="flex gap-2 pt-1">
                   <Button
                     variant="outline"
@@ -238,7 +245,7 @@ export function ItemsInTransitTab() {
                   <TableHead className="text-right">€/kg</TableHead>
                   <TableHead className="text-right">Envío</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">PVP</TableHead>
+                  <TableHead className="text-right">PVP final</TableHead>
                   <TableHead className="text-right">Margen</TableHead>
                   <TableHead>SKU</TableHead>
                   <TableHead>Subido</TableHead>
@@ -301,8 +308,14 @@ export function ItemsInTransitTab() {
                         {total.toFixed(2)} €
                       </TableCell>
                       <TableCell className="text-right">
-                        {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
+                        <div className="flex items-center justify-end gap-1">
+                          <span>{finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}</span>
+                          <Badge variant="outline" className="text-[9px] py-0 px-1">
+                            {i.use_manual_pvp ? "Manual" : "Sugerido"}
+                          </Badge>
+                        </div>
                       </TableCell>
+
                       <TableCell className="text-right">
                         {margin == null ? "—" : `${margin.toFixed(2)} €`}
                       </TableCell>

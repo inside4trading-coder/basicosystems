@@ -143,7 +143,7 @@ export function ItemsUnassignedTab() {
                   <TableHead>Cód. fabricante</TableHead>
                   <TableHead className="text-right">Precio compra</TableHead>
                   <TableHead className="text-right">Peso kg</TableHead>
-                  <TableHead className="text-right">PVP</TableHead>
+                  <TableHead className="text-right">PVP tentativo</TableHead>
                   <TableHead>SKU web</TableHead>
                   <TableHead className="text-right">Costo total est.</TableHead>
                   <TableHead>Subido</TableHead>
@@ -177,8 +177,14 @@ export function ItemsUnassignedTab() {
                       {Number(i.peso_kg).toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
+                      <div className="flex items-center justify-end gap-1">
+                        <span>{finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}</span>
+                        <Badge variant="outline" className="text-[9px] py-0 px-1">
+                          {i.use_manual_pvp ? "Manual" : "Sugerido"}
+                        </Badge>
+                      </div>
                     </TableCell>
+
 
                     <TableCell>{i.sku_web ?? "—"}</TableCell>
                     <TableCell className="text-right">
@@ -282,12 +288,16 @@ function MobileCard({
           <p className="font-medium">{Number(item.peso_kg).toFixed(2)} kg</p>
         </div>
         <div>
-          <p className="text-muted-foreground">PVP</p>
-          <p className="font-medium">
-            {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
+          <p className="text-muted-foreground">PVP tentativo</p>
+          <p className="font-medium flex items-center gap-1">
+            <span>{finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}</span>
+            <Badge variant="outline" className="text-[9px] py-0 px-1">
+              {item.use_manual_pvp ? "Manual" : "Sugerido"}
+            </Badge>
           </p>
 
         </div>
+
       </div>
       <div className="flex items-center justify-between pt-1">
         <Badge variant="secondary">

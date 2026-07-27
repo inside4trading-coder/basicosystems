@@ -229,11 +229,14 @@ export function ItemsAvailableTab() {
                     Marcar disponible
                   </Button>
                 ) : null}
-                <p className="text-[10px] text-muted-foreground">
-                  Envío €{shipping.toFixed(2)} · PVP{" "}
+                <p className="text-[10px] text-muted-foreground flex items-center gap-1 flex-wrap">
+                  Envío €{shipping.toFixed(2)} · PVP final{" "}
                   {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
-
+                  <Badge variant="outline" className="text-[9px] py-0 px-1">
+                    {i.use_manual_pvp ? "Manual" : "Sugerido"}
+                  </Badge>
                 </p>
+
               </Card>
             );
           })}
@@ -251,7 +254,7 @@ export function ItemsAvailableTab() {
                   <TableHead className="text-right">Peso</TableHead>
                   <TableHead className="text-right">Envío</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">PVP</TableHead>
+                  <TableHead className="text-right">PVP final</TableHead>
                   <TableHead className="text-right">Margen</TableHead>
                   <TableHead>SKU</TableHead>
                   <TableHead>Subido</TableHead>
@@ -307,8 +310,14 @@ export function ItemsAvailableTab() {
                         {total.toFixed(2)} €
                       </TableCell>
                       <TableCell className="text-right">
-                        {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
+                        <div className="flex items-center justify-end gap-1">
+                          <span>{finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}</span>
+                          <Badge variant="outline" className="text-[9px] py-0 px-1">
+                            {i.use_manual_pvp ? "Manual" : "Sugerido"}
+                          </Badge>
+                        </div>
                       </TableCell>
+
                       <TableCell className="text-right">
                         {margin == null ? "—" : `${margin.toFixed(2)} €`}
                       </TableCell>
