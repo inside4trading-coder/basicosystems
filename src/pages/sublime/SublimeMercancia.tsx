@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Package, Plus, Truck, FileDown, Percent } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Package, Plus, Truck, FileDown, Percent, ShoppingCart, Ship } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ItemsUnassignedTab } from "@/components/sublime/mercancia/ItemsUnassignedTab";
 import { ItemsInTransitTab } from "@/components/sublime/mercancia/ItemsInTransitTab";
@@ -15,9 +16,15 @@ import {
   useSublimeShipments,
   useSublimeBoxes,
   useSublimePricingRules,
+  useSublimeMerchSummary,
   fetchAllSublimeMerchItemsForCsv,
 } from "@/hooks/useSublimeMerch";
-import { downloadSublimeMerchCsv } from "@/lib/sublimeMerch";
+import {
+  downloadSublimeMerchCsv,
+  calculateStockValuePurchased,
+  calculateStockValueInTransit,
+  type StockValueSummary,
+} from "@/lib/sublimeMerch";
 
 export default function SublimeMercancia() {
   const { data: counts } = useItemsCounts();
