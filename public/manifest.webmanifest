@@ -1,16 +1,17 @@
 {
   "name": "BASICO SYSTEM",
   "short_name": "BASICO",
-  "description": "Sistema operativo BASICO",
+  "description": "Sistema de gestión modular para marcas: pedidos, CRM, planning, RRHH, RRPP, campañas, llamadas, administración, fabricación y retail.",
+  "lang": "es",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#e60012",
+  "background_color": "#0000AA",
+  "theme_color": "#0000AA",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

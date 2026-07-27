@@ -1,14 +1,33 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
+# Basico System — https://basicosystems.lovable.app
+#
+# La única página pública es la landing. Todo lo demás son rutas del panel, y
+# como es una SPA sirven el mismo index.html: sin estas reglas Google acabaría
+# indexándolas con el título y la descripción de la landing.
+#
+# Ojo con lo que esto es y lo que no: robots.txt es una petición a los
+# rastreadores que se portan bien, NO un control de acceso. /pos/ lleva un token
+# de acceso en la propia URL; esto lo mantiene fuera del índice, pero no protege
+# la dirección. Eso se resuelve en servidor y caducando los tokens.
 
 User-agent: *
-Allow: /
+
+# Terminal público con token en la ruta — nunca debe indexarse
+Disallow: /pos/
+
+# Panel y área privada
+Disallow: /login
+Disallow: /dashboard
+Disallow: /pedidos
+Disallow: /crm
+Disallow: /planning
+Disallow: /crew
+Disallow: /rrpp
+Disallow: /campaigns
+Disallow: /llamadas
+Disallow: /administracion
+Disallow: /configuracion
+Disallow: /core
+Disallow: /sublime
+Disallow: /espana
+
+Sitemap: https://basicosystems.lovable.app/sitemap.xml

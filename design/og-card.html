@@ -1,0 +1,118 @@
+<!doctype html>
+<!--
+  Tarjeta que se ve al compartir el enlace de Basico System.
+  Se captura a 1200×630 con Playwright → public/og-basico-systems.png
+
+  1200×630 es la proporción que piden Facebook, LinkedIn, X y WhatsApp. No es
+  un recorte del hero: el hero está compuesto para pantalla completa y a esta
+  proporción se le corta el titular. Esto se compone expresamente para el
+  formato.
+
+  El toroide se dibuja con canvas 2D y una semilla fija en lugar de capturar la
+  animación WebGL: así la tarjeta sale idéntica cada vez que se regenera, que es
+  lo que se quiere de un asset versionado.
+
+  Regenerar:  node design/generate-assets.cjs
+-->
+<meta charset="utf-8">
+<title>Basico System — tarjeta social</title>
+<style>
+  @font-face {
+    font-family: "Fixedsys Excelsior";
+    src: url("../public/fonts/fixedsys-excelsior-subset.woff2") format("woff2");
+    font-display: block;
+  }
+  html, body { margin: 0; padding: 0; }
+  body { width: 1200px; height: 630px; overflow: hidden; }
+  .card {
+    position: relative;
+    width: 1200px;
+    height: 630px;
+    background: #0000AA;
+    color: #fff;
+    font-family: "Fixedsys Excelsior", monospace;
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+    text-rendering: optimizeSpeed;
+    letter-spacing: .06em;
+    overflow: hidden;
+  }
+  canvas { position: absolute; inset: 0; }
+  /* 520 y no 630: el bloque se centra en la franja que queda POR ENCIMA del
+     wordmark. Con la altura completa, la última línea del subtítulo caía justo
+     sobre "BASICO / SYSTEMS". */
+  .txt { position: absolute; left: 64px; top: 0; height: 520px; display: grid; align-content: center; gap: 0; z-index: 1; }
+  .eyebrow { font-size: 19px; letter-spacing: .26em; text-transform: uppercase; color: #EA191D; display: flex; align-items: center; gap: 14px; margin: 0; }
+  .eyebrow::before { content: ""; width: 42px; height: 3px; background: #EA191D; }
+  h1 { margin: 26px 0 0; font-weight: 400; text-transform: uppercase; font-size: 64px; line-height: .98; letter-spacing: .04em; max-width: 13ch; }
+  h1 em { font-style: normal; color: #EA191D; }
+  .sub { margin: 26px 0 0; font-size: 21px; color: #c9c9e8; max-width: 34ch; line-height: 1.45; }
+  .mark { position: absolute; left: 64px; bottom: 46px; font-size: 22px; letter-spacing: .12em; text-transform: uppercase; z-index: 1; }
+  .mark span { color: #EA191D; }
+</style>
+<div class="card">
+  <canvas id="fx" width="1200" height="630"></canvas>
+  <div class="txt">
+    <p class="eyebrow">Estudio de sistemas · IA aplicada</p>
+    <h1>Sistemas operativos para marcas que <em>no caben</em> en un SaaS</h1>
+    <p class="sub">10 módulos listos. Y un estudio detrás para lo que tu operación pida a medida.</p>
+  </div>
+  <p class="mark">Basico <span>/</span> Systems</p>
+</div>
+<script>
+'use strict';
+/* Toroide estático, misma geometría y paleta que el componente de la landing.
+   Semilla fija: la tarjeta debe salir igual en cada regeneración. */
+const RING = 0.68, TUBE = 0.38, TILT = 0.44;
+const CX = 845, CY = 315, R = 268;
+const RED = '#FF3B3F', GREY = '#B3B3B3', WHITE = '#ffffff', DARK = '#000060';
+
+let s = 20260727;
+const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+
+const ctx = document.getElementById('fx').getContext('2d');
+const piezas = [];
+for (let i = 0; i < 1500; i++) {
+  // punto al azar en el tubo del toroide, en el espacio local
+  const u = rnd() * Math.PI * 2;      // vuelta por el aro
+  const v = rnd() * Math.PI * 2;      // vuelta por el tubo
+  const t = Math.cbrt(rnd()) * TUBE;  // raíz cúbica: reparto uniforme en volumen
+  const rr = RING + t * Math.cos(v);
+  const lx = rr * Math.cos(u);
+  const ly = rr * Math.sin(u);
+  const lz = t * Math.sin(v);
+  // cabeceo sobre el eje horizontal, igual que el TILT_REST del componente
+  const cy = Math.cos(TILT), sy = Math.sin(TILT);
+  const py = ly * cy - lz * sy;
+  const pz = ly * sy + lz * cy;
+  piezas.push({
+    x: CX + lx * R,
+    y: CY + py * R,
+    z: pz,
+    ang: rnd() * Math.PI * 2,
+    sc: 0.34 + rnd() * rnd() * 0.84,
+    col: i % 10 < 3 ? RED : (i % 10 < 7 ? GREY : WHITE),
+    al: 0.72 + rnd() * 0.28,
+  });
+}
+// de atrás hacia delante, para que la profundidad se lea
+piezas.sort((a, b) => a.z - b.z);
+
+for (const p of piezas) {
+  const prof = p.z / 1.06;
+  const escala = (0.78 + 0.22 * (prof * 0.5 + 0.5)) * p.sc * 2.2;
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(p.ang);
+  ctx.globalAlpha = p.al * (0.72 + 0.28 * (prof * 0.5 + 0.5));
+  const w = 3.48 * escala, h = 7.68 * escala;
+  // contorno oscuro por debajo y relleno encima: reproduce a grandes rasgos el
+  // filo del shader, que separa la pieza del fondo por los dos lados
+  ctx.fillStyle = DARK;
+  ctx.fillRect(-w / 2 - 1, -h / 2 - 1, w + 2, h + 2);
+  ctx.fillStyle = p.col;
+  ctx.fillRect(-w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+ctx.globalAlpha = 1;
+</script>

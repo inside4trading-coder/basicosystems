@@ -1,0 +1,101 @@
+/**
+ * Genera los iconos y la tarjeta social a partir de los HTML de design/.
+ *
+ *   node design/generate-assets.cjs
+ *
+ * Produce en public/:
+ *   favicon.ico            16 + 32 + 48 en un solo fichero
+ *   icon-192.png           192×192
+ *   icon-512.png           512×512
+ *   apple-touch-icon.png   180×180
+ *   og-basico-systems.png  1200×630
+ *
+ * Se captura con Playwright —ya está en las devDependencies— porque los
+ * originales son HTML con la fuente Fixedsys, y así el icono usa exactamente
+ * la misma tipografía que la landing.
+ *
+ * El reescalado y el empaquetado del .ico los hace `sharp` si está disponible;
+ * si no, se cae a capturar cada tamaño directamente con el navegador, que da el
+ * mismo resultado sin añadir dependencias.
+ */
+const { chromium } = require("@playwright/test");
+const path = require("path");
+const fs = require("fs");
+
+const RAIZ = path.resolve(__dirname, "..");
+const PUBLIC = path.join(RAIZ, "public");
+const urlDe = (f) => "file://" + path.join(__dirname, f).replace(/\\/g, "/");
+
+/** Empaqueta varios PNG en un .ico. El formato admite PNG incrustado desde
+ *  Vista, y es lo que hace cualquier generador moderno. */
+function construirIco(pngs) {
+  const n = pngs.length;
+  const cabecera = Buffer.alloc(6);
+  cabecera.writeUInt16LE(0, 0);      // reservado
+  cabecera.writeUInt16LE(1, 2);      // tipo 1 = icono
+  cabecera.writeUInt16LE(n, 4);      // número de imágenes
+  const entradas = [];
+  let offset = 6 + n * 16;
+  for (const { size, buf } of pngs) {
+    const e = Buffer.alloc(16);
+    e.writeUInt8(size >= 256 ? 0 : size, 0);   // ancho (0 significa 256)
+    e.writeUInt8(size >= 256 ? 0 : size, 1);   // alto
+    e.writeUInt8(0, 2);                        // colores de la paleta
+    e.writeUInt8(0, 3);                        // reservado
+    e.writeUInt16LE(1, 4);                     // planos
+    e.writeUInt16LE(32, 6);                    // bits por píxel
+    e.writeUInt32LE(buf.length, 8);
+    e.writeUInt32LE(offset, 12);
+    offset += buf.length;
+    entradas.push(e);
+  }
+  return Buffer.concat([cabecera, ...entradas, ...pngs.map((p) => p.buf)]);
+}
+
+(async () => {
+  const navegador = await chromium.launch({ channel: "chrome" });
+
+  /* ---------- Iconos ----------
+     El margen cambia según para qué es cada uno:
+       · favicon  → el mínimo, la letra tiene que ser lo mayor posible a 16 px
+       · apple    → algo más, iOS le redondea las esquinas
+       · maskable → 20 %, Android le recorta un círculo y se come las esquinas */
+  const encargos = [
+    { size: 16,  margen: 0.06 },
+    { size: 32,  margen: 0.06 },
+    { size: 48,  margen: 0.06 },
+    { size: 180, margen: 0.10, fichero: "apple-touch-icon.png" },
+    { size: 192, margen: 0.10, fichero: "icon-192.png" },
+    { size: 512, margen: 0.10, fichero: "icon-512.png" },
+    { size: 512, margen: 0.20, fichero: "icon-512-maskable.png" },
+  ];
+  const capturas = {};
+  for (const { size, margen, fichero } of encargos) {
+    const p = await navegador.newPage({ viewport: { width: size, height: size } });
+    await p.goto(`${urlDe("icon.html")}?size=${size}&margen=${margen}`, { waitUntil: "load" });
+    await p.evaluate(() => window.__icono);          // espera al encaje del glifo
+    const buf = await p.locator("canvas").screenshot();
+    if (fichero) fs.writeFileSync(path.join(PUBLIC, fichero), buf);
+    else capturas[size] = buf;
+    await p.close();
+  }
+
+  fs.writeFileSync(path.join(PUBLIC, "favicon.ico"),
+    construirIco([16, 32, 48].map((size) => ({ size, buf: capturas[size] }))));
+
+  /* ---------- Tarjeta social ---------- */
+  const og = await navegador.newPage({ viewport: { width: 1200, height: 630 } });
+  await og.goto(urlDe("og-card.html"), { waitUntil: "load" });
+  await og.evaluate(() => document.fonts.ready);
+  await og.waitForTimeout(400);
+  await og.screenshot({ path: path.join(PUBLIC, "og-basico-systems.png") });
+  await og.close();
+
+  await navegador.close();
+
+  for (const f of ["favicon.ico", "icon-192.png", "icon-512.png", "icon-512-maskable.png",
+                   "apple-touch-icon.png", "og-basico-systems.png"]) {
+    const b = fs.statSync(path.join(PUBLIC, f)).size;
+    console.log(`  ${f.padEnd(24)} ${(b / 1024).toFixed(1)} kB`);
+  }
+})();
