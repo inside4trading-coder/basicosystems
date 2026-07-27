@@ -8286,6 +8286,10 @@ export type Database = {
         Args: { p_order_id: string; p_reason: string }
         Returns: Json
       }
+      core_close_missing_sku_pending_item: {
+        Args: { p_pending_item_id: string; p_replacement_event_id: string }
+        Returns: Json
+      }
       core_create_external_purchase_orders_from_events: {
         Args: { p_dry_run?: boolean; p_event_ids: string[]; p_overrides?: Json }
         Returns: Json
@@ -8320,6 +8324,15 @@ export type Database = {
       core_reconcile_woo_core_map: { Args: never; Returns: Json }
       core_reopen_external_purchase_order: {
         Args: { p_order_id: string }
+        Returns: Json
+      }
+      core_resolve_missing_sku_pending_item: {
+        Args: {
+          p_action: string
+          p_dry_run?: boolean
+          p_pending_item_id: string
+          p_unit_cost: number
+        }
         Returns: Json
       }
       core_update_external_purchase_order_draft: {

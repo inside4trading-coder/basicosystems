@@ -18,6 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import { POLICY_ACTION_LABELS, describePolicyAction } from "@/lib/policyBlocked";
 import { ReplacementApplicationDialog } from "./ReplacementApplicationDialog";
 import { PendingClassificationResolveDialog } from "@/components/core/needs/PendingClassificationResolveDialog";
+import { MissingSkuResolveDialog } from "@/components/core/needs/MissingSkuResolveDialog";
 import { useReplenishmentPolicyEvents, PolicyEvent } from "@/hooks/useReplenishmentPolicyEvents";
 
 const FILTERS: { key: string; label: string; actions: string[] }[] = [
@@ -79,6 +80,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
   const [search, setSearch] = useState("");
   const [replacementEvent, setReplacementEvent] = useState<PolicyEvent | null>(null);
   const [resolveRow, setResolveRow] = useState<PolicyEvent | null>(null);
+  const [missingSkuRow, setMissingSkuRow] = useState<PolicyEvent | null>(null);
 
   const filtered = useMemo(() => {
     const preset = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
@@ -276,6 +278,14 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         )}
                         {r.action === "missing_map" && (
                           <>
+                            {r._kind === "pending_item" && r.sourcePendingItemId && (
+                              <Button
+                                size="sm"
+                                onClick={() => setMissingSkuRow(r)}
+                              >
+                                <Wand2 className="w-3 h-3 mr-1" /> Resolver
+                              </Button>
+                            )}
                             <Button size="sm" variant="outline" asChild>
                               <Link to={mapaWooLink(r.woo_product_id, p.sku, "map")}>
                                 <MapPin className="w-3 h-3 mr-1" /> Abrir Mapa Woo/Core
@@ -293,7 +303,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                                 <Copy className="w-3 h-3 mr-1" /> Copiar Woo ID
                               </Button>
                             )}
-                            {r._kind === "pending_item" && r.id.startsWith("pi:") && (
+                            {r._kind === "pending_item" && !r.sourcePendingItemId && r.id.startsWith("pi:") && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -303,7 +313,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                                   if (ok) toast({ title: "Marcado como resuelto" });
                                 }}
                               >
-                                Resolver
+                                Marcar resuelto
                               </Button>
                             )}
                           </>
@@ -378,6 +388,12 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
         row={resolveRow}
         open={!!resolveRow}
         onOpenChange={(v) => !v && setResolveRow(null)}
+      />
+
+      <MissingSkuResolveDialog
+        row={missingSkuRow}
+        open={!!missingSkuRow}
+        onOpenChange={(v) => !v && setMissingSkuRow(null)}
       />
     </div>
   );
