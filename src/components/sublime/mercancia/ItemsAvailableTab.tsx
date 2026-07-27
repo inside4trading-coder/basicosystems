@@ -254,7 +254,7 @@ export function ItemsAvailableTab() {
                   <TableHead className="text-right">Peso</TableHead>
                   <TableHead className="text-right">Envío</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">PVP</TableHead>
+                  <TableHead className="text-right">PVP final</TableHead>
                   <TableHead className="text-right">Margen</TableHead>
                   <TableHead>SKU</TableHead>
                   <TableHead>Subido</TableHead>
