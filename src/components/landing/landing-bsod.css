@@ -1,0 +1,568 @@
+/* ============================================================================
+ * Landing "BSOD" — estética de pantalla azul de Windows 9x.
+ *
+ * TODO cuelga de `.landing-bsod`. Los colores del resto de la aplicación salen
+ * de los tokens HSL de `src/index.css` en `:root`, y los consume el ERP entero;
+ * si estas variables se declararan ahí, el panel completo se volvería azul.
+ * Por eso se redeclaran en el contenedor y no escapan de él.
+ *
+ * Excepción documentada al final: el panel del menú móvil (Radix Sheet) se
+ * renderiza en un portal colgado de <body>, fuera del contenedor, y necesita
+ * sus propias reglas.
+ * ==========================================================================*/
+
+@font-face {
+  font-family: "Fixedsys Excelsior";
+  font-style: normal;
+  font-weight: 400;
+  /* `block` y no `swap`: con una bitmap el salto desde la fuente de respaldo es
+     muy visible porque cambian métrica y color del texto. */
+  font-display: block;
+  src: url("/fonts/fixedsys-excelsior-subset.woff2") format("woff2");
+}
+
+.landing-bsod {
+  /* Bitmap monoespaciada. Fixedsys Excelsior es dominio público (CC0); los
+     respaldos son las bitmap que ya trae Windows y, al final, cualquier mono. */
+  --font-sys: "Fixedsys Excelsior", "W95FA", "Fixedsys", "Perfect DOS VGA 437",
+              "Terminal", "Lucida Console", Consolas, "Courier New", monospace;
+  --paper: #0000aa;          /* azul rey intenso */
+  --paper-2: #0000c4;        /* elevación: se sube en luz, no se baja */
+  --paper-3: #000070;        /* hundido */
+  --ink: #ffffff;
+  --dim: #c9c9e8;
+  --faint: #9a9ad0;
+  --rule: #3a3ac4;
+  --accent: #ea191d;         /* rojo de marca */
+  --accent-ink: #ffffff;
+
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  font-family: var(--font-sys);
+  /* Bitmap: el suavizado le quita el borde de píxel que da todo el carácter */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  font-smooth: never;
+  text-rendering: optimizeSpeed;
+  letter-spacing: 0.06em;    /* tracking de terminal */
+  font-variant-ligatures: none;
+}
+
+/* Una bitmap no tiene pesos ni tracking negativo: lo que la hace "titular" es
+   el cuerpo y el espaciado, no la negrita. */
+.landing-bsod h1,
+.landing-bsod h2,
+.landing-bsod h3 {
+  margin: 0;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ---------- Navegación ---------- */
+.landing-bsod .nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+}
+.landing-bsod .nav__inner {
+  max-width: 76rem;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.4rem;
+}
+.landing-bsod .nav__mark {
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.landing-bsod .nav__mark span { color: var(--accent); }
+.landing-bsod .nav__links { display: none; gap: 1.6rem; }
+@media (min-width: 52rem) {
+  .landing-bsod .nav__links { display: flex; }
+}
+.landing-bsod .nav__links button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.landing-bsod .nav__links button:hover { color: var(--accent); }
+.landing-bsod .nav__right { display: flex; align-items: center; gap: 0.7rem; }
+.landing-bsod .nav__login {
+  display: none;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  text-decoration: none;
+}
+.landing-bsod .nav__login:hover { color: var(--ink); }
+@media (min-width: 52rem) {
+  .landing-bsod .nav__login { display: inline; }
+}
+.landing-bsod .nav__burger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.75rem;
+  width: 2.75rem;
+  background: none;
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  cursor: pointer;
+}
+@media (min-width: 52rem) {
+  .landing-bsod .nav__burger { display: none; }
+}
+
+/* ---------- Hero ---------- */
+/* min() acota el caso en que svh se resuelve contra una ventana mayor que el
+   viewport (paneles/iframes): si el hero se infla, la esfera se agranda con él
+   y sólo se ve su parte central. En móvil real svh < vh y gana svh, como debe. */
+.landing-bsod .hero {
+  position: relative;
+  min-height: min(100svh, 100vh);
+  display: grid;
+  align-content: center;
+  padding: 6rem 1.4rem 3rem;
+  overflow: hidden;
+}
+.landing-bsod .hero__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+}
+.landing-bsod .hero > *:not(.hero__canvas) { position: relative; z-index: 1; }
+
+.landing-bsod .eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+}
+.landing-bsod .eyebrow::before {
+  content: "";
+  width: 1.7rem;
+  height: 2px;
+  background: var(--accent);
+}
+.landing-bsod .hero h1 {
+  font-size: clamp(2.2rem, 9vw, 4.4rem);
+  line-height: 0.96;
+  margin: 1.1rem 0 0;
+  max-width: 15ch;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.landing-bsod .hero h1 em { font-style: normal; color: var(--accent); }
+.landing-bsod .hero .sub {
+  color: var(--dim);
+  margin: 1.2rem 0 0;
+  font-size: 1rem;
+  max-width: 40ch;
+}
+.landing-bsod .ctas { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.9rem; }
+
+/* ---------- Botones ---------- */
+.landing-bsod .btn {
+  /* Los controles de formulario no heredan la fuente: sin esto los <button>
+     salen con la del sistema y los <a> con la nuestra. */
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.85rem 1.3rem;
+  border-radius: 2px;
+  text-decoration: none;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  cursor: pointer;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.landing-bsod .btn.fill { background: var(--accent); color: var(--accent-ink); }
+.landing-bsod .btn.ghost { border-color: #ffffff66; color: var(--ink); background: none; }
+.landing-bsod .btn.sm { padding: 0.55rem 0.9rem; font-size: 0.7rem; }
+.landing-bsod .btn.block { width: 100%; }
+.landing-bsod .btn:active { transform: translateY(1px); }
+.landing-bsod .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.landing-bsod .btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+/* ---------- Secciones ---------- */
+.landing-bsod .below {
+  background: var(--paper);
+  border-top: 2px solid var(--rule);
+  position: relative;
+  z-index: 2;
+}
+.landing-bsod .block {
+  padding: 3.4rem 1.4rem;
+  border-bottom: 1px solid var(--rule);
+  max-width: 76rem;
+  margin: 0 auto;
+}
+/* El nav es fijo: sin este margen, saltar desde el menú deja el arranque de la
+   sección escondido debajo. */
+.landing-bsod [id] { scroll-margin-top: 4.5rem; }
+.landing-bsod .block h2 { font-size: clamp(1.5rem, 4.5vw, 2.6rem); line-height: 1.06; }
+.landing-bsod .block .lede {
+  color: var(--dim);
+  font-size: 0.93rem;
+  margin: 0.7rem 0 0;
+  max-width: 62ch;
+}
+.landing-bsod .kicker {
+  font-size: 0.7rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 0.9rem;
+}
+
+/* Manifiesto */
+.landing-bsod .manifest { display: grid; gap: 1.6rem; margin-top: 1.4rem; }
+@media (min-width: 52rem) {
+  .landing-bsod .manifest { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; }
+}
+.landing-bsod .manifest div { border-top: 2px solid var(--ink); padding-top: 1rem; }
+.landing-bsod .manifest .n {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--faint);
+  margin-bottom: 0.5rem;
+}
+.landing-bsod .manifest p {
+  font-size: 1.05rem;
+  line-height: 1.25;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* Dos caminos */
+.landing-bsod .paths { display: grid; gap: 1.2rem; margin-top: 1.6rem; }
+@media (min-width: 52rem) {
+  .landing-bsod .paths { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.landing-bsod .path {
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+}
+.landing-bsod .path.dark { background: var(--paper-3); }
+.landing-bsod .path h3 { font-size: 1.25rem; }
+.landing-bsod .path .tag {
+  font-size: 0.68rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0;
+}
+.landing-bsod .path .sub2 {
+  color: var(--dim);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  margin: 0.2rem 0 0;
+}
+.landing-bsod .path ul {
+  list-style: none;
+  margin: 1.1rem 0 1.4rem;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+.landing-bsod .path li {
+  font-size: 0.86rem;
+  color: var(--dim);
+  padding-left: 1.2rem;
+  position: relative;
+}
+.landing-bsod .path li::before {
+  content: "\00bb";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+.landing-bsod .path .btn { align-self: stretch; margin-top: auto; }
+
+/* Módulos */
+.landing-bsod .mods {
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  margin-top: 1.6rem;
+}
+@media (min-width: 40rem) {
+  .landing-bsod .mods { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 68rem) {
+  .landing-bsod .mods { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.landing-bsod .mod { background: var(--paper); padding: 1.1rem; }
+@media (min-width: 68rem) {
+  .landing-bsod .mod.wide { grid-column: span 2; }
+}
+.landing-bsod .mod__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.landing-bsod .mod .n { font-size: 0.78rem; color: var(--faint); }
+.landing-bsod .mod h3 { font-size: 0.95rem; margin-top: 0.35rem; }
+.landing-bsod .mod p { color: var(--dim); font-size: 0.84rem; margin: 0.3rem 0 0; }
+
+/* Personalización · industrias */
+.landing-bsod .cards {
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  margin-top: 1.6rem;
+}
+@media (min-width: 40rem) {
+  .landing-bsod .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 68rem) {
+  .landing-bsod .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.landing-bsod .cards.three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 68rem) {
+  .landing-bsod .cards.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 39.99rem) {
+  .landing-bsod .cards.three { grid-template-columns: minmax(0, 1fr); }
+}
+.landing-bsod .card { background: var(--paper); padding: 1.2rem; }
+.landing-bsod .card h3 { font-size: 0.95rem; color: var(--accent); }
+.landing-bsod .card p { color: var(--dim); font-size: 0.84rem; margin: 0.35rem 0 0; }
+
+/* Stack */
+.landing-bsod .stackwrap {
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  padding: 2rem 1.4rem;
+  margin-top: 1.6rem;
+  text-align: center;
+}
+.landing-bsod .stackrow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem 1.6rem;
+  margin: 1.4rem 0 1rem;
+}
+.landing-bsod .stackrow span {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+}
+.landing-bsod .stacknote { font-size: 0.78rem; color: var(--faint); margin: 0; }
+
+/* Proceso */
+.landing-bsod .steps {
+  list-style: none;
+  margin: 1.6rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+}
+@media (min-width: 52rem) {
+  .landing-bsod .steps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.landing-bsod .steps li { background: var(--paper); padding: 1.2rem; }
+.landing-bsod .steps .n { font-size: 1.6rem; color: var(--accent); }
+.landing-bsod .steps h3 { font-size: 0.95rem; margin-top: 0.4rem; }
+.landing-bsod .steps p { color: var(--dim); font-size: 0.84rem; margin: 0.3rem 0 0; }
+
+/* Banda de marca */
+.landing-bsod .band { background: var(--accent); color: #fff; padding: 3rem 1.4rem; }
+.landing-bsod .band .inner { max-width: 76rem; margin: 0 auto; }
+.landing-bsod .band .k {
+  font-size: 0.7rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin: 0;
+}
+.landing-bsod .band h2 {
+  font-size: clamp(1.4rem, 4vw, 2.4rem);
+  line-height: 1.08;
+  margin-top: 0.8rem;
+  max-width: 26ch;
+}
+.landing-bsod .band a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1.2rem;
+  color: #fff;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ---------- Contacto ----------
+   Los componentes de shadcn traen sus utilidades de Tailwind (especificidad
+   0-1-0); estos selectores son 0-2-1 o más, así que ganan sin `!important`. */
+.landing-bsod .contact form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.6rem;
+  max-width: 40rem;
+}
+.landing-bsod .field { display: grid; gap: 0.35rem; }
+.landing-bsod .field label {
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.landing-bsod .field input,
+.landing-bsod .field textarea {
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  color: var(--ink);
+  font-family: var(--font-sys);
+  font-size: 0.9rem;
+  padding: 0.7rem 0.8rem;
+  letter-spacing: 0.04em;
+  height: auto;
+}
+.landing-bsod .field input::placeholder,
+.landing-bsod .field textarea::placeholder { color: var(--faint); }
+.landing-bsod .field input:focus-visible,
+.landing-bsod .field textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  box-shadow: none;
+  border-color: var(--rule);
+}
+.landing-bsod .field textarea { min-height: 6.5rem; resize: vertical; }
+.landing-bsod .field-row { display: grid; gap: 1rem; }
+@media (min-width: 40rem) {
+  .landing-bsod .field-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.landing-bsod .radio-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.landing-bsod .radio-row label {
+  border: 1px solid var(--rule);
+  padding: 0.5rem 0.9rem;
+  font-size: 0.82rem;
+  color: var(--dim);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+.landing-bsod .radio-row label.on { border-color: var(--accent); color: var(--ink); }
+.landing-bsod .radio-row button[role="radio"] {
+  border-color: var(--rule);
+  color: var(--accent);
+}
+.landing-bsod .radio-row button[role="radio"][data-state="checked"] { border-color: var(--accent); }
+.landing-bsod .contact form > .btn { justify-self: start; }
+
+/* ---------- Footer ---------- */
+.landing-bsod .foot {
+  padding: 2.4rem 1.4rem 3rem;
+  max-width: 76rem;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem 1.4rem;
+  border-top: 2px solid var(--rule);
+}
+.landing-bsod .foot p,
+.landing-bsod .foot a {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0;
+  text-decoration: none;
+}
+.landing-bsod .foot a:hover { color: var(--ink); }
+.landing-bsod .foot__links { display: flex; flex-wrap: wrap; gap: 1.4rem; }
+
+/* ============================================================================
+ * El menú móvil de Radix se monta en un portal colgado de <body>, fuera de
+ * `.landing-bsod`, así que sus reglas no pueden anidarse ahí. Se nombran para
+ * que sólo alcancen a ese panel y a nada más de la aplicación.
+ * ==========================================================================*/
+/* Clase repetida a propósito: SheetContent trae `bg-background` de Tailwind,
+   que es una sola clase igual que ésta. Con la misma especificidad decide el
+   orden del bundle, y ahí gana Tailwind. Duplicarla sube a 0-2-0 y zanja el
+   empate sin recurrir a !important. */
+.landing-sheet.landing-sheet {
+  background: #0000aa;
+  color: #ffffff;
+  border-color: #3a3ac4;
+  font-family: "Fixedsys Excelsior", "W95FA", "Fixedsys", Consolas, monospace;
+  -webkit-font-smoothing: none;
+  letter-spacing: 0.06em;
+}
+.landing-sheet nav { display: flex; flex-direction: column; gap: 0.25rem; }
+.landing-sheet button,
+.landing-sheet a {
+  font-family: inherit;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c9c9e8;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0.7rem 0.4rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+.landing-sheet button:hover,
+.landing-sheet a:hover { color: #ea191d; }
+.landing-sheet .sheet__foot {
+  border-top: 1px solid #3a3ac4;
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
