@@ -4,19 +4,17 @@
  *   node design/generate-assets.cjs
  *
  * Produce en public/:
- *   favicon.ico            16 + 32 + 48 en un solo fichero
- *   icon-192.png           192×192
- *   icon-512.png           512×512
- *   apple-touch-icon.png   180×180
- *   og-basico-systems.png  1200×630
+ *   favicon.ico             16 + 32 + 48 en un solo fichero, circular
+ *   icon-192.png            192×192 circular
+ *   icon-512.png            512×512 circular
+ *   icon-512-maskable.png   512×512 a sangre, para la máscara de Android
+ *   apple-touch-icon.png    180×180 a sangre, para la máscara de iOS
+ *   og-basico-systems.png   1200×630
  *
  * Se captura con Playwright —ya está en las devDependencies— porque los
  * originales son HTML con la fuente Fixedsys, y así el icono usa exactamente
- * la misma tipografía que la landing.
- *
- * El reescalado y el empaquetado del .ico los hace `sharp` si está disponible;
- * si no, se cae a capturar cada tamaño directamente con el navegador, que da el
- * mismo resultado sin añadir dependencias.
+ * la misma tipografía que la landing. Cada tamaño se captura a su resolución
+ * nativa en lugar de reescalar uno grande.
  */
 const { chromium } = require("@playwright/test");
 const path = require("path");
@@ -56,25 +54,40 @@ function construirIco(pngs) {
   const navegador = await chromium.launch({ channel: "chrome" });
 
   /* ---------- Iconos ----------
+     Gris #B3B3B3 sobre azul #0000AA: el mismo par que el confeti de la landing.
+     Va en todos los tamaños, no solo en el favicon — un icono que cambia de
+     color según la resolución se lee como dos marcas distintas.
+
      El margen cambia según para qué es cada uno:
        · favicon  → el mínimo, la letra tiene que ser lo mayor posible a 16 px
        · apple    → algo más, iOS le redondea las esquinas
        · maskable → 20 %, Android le recorta un círculo y se come las esquinas */
+  const TINTA = "#B3B3B3";
+  /* Dos van a sangre en cuadrado y no en círculo, y no es un descuido:
+       · maskable → Android le aplica su propia máscara y exige que el fondo
+         llegue al borde; un círculo con esquinas transparentes se le rellena
+         de negro por fuera.
+       · apple    → iOS hace lo mismo, compone la transparencia sobre negro y
+         luego redondea a su manera. */
   const encargos = [
-    { size: 16,  margen: 0.06 },
-    { size: 32,  margen: 0.06 },
-    { size: 48,  margen: 0.06 },
-    { size: 180, margen: 0.10, fichero: "apple-touch-icon.png" },
-    { size: 192, margen: 0.10, fichero: "icon-192.png" },
-    { size: 512, margen: 0.10, fichero: "icon-512.png" },
-    { size: 512, margen: 0.20, fichero: "icon-512-maskable.png" },
+    { size: 16,  margen: 0.06, forma: "circulo" },
+    { size: 32,  margen: 0.06, forma: "circulo" },
+    { size: 48,  margen: 0.06, forma: "circulo" },
+    { size: 180, margen: 0.14, forma: "cuadrado", fichero: "apple-touch-icon.png" },
+    { size: 192, margen: 0.06, forma: "circulo",  fichero: "icon-192.png" },
+    { size: 512, margen: 0.06, forma: "circulo",  fichero: "icon-512.png" },
+    { size: 512, margen: 0.20, forma: "cuadrado", fichero: "icon-512-maskable.png" },
   ];
   const capturas = {};
-  for (const { size, margen, fichero } of encargos) {
+  for (const { size, margen, forma, fichero } of encargos) {
     const p = await navegador.newPage({ viewport: { width: size, height: size } });
-    await p.goto(`${urlDe("icon.html")}?size=${size}&margen=${margen}`, { waitUntil: "load" });
+    const q = `size=${size}&margen=${margen}&forma=${forma}&tinta=${encodeURIComponent(TINTA)}`;
+    await p.goto(`${urlDe("icon.html")}?${q}`, { waitUntil: "load" });
     await p.evaluate(() => window.__icono);          // espera al encaje del glifo
-    const buf = await p.locator("canvas").screenshot();
+    // omitBackground es imprescindible con la forma circular: por defecto
+    // Playwright compone sobre blanco y las esquinas del círculo saldrían
+    // blancas en vez de transparentes.
+    const buf = await p.locator("canvas").screenshot({ omitBackground: true });
     if (fichero) fs.writeFileSync(path.join(PUBLIC, fichero), buf);
     else capturas[size] = buf;
     await p.close();
