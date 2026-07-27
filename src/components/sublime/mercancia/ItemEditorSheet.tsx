@@ -414,7 +414,9 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
             <div className="space-y-1">
               <Label className="text-sm">Subido al sistema</Label>
               <p className="text-xs text-muted-foreground">
-                Requiere SKU web y PVP final válido (sugerido o manual).
+                {currentShipment && currentShipment.cost_per_kg_eur != null
+                  ? "Requiere SKU web y PVP final válido."
+                  : "Requiere SKU web y PVP válido. Aviso: el PVP actual es tentativo porque aún no incluye envío."}
               </p>
             </div>
             <Switch
@@ -422,6 +424,7 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
               onCheckedChange={toggleUploaded}
             />
           </div>
+
 
           <div className="rounded-lg border border-dashed border-border/60 p-3 text-xs text-muted-foreground">
             Impuestos preparados para fase posterior. No afectan el costo total
