@@ -50,22 +50,36 @@ void main() {
 const FS = `#version 300 es
 precision highp float;
 in vec2 vUV; in float vA; in vec3 vCol;
-uniform vec3 uBlue; uniform vec3 uGrey;
+uniform vec3 uDark; uniform vec3 uLit;
 out vec4 o;
 void main() {
   // rectángulo de esquinas suaves: se lee como recorte de papel, no como punto
   vec2 d = abs(vUV) - vec2(0.42, 0.0);
   float m = length(max(d, 0.0));
-  float a = smoothstep(1.0, 0.62, m) * vA;
+  // Canto corto. Con la caída anterior (desde 0.62) el degradado ocupaba el
+  // 38 % de la pieza: medido, sólo el 7 % de los píxeles del confeti llegaba a
+  // opaco y el conjunto se leía como polvo en vez de como recortes.
+  float a = smoothstep(1.0, 0.88, m) * vA;
   if (a < 0.012) discard;
-  // Filo degradado de azul rey a gris a lo largo de la pieza. El extremo azul
-  // coincide con el fondo, así que ese lado del filo se funde y el contorno
-  // sólo se cierra por el lado gris: da relieve sin dibujar una caja.
-  // El núcleo (m < 0.62) queda en su color pleno; el filo vive sólo en la orla
-  // exterior, si no las piezas se lavan enteras y parecen más pequeñas.
-  float filo = smoothstep(0.62, 0.96, m) * 0.85;
-  vec3 borde = mix(uBlue, uGrey, vUV.y * 0.5 + 0.5);
-  vec3 col = mix(vCol, borde, filo);
+  // Orla: un lado tira a blanco y el opuesto a un azul MÁS OSCURO que el fondo,
+  // de modo que la pieza se separa del papel por arriba y por abajo a la vez.
+  // Contra un azul de luminosidad media eso separa mucho mejor que un solo
+  // filo, y juntos leen como papel satinado con una luz encima.
+  // Acaba en 0.85, justo antes de que empiece la caída de alfa en 0.88: si se
+  // solapara, el contorno oscuro saldría translúcido y no llegaría a oscurecer
+  // el fondo, que es lo único que lo hace visible.
+  float orla = smoothstep(0.45, 0.85, m);
+  float lado = vUV.y * 0.5 + 0.5;                 // 0 abajo · 1 arriba
+  float luz = smoothstep(0.3, 0.7, lado);
+  vec3 borde = mix(uDark, uLit, luz);
+  // El lado en sombra necesita sustitución completa; el iluminado no. La razón
+  // es la luminancia del fondo: #0000AA vale 0.048 porque el azul sólo aporta
+  // un 7 %. Dejar pasar un 10 % de una pieza blanca ya suma 0.072 sólo por el
+  // canal verde, más que el fondo entero, y el filo sale MÁS claro en vez de
+  // más oscuro. Medido: con mezcla al 90 % no había un solo píxel por debajo
+  // del fondo.
+  float fuerza = mix(1.0, 0.85, luz);
+  vec3 col = mix(vCol, borde, orla * fuerza);
   o = vec4(col * a, a);        // premultiplicado; el color ya viene resuelto
 }`;
 
@@ -141,14 +155,21 @@ export default function ConfettiSphere() {
     }
     gl.useProgram(prog);
 
-    /* Paleta cerrada de tres colores planos, sin mezclas intermedias. El azul
-       sólo interviene en el filo, donde iguala al fondo de la página. */
-    const RED = hex("#EA191D"), GREY = hex("#B3B3B3"), WHITE = hex("#ffffff");
-    const BLUE = hex("#0000AA");
+    /* Paleta cerrada de tres colores planos, sin mezclas intermedias.
+       El rojo va un punto más luminoso que el `--accent` de la interfaz:
+       #EA191D sobre #0000AA apenas se diferencia en luminancia —vibra pero no
+       separa—, y las piezas rojas se hundían más que las blancas. El rojo de
+       botones y kickers se queda en #EA191D; esto es sólo el confeti. */
+    const RED = hex("#FF3B3F"), GREY = hex("#B3B3B3"), WHITE = hex("#ffffff");
+    /* Azul más oscuro que el fondo (#0000AA): es el que cierra el contorno por
+       el lado en sombra. Tiene que ser más oscuro, no igual, o el filo se
+       disuelve en el papel — que es justo lo que pasaba antes. */
+    const DARK = hex("#000060");
     gl.uniform3f(gl.getUniformLocation(prog, "uRed"), ...RED);
     gl.uniform3f(gl.getUniformLocation(prog, "uGrey"), ...GREY);
     gl.uniform3f(gl.getUniformLocation(prog, "uWhite"), ...WHITE);
-    gl.uniform3f(gl.getUniformLocation(prog, "uBlue"), ...BLUE);
+    gl.uniform3f(gl.getUniformLocation(prog, "uDark"), ...DARK);
+    gl.uniform3f(gl.getUniformLocation(prog, "uLit"), ...WHITE);
 
     const MAXN = 3600; // techo del pool: deja margen a monitores grandes
     const x = new Float32Array(MAXN), y = new Float32Array(MAXN);
@@ -176,7 +197,10 @@ export default function ConfettiSphere() {
     // El radio tiene que caber en el encuadre: si se sale, sólo se ve su zona
     // central —donde la densidad proyectada es plana— y deja de leerse como
     // volumen. Con la respiración (×1.185) esto llega a ~0.53 del lado menor.
-    const radius = () => Math.min(W, H) * 0.45;
+    // En estrecho hace falta bastante menos: medido, con 0.45 el aro salía a
+    // 905 px de diámetro sobre un buffer de 780 —el 116 % del ancho— y el
+    // viewport lo recortaba por los lados.
+    const radius = () => Math.min(W, H) * (wide() ? 0.45 : 0.32);
     const cen = { x: 0, y: 0 };
     let breath = 1;
     // Rotación del conjunto, con inercia. `spinZ` es la vuelta sobre el eje del
@@ -222,7 +246,9 @@ export default function ConfettiSphere() {
       // es aleatoria, así que la mezcla se ve igual de repartida.
       const slot = i % 10;
       cid[i] = slot < 3 ? 0 : slot < 7 ? 1 : 2; // 0 rojo · 1 gris · 2 blanco
-      al[i] = 0.58 + Math.random() * 0.42;
+      // Suelo alto a propósito: con el mínimo anterior (0.58, que multiplicado
+      // por la profundidad caía a 0.32) las piezas del fondo eran fantasmas.
+      al[i] = 0.72 + Math.random() * 0.28;
     }
 
     const quad = new Float32Array([-0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5]);
@@ -403,7 +429,11 @@ export default function ConfettiSphere() {
         // la rotación se lee como remolino plano, no como volumen.
         const depth = rz2 / 1.06; // −1 al fondo, +1 al frente
         const dScale = 0.78 + 0.22 * (depth * 0.5 + 0.5);
-        const dAlpha = 0.55 + 0.45 * (depth * 0.5 + 0.5); // el fondo debe verse: es la masa
+        // Rango estrecho: la opacidad ya casi no marca la profundidad, de eso
+        // se encarga `dScale`. Aquí lo que importa es que las piezas del fondo
+        // se vean — son la masa del aro. Si el volumen se pierde, la palanca es
+        // abrir `dScale`, no volver a hundir el alfa.
+        const dAlpha = 0.72 + 0.28 * (depth * 0.5 + 0.5);
 
         const o = i * 6;
         inst[o] = x[i]; inst[o + 1] = y[i]; inst[o + 2] = ang[i]; inst[o + 3] = sc[i] * dScale;
