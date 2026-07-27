@@ -41,6 +41,8 @@ export function MissingSkuResolveDialog({ row, open, onOpenChange }: Props) {
     invalidateAll,
   } = useReplenishmentPolicyEvents();
 
+  const refreshNeeds = () => window.dispatchEvent(new Event("core-needs-refresh"));
+
   const [step, setStep] = useState<Step>("cost");
   const [unitCostStr, setUnitCostStr] = useState("");
   const [search, setSearch] = useState("");
