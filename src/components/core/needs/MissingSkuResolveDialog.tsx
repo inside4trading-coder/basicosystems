@@ -289,6 +289,7 @@ export function MissingSkuResolveDialog({ row, open, onOpenChange }: Props) {
       return;
     }
     try {
+      // Fresh read of bridge event status
       const { data, error } = await supabase
         .from("core_replenishment_policy_events" as any)
         .select("id, status")
@@ -302,8 +303,8 @@ export function MissingSkuResolveDialog({ row, open, onOpenChange }: Props) {
           replacementEventId: bridgeEvent.id,
         });
         toast({
-          title: "Reemplazo aplicado",
-          description: "Se cerró el pendiente missing_sku.",
+          title: "Resuelto",
+          description: "Venta sin mapeo resuelta por reemplazo.",
         });
         invalidateAll();
         onOpenChange(false);
@@ -318,6 +319,7 @@ export function MissingSkuResolveDialog({ row, open, onOpenChange }: Props) {
       setStep("action");
     }
   }
+
 
   if (!row) return null;
 
