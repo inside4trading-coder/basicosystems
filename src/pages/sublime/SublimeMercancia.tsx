@@ -35,6 +35,15 @@ export default function SublimeMercancia() {
   const [openManage, setOpenManage] = useState(false);
   const [openPricing, setOpenPricing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const { data: summaryData } = useSublimeMerchSummary();
+  const { purchased, inTransit } = useMemo(() => {
+    const items = summaryData?.items ?? [];
+    const ships = summaryData?.shipments ?? [];
+    return {
+      purchased: calculateStockValuePurchased(items),
+      inTransit: calculateStockValueInTransit(items, ships),
+    };
+  }, [summaryData]);
 
   const handleExportCsv = async () => {
     setExporting(true);
