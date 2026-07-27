@@ -80,6 +80,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
   const [search, setSearch] = useState("");
   const [replacementEvent, setReplacementEvent] = useState<PolicyEvent | null>(null);
   const [resolveRow, setResolveRow] = useState<PolicyEvent | null>(null);
+  const [missingSkuRow, setMissingSkuRow] = useState<PolicyEvent | null>(null);
 
   const filtered = useMemo(() => {
     const preset = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
