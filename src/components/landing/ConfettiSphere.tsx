@@ -36,7 +36,7 @@ vec3 palette(float k) {
 void main() {
   float c = cos(aPos.z), s = sin(aPos.z);
   // el "papel" se escorza al girar: ancho modulado por el coseno del ángulo
-  vec2 size = vec2(2.9, 6.4) * aPos.w;
+  vec2 size = vec2(3.48, 7.68) * aPos.w;
   size.x *= 0.35 + 0.65 * abs(cos(aPos.z * 1.7));
   vec2 p = vec2(aCorner.x * size.x, aCorner.y * size.y);
   p = vec2(p.x * c - p.y * s, p.x * s + p.y * c) + aPos.xy;
@@ -50,6 +50,7 @@ void main() {
 const FS = `#version 300 es
 precision highp float;
 in vec2 vUV; in float vA; in vec3 vCol;
+uniform vec3 uBlue; uniform vec3 uGrey;
 out vec4 o;
 void main() {
   // rectángulo de esquinas suaves: se lee como recorte de papel, no como punto
@@ -57,8 +58,32 @@ void main() {
   float m = length(max(d, 0.0));
   float a = smoothstep(1.0, 0.62, m) * vA;
   if (a < 0.012) discard;
-  o = vec4(vCol * a, a);       // premultiplicado; el color ya viene resuelto
+  // Filo degradado de azul rey a gris a lo largo de la pieza. El extremo azul
+  // coincide con el fondo, así que ese lado del filo se funde y el contorno
+  // sólo se cierra por el lado gris: da relieve sin dibujar una caja.
+  // El núcleo (m < 0.62) queda en su color pleno; el filo vive sólo en la orla
+  // exterior, si no las piezas se lavan enteras y parecen más pequeñas.
+  float filo = smoothstep(0.62, 0.96, m) * 0.85;
+  vec3 borde = mix(uBlue, uGrey, vUV.y * 0.5 + 0.5);
+  vec3 col = mix(vCol, borde, filo);
+  o = vec4(col * a, a);        // premultiplicado; el color ya viene resuelto
 }`;
+
+/* Geometría del toroide, en unidades del radio de encuadre.
+   RING + TUBE = 1.06 mantiene la envolvente exterior de la esfera anterior;
+   RING − TUBE = 0.30 es el agujero del centro. */
+const RING = 0.68;
+const TUBE = 0.38;
+/* Cabeceo de reposo: sin él el toroide se vería perfectamente de frente y
+   plano. Con ~25° se lee como un aro en perspectiva y el agujero queda
+   elíptico pero siempre abierto. El tope evita que llegue a verse de canto,
+   que es donde el agujero desaparecería. */
+const TILT_REST = 0.44;
+/* 0.78 rad ≈ 45°: medido, a partir de ~50° el borde superior del aro cae sobre
+   el agujero y éste se cierra en pantalla. El tope lo mantiene siempre abierto,
+   incluso durante un gesto brusco. */
+const TILT_MAX = 0.78;
+const SPIN_MAX = 1.3;
 
 const hex = (h: string): [number, number, number] => {
   const v = h.replace("#", "");
@@ -116,11 +141,14 @@ export default function ConfettiSphere() {
     }
     gl.useProgram(prog);
 
-    /* Paleta cerrada de tres colores planos, sin mezclas intermedias. */
+    /* Paleta cerrada de tres colores planos, sin mezclas intermedias. El azul
+       sólo interviene en el filo, donde iguala al fondo de la página. */
     const RED = hex("#EA191D"), GREY = hex("#B3B3B3"), WHITE = hex("#ffffff");
+    const BLUE = hex("#0000AA");
     gl.uniform3f(gl.getUniformLocation(prog, "uRed"), ...RED);
     gl.uniform3f(gl.getUniformLocation(prog, "uGrey"), ...GREY);
     gl.uniform3f(gl.getUniformLocation(prog, "uWhite"), ...WHITE);
+    gl.uniform3f(gl.getUniformLocation(prog, "uBlue"), ...BLUE);
 
     const MAXN = 3600; // techo del pool: deja margen a monitores grandes
     const x = new Float32Array(MAXN), y = new Float32Array(MAXN);
@@ -131,8 +159,9 @@ export default function ConfettiSphere() {
     // fijo. Lo que gira es la esfera entera, no cada pieza por su cuenta.
     const ux = new Float32Array(MAXN), uy = new Float32Array(MAXN), uz = new Float32Array(MAXN);
     // Ángulo alcanzado por cada pieza y con qué prontitud sigue al del conjunto:
-    // de esa diferencia sale la torsión al acelerar.
-    const myX = new Float32Array(MAXN), myY = new Float32Array(MAXN), lag = new Float32Array(MAXN);
+    // de esa diferencia sale la torsión al acelerar. `myZ` es la vuelta en el
+    // plano del anillo; `myT`, el cabeceo.
+    const myZ = new Float32Array(MAXN), myT = new Float32Array(MAXN), lag = new Float32Array(MAXN);
     const bph = new Float32Array(MAXN), bfr = new Float32Array(MAXN); // su propia respiración
     const inst = new Float32Array(MAXN * 6);
     let N = 0, W = 0, H = 0, dpr = 1;
@@ -150,23 +179,31 @@ export default function ConfettiSphere() {
     const radius = () => Math.min(W, H) * 0.45;
     const cen = { x: 0, y: 0 };
     let breath = 1;
-    // Rotación del conjunto: ángulos acumulados y velocidad angular con inercia.
-    let spinX = 0, spinY = 0, spinVX = 0, spinVY = 0;
+    // Rotación del conjunto, con inercia. `spinZ` es la vuelta sobre el eje del
+    // agujero —el que mira al espectador— y es el giro principal: por ahí el
+    // toroide rueda sin cerrar el hueco. `tilt` es el cabeceo.
+    let spinZ = 0, spinVZ = 0, tilt = TILT_REST, tiltV = 0;
     // Respiración sintética: ondas sin relación armónica más pulsos irregulares.
     let pulse = 0, nextPulse = 0.8;
 
     function spawn(i: number) {
-      // Reparto uniforme en VOLUMEN: dirección al azar sobre la esfera y radio
-      // por raíz cúbica. En 2D el exponente era 1/2; en 3D, con radio lineal, el
-      // interior se satura y la corteza queda vacía.
-      const uu = Math.random() * 2 - 1;
-      const aa = Math.random() * Math.PI * 2;
-      const ss = Math.sqrt(1 - uu * uu);
-      const rad0 = Math.cbrt(Math.random()) * 1.06;
-      ux[i] = rad0 * ss * Math.cos(aa);
-      uy[i] = rad0 * uu;
-      uz[i] = rad0 * ss * Math.sin(aa);
-      myX[i] = 0; myY[i] = 0;
+      // Toroide: un anillo de radio mayor RING con un tubo de radio TUBE
+      // alrededor. El agujero del centro mide RING − TUBE.
+      //
+      // El radio dentro del tubo va por raíz cuadrada, no lineal: el tubo es un
+      // disco en sección y con radio lineal el eje se satura y el borde queda
+      // vacío. (En la esfera maciza anterior el exponente correcto era 1/3.)
+      // El anillo va en el plano XY —el de la pantalla— y el tubo se abre hacia
+      // Z. Puesto en XZ el toroide se ve de canto y el agujero no existe para
+      // el espectador, que es justo lo que hay que enseñar.
+      const u = Math.random() * Math.PI * 2; // vuelta alrededor del anillo
+      const v = Math.random() * Math.PI * 2; // vuelta alrededor del tubo
+      const rho = Math.sqrt(Math.random()) * TUBE;
+      const ring = RING + rho * Math.cos(v);
+      ux[i] = ring * Math.cos(u);
+      uy[i] = ring * Math.sin(u);
+      uz[i] = rho * Math.sin(v);
+      myZ[i] = 0; myT[i] = TILT_REST;
       lag[i] = 3.4 + Math.random() * 6.2; // prontitud propia → desfase al acelerar
       // Cada pieza respira a su aire: fase y frecuencia propias. La suma de miles
       // de ciclos desacompasados es lo que rompe el pulso único del conjunto.
@@ -239,11 +276,10 @@ export default function ConfettiSphere() {
       const dx = nx - ptr.lx, dy = ny - ptr.ly;
       ptr.lx = nx; ptr.ly = ny;
       if (!ptr.on) { ptr.on = 1; return; } // el primer evento sólo fija el origen
-      // Arrastrar en horizontal rueda sobre el eje vertical y viceversa. Se acota
-      // para que un salto brusco del puntero no dispare la esfera.
-      const k = 0.011;
-      spinVY += Math.max(-40, Math.min(40, dx)) * k;
-      spinVX -= Math.max(-40, Math.min(40, dy)) * k;
+      // Arrastrar en horizontal hace rodar el aro sobre su eje; en vertical lo
+      // cabecea. Se acota para que un salto brusco del puntero no lo dispare.
+      spinVZ += Math.max(-40, Math.min(40, dx)) * 0.011;
+      tiltV -= Math.max(-40, Math.min(40, dy)) * 0.004;
     }
 
     const onPointerMove = (e: PointerEvent) => moveTo(e.clientX, e.clientY);
@@ -253,8 +289,8 @@ export default function ConfettiSphere() {
     const onPointerDown = (e: PointerEvent) => {
       moveTo(e.clientX, e.clientY);
       pulse += 0.2;
-      spinVY += (Math.random() - 0.5) * 1.6;
-      spinVX += (Math.random() - 0.5) * 1.1;
+      spinVZ += (Math.random() - 0.5) * 1.6;
+      tiltV += (Math.random() - 0.5) * 0.5;
     };
     const opts = { passive: true } as const;
     host.addEventListener("pointermove", onPointerMove, opts);
@@ -270,11 +306,23 @@ export default function ConfettiSphere() {
       host.removeEventListener("pointerdown", onPointerDown);
     });
 
-    let scrollKick = 0, lastY = scrollY;
+    /* En móvil no hay puntero, así que el scroll es el único gesto disponible.
+       Se traduce a lo mismo que hace el ratón —giro más un golpe de respiración—
+       y no a un arrastre vertical: arrastrar el conjunto es justo el movimiento
+       que descartamos al pasar de disco a volumen. */
+    let lastY = scrollY;
     const onScroll = () => {
       const d = scrollY - lastY;
       lastY = scrollY;
-      scrollKick = Math.max(-90, Math.min(90, scrollKick + d * 1.15));
+      if (!d) return;
+      const k = Math.max(-60, Math.min(60, d)); // un salto largo no lo dispara
+      // Ganancia alta a propósito: en móvil esto sustituye al ratón, así que un
+      // desplazamiento corto tiene que notarse.
+      tiltV -= k * 0.011;
+      spinVZ += k * 0.015;
+      // El desfase de cada pieza ante el tirón es lo que da el arritmo: no
+      // todas reaccionan a la vez porque cada una tiene su propia prontitud.
+      pulse += Math.min(0.15, Math.abs(k) * 0.0038);
     };
     addEventListener("scroll", onScroll, opts);
     teardown.push(() => removeEventListener("scroll", onScroll));
@@ -294,10 +342,20 @@ export default function ConfettiSphere() {
       cen.y += (h.y - cen.y) * Math.min(1, 6 * dt);
 
       // Inercia: conserva el giro y se va frenando, como una rueda pesada.
-      spinVX *= Math.max(0, 1 - 0.85 * dt);
-      spinVY *= Math.max(0, 1 - 0.85 * dt);
-      spinX += (spinVX + 0.035) * dt; // deriva base: en reposo nunca queda muerta
-      spinY += (spinVY + 0.055) * dt;
+      spinVZ *= Math.max(0, 1 - 0.85 * dt);
+      // El tope no es estético sino geométrico: las piezas persiguen su destino
+      // con un muelle, y por encima de ~1,3 rad/s el desfase les hace recortar
+      // la curva hacia dentro hasta tapar el agujero. Medido: sin tope, un
+      // gesto brusco lo cerraba por completo.
+      spinVZ = Math.max(-SPIN_MAX, Math.min(SPIN_MAX, spinVZ));
+      spinZ += (spinVZ + 0.16) * dt; // deriva base: en reposo nunca queda muerto
+      // El cabeceo no es libre: vuelve solo al reposo y topa antes de ponerse
+      // de canto, que es donde el agujero se cerraría.
+      tiltV *= Math.max(0, 1 - 3.4 * dt);
+      tiltV += (TILT_REST - tilt) * 3.2 * dt;
+      tilt += tiltV * dt;
+      if (tilt > TILT_MAX) { tilt = TILT_MAX; tiltV = Math.min(tiltV, 0); }
+      if (tilt < -TILT_MAX) { tilt = -TILT_MAX; tiltV = Math.max(tiltV, 0); }
 
       // ── Respiración sintética: sin periodo estable, con pulsos sueltos ──
       if (t > nextPulse) {
@@ -313,27 +371,27 @@ export default function ConfettiSphere() {
       for (let i = 0; i < N; i++) {
         // Cada pieza alcanza el ángulo del conjunto con su propia prontitud.
         const k = Math.min(1, lag[i] * dt);
-        myX[i] += (spinX - myX[i]) * k;
-        myY[i] += (spinY - myY[i]) * k;
+        myZ[i] += (spinZ - myZ[i]) * k;
+        myT[i] += (tilt - myT[i]) * k;
 
         // Respiración propia: se acerca y se aleja del centro a su ritmo.
         const own = 1 + 0.185 * Math.sin(t * bfr[i] + bph[i]);
 
-        // Rotar su sitio en la esfera: primero sobre el eje horizontal, luego el vertical.
-        const cx1 = Math.cos(myX[i]), sx1 = Math.sin(myX[i]);
-        const ry1 = uy[i] * cx1 - uz[i] * sx1;
-        const rz1 = uy[i] * sx1 + uz[i] * cx1;
-        const cy1 = Math.cos(myY[i]), sy1 = Math.sin(myY[i]);
-        const rx2 = ux[i] * cy1 + rz1 * sy1;
-        const rz2 = -ux[i] * sy1 + rz1 * cy1;
+        // Rotar su sitio en el toroide: primero la vuelta en el plano del aro,
+        // luego el cabeceo sobre el eje horizontal.
+        const cz = Math.cos(myZ[i]), sz = Math.sin(myZ[i]);
+        const rx1 = ux[i] * cz - uy[i] * sz;
+        const ry1 = ux[i] * sz + uy[i] * cz;
+        const ct = Math.cos(myT[i]), st = Math.sin(myT[i]);
+        const ry2 = ry1 * ct - uz[i] * st;
+        const rz2 = ry1 * st + uz[i] * ct;
 
         const rad = R * own;
-        const tx = cen.x + rx2 * rad;
-        const ty = cen.y + ry1 * rad;
+        const tx = cen.x + rx1 * rad;
+        const ty = cen.y + ry2 * rad;
         vx[i] += (tx - x[i]) * 7.0 * dt;
         vy[i] += (ty - y[i]) * 7.0 * dt;
 
-        if (scrollKick) vy[i] += scrollKick * 1.1 * dt;
         vx[i] *= 1 - 3.4 * dt;
         vy[i] *= 1 - 3.4 * dt; // amortiguación: llega sin rebotar
         x[i] += vx[i] * dt;
@@ -351,7 +409,6 @@ export default function ConfettiSphere() {
         inst[o] = x[i]; inst[o + 1] = y[i]; inst[o + 2] = ang[i]; inst[o + 3] = sc[i] * dScale;
         inst[o + 4] = al[i] * dAlpha; inst[o + 5] = cid[i];
       }
-      scrollKick *= 0.9;
 
       gl!.clear(gl!.COLOR_BUFFER_BIT);
       gl!.bindBuffer(gl!.ARRAY_BUFFER, bi);
