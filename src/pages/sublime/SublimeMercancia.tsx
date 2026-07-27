@@ -157,3 +157,40 @@ export default function SublimeMercancia() {
     </div>
   );
 }
+
+function StockValueCard({
+  label,
+  hint,
+  summary,
+  icon: Icon,
+}: {
+  label: string;
+  hint: string;
+  summary: StockValueSummary;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  const amount = new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(summary.amountEur);
+  return (
+    <Card className="p-5 rounded-2xl border-border/60">
+      <div className="flex items-start justify-between mb-3">
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Icon className="h-4 w-4 text-primary" />
+        </div>
+      </div>
+      <div className="text-3xl font-black tabular-nums text-foreground">{amount}</div>
+      <div className="text-xs text-muted-foreground mt-1">
+        {summary.itemCount} producto{summary.itemCount === 1 ? "" : "s"} · {summary.unitCount} unidad
+        {summary.unitCount === 1 ? "" : "es"}
+      </div>
+      <div className="text-xs text-muted-foreground mt-1">{hint}</div>
+    </Card>
+  );
+}
