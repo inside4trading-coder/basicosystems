@@ -229,11 +229,14 @@ export function ItemsAvailableTab() {
                     Marcar disponible
                   </Button>
                 ) : null}
-                <p className="text-[10px] text-muted-foreground">
-                  Envío €{shipping.toFixed(2)} · PVP{" "}
+                <p className="text-[10px] text-muted-foreground flex items-center gap-1 flex-wrap">
+                  Envío €{shipping.toFixed(2)} · PVP final{" "}
                   {finalPvp == null ? "—" : `${finalPvp.toFixed(2)} €`}
-
+                  <Badge variant="outline" className="text-[9px] py-0 px-1">
+                    {i.use_manual_pvp ? "Manual" : "Sugerido"}
+                  </Badge>
                 </p>
+
               </Card>
             );
           })}
