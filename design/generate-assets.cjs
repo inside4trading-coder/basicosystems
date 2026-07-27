@@ -56,10 +56,15 @@ function construirIco(pngs) {
   const navegador = await chromium.launch({ channel: "chrome" });
 
   /* ---------- Iconos ----------
+     Gris #B3B3B3 sobre azul #0000AA: el mismo par que el confeti de la landing.
+     Va en todos los tamaños, no solo en el favicon — un icono que cambia de
+     color según la resolución se lee como dos marcas distintas.
+
      El margen cambia según para qué es cada uno:
        · favicon  → el mínimo, la letra tiene que ser lo mayor posible a 16 px
        · apple    → algo más, iOS le redondea las esquinas
        · maskable → 20 %, Android le recorta un círculo y se come las esquinas */
+  const TINTA = "#B3B3B3";
   const encargos = [
     { size: 16,  margen: 0.06 },
     { size: 32,  margen: 0.06 },
@@ -72,7 +77,8 @@ function construirIco(pngs) {
   const capturas = {};
   for (const { size, margen, fichero } of encargos) {
     const p = await navegador.newPage({ viewport: { width: size, height: size } });
-    await p.goto(`${urlDe("icon.html")}?size=${size}&margen=${margen}`, { waitUntil: "load" });
+    const q = `size=${size}&margen=${margen}&tinta=${encodeURIComponent(TINTA)}`;
+    await p.goto(`${urlDe("icon.html")}?${q}`, { waitUntil: "load" });
     await p.evaluate(() => window.__icono);          // espera al encaje del glifo
     const buf = await p.locator("canvas").screenshot();
     if (fichero) fs.writeFileSync(path.join(PUBLIC, fichero), buf);
