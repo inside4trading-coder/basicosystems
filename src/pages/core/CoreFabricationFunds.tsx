@@ -483,21 +483,47 @@ export default function CoreFabricationFunds() {
   }
 
   function downloadReport() {
-    const rows = [
-      ["fecha", "tipo", "partida", "sku", "producto", "pedido", "item", "qty", "costo_unit", "monto", "moneda", "origen", "motivo", "estado"],
-      ...movements.map(m => {
-        const f = funds.find(x => x.id === m.fund_id);
-        return [
-          m.created_at, MOV_LABEL[m.movement_type] ?? m.movement_type,
-          f ? FUND_LABEL[f.fund_type] : "—", m.sku ?? "", m.product_name ?? "",
-          m.source_order_id ?? "", m.source_order_item_id ?? "",
-          m.quantity ?? "", m.unit_cost_snapshot ?? "",
-          m.amount, m.currency, m.source, (m.reason ?? "").replace(/\n/g, " "), m.status,
-        ];
-      }),
-    ];
-    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const formatCsvNumber = (v: unknown, decimals = 4): string => {
+      if (v === null || v === undefined || v === "") return "";
+      const n = Number(v);
+      if (!Number.isFinite(n)) return "";
+      return n.toFixed(decimals).replace(".", ",");
+    };
+    const escapeCsvText = (v: unknown): string => {
+      if (v === null || v === undefined) return "";
+      const s = String(v);
+      if (/[";\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    type Cell = { n?: unknown; t?: unknown };
+    const header = ["fecha", "tipo", "partida", "sku", "producto", "pedido", "item", "qty", "costo_unit", "monto", "moneda", "origen", "motivo", "estado"];
+    const dataRows: Cell[][] = movements.map(m => {
+      const f = funds.find(x => x.id === m.fund_id);
+      return [
+        { t: m.created_at },
+        { t: MOV_LABEL[m.movement_type] ?? m.movement_type },
+        { t: f ? FUND_LABEL[f.fund_type] : "—" },
+        { t: m.sku ?? "" },
+        { t: m.product_name ?? "" },
+        { t: m.source_order_id ?? "" },
+        { t: m.source_order_item_id ?? "" },
+        { n: m.quantity ?? "" },
+        { n: m.unit_cost_snapshot ?? "" },
+        { n: m.amount },
+        { t: m.currency },
+        { t: m.source },
+        { t: (m.reason ?? "").replace(/\n/g, " ") },
+        { t: m.status },
+      ];
+    });
+    const lines: string[] = [];
+    lines.push("sep=;");
+    lines.push(header.map(escapeCsvText).join(";"));
+    for (const row of dataRows) {
+      lines.push(row.map(cell => "n" in cell ? formatCsvNumber(cell.n) : escapeCsvText(cell.t)).join(";"));
+    }
+    const csv = lines.join("\r\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -505,6 +531,7 @@ export default function CoreFabricationFunds() {
     a.click();
     URL.revokeObjectURL(url);
   }
+
 
   return (
     <div className="space-y-6">
