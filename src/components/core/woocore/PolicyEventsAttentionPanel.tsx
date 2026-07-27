@@ -18,6 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import { POLICY_ACTION_LABELS, describePolicyAction } from "@/lib/policyBlocked";
 import { ReplacementApplicationDialog } from "./ReplacementApplicationDialog";
 import { PendingClassificationResolveDialog } from "@/components/core/needs/PendingClassificationResolveDialog";
+import { MissingSkuResolveDialog } from "@/components/core/needs/MissingSkuResolveDialog";
 import { useReplenishmentPolicyEvents, PolicyEvent } from "@/hooks/useReplenishmentPolicyEvents";
 
 const FILTERS: { key: string; label: string; actions: string[] }[] = [
