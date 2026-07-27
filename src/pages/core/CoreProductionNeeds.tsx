@@ -164,6 +164,12 @@ export default function CoreProductionNeeds() {
 
   useEffect(() => { load(); loadCatalog(); }, []);
 
+  useEffect(() => {
+    const handler = () => { load(); };
+    window.addEventListener("core-needs-refresh", handler);
+    return () => window.removeEventListener("core-needs-refresh", handler);
+  }, []);
+
   async function runGeneration(dry = false) {
     setRunning(true);
     try {
