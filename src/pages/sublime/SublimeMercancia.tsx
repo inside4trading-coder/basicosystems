@@ -100,7 +100,23 @@ export default function SublimeMercancia() {
 
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <StockValueCard
+          label="Stock value merch comprada"
+          hint="Productos comprados sin envío asignado."
+          summary={purchased}
+          icon={ShoppingCart}
+        />
+        <StockValueCard
+          label="Stock value merch en camino"
+          hint="Productos asignados a envío/caja en tránsito."
+          summary={inTransit}
+          icon={Ship}
+        />
+      </div>
+
       <Tabs defaultValue="unassigned" className="space-y-4">
+
         <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="unassigned">Compras sin asignar</TabsTrigger>
           <TabsTrigger value="in_transit">
