@@ -41,6 +41,8 @@ export function MissingSkuResolveDialog({ row, open, onOpenChange }: Props) {
     invalidateAll,
   } = useReplenishmentPolicyEvents();
 
+  const refreshNeeds = () => window.dispatchEvent(new Event("core-needs-refresh"));
+
   const [step, setStep] = useState<Step>("cost");
   const [unitCostStr, setUnitCostStr] = useState("");
   const [search, setSearch] = useState("");
@@ -163,6 +165,7 @@ export function MissingSkuResolveDialog({ row, open, onOpenChange }: Props) {
         title: "Marcado como no restock",
         description: `Reserva de ${amount.toFixed(2)} USD en Partida no restockable.`,
       });
+      refreshNeeds();
       onOpenChange(false);
     }
   }
@@ -188,6 +191,7 @@ export function MissingSkuResolveDialog({ row, open, onOpenChange }: Props) {
           description: "Esta venta sin mapeo ya estaba resuelta.",
         });
         invalidateAll();
+        refreshNeeds();
         onOpenChange(false);
         setSaving(false);
         return;
@@ -229,6 +233,7 @@ export function MissingSkuResolveDialog({ row, open, onOpenChange }: Props) {
           description: "Esta venta sin mapeo ya tenía un reemplazo aplicado.",
         });
         invalidateAll();
+        refreshNeeds();
         onOpenChange(false);
         setSaving(false);
         return;
@@ -307,6 +312,7 @@ export function MissingSkuResolveDialog({ row, open, onOpenChange }: Props) {
           description: "Venta sin mapeo resuelta por reemplazo.",
         });
         invalidateAll();
+        refreshNeeds();
         onOpenChange(false);
         return;
       }
