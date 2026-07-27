@@ -104,7 +104,7 @@ export function useReplenishmentPolicyEvents() {
       const { data, error } = await supabase
         .from("core_fabrication_fund_movements" as any)
         .select(
-          "id, created_at, fund_id, fund_bucket, status, source_order_id, source_order_item_id, woo_product_id, woo_variation_id, core_product_id, core_variant_id, sku, product_name, quantity, unit_cost_snapshot, amount, reason, cost_snapshot_data",
+          "id, created_at, fund_id, fund_bucket, movement_type, status, source_order_id, source_order_item_id, woo_product_id, woo_variation_id, core_product_id, core_variant_id, sku, product_name, quantity, unit_cost_snapshot, amount, reason, cost_snapshot_data",
         )
         .eq("fund_bucket", "pending_classification")
         .eq("status", "posted")
@@ -112,9 +112,43 @@ export function useReplenishmentPolicyEvents() {
         .limit(500);
       if (error) throw error;
       const raw = (data ?? []) as any[];
-      return raw.filter((m) => {
+
+      // Excluir movimientos contables de reclasificación de reemplazo (nunca son tareas)
+      const RECLASS_TYPES = new Set([
+        "replacement_reclassification_out",
+        "replacement_reclassification_in",
+        "replacement_cost_adjustment",
+      ]);
+      const preFiltered = raw.filter((m) => {
+        if (RECLASS_TYPES.has(m.movement_type)) return false;
         const resolution = m.cost_snapshot_data?.pending_classification_resolution ?? null;
         if (resolution?.status === "closed") return false;
+        return true;
+      });
+
+      // Excluir movimientos base cuya pending item ya fue resuelta manualmente
+      const pendingIds = Array.from(
+        new Set(
+          preFiltered
+            .map((m) => m.cost_snapshot_data?.pending_item_id)
+            .filter((x: any): x is string => typeof x === "string"),
+        ),
+      );
+      const closedPendingIds = new Set<string>();
+      if (pendingIds.length > 0) {
+        const { data: pis } = await supabase
+          .from("core_fabrication_fund_pending_items" as any)
+          .select("id, status")
+          .in("id", pendingIds);
+        (pis ?? []).forEach((p: any) => {
+          if (["resolved", "processed", "ignored", "cancelled"].includes(p.status)) {
+            closedPendingIds.add(p.id);
+          }
+        });
+      }
+      return preFiltered.filter((m) => {
+        const pid = m.cost_snapshot_data?.pending_item_id;
+        if (pid && closedPendingIds.has(pid)) return false;
         return true;
       });
     },
