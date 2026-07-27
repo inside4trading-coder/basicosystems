@@ -434,17 +434,23 @@ export function buildSublimeMerchCsv(
     const ship = it.shipment_id ? shipMap.get(it.shipment_id) ?? null : null;
     const box = it.box_id ? boxMap.get(it.box_id) ?? null : null;
     const rule = findPricingRule(rules, it.product_type ?? null);
-    const shipping = calculateShippingCost(it, ship);
-    const total = calculateTotalCost(it, ship);
+    const hasShipment = !!(ship && ship.cost_per_kg_eur != null);
+    const shipping = hasShipment ? calculateShippingCost(it, ship) : 0;
     const units = Math.max(1, calculateTotalUnits(it));
+    const precioTotal = Number(it.precio_compra ?? 0) * units;
+    const total = precioTotal + shipping;
     const perUnitCost = total / units;
     const pct = rule ? Number(rule.profit_percentage ?? 0) : 0;
     const baseSuggested = calculateSuggestedBasePvp(perUnitCost, pct);
     const ivaAmount = calculateIvaAmount(baseSuggested);
-    const suggestedFinal = baseSuggested + ivaAmount;
-    const finalPvp = getFinalPvp(it, rule, ship);
-    const margin = calculateMargin(it, ship, rule);
-    const precioTotal = Number(it.precio_compra ?? 0) * units;
+    const suggestedFull = baseSuggested + ivaAmount;
+    // Tentativo siempre calculado sin envío
+    const perUnitBuy = Number(it.precio_compra ?? 0);
+    const tentBase = calculateSuggestedBasePvp(perUnitBuy, pct);
+    const tentIva = calculateIvaAmount(tentBase);
+    const suggestedTent = tentBase + tentIva;
+    const finalPvp = getFinalPvp(it, rule, hasShipment ? ship : null);
+    const margin = calculateMargin(it, hasShipment ? ship : null, rule);
     const pvpTotal = finalPvp != null ? finalPvp * units : null;
     const row = [
       it.sku_web ?? "",
@@ -467,7 +473,10 @@ export function buildSublimeMerchCsv(
       baseSuggested.toFixed(2),
       IVA_RATE.toFixed(2),
       ivaAmount.toFixed(2),
-      suggestedFinal.toFixed(2),
+      suggestedTent.toFixed(2),
+      hasShipment ? suggestedFull.toFixed(2) : "",
+      hasShipment ? "final" : "tentativo",
+      it.use_manual_pvp ? "manual" : "sugerido",
       it.use_manual_pvp ? "true" : "false",
       it.pvp_manual != null ? Number(it.pvp_manual).toFixed(2) : "",
       finalPvp != null ? finalPvp.toFixed(2) : "",
@@ -484,6 +493,7 @@ export function buildSublimeMerchCsv(
       String(it.fotos_origen?.length ?? 0),
       String(it.fotos_web?.length ?? 0),
     ].map(csvEscape);
+
     rows.push(row.join(","));
   }
   return rows.join("\r\n");
