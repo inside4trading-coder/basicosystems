@@ -154,9 +154,29 @@ export function useReplenishmentPolicyEvents() {
     },
   });
 
+  const internalMissingCoreQuery = useQuery({
+    queryKey: ["fab_fund_movements", "internal_missing_core"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("core_fabrication_fund_movements" as any)
+        .select(
+          "id, created_at, fund_bucket, movement_type, status, source_order_id, source_order_item_id, woo_product_id, woo_variation_id, core_product_id, core_variant_id, sku, product_name, quantity, unit_cost_snapshot, amount",
+        )
+        .eq("fund_bucket", "internal_factory")
+        .eq("movement_type", "sale_generated")
+        .eq("status", "posted")
+        .or("core_product_id.is.null,core_variant_id.is.null")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
   const policyRows = eventsQuery.data ?? [];
   const pendingItems = pendingItemsQuery.data ?? [];
   const pendingClassMovs = pendingClassMovsQuery.data ?? [];
+  const internalMissingCoreMovs = internalMissingCoreQuery.data ?? [];
 
   // Bridge events referenced by corrected pending_classification movements
   // (used to show which product replaced the original one).
