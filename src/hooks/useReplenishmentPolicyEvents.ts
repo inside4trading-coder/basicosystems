@@ -743,7 +743,7 @@ export function useReplenishmentPolicyEvents() {
   return {
     rows,
     isLoading:
-      eventsQuery.isLoading || pendingItemsQuery.isLoading || pendingClassMovsQuery.isLoading,
+      eventsQuery.isLoading || pendingItemsQuery.isLoading || pendingClassMovsQuery.isLoading || internalMissingCoreQuery.isLoading,
     counts,
     resolveProductLabel,
     resolveVariantLabel,
