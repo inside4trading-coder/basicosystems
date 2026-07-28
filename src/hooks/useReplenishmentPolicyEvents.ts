@@ -29,7 +29,7 @@ export type PolicyEvent = {
   replacement_behavior?: string | null;
   resolution_data?: any;
   // synthetic (non-policy-event rows)
-  _kind?: "policy_event" | "pending_item" | "pending_classification";
+  _kind?: "policy_event" | "pending_item" | "pending_classification" | "internal_missing_core";
   _synthetic?: boolean;
   _dedupe_key?: string | null;
   // pending_classification-only
@@ -154,9 +154,29 @@ export function useReplenishmentPolicyEvents() {
     },
   });
 
+  const internalMissingCoreQuery = useQuery({
+    queryKey: ["fab_fund_movements", "internal_missing_core"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("core_fabrication_fund_movements" as any)
+        .select(
+          "id, created_at, fund_bucket, movement_type, status, source_order_id, source_order_item_id, woo_product_id, woo_variation_id, core_product_id, core_variant_id, sku, product_name, quantity, unit_cost_snapshot, amount",
+        )
+        .eq("fund_bucket", "internal_factory")
+        .eq("movement_type", "sale_generated")
+        .eq("status", "posted")
+        .or("core_product_id.is.null,core_variant_id.is.null")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
   const policyRows = eventsQuery.data ?? [];
   const pendingItems = pendingItemsQuery.data ?? [];
   const pendingClassMovs = pendingClassMovsQuery.data ?? [];
+  const internalMissingCoreMovs = internalMissingCoreQuery.data ?? [];
 
   // Bridge events referenced by corrected pending_classification movements
   // (used to show which product replaced the original one).
@@ -281,8 +301,47 @@ export function useReplenishmentPolicyEvents() {
       });
     }
 
+    for (const m of internalMissingCoreMovs) {
+      const key = makeDedupeKey(m.source_order_id, m.source_order_item_id);
+      if (key && seen.has(key)) continue;
+      if (key) seen.add(key);
+      out.push({
+        id: `imc:${m.id}`,
+        created_at: m.created_at,
+        source_type: "fabrication_fund_movement",
+        action: "missing_map",
+        severity: "warning",
+        message: "Venta interna reservada, pero falta vincular producto/variante Core.",
+        warning: "missing_core_ids",
+        status: "pending",
+        quantity: m.quantity != null ? Number(m.quantity) : null,
+        unit_cost: m.unit_cost_snapshot != null ? Number(m.unit_cost_snapshot) : null,
+        amount: m.amount != null ? Number(m.amount) : null,
+        cost_source: null,
+        core_product_id: m.core_product_id ?? null,
+        core_variant_id: m.core_variant_id ?? null,
+        woo_product_id: m.woo_product_id ?? null,
+        woo_variation_id: m.woo_variation_id ?? null,
+        woo_order_id: m.source_order_id ?? null,
+        woo_order_item_id: m.source_order_item_id ?? null,
+        replacement_product_id: null,
+        replacement_woo_product_id: null,
+        external_supplier_name: null,
+        external_supplier_unit_cost_usd: null,
+        _kind: "internal_missing_core",
+        _synthetic: true,
+        _dedupe_key: key,
+        sourceMovementId: m.id,
+        unit_cost_snapshot: m.unit_cost_snapshot != null ? Number(m.unit_cost_snapshot) : null,
+        resolution_data: {
+          product_name: m.product_name,
+          woo_sku: m.sku,
+        },
+      });
+    }
+
     return out;
-  }, [policyRows, pendingItems, pendingClassMovs, bridgeEventsMap]);
+  }, [policyRows, pendingItems, pendingClassMovs, internalMissingCoreMovs, bridgeEventsMap]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { total: 0 };
@@ -684,7 +743,7 @@ export function useReplenishmentPolicyEvents() {
   return {
     rows,
     isLoading:
-      eventsQuery.isLoading || pendingItemsQuery.isLoading || pendingClassMovsQuery.isLoading,
+      eventsQuery.isLoading || pendingItemsQuery.isLoading || pendingClassMovsQuery.isLoading || internalMissingCoreQuery.isLoading,
     counts,
     resolveProductLabel,
     resolveVariantLabel,
