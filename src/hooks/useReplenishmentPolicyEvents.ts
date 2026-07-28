@@ -29,7 +29,7 @@ export type PolicyEvent = {
   replacement_behavior?: string | null;
   resolution_data?: any;
   // synthetic (non-policy-event rows)
-  _kind?: "policy_event" | "pending_item" | "pending_classification";
+  _kind?: "policy_event" | "pending_item" | "pending_classification" | "internal_missing_core";
   _synthetic?: boolean;
   _dedupe_key?: string | null;
   // pending_classification-only
