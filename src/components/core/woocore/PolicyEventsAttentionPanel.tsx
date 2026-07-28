@@ -179,7 +179,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                     <td className="p-2 text-right">{r.quantity ?? "—"}</td>
                     <td className="p-2">
                       <Badge className={SEVERITY_STYLES[r.severity] ?? ""}>
-                        {actionLabel(r.action)}
+                        {r._kind === "internal_missing_core" ? "Sin vínculo Core" : actionLabel(r.action)}
                       </Badge>
                       <div className="text-xs mt-1">
                         {r.message || describePolicyAction(r.action)}
