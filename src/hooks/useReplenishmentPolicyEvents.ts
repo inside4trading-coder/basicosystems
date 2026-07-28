@@ -301,8 +301,47 @@ export function useReplenishmentPolicyEvents() {
       });
     }
 
+    for (const m of internalMissingCoreMovs) {
+      const key = makeDedupeKey(m.source_order_id, m.source_order_item_id);
+      if (key && seen.has(key)) continue;
+      if (key) seen.add(key);
+      out.push({
+        id: `imc:${m.id}`,
+        created_at: m.created_at,
+        source_type: "fabrication_fund_movement",
+        action: "missing_map",
+        severity: "warning",
+        message: "Venta interna reservada, pero falta vincular producto/variante Core.",
+        warning: "missing_core_ids",
+        status: "pending",
+        quantity: m.quantity != null ? Number(m.quantity) : null,
+        unit_cost: m.unit_cost_snapshot != null ? Number(m.unit_cost_snapshot) : null,
+        amount: m.amount != null ? Number(m.amount) : null,
+        cost_source: null,
+        core_product_id: m.core_product_id ?? null,
+        core_variant_id: m.core_variant_id ?? null,
+        woo_product_id: m.woo_product_id ?? null,
+        woo_variation_id: m.woo_variation_id ?? null,
+        woo_order_id: m.source_order_id ?? null,
+        woo_order_item_id: m.source_order_item_id ?? null,
+        replacement_product_id: null,
+        replacement_woo_product_id: null,
+        external_supplier_name: null,
+        external_supplier_unit_cost_usd: null,
+        _kind: "internal_missing_core",
+        _synthetic: true,
+        _dedupe_key: key,
+        sourceMovementId: m.id,
+        unit_cost_snapshot: m.unit_cost_snapshot != null ? Number(m.unit_cost_snapshot) : null,
+        resolution_data: {
+          product_name: m.product_name,
+          woo_sku: m.sku,
+        },
+      });
+    }
+
     return out;
-  }, [policyRows, pendingItems, pendingClassMovs, bridgeEventsMap]);
+  }, [policyRows, pendingItems, pendingClassMovs, internalMissingCoreMovs, bridgeEventsMap]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { total: 0 };
