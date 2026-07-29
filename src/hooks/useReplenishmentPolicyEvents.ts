@@ -746,6 +746,35 @@ export function useReplenishmentPolicyEvents() {
     }
   };
 
+  const resolveUnlinkedCoreMovement = async (args: {
+    movementId: string;
+    action: "no_restock" | "mark_replaced";
+    replacementEventId?: string | null;
+  }): Promise<any | null> => {
+    try {
+      const { data, error } = await (supabase as any).rpc(
+        "core_resolve_unlinked_core_movement",
+        {
+          p_movement_id: args.movementId,
+          p_action: args.action,
+          p_replacement_event_id: args.replacementEventId ?? null,
+          p_dry_run: false,
+        },
+      );
+      if (error) throw error;
+      if (data?.error) {
+        toast({ title: "Error", description: String(data.error), variant: "destructive" });
+        return null;
+      }
+      invalidateAll();
+      qc.invalidateQueries({ queryKey: ["core_production_needs"] });
+      return data;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return null;
+    }
+  };
+
   return {
     rows,
     isLoading:
