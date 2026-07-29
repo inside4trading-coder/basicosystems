@@ -269,6 +269,16 @@ export function UnlinkedCoreReserveDialog({ row, open, onOpenChange }: Props) {
         ev = inserted;
       }
 
+      // SELECT fresco: no usar el objeto en memoria.
+      if ((ev as any)?.id) {
+        const { data: fresh } = await supabase
+          .from("core_replenishment_policy_events" as any)
+          .select("*")
+          .eq("id", (ev as any).id)
+          .maybeSingle();
+        if (fresh) ev = fresh;
+      }
+
       setBridgeEvent(ev);
       setStep("apply");
     } catch (e: any) {
