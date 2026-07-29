@@ -108,7 +108,12 @@ export default function PosPublico() {
     });
     setSubmitting(false);
     if (error || (data as any)?.error) {
-      toast.error((data as any)?.error || error?.message || "Error");
+      const raw = (data as any)?.error || error?.message || "";
+      const msg =
+        raw === "invalid" ? "Link no válido o desactivado" :
+        raw === "invalid_pin" ? "PIN incorrecto" :
+        raw || "No se pudo registrar la venta pública";
+      toast.error(msg);
       return;
     }
     const res: any = (data as any).sale || {};

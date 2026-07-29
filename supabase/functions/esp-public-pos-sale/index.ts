@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     const finalNotes = [customer_name ? `Cliente: ${customer_name}` : null, notes || null, `POS público (${loc.name})`]
       .filter(Boolean).join(' · ');
 
-    const { data, error } = await admin.rpc('esp_register_pos_sale', {
+    const { data, error } = await admin.rpc('esp_register_public_pos_sale', {
       p_channel_id: channel?.id || null,
       p_location_id: loc.id,
       p_payment_method_id: payment_method_id,
@@ -62,14 +62,25 @@ Deno.serve(async (req) => {
       p_payment_reference: null,
       p_allow_negative: false,
     });
-    if (error) return json({ error: error.message }, 400);
+    if (error) {
+      const msg = error.message || '';
+      if (msg.includes('Stock insuficiente')) return json({ error: msg }, 400);
+      return json({ error: msg || 'No se pudo registrar la venta pública' }, 400);
+    }
 
     await admin
       .from('esp_locations')
       .update({ public_pos_last_used_at: new Date().toISOString() })
       .eq('id', loc.id);
 
-    return json({ ok: true, sale: data, items: rpcItems });
+    return json({
+      ok: true,
+      sale: data,
+      sale_id: (data as any)?.sale_id ?? null,
+      total: (data as any)?.total_eur ?? null,
+      location_id: loc.id,
+      items: rpcItems,
+    });
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
   }

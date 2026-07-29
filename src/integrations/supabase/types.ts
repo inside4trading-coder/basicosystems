@@ -8403,6 +8403,18 @@ export type Database = {
         }
         Returns: Json
       }
+      esp_register_public_pos_sale: {
+        Args: {
+          p_allow_negative?: boolean
+          p_channel_id: string
+          p_items: Json
+          p_location_id: string
+          p_notes?: string
+          p_payment_method_id: string
+          p_payment_reference?: string
+        }
+        Returns: Json
+      }
       esp_resolve_fabrication_materials: {
         Args: { p_location_id?: string; p_request_id: string }
         Returns: Json
