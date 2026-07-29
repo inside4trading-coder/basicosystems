@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
+import { normalizeSize } from "@/lib/coreNormalize";
 import { ProductionPipelineSection } from "@/components/core/ProductionPipelineSection";
 import { PolicyBlockedDialog } from "@/components/core/woocore/PolicyBlockedDialog";
 import { parsePolicyBlocked, type BlockedLine } from "@/lib/policyBlocked";
