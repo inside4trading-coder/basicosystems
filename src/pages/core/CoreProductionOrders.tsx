@@ -705,21 +705,44 @@ export default function CoreProductionOrders() {
             );
           })()}
         </TableCell>
-        <TableCell>
-          <div className="flex flex-wrap gap-1 max-w-[260px]">
+        <TableCell className="max-w-[220px]">
+          <div className="flex items-center flex-nowrap gap-1 overflow-hidden">
             {lines.length === 0 ? (
               <span className="text-xs text-muted-foreground">—</span>
-            ) : lines.map((l) => (
-              <Badge
-                key={l.id}
-                variant="outline"
-                className="bg-primary/10 text-primary border-primary/30 font-bold text-[11px] px-2 py-0.5"
-                title={`${l.sku ?? ""} ${l.variant_sku ?? ""}`}
-              >
-                {(l.size ?? l.variant_label ?? "?")}
-                <span className="ml-1 font-semibold text-foreground/80">×{l.quantity_ordered}</span>
-              </Badge>
-            ))}
+            ) : (() => {
+              const groups = new Map<string, number>();
+              for (const l of lines) {
+                const key = normalizeSize(l.size ?? l.variant_label ?? "?") || (l.size ?? l.variant_label ?? "?");
+                groups.set(key, (groups.get(key) || 0) + (l.quantity_ordered || 0));
+              }
+              const sorted = Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+              const visible = sorted.slice(0, 4);
+              const hidden = sorted.length - visible.length;
+              return (
+                <>
+                  {visible.map(([size, qty]) => (
+                    <Badge
+                      key={size}
+                      variant="outline"
+                      className="bg-primary/10 text-primary border-primary/30 font-bold text-[10px] px-1.5 py-0.5 whitespace-nowrap shrink-0"
+                      title={`${size}: ${qty}`}
+                    >
+                      {size}
+                      <span className="ml-1 font-semibold text-foreground/80">×{qty}</span>
+                    </Badge>
+                  ))}
+                  {hidden > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="text-muted-foreground border-border font-semibold text-[10px] px-1.5 py-0.5 whitespace-nowrap shrink-0"
+                      title={sorted.slice(4).map(([s, q]) => `${s} ×${q}`).join(" · ")}
+                    >
+                      +{hidden} más
+                    </Badge>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </TableCell>
         <TableCell className="text-right">{o.total_quantity}</TableCell>
