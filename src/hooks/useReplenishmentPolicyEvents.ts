@@ -791,6 +791,7 @@ export function useReplenishmentPolicyEvents() {
     closePendingClassification,
     resolvePendingItem,
     resolveMissingSkuPendingItem,
+    resolveUnlinkedCoreMovement,
     closeMissingSkuPendingItem,
   };
 }
