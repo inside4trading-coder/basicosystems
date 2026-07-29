@@ -336,6 +336,8 @@ export function useReplenishmentPolicyEvents() {
         _synthetic: true,
         _dedupe_key: key,
         sourceMovementId: m.id,
+        unlinkedCoreResolution: m.cost_snapshot_data?.unlinked_core_resolution ?? null,
+        isCorrected: m.cost_snapshot_data?.unlinked_core_resolution?.status === "corrected",
         unit_cost_snapshot: m.unit_cost_snapshot != null ? Number(m.unit_cost_snapshot) : null,
         resolution_data: {
           product_name: m.product_name,
