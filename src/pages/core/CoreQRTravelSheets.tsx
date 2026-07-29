@@ -142,7 +142,21 @@ export default function CoreQRTravelSheets() {
         "core-generate-production-units",
         { body: { production_order_id: order.id } },
       );
-      if (error) throw error;
+      if (error) {
+        // Leer el body real de la edge function (FunctionsHttpError)
+        let detail: any = null;
+        try { detail = await (error as any)?.context?.json?.(); } catch { /* sin body */ }
+        if (detail) {
+          const parts = [
+            detail.product_name ?? detail.sku,
+            detail.variant_sku,
+            detail.size,
+          ].filter(Boolean).join(" · ");
+          const reason = detail.reason ?? detail.message ?? detail.error;
+          throw new Error(parts ? `${reason} — ${parts}` : String(reason ?? error.message));
+        }
+        throw error;
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       const created = (data as any)?.created ?? 0;
       const skipped = (data as any)?.skipped_existing ?? 0;
