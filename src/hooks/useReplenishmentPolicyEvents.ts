@@ -37,6 +37,7 @@ export type PolicyEvent = {
   sourcePendingItemId?: string | null;
   unit_cost_snapshot?: number | null;
   pendingClassificationResolution?: PendingClassificationResolution | null;
+  unlinkedCoreResolution?: PendingClassificationResolution | null;
   isCorrected?: boolean;
   canClose?: boolean;
 };
@@ -160,7 +161,7 @@ export function useReplenishmentPolicyEvents() {
       const { data, error } = await supabase
         .from("core_fabrication_fund_movements" as any)
         .select(
-          "id, created_at, fund_bucket, movement_type, status, source_order_id, source_order_item_id, woo_product_id, woo_variation_id, core_product_id, core_variant_id, sku, product_name, quantity, unit_cost_snapshot, amount",
+          "id, created_at, fund_bucket, movement_type, status, source_order_id, source_order_item_id, woo_product_id, woo_variation_id, core_product_id, core_variant_id, sku, product_name, quantity, unit_cost_snapshot, amount, cost_snapshot_data",
         )
         .eq("fund_bucket", "internal_factory")
         .eq("movement_type", "sale_generated")
@@ -169,7 +170,10 @@ export function useReplenishmentPolicyEvents() {
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
-      return (data ?? []) as any[];
+      return ((data ?? []) as any[]).filter((m) => {
+        const st = m.cost_snapshot_data?.unlinked_core_resolution?.status;
+        return st !== "corrected" && st !== "closed";
+      });
     },
   });
 
@@ -332,6 +336,8 @@ export function useReplenishmentPolicyEvents() {
         _synthetic: true,
         _dedupe_key: key,
         sourceMovementId: m.id,
+        unlinkedCoreResolution: m.cost_snapshot_data?.unlinked_core_resolution ?? null,
+        isCorrected: m.cost_snapshot_data?.unlinked_core_resolution?.status === "corrected",
         unit_cost_snapshot: m.unit_cost_snapshot != null ? Number(m.unit_cost_snapshot) : null,
         resolution_data: {
           product_name: m.product_name,
@@ -740,6 +746,35 @@ export function useReplenishmentPolicyEvents() {
     }
   };
 
+  const resolveUnlinkedCoreMovement = async (args: {
+    movementId: string;
+    action: "no_restock" | "mark_replaced";
+    replacementEventId?: string | null;
+  }): Promise<any | null> => {
+    try {
+      const { data, error } = await (supabase as any).rpc(
+        "core_resolve_unlinked_core_movement",
+        {
+          p_movement_id: args.movementId,
+          p_action: args.action,
+          p_replacement_event_id: args.replacementEventId ?? null,
+          p_dry_run: false,
+        },
+      );
+      if (error) throw error;
+      if (data?.error) {
+        toast({ title: "Error", description: String(data.error), variant: "destructive" });
+        return null;
+      }
+      invalidateAll();
+      qc.invalidateQueries({ queryKey: ["core_production_needs"] });
+      return data;
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      return null;
+    }
+  };
+
   return {
     rows,
     isLoading:
@@ -756,6 +791,7 @@ export function useReplenishmentPolicyEvents() {
     closePendingClassification,
     resolvePendingItem,
     resolveMissingSkuPendingItem,
+    resolveUnlinkedCoreMovement,
     closeMissingSkuPendingItem,
   };
 }

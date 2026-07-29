@@ -19,6 +19,7 @@ import { POLICY_ACTION_LABELS, describePolicyAction } from "@/lib/policyBlocked"
 import { ReplacementApplicationDialog } from "./ReplacementApplicationDialog";
 import { PendingClassificationResolveDialog } from "@/components/core/needs/PendingClassificationResolveDialog";
 import { MissingSkuResolveDialog } from "@/components/core/needs/MissingSkuResolveDialog";
+import { UnlinkedCoreReserveDialog } from "@/components/core/needs/UnlinkedCoreReserveDialog";
 import { useReplenishmentPolicyEvents, PolicyEvent } from "@/hooks/useReplenishmentPolicyEvents";
 
 const FILTERS: { key: string; label: string; actions: string[] }[] = [
@@ -81,6 +82,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
   const [replacementEvent, setReplacementEvent] = useState<PolicyEvent | null>(null);
   const [resolveRow, setResolveRow] = useState<PolicyEvent | null>(null);
   const [missingSkuRow, setMissingSkuRow] = useState<PolicyEvent | null>(null);
+  const [unlinkedRow, setUnlinkedRow] = useState<PolicyEvent | null>(null);
 
   const filtered = useMemo(() => {
     const preset = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
@@ -278,6 +280,11 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         )}
                         {r.action === "missing_map" && (
                           <>
+                            {r._kind === "internal_missing_core" && r.sourceMovementId && (
+                              <Button size="sm" onClick={() => setUnlinkedRow(r)}>
+                                <Layers className="w-3 h-3 mr-1" /> Decidir reserva
+                              </Button>
+                            )}
                             {r._kind === "pending_item" && r.sourcePendingItemId && (
                               <Button
                                 size="sm"
@@ -394,6 +401,12 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
         row={missingSkuRow}
         open={!!missingSkuRow}
         onOpenChange={(v) => !v && setMissingSkuRow(null)}
+      />
+
+      <UnlinkedCoreReserveDialog
+        row={unlinkedRow}
+        open={!!unlinkedRow}
+        onOpenChange={(v) => !v && setUnlinkedRow(null)}
       />
     </div>
   );
