@@ -91,12 +91,26 @@ export function ReplacementApplicationDialog({
     },
   });
 
-  const effectiveBehavior =
-    effectivePolicy?.replacement_behavior ?? event?.replacement_behavior ?? null;
-  const effectiveReplacementCoreId =
-    effectivePolicy?.replacement_product_id ?? event?.replacement_product_id ?? null;
-  const effectiveReplacementWooId =
-    effectivePolicy?.replacement_woo_product_id ?? event?.replacement_woo_product_id ?? null;
+  // Eventos puente creados desde "Decidir reserva" (Sin vínculo Core):
+  // la decisión es puntual, no depende de la política global del producto.
+  const bridgeSource = (event?.resolution_data as any)?.bridge_source ?? null;
+  const isBridgeEvent =
+    event?.source_type === "fabrication_fund_movement" &&
+    ["unlinked_core_reserve", "unlinked_core_manual_resolution"].includes(
+      String(bridgeSource ?? ""),
+    );
+
+  const effectiveBehavior = isBridgeEvent
+    ? ((event?.resolution_data as any)?.forced_behavior ??
+       event?.replacement_behavior ??
+       "use_on_restock_with_confirmation")
+    : (effectivePolicy?.replacement_behavior ?? event?.replacement_behavior ?? null);
+  const effectiveReplacementCoreId = isBridgeEvent
+    ? (event?.replacement_product_id ?? effectivePolicy?.replacement_product_id ?? null)
+    : (effectivePolicy?.replacement_product_id ?? event?.replacement_product_id ?? null);
+  const effectiveReplacementWooId = isBridgeEvent
+    ? (event?.replacement_woo_product_id ?? effectivePolicy?.replacement_woo_product_id ?? null)
+    : (effectivePolicy?.replacement_woo_product_id ?? event?.replacement_woo_product_id ?? null);
 
   const behaviorBlocked = !effectiveBehavior || !APPLY_BEHAVIORS.has(effectiveBehavior);
 
