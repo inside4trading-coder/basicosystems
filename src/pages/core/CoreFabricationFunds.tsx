@@ -111,8 +111,8 @@ const usd = (n: number) =>
 
 // Fecha base desde la cual se reinició el procesamiento de Partidas de Fabricación.
 // No se permite procesar ni seleccionar rangos anteriores a esta fecha.
-const BASELINE_DATE = "2026-07-21";
-const BASELINE_DATE_LABEL = "21/07/2026";
+const BASELINE_DATE = "2026-07-27";
+const BASELINE_DATE_LABEL = "27/07/2026";
 const todayLocalISO = () => {
   const d = new Date();
   const y = d.getFullYear();
