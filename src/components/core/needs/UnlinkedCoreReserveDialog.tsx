@@ -200,6 +200,37 @@ export function UnlinkedCoreReserveDialog({ row, open, onOpenChange }: Props) {
         return;
       }
 
+      if (ev) {
+        // Evento puente reutilizado: forzar comportamiento aplicable sin tocar
+        // la política global del producto.
+        const rd = { ...(ev.resolution_data ?? {}) };
+        const needsFix =
+          ev.replacement_behavior !== "use_on_restock_with_confirmation" ||
+          rd.forced_behavior !== "use_on_restock_with_confirmation" ||
+          ev.replacement_product_id !== candidate.id;
+        if (needsFix) {
+          const nextRd = {
+            ...rd,
+            bridge_source: rd.bridge_source ?? "unlinked_core_reserve",
+            origin_movement_id: movementId,
+            forced_behavior: "use_on_restock_with_confirmation",
+          };
+          const { data: updated, error: updErr } = await supabase
+            .from("core_replenishment_policy_events" as any)
+            .update({
+              replacement_behavior: "use_on_restock_with_confirmation",
+              replacement_product_id: candidate.id,
+              replacement_woo_product_id: candidate.woo_product_id ?? null,
+              resolution_data: nextRd,
+            })
+            .eq("id", ev.id)
+            .select("*")
+            .maybeSingle();
+          if (updErr) throw updErr;
+          ev = updated ?? { ...ev, resolution_data: nextRd };
+        }
+      }
+
       if (!ev) {
         const { data: userData } = await supabase.auth.getUser();
         const uid = userData.user?.id ?? null;
