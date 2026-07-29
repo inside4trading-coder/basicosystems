@@ -25,7 +25,7 @@ export const REVERTING_STATUSES = new Set<string>([
   "pago-pendiente-po",
 ]);
 
-export const RECON_BASELINE = "2026-07-21";
+export const RECON_BASELINE = "2026-07-27";
 
 // Pendings considerados NO activos (cerrados).
 export const CLOSED_PENDING_STATUSES = new Set<string>([

@@ -27,7 +27,7 @@ const CONFIRMED_STATUSES = new Set([
 // posted may be picked up by "process sales" even when it falls outside the
 // selected [periodStart, periodEnd] range. Orders older than this baseline
 // are NEVER retroactively reserved.
-const LATE_CONFIRMED_BASELINE = "2026-07-21";
+const LATE_CONFIRMED_BASELINE = "2026-07-27";
 
 const REVERTING_STATUSES = new Set([
   "cancelled",
