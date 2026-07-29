@@ -306,9 +306,11 @@ Deno.serve(async (req) => {
       .eq("production_order_id", production_order_id);
 
     const existingByLine: Record<string, number> = {};
+    const existingCodes = new Set<string>();
     for (const u of existing ?? []) {
       const key = u.production_order_line_id ?? "_";
       existingByLine[key] = (existingByLine[key] ?? 0) + 1;
+      if (u.unit_code) existingCodes.add(String(u.unit_code));
     }
 
     const createdUnits: any[] = [];
@@ -318,6 +320,10 @@ Deno.serve(async (req) => {
       new Set((lines ?? []).map((l: any) => l.sku).filter(Boolean)),
     );
     const isMultiProduct = distinctSkus.length > 1;
+
+    // Contador global por clave de código (order|productTag|sizeTag): dos líneas
+    // distintas con el mismo SKU+talla ya no colisionan en unit_code.
+    const seqByCodeKey: Record<string, number> = {};
 
     for (const line of lines ?? []) {
       const need = Number(line.quantity_ordered) || 0;
@@ -329,43 +335,91 @@ Deno.serve(async (req) => {
       const productTag = isMultiProduct
         ? `-${String(line.sku ?? "P").toUpperCase().replace(/\s+/g, "")}`
         : "";
+      const codeKey = `${order.order_code}${productTag}-${sizeTag}`;
+      if (seqByCodeKey[codeKey] === undefined) seqByCodeKey[codeKey] = 0;
+
+      const nextFreeCode = (): string | null => {
+        for (let guard = 0; guard < 5000; guard++) {
+          seqByCodeKey[codeKey] += 1;
+          const code = `${codeKey}-${String(seqByCodeKey[codeKey]).padStart(3, "0")}`;
+          if (!existingCodes.has(code)) return code;
+        }
+        return null;
+      };
 
       const resolvedProcesses = await resolveProcessesForLine(
         supa, line, costStructureCache, orderLevelProcesses,
       );
 
       for (let i = 0; i < toCreate; i++) {
-        const seq = have + i + 1;
-        const unit_code = `${order.order_code}${productTag}-${sizeTag}-${String(seq).padStart(3, "0")}`;
-        const qr_token = crypto.randomUUID().replace(/-/g, "");
-        const qr_payload = `/core/escaneo?unit=${qr_token}`;
+        let ins: any = null;
+        let lastErr: any = null;
+        let unit_code: string | null = null;
 
-        const { data: ins, error: insErr } = await supa
-          .from("core_production_units")
-          .insert({
-            unit_code,
+        // Reintento defensivo ante 23505 (unit_code o qr_token duplicado).
+        for (let attempt = 0; attempt < 5 && !ins; attempt++) {
+          unit_code = nextFreeCode();
+          if (!unit_code) {
+            lastErr = { message: "No se pudo asignar un unit_code libre" };
+            break;
+          }
+          const qr_token = crypto.randomUUID().replace(/-/g, "");
+          const qr_payload = `/core/escaneo?unit=${qr_token}`;
+
+          const { data, error: insErr } = await supa
+            .from("core_production_units")
+            .insert({
+              unit_code,
+              production_order_id,
+              production_order_line_id: line.id,
+              core_product_id: line.core_product_id ?? order.core_product_id,
+              core_variant_id: line.core_variant_id,
+              sku: line.sku ?? order.sku,
+              variant_sku: line.variant_sku,
+              variant_label: line.variant_label,
+              size: line.size,
+              status: "created",
+              qr_token,
+              qr_payload,
+              qr_generated_at: new Date().toISOString(),
+              qr_generated_by: userId,
+              created_by: userId,
+            })
+            .select("id, unit_code")
+            .single();
+
+          if (!insErr) { ins = data; break; }
+          lastErr = insErr;
+          existingCodes.add(unit_code);
+          if (insErr.code !== "23505") break;
+        }
+
+        if (!ins) {
+          let product_name: string | null = null;
+          if (line.core_product_id) {
+            const { data: p } = await supa
+              .from("core_products").select("name").eq("id", line.core_product_id).maybeSingle();
+            product_name = (p as any)?.name ?? null;
+          }
+          return new Response(JSON.stringify({
+            error: lastErr?.message ?? "Error creando unidad",
             production_order_id,
-            production_order_line_id: line.id,
-            core_product_id: line.core_product_id ?? order.core_product_id,
-            core_variant_id: line.core_variant_id,
-            sku: line.sku ?? order.sku,
-            variant_sku: line.variant_sku,
-            variant_label: line.variant_label,
-            size: line.size,
-            status: "created",
-            qr_token,
-            qr_payload,
-            qr_generated_at: new Date().toISOString(),
-            qr_generated_by: userId,
-            created_by: userId,
-          })
-          .select("id, unit_code")
-          .single();
-        if (insErr) {
-          return new Response(JSON.stringify({ error: insErr.message, unit_code }), {
+            line_id: line.id,
+            sku: line.sku ?? order.sku ?? null,
+            variant_sku: line.variant_sku ?? null,
+            product_name: product_name ?? order.product_name ?? null,
+            size: line.size ?? line.variant_label ?? null,
+            unit_code,
+            created_before_error: createdUnits.length,
+            reason: lastErr?.code === "23505"
+              ? "Código de unidad o QR duplicado"
+              : (lastErr?.message ?? "Error desconocido al insertar la unidad"),
+          }), {
             status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+
+        existingCodes.add(String(ins.unit_code));
         createdUnits.push(ins);
 
         await insertUnitProcessesIfMissing(supa, ins.id, resolvedProcesses);

@@ -1,59 +1,25 @@
-## Diagnóstico (confirmado por SQL)
+## Diagnóstico confirmado
 
-Evento del caso: `25febda7-4d06-44aa-bf40-3e122a06f9cc`, `status = open`, `replacement_behavior = use_on_restock_with_confirmation`, `resolution_data.bridge_source = unlinked_core_reserve`, `resolution_data.forced_behavior = use_on_restock_with_confirmation`. El evento puente está correcto.
+OP-000007 (`d50243c2…`, `open`): 30 unidades pedidas, 17 creadas. Falla por colisión de `unit_code` contra el índice único `core_production_units_unit_code_uniq`. La secuencia se calcula por línea, pero el código es `ORDER-SKU-TALLA-###`, y hay líneas distintas con mismo SKU+talla:
+- `CORE000003 / XL`: línea `4983488d` (JGM48 XL, ya con `OP-000007-CORE000003-XL-001`) vs línea `0c39a287` (JGM49 XL, 0 unidades).
+- `JGM43 / S`: línea `14671018` (ya con `OP-000007-JGM43-S-001`) vs línea `98a83279` (0 unidades).
 
-El bloqueo viene de `public.core_apply_replacement_event`:
+El frontend solo muestra "non-2xx" porque `functions.invoke` no expone el body del error.
 
-```sql
-v_behavior := COALESCE(v_policy.replacement_behavior, v_event.replacement_behavior, NULL);
-IF v_behavior IS NULL OR v_behavior IN ('suggest_only') THEN
-  RETURN jsonb_build_object('error','behavior_suggest_only', ...);
-```
+## 1. Backend — `supabase/functions/core-generate-production-units/index.ts`
+- Mantener faltantes por línea: `quantity_ordered - unidades_existentes_de_la_línea`.
+- Antes del bucle: construir `existingCodes` (set de `unit_code` de la OP) y `seqByCodeKey` (contador por `orderCode|productTag|sizeTag`).
+- Al crear cada unidad: `seq = ++contador[clave]`, y avanzar mientras el código ya exista en `existingCodes`.
+- Reintento defensivo ante error `23505` (unit_code o qr_token duplicado): marcar el código como ocupado y probar el siguiente, hasta 5 intentos.
+- Si aun así falla, responder 500 con error estructurado: `error, production_order_id, line_id, sku, variant_sku, product_name, size, unit_code, created_before_error, reason`.
+- Sin cambios en modo repair, política, procesos ni auditoría.
 
-La política global (`suggest_only`) gana sobre el evento. Igual ocurre con `v_replacement_product_id` / `v_replacement_woo_product_id`.
-
-## 1. Migración: `CREATE OR REPLACE FUNCTION public.core_apply_replacement_event`
-
-Se regenera la función a partir de `pg_get_functiondef` actual (misma firma, `SECURITY DEFINER`, `SET search_path = public`, cuerpo íntegro: `allow_internal_factory` → `internal_factory`, guardia idempotente `COALESCE(...,'') <> 'posted'`, lógica financiera y de necesidades sin cambios). Tres ediciones puntuales:
-
-1. Declaración nueva: `v_is_bridge boolean := false;`
-2. Tras cargar `v_event` y `v_policy`:
-```sql
-v_is_bridge := v_event.source_type = 'fabrication_fund_movement'
-  AND COALESCE(v_event.resolution_data->>'bridge_source','')
-      IN ('unlinked_core_reserve','unlinked_core_manual_resolution');
-
-IF v_is_bridge THEN
-  v_behavior := COALESCE(v_event.resolution_data->>'forced_behavior',
-                         v_event.replacement_behavior,
-                         'use_on_restock_with_confirmation');
-ELSE
-  v_behavior := COALESCE(v_policy.replacement_behavior, v_event.replacement_behavior, NULL);
-END IF;
-```
-3. Selección de producto de reemplazo:
-```sql
-IF v_is_bridge THEN
-  v_replacement_product_id     := COALESCE(v_event.replacement_product_id, v_policy.replacement_product_id);
-  v_replacement_woo_product_id := COALESCE(v_event.replacement_woo_product_id, v_policy.replacement_woo_product_id);
-ELSE
-  -- lógica actual (política primero)
-END IF;
-```
-
-El resto de validaciones (`ignore`, `behavior_not_applicable`, ciclos, allocations, conciliación) permanece idéntico.
-
-## 2. Frontend
-
-`src/components/core/needs/UnlinkedCoreReserveDialog.tsx`: tras insertar o actualizar el evento puente, hacer un `SELECT * ... eq('id', ev.id)` fresco y pasar ese objeto a `ReplacementApplicationDialog`, en lugar del objeto en memoria. Sin crear eventos duplicados.
-
-`ReplacementApplicationDialog.tsx` ya fuerza el behavior para eventos puente en la UI: sin cambios.
-
-## No se toca
-`core_replenishment_policies`, Mapa Woo/Core, Woo, OP, inventario, catálogo, Sublime, flujo No restock, ni eventos de reemplazo normales (siguen bloqueando con `suggest_only`).
+## 2. Frontend — `src/pages/core/CoreQRTravelSheets.tsx`
+- En `generate()`: si el error trae `context` (FunctionsHttpError), leer `await error.context.json()` y mostrar en el toast `reason`/`error` + SKU/variante/talla de la línea afectada; fallback al mensaje genérico si no hay body.
 
 ## Validación
-1. Sin vínculo Core → Decidir reserva → Reemplazar → talla → preview: sin `behavior_suggest_only`.
-2. Confirmar: evento `resolved` y necesidad creada.
-3. SQL: la política del producto origen sigue en `suggest_only`.
-4. Typecheck con `tsgo`.
+- Regenerar faltantes en OP-000007 → 13 unidades nuevas, 30/30, sin `unit_code` ni QR duplicados (verificar con consulta).
+- Etiquetas/fichas generables; si una línea falla, el toast indica cuál y por qué.
+- Typecheck.
+
+Sin tocar Woo, Partidas, Necesidades, inventario, políticas, migraciones ni RPC.
