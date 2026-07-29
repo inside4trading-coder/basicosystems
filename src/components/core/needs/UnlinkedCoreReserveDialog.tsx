@@ -255,8 +255,9 @@ export function UnlinkedCoreReserveDialog({ row, open, onOpenChange }: Props) {
           resolution_data: {
             product_name: snapName,
             sku: snapSku,
-            bridge_source: "unlinked_core_manual_resolution",
+            bridge_source: "unlinked_core_reserve",
             origin_movement_id: movementId,
+            forced_behavior: "use_on_restock_with_confirmation",
           },
         };
         const { data: inserted, error } = await supabase
