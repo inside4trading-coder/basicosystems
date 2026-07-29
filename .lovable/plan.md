@@ -1,36 +1,59 @@
-## Causa del bloqueo
+## Diagnóstico (confirmado por SQL)
 
-En `src/components/core/woocore/ReplacementApplicationDialog.tsx` (líneas 70–101), el diálogo lee la política global del producto (`core_replenishment_policies`) y le da **prioridad sobre el evento**:
+Evento del caso: `25febda7-4d06-44aa-bf40-3e122a06f9cc`, `status = open`, `replacement_behavior = use_on_restock_with_confirmation`, `resolution_data.bridge_source = unlinked_core_reserve`, `resolution_data.forced_behavior = use_on_restock_with_confirmation`. El evento puente está correcto.
 
+El bloqueo viene de `public.core_apply_replacement_event`:
+
+```sql
+v_behavior := COALESCE(v_policy.replacement_behavior, v_event.replacement_behavior, NULL);
+IF v_behavior IS NULL OR v_behavior IN ('suggest_only') THEN
+  RETURN jsonb_build_object('error','behavior_suggest_only', ...);
 ```
-effectiveBehavior = effectivePolicy?.replacement_behavior ?? event?.replacement_behavior
-behaviorBlocked  = !APPLY_BEHAVIORS.has(effectiveBehavior)
+
+La política global (`suggest_only`) gana sobre el evento. Igual ocurre con `v_replacement_product_id` / `v_replacement_woo_product_id`.
+
+## 1. Migración: `CREATE OR REPLACE FUNCTION public.core_apply_replacement_event`
+
+Se regenera la función a partir de `pg_get_functiondef` actual (misma firma, `SECURITY DEFINER`, `SET search_path = public`, cuerpo íntegro: `allow_internal_factory` → `internal_factory`, guardia idempotente `COALESCE(...,'') <> 'posted'`, lógica financiera y de necesidades sin cambios). Tres ediciones puntuales:
+
+1. Declaración nueva: `v_is_bridge boolean := false;`
+2. Tras cargar `v_event` y `v_policy`:
+```sql
+v_is_bridge := v_event.source_type = 'fabrication_fund_movement'
+  AND COALESCE(v_event.resolution_data->>'bridge_source','')
+      IN ('unlinked_core_reserve','unlinked_core_manual_resolution');
+
+IF v_is_bridge THEN
+  v_behavior := COALESCE(v_event.resolution_data->>'forced_behavior',
+                         v_event.replacement_behavior,
+                         'use_on_restock_with_confirmation');
+ELSE
+  v_behavior := COALESCE(v_policy.replacement_behavior, v_event.replacement_behavior, NULL);
+END IF;
+```
+3. Selección de producto de reemplazo:
+```sql
+IF v_is_bridge THEN
+  v_replacement_product_id     := COALESCE(v_event.replacement_product_id, v_policy.replacement_product_id);
+  v_replacement_woo_product_id := COALESCE(v_event.replacement_woo_product_id, v_policy.replacement_woo_product_id);
+ELSE
+  -- lógica actual (política primero)
+END IF;
 ```
 
-Como la política global del producto origen es `suggest_only`, el diálogo bloquea aunque el evento puente creado por “Decidir reserva” ya trae `use_on_restock_with_confirmation`.
+El resto de validaciones (`ignore`, `behavior_not_applicable`, ciclos, allocations, conciliación) permanece idéntico.
 
-## Cambios
+## 2. Frontend
 
-### 1. `src/components/core/needs/UnlinkedCoreReserveDialog.tsx`
+`src/components/core/needs/UnlinkedCoreReserveDialog.tsx`: tras insertar o actualizar el evento puente, hacer un `SELECT * ... eq('id', ev.id)` fresco y pasar ese objeto a `ReplacementApplicationDialog`, en lugar del objeto en memoria. Sin crear eventos duplicados.
 
-- Al insertar el evento puente: mantener `replacement_behavior: 'use_on_restock_with_confirmation'` y ampliar `resolution_data` con `bridge_source: "unlinked_core_reserve"`, `origin_movement_id`, `forced_behavior: "use_on_restock_with_confirmation"` (hoy usa `bridge_source: "unlinked_core_manual_resolution"`, sin `forced_behavior`).
-- Al **reutilizar** un evento existente (`open`/`reviewed`): si su `replacement_behavior` no es `use_on_restock_with_confirmation`, o le falta el marcador en `resolution_data`, hacer un `update` solo de ese evento (behavior + merge de `resolution_data`) antes de abrir el diálogo de aplicación. Aceptar también el `bridge_source` antiguo para eventos ya creados.
+`ReplacementApplicationDialog.tsx` ya fuerza el behavior para eventos puente en la UI: sin cambios.
 
-### 2. `src/components/core/woocore/ReplacementApplicationDialog.tsx`
-
-- Calcular `isBridgeEvent` = `event.source_type === 'fabrication_fund_movement'` y `resolution_data.bridge_source` ∈ {`unlinked_core_reserve`, `unlinked_core_manual_resolution`}.
-- Si `isBridgeEvent`: `effectiveBehavior = resolution_data.forced_behavior ?? event.replacement_behavior ?? 'use_on_restock_with_confirmation'` (ignorar la política global para el behavior) → `behaviorBlocked = false`, se muestra la matriz de variantes, preview y botón Confirmar; no se muestra el bloque “Solo sugerir / Editar política”.
-- El producto de reemplazo (`effectiveReplacementCoreId/WooId`) para eventos puente se toma primero del evento (que es el elegido en el picker), y solo después de la política.
-- Para eventos no puente: sin cambios, la política global sigue mandando.
-
-## Lo que no se toca
-
-- No se escribe en `core_replenishment_policies` ni en el Mapa Woo/Core.
-- No se toca “No restock” (`resolveUnlinkedCoreMovement` con `action: 'no_restock'`), ni Woo, OP, inventario, catálogo, costos ni Sublime.
-- Sin migraciones de base de datos.
+## No se toca
+`core_replenishment_policies`, Mapa Woo/Core, Woo, OP, inventario, catálogo, Sublime, flujo No restock, ni eventos de reemplazo normales (siguen bloqueando con `suggest_only`).
 
 ## Validación
-
-- Fila “Sin vínculo Core” MF21 XL (6.50): Decidir reserva → Reemplazar → Basico Club Jersey Soccer → debe aparecer la matriz de tallas, permitir cantidad, preview y confirmar, sin aviso “Solo sugerir”.
-- Un evento de reemplazo normal con política `suggest_only` sigue mostrando el bloqueo.
-- Typecheck con `tsgo`.
+1. Sin vínculo Core → Decidir reserva → Reemplazar → talla → preview: sin `behavior_suggest_only`.
+2. Confirmar: evento `resolved` y necesidad creada.
+3. SQL: la política del producto origen sigue en `suggest_only`.
+4. Typecheck con `tsgo`.
