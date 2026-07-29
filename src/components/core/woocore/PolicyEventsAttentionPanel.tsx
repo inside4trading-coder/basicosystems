@@ -402,6 +402,12 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
         open={!!missingSkuRow}
         onOpenChange={(v) => !v && setMissingSkuRow(null)}
       />
+
+      <UnlinkedCoreReserveDialog
+        row={unlinkedRow}
+        open={!!unlinkedRow}
+        onOpenChange={(v) => !v && setUnlinkedRow(null)}
+      />
     </div>
   );
 }
