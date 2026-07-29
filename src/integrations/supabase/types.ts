@@ -8335,6 +8335,15 @@ export type Database = {
         }
         Returns: Json
       }
+      core_resolve_unlinked_core_movement: {
+        Args: {
+          p_action: string
+          p_dry_run?: boolean
+          p_movement_id: string
+          p_replacement_event_id?: string
+        }
+        Returns: Json
+      }
       core_update_external_purchase_order_draft: {
         Args: { p_header?: Json; p_lines?: Json; p_order_id: string }
         Returns: Json
