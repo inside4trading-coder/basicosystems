@@ -1,50 +1,36 @@
-## Error exacto (confirmado en base de datos)
+## Causa del bloqueo
 
-La venta pública falla con **`No autorizado`**.
+En `src/components/core/woocore/ReplacementApplicationDialog.tsx` (líneas 70–101), el diálogo lee la política global del producto (`core_replenishment_policies`) y le da **prioridad sobre el evento**:
 
-Causa: la edge function `esp-public-pos-sale` llama al RPC `public.esp_register_pos_sale`, y ese RPC empieza con:
-
-```text
-v_uid := auth.uid();
-v_is_priv := has_role(v_uid,'admin') OR has_role(v_uid,'manager');
-IF NOT v_is_priv THEN RAISE EXCEPTION 'No autorizado'; END IF;
+```
+effectiveBehavior = effectivePolicy?.replacement_behavior ?? event?.replacement_behavior
+behaviorBlocked  = !APPLY_BEHAVIORS.has(effectiveBehavior)
 ```
 
-Como la edge function usa service role sin sesión de usuario, `auth.uid()` es NULL → excepción. El POS móvil normal sí pasa porque va autenticado como admin/manager.
+Como la política global del producto origen es `suggest_only`, el diálogo bloquea aunque el evento puente creado por “Decidir reserva” ya trae `use_on_restock_with_confirmation`.
 
-## Fix mínimo
+## Cambios
 
-No se toca `esp_register_pos_sale` (el POS móvil sigue igual). Se crea un RPC hermano solo para el flujo público.
+### 1. `src/components/core/needs/UnlinkedCoreReserveDialog.tsx`
 
-### 1. Migración: nuevo RPC `public.esp_register_public_pos_sale`
+- Al insertar el evento puente: mantener `replacement_behavior: 'use_on_restock_with_confirmation'` y ampliar `resolution_data` con `bridge_source: "unlinked_core_reserve"`, `origin_movement_id`, `forced_behavior: "use_on_restock_with_confirmation"` (hoy usa `bridge_source: "unlinked_core_manual_resolution"`, sin `forced_behavior`).
+- Al **reutilizar** un evento existente (`open`/`reviewed`): si su `replacement_behavior` no es `use_on_restock_with_confirmation`, o le falta el marcador en `resolution_data`, hacer un `update` solo de ese evento (behavior + merge de `resolution_data`) antes de abrir el diálogo de aplicación. Aceptar también el `bridge_source` antiguo para eventos ya creados.
 
-- Misma lógica de venta que `esp_register_pos_sale` (numeración, validación de variantes/producto, descuento atómico de stock con `FOR UPDATE`, movimientos de inventario `sale_pos`, líneas de venta, pago).
-- Diferencias:
-  - Sin chequeo de `auth.uid()` / `has_role`; en su lugar recibe `p_location_id` ya validado por la edge function.
-  - `user_id` y `created_by` quedan NULL.
-  - `source = 'public_pos'` en `esp_sales` (la columna existe y no tiene check constraint).
-- `SECURITY DEFINER`, `SET search_path = public`.
-- `REVOKE ALL ... FROM anon, authenticated` y `GRANT EXECUTE ... TO service_role` — solo invocable desde la edge function.
-- Mantiene `p_allow_negative = false` → stock insuficiente lanza error claro.
+### 2. `src/components/core/woocore/ReplacementApplicationDialog.tsx`
 
-### 2. `supabase/functions/esp-public-pos-sale/index.ts`
+- Calcular `isBridgeEvent` = `event.source_type === 'fabrication_fund_movement'` y `resolution_data.bridge_source` ∈ {`unlinked_core_reserve`, `unlinked_core_manual_resolution`}.
+- Si `isBridgeEvent`: `effectiveBehavior = resolution_data.forced_behavior ?? event.replacement_behavior ?? 'use_on_restock_with_confirmation'` (ignorar la política global para el behavior) → `behaviorBlocked = false`, se muestra la matriz de variantes, preview y botón Confirmar; no se muestra el bloque “Solo sugerir / Editar política”.
+- El producto de reemplazo (`effectiveReplacementCoreId/WooId`) para eventos puente se toma primero del evento (que es el elegido en el picker), y solo después de la política.
+- Para eventos no puente: sin cambios, la política global sigue mandando.
 
-- Cambiar la llamada de `esp_register_pos_sale` a `esp_register_public_pos_sale`.
-- Mapear errores a mensajes claros: token inválido/desactivado (401 `invalid`), PIN incorrecto (401 `invalid_pin`), stock insuficiente (400 con el texto del RPC), y fallback "No se pudo registrar la venta pública".
-- Mantener la validación ya existente: slug + token activo + PIN + resolución de `location_id` y canal.
-- Respuesta incluye `sale_id`, `sale_number`, `total_eur`, `location_id`.
+## Lo que no se toca
 
-### 3. `src/pages/pos-publico/PosPublico.tsx`
-
-- Solo ajuste de mensajes de error (mostrar el texto del backend en el toast: stock insuficiente, PIN, token). Sin cambios de lógica de carrito.
-
-## Fuera de alcance
-
-Core, Sublime, Woo, reportes, y el POS móvil autenticado (`EspanaPOS.tsx`) no se modifican.
+- No se escribe en `core_replenishment_policies` ni en el Mapa Woo/Core.
+- No se toca “No restock” (`resolveUnlinkedCoreMovement` con `action: 'no_restock'`), ni Woo, OP, inventario, catálogo, costos ni Sublime.
+- Sin migraciones de base de datos.
 
 ## Validación
 
-1. Typecheck.
-2. Llamada a la edge function con token válido de Pop Up Ibiza → venta registrada, stock descontado solo en esa sede.
-3. Token inválido → bloqueado. PIN incorrecto → bloqueado. Stock insuficiente → bloqueado.
-4. Verificar por consulta que el POS móvil normal sigue usando el RPC autenticado sin cambios.
+- Fila “Sin vínculo Core” MF21 XL (6.50): Decidir reserva → Reemplazar → Basico Club Jersey Soccer → debe aparecer la matriz de tallas, permitir cantidad, preview y confirmar, sin aviso “Solo sugerir”.
+- Un evento de reemplazo normal con política `suggest_only` sigue mostrando el bloqueo.
+- Typecheck con `tsgo`.
