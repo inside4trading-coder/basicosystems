@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { X, Keyboard } from "lucide-react";
 import { useCameraTapFocus } from "@/hooks/useCameraTapFocus";
 import { FocusRing } from "@/components/core/CameraFocusRing";
-import { useCameraControls, SCANNER_VIDEO_CONSTRAINTS } from "@/hooks/useCameraControls";
+import { useCameraControls, startScannerWithFallback } from "@/hooks/useCameraControls";
 
 interface Props {
   open: boolean;

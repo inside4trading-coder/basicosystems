@@ -19,7 +19,7 @@ import { toast } from "@/hooks/use-toast";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { UnitInventorySection } from "@/components/core/UnitInventorySection";
 import { useCameraTapFocus } from "@/hooks/useCameraTapFocus";
-import { useCameraControls, SCANNER_VIDEO_CONSTRAINTS } from "@/hooks/useCameraControls";
+import { useCameraControls, startScannerWithFallback } from "@/hooks/useCameraControls";
 import { FocusRing } from "@/components/core/CameraFocusRing";
 
 type Unit = {
@@ -135,6 +135,7 @@ export default function CoreScanning() {
   const cam = useCameraControls();
   const [camDeviceId, setCamDeviceId] = useState<string | null>(null);
   const [camError, setCamError] = useState<string | null>(null);
+  const [streamActive, setStreamActive] = useState(false);
   const [camAttempt, setCamAttempt] = useState(0);
   const startingRef = useRef(false);
 
