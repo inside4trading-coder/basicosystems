@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { UnitInventorySection } from "@/components/core/UnitInventorySection";
+import { useCameraTapFocus } from "@/hooks/useCameraTapFocus";
+import { FocusRing } from "@/components/core/CameraFocusRing";
 
 type Unit = {
   id: string;
