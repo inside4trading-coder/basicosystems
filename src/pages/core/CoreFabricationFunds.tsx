@@ -293,19 +293,29 @@ export default function CoreFabricationFunds() {
   }, [movements, reconEvents]);
 
   // === Control de días saltados ===
-  // Un día se considera "cerrado" si tiene al menos un run cuyo status pertenece
-  // al conjunto de estados exitosos actualmente en uso: completed / completed_warnings.
+  // Un día se considera "cerrado" si está cubierto por el rango de período de
+  // al menos un run exitoso. El rango se normaliza a hora Venezuela (-04:00),
+  // igual que el resto del módulo de Partidas.
   const SUCCESS_RUN_STATUSES = new Set(["completed", "completed_warnings", "success", "posted"]);
+  const toVenezuelaDateISO = (dt: string | Date) => {
+    const d = new Date(dt);
+    // Restar 4 horas para llevar UTC a hora Venezuela (zona del backend de Partidas).
+    const v = new Date(d.getTime() - 4 * 60 * 60 * 1000);
+    return `${v.getUTCFullYear()}-${String(v.getUTCMonth() + 1).padStart(2, "0")}-${String(v.getUTCDate()).padStart(2, "0")}`;
+  };
   const missingDays = useMemo(() => {
     const closed = new Set<string>();
     for (const r of runs) {
       if (!SUCCESS_RUN_STATUSES.has(r.status)) continue;
-      const iso = new Date(r.created_at).toISOString().slice(0, 10);
-      // Normalizamos a fecha local para no desalinear por TZ:
-      const d = new Date(r.created_at);
-      const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      closed.add(local);
-      closed.add(iso);
+      if (!r.period_start || !r.period_end) continue;
+      let cur = toVenezuelaDateISO(r.period_start);
+      const end = toVenezuelaDateISO(r.period_end);
+      // Salimos si el período no es parseable (defensivo).
+      if (!cur || !end || cur === "Invalid Date" || end === "Invalid Date") continue;
+      while (cur <= end) {
+        if (cur >= BASELINE_DATE) closed.add(cur);
+        cur = addDaysISO(cur, 1);
+      }
     }
     const today = todayLocalISO();
     const yesterday = addDaysISO(today, -1);
@@ -318,6 +328,7 @@ export default function CoreFabricationFunds() {
     }
     return out;
   }, [runs]);
+
 
   function handleStartChange(v: string) {
     if (v && v < BASELINE_DATE) {
