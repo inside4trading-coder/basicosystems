@@ -13,6 +13,8 @@ import {
   MapPin,
   DollarSign,
   Layers,
+  RefreshCw,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { POLICY_ACTION_LABELS, describePolicyAction } from "@/lib/policyBlocked";
