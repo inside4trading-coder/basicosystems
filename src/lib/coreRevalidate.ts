@@ -1,6 +1,7 @@
-// Revalidación mínima de filas de "Requieren atención".
-// Solo lectura de configuración actual (costo / mapa Woo-Core / catálogo de fabricación).
-// No crea necesidades, ni OP, ni movimientos financieros, ni toca Woo.
+// Revalidación de filas de "Requieren atención".
+// Lectura de configuración actual (costo / mapa Woo-Core / catálogo de fabricación)
+// + resolución de ruta operativa (resolve_core_replenishment_action).
+// No crea OP, ni unidades/QR, ni movimientos financieros, ni toca Woo.
 import { supabase } from "@/integrations/supabase/client";
 import type { PolicyEvent } from "@/hooks/useReplenishmentPolicyEvents";
 
@@ -9,6 +10,12 @@ export type RevalidationResult = {
   reason: string;
   message: string;
   unitCost?: number | null;
+  route?: string | null;
+  lifecycleStatus?: string | null;
+  restockEnabled?: boolean | null;
+  coreProductId?: string | null;
+  coreVariantId?: string | null;
+  createdNeedId?: string | null;
 };
 
 const NOT_VALIDATABLE: RevalidationResult = {
@@ -19,6 +26,43 @@ const NOT_VALIDATABLE: RevalidationResult = {
 
 const COST_ACTIONS = new Set(["missing_cost", "financial_review", "manual_cost_review"]);
 const MAP_ACTIONS = new Set(["missing_map"]);
+
+/** Resuelve ruta/política actual (solo lectura). */
+export async function resolveRouteInfo(row: PolicyEvent): Promise<{
+  route: string | null;
+  lifecycleStatus: string | null;
+  restockEnabled: boolean | null;
+  coreProductId: string | null;
+  coreVariantId: string | null;
+}> {
+  const empty = {
+    route: null,
+    lifecycleStatus: null,
+    restockEnabled: null,
+    coreProductId: row.core_product_id ?? null,
+    coreVariantId: row.core_variant_id ?? null,
+  };
+  try {
+    const { data, error } = await (supabase as any).rpc("resolve_core_replenishment_action", {
+      p_core_product_id: row.core_product_id ?? null,
+      p_core_variant_id: row.core_variant_id ?? null,
+      p_woo_product_id: row.woo_product_id ?? null,
+      p_woo_variation_id: row.woo_variation_id ?? null,
+    });
+    if (error) return empty;
+    const first = Array.isArray(data) ? data[0] : data;
+    if (!first) return empty;
+    return {
+      route: (first as any).replenishment_route ?? null,
+      lifecycleStatus: (first as any).lifecycle_status ?? null,
+      restockEnabled: (first as any).restock_enabled ?? null,
+      coreProductId: (first as any).core_product_id ?? row.core_product_id ?? null,
+      coreVariantId: (first as any).core_variant_id ?? row.core_variant_id ?? null,
+    };
+  } catch {
+    return empty;
+  }
+}
 
 async function resolveUnitCost(row: PolicyEvent): Promise<number | null> {
   const { data, error } = await (supabase as any).rpc("resolve_core_operational_unit_cost", {
@@ -89,10 +133,15 @@ export async function revalidateAttentionRow(row: PolicyEvent): Promise<Revalida
           message: "Todavía falta configurar el catálogo de fabricación.",
         };
       }
+      const route = await resolveRouteInfo({
+        ...row,
+        core_product_id: productId ?? row.core_product_id,
+      } as PolicyEvent);
       return {
         resolved: true,
         reason: "map_now_configured",
         message: "Mapa Woo/Core configurado.",
+        ...route,
       };
     }
 
@@ -100,11 +149,13 @@ export async function revalidateAttentionRow(row: PolicyEvent): Promise<Revalida
     if (COST_ACTIONS.has(row.action) || row.warning === "unit_cost_missing") {
       const cost = await resolveUnitCost(row);
       if (cost != null && cost > 0) {
+        const route = await resolveRouteInfo(row);
         return {
           resolved: true,
           reason: "cost_now_configured",
           message: `Costo configurado (${cost.toFixed(2)} USD).`,
           unitCost: cost,
+          ...route,
         };
       }
       return {
