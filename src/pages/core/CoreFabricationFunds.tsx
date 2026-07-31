@@ -63,7 +63,7 @@ const FUND_LABEL: Record<string, string> = {
 };
 const FUND_BADGE: Record<string, string> = {
   general: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  non_restockable: "bg-orange-100 text-orange-800 border-orange-300",
+  non_restockable: "bg-teal-100 text-teal-800 border-teal-300",
   product_specific: "bg-blue-100 text-blue-800 border-blue-300",
   replacement: "bg-purple-100 text-purple-800 border-purple-300",
   pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
