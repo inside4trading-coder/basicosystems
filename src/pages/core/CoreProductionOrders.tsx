@@ -1099,6 +1099,11 @@ export default function CoreProductionOrders() {
                   </Badge>
                 </SheetTitle>
               </SheetHeader>
+              <div className="mt-3">
+                <Button size="sm" variant="outline" onClick={() => handleBackupPdf(detailOrder)}>
+                  <FileDown className="h-3 w-3 mr-1" /> PDF respaldo
+                </Button>
+              </div>
               <div className="space-y-4 mt-4">
                 <Card className="p-3">
                   <div className="font-medium">{detailOrder.product_name}</div>
