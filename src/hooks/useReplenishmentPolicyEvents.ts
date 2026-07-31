@@ -781,12 +781,25 @@ export function useReplenishmentPolicyEvents() {
     const result = await revalidateAttentionRow(row);
     if (!result.resolved) return result;
 
+    // Continuar ruta operativa ANTES de cerrar el evento
+    const flow = await continueOperationalFlow(row, result);
+    if (!flow.ok) {
+      return {
+        ...result,
+        resolved: false,
+        reason: flow.reason ?? "flow_failed",
+        message: flow.message,
+      };
+    }
+
     const uid = await getCurrentUserId();
     const now = new Date().toISOString();
     const stamp = {
       resolved_by_refresh: true,
       resolved_reason: result.reason,
       resolved_unit_cost: result.unitCost ?? null,
+      created_need_id: flow.needId ?? null,
+      route: flow.route ?? null,
       refreshed_at: now,
     };
 
@@ -836,12 +849,22 @@ export function useReplenishmentPolicyEvents() {
         };
       }
     } catch (e: any) {
-      return { resolved: false, reason: "update_failed", message: e.message };
+      return { ...result, resolved: false, reason: "update_failed", message: e.message };
     }
 
     invalidateAll();
-    return result;
+    qc.invalidateQueries({ queryKey: ["core_production_needs"] });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("core-needs-refresh"));
+    }
+    return {
+      ...result,
+      createdNeedId: flow.needId ?? null,
+      route: flow.route ?? result.route ?? null,
+      message: flow.message,
+    };
   };
+
 
   return {
     refreshRow,
