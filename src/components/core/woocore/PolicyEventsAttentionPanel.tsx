@@ -302,7 +302,12 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                           )}
                         </div>
                       ) : (
-                        <Badge variant="outline">{r.status}</Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="outline" className="w-fit">{r.status}</Badge>
+                          {refreshInfo && !refreshInfo.resolved && (
+                            <span className="text-[11px] text-amber-600">{refreshInfo.message}</span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="p-2">
