@@ -907,6 +907,7 @@ export default function CoreScanning() {
             <Button
               size="sm"
               variant={cam.nearMode ? "default" : "outline"}
+              disabled={!streamActive || !cam.zoomSupported}
               onClick={() => { try { void cam.applyNearMode(cameraDivRef.current, !cam.nearMode); } catch { /* noop */ } }}
             >
               Modo QR cercano
@@ -914,6 +915,7 @@ export default function CoreScanning() {
             <Button
               size="sm"
               variant="outline"
+              disabled={cam.devices.length < 2 && streamActive}
               onClick={async () => {
                 try {
                   const id = await cam.nextDeviceId();
@@ -923,11 +925,12 @@ export default function CoreScanning() {
             >
               Cambiar cámara
             </Button>
-            {cam.torchSupported && (
+            {streamActive && cam.torchSupported && (
               <Button size="sm" variant={cam.torchOn ? "default" : "outline"} onClick={() => { try { void cam.toggleTorch(cameraDivRef.current); } catch { /* noop */ } }}>
                 Luz
               </Button>
             )}
+
           </div>
           <p className="text-[11px] text-muted-foreground text-center">
             Para QR pequeños: activa Modo QR cercano y aleja un poco la etiqueta.
