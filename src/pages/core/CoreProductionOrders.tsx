@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  ClipboardList, Plus, Layers, QrCode, X, Ban, Lock, Eye, ShieldAlert, PackageCheck, PackageOpen,
+  ClipboardList, Plus, Layers, QrCode, X, Ban, Lock, Eye, ShieldAlert, PackageCheck, PackageOpen, FileDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
@@ -29,6 +29,7 @@ import { normalizeSize } from "@/lib/coreNormalize";
 import { ProductionPipelineSection } from "@/components/core/ProductionPipelineSection";
 import { PolicyBlockedDialog } from "@/components/core/woocore/PolicyBlockedDialog";
 import { parsePolicyBlocked, type BlockedLine } from "@/lib/policyBlocked";
+import { downloadProductionOrderBackupPdf } from "@/lib/coreProductionOrderPdf";
 
 type Unit = {
   id: string;
@@ -470,6 +471,15 @@ export default function CoreProductionOrders() {
     }
   };
 
+  const handleBackupPdf = async (o: Order) => {
+    try {
+      await downloadProductionOrderBackupPdf(o);
+      toast.success(`PDF de respaldo generado: ${o.order_code}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error generando PDF de respaldo");
+    }
+  };
+
   const openDetail = async (o: Order) => {
     setDetailOrder(o);
     const [{ data: lines }, { data: procs }, { data: links }, { data: uns }] = await Promise.all([
@@ -752,9 +762,14 @@ export default function CoreProductionOrders() {
         <TableCell className="text-xs text-muted-foreground">{o.source}</TableCell>
         <TableCell className="text-xs">{new Date(o.created_at).toLocaleString()}</TableCell>
         <TableCell className="text-right">
-          <Button size="sm" variant="outline" onClick={() => openDetail(o)}>
-            <Eye className="h-3 w-3 mr-1" /> Ver
-          </Button>
+          <div className="flex items-center justify-end gap-1">
+            <Button size="sm" variant="outline" onClick={() => openDetail(o)}>
+              <Eye className="h-3 w-3 mr-1" /> Ver
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleBackupPdf(o)}>
+              <FileDown className="h-3 w-3 mr-1" /> PDF respaldo
+            </Button>
+          </div>
         </TableCell>
       </TableRow>
     );
@@ -1084,6 +1099,11 @@ export default function CoreProductionOrders() {
                   </Badge>
                 </SheetTitle>
               </SheetHeader>
+              <div className="mt-3">
+                <Button size="sm" variant="outline" onClick={() => handleBackupPdf(detailOrder)}>
+                  <FileDown className="h-3 w-3 mr-1" /> PDF respaldo
+                </Button>
+              </div>
               <div className="space-y-4 mt-4">
                 <Card className="p-3">
                   <div className="font-medium">{detailOrder.product_name}</div>
