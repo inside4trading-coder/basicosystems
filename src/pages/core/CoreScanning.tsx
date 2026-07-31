@@ -252,12 +252,23 @@ export default function CoreScanning() {
   useEffect(() => {
     if (!cameraOpen) return;
     let cancelled = false;
+    setCamError(null);
+
     (async () => {
-      const { Html5Qrcode } = await import("html5-qrcode");
-      if (cancelled || !cameraDivRef.current) return;
-      const scanner = new Html5Qrcode(cameraDivRef.current.id);
-      scannerRef.current = scanner;
+      if (startingRef.current) return;
+      startingRef.current = true;
       try {
+        // Ensure no previous stream is left running.
+        const prev = scannerRef.current;
+        scannerRef.current = null;
+        if (prev) {
+          try { await prev.stop(); } catch { /* noop */ }
+          try { prev.clear?.(); } catch { /* noop */ }
+        }
+        const { Html5Qrcode } = await import("html5-qrcode");
+        if (cancelled || !cameraDivRef.current) return;
+        const scanner = new Html5Qrcode(cameraDivRef.current.id);
+        scannerRef.current = scanner;
         await scanner.start(
           (camDeviceId
             ? { deviceId: { exact: camDeviceId }, ...SCANNER_VIDEO_CONSTRAINTS }
@@ -273,24 +284,35 @@ export default function CoreScanning() {
           () => { /* ignore decode errors */ },
         );
         setTimeout(() => {
-          void enableContinuousFocus(cameraDivRef.current);
-          void cam.probeCapabilities(cameraDivRef.current);
-          if (cam.nearMode) void cam.applyNearMode(cameraDivRef.current, true);
+          try {
+            void enableContinuousFocus(cameraDivRef.current);
+            void cam.probeCapabilities(cameraDivRef.current);
+            if (cam.nearMode) void cam.applyNearMode(cameraDivRef.current, true);
+          } catch { /* noop */ }
         }, 600);
       } catch (e: any) {
-        toast({ title: "Error de cámara", description: e?.message || String(e), variant: "destructive" });
-        setCameraOpen(false);
+        console.error("[scanner] start failed", e);
+        if (!cancelled) {
+          setCamError(e?.message || String(e) || "No se pudo iniciar la cámara.");
+          toast({ title: "Error de cámara", description: "No se pudo iniciar la cámara.", variant: "destructive" });
+        }
+      } finally {
+        startingRef.current = false;
       }
     })();
+
     return () => {
       cancelled = true;
       const s = scannerRef.current;
+      scannerRef.current = null;
       if (s) {
-        s.stop().catch(() => {}).finally(() => s.clear?.());
-        scannerRef.current = null;
+        try {
+          s.stop().then(() => { try { s.clear?.(); } catch { /* noop */ } }).catch(() => {});
+        } catch { /* noop */ }
       }
     };
-  }, [cameraOpen, camDeviceId, setSearchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraOpen, camDeviceId, camAttempt]);
 
   const pendingProcs = useMemo(() => processes.filter((p) => p.status === "pending"), [processes]);
   const completedProcs = useMemo(() => processes.filter((p) => p.status === "completed"), [processes]);
