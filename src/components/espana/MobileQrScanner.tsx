@@ -34,10 +34,9 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
         if (cancelled || !cameraDivRef.current) return;
         const scanner = new Html5Qrcode(cameraDivRef.current.id);
         scannerRef.current = scanner;
-        await scanner.start(
-          (camDeviceId
-            ? { deviceId: { exact: camDeviceId }, ...SCANNER_VIDEO_CONSTRAINTS }
-            : { facingMode: "environment", ...SCANNER_VIDEO_CONSTRAINTS }) as any,
+        await startScannerWithFallback(
+          scanner,
+          camDeviceId,
           { fps: 10, qrbox: { width: 240, height: 240 } },
           (decoded: string) => {
             const t = (decoded || "").trim();
@@ -47,17 +46,20 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
             if (s) s.stop().then(() => { try { s.clear?.(); } catch { /* noop */ } }).catch(() => {});
             onDetected(t);
           },
-          () => { /* ignore per-frame errors */ },
         );
+        if (!cancelled) setStreamActive(true);
         setTimeout(() => {
           void enableContinuousFocus(cameraDivRef.current);
           void cam.probeCapabilities(cameraDivRef.current);
           if (cam.nearMode) void cam.applyNearMode(cameraDivRef.current, true);
         }, 600);
       } catch (e: any) {
-        setError(e?.message || String(e) || "No se pudo abrir la cámara. Revisa los permisos.");
+        console.error("[scanner] start failed", e?.name, e?.message ?? e);
+        setStreamActive(false);
+        setError("No se pudo iniciar la cámara. Revisa permisos o prueba cambiar cámara.");
       }
     })();
+
 
     return () => {
       cancelled = true;
