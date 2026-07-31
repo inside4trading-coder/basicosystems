@@ -12,6 +12,16 @@ export function useCameraTapFocus() {
   const ringTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warnedRef = useRef(false);
   const [unsupportedMsg, setUnsupportedMsg] = useState<string | null>(null);
+  const msgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** Shows the "not supported" hint only once, and auto-hides it. */
+  const warnOnce = (msg: string) => {
+    if (warnedRef.current) return;
+    warnedRef.current = true;
+    setUnsupportedMsg(msg);
+    if (msgTimer.current) clearTimeout(msgTimer.current);
+    msgTimer.current = setTimeout(() => setUnsupportedMsg(null), 3500);
+  };
 
   const getTrack = (container: HTMLElement | null): MediaStreamTrack | null => {
     try {
@@ -71,18 +81,12 @@ export function useCameraTapFocus() {
             }
           }
           if (!advanced.length) {
-            if (!warnedRef.current) {
-              warnedRef.current = true;
-              setUnsupportedMsg("Este dispositivo no permite enfoque manual desde el navegador.");
-            }
+            warnOnce("Este dispositivo no permite enfoque manual desde el navegador.");
             return;
           }
           await track.applyConstraints({ advanced } as any);
         } catch {
-          if (!warnedRef.current) {
-            warnedRef.current = true;
-            setUnsupportedMsg("Este dispositivo no permite enfoque manual desde el navegador.");
-          }
+          warnOnce("Este dispositivo no permite enfoque manual desde el navegador.");
         }
       })();
     },
