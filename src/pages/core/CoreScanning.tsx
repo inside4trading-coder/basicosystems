@@ -880,11 +880,31 @@ export default function CoreScanning() {
             <div id="qr-camera-region" ref={cameraDivRef} className="w-full" />
             {ring && <FocusRing key={ring.id} x={ring.x} y={ring.y} />}
           </div>
+          {camError && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs space-y-2">
+              <p>No se pudo iniciar la cámara. Revisa permisos o intenta cambiar de cámara.</p>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => { setCamError(null); setCamAttempt((n) => n + 1); }}>Reintentar</Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const id = await cam.nextDeviceId();
+                      if (id) { cam.resetTorch(); setCamError(null); setCamDeviceId(id); }
+                    } catch { /* noop */ }
+                  }}
+                >
+                  Cambiar cámara
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2 justify-center pt-2">
             <Button
               size="sm"
               variant={cam.nearMode ? "default" : "outline"}
-              onClick={() => void cam.applyNearMode(cameraDivRef.current, !cam.nearMode)}
+              onClick={() => { try { void cam.applyNearMode(cameraDivRef.current, !cam.nearMode); } catch { /* noop */ } }}
             >
               Modo QR cercano
             </Button>
@@ -892,14 +912,16 @@ export default function CoreScanning() {
               size="sm"
               variant="outline"
               onClick={async () => {
-                const id = await cam.nextDeviceId();
-                if (id) { cam.resetTorch(); setCamDeviceId(id); }
+                try {
+                  const id = await cam.nextDeviceId();
+                  if (id) { cam.resetTorch(); setCamDeviceId(id); }
+                } catch { /* noop */ }
               }}
             >
               Cambiar cámara
             </Button>
             {cam.torchSupported && (
-              <Button size="sm" variant={cam.torchOn ? "default" : "outline"} onClick={() => void cam.toggleTorch(cameraDivRef.current)}>
+              <Button size="sm" variant={cam.torchOn ? "default" : "outline"} onClick={() => { try { void cam.toggleTorch(cameraDivRef.current); } catch { /* noop */ } }}>
                 Luz
               </Button>
             )}
