@@ -75,7 +75,44 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
     setEventStatus,
     closePendingClassification,
     resolvePendingItem,
+    refreshRow,
   } = useReplenishmentPolicyEvents();
+
+  const [refreshing, setRefreshing] = useState<Record<string, boolean>>({});
+  const [refreshAll, setRefreshAll] = useState(false);
+  const [refreshResults, setRefreshResults] = useState<
+    Record<string, { resolved: boolean; message: string }>
+  >({});
+
+  const handleRefreshRow = async (row: PolicyEvent) => {
+    setRefreshing((s) => ({ ...s, [row.id]: true }));
+    const res = await refreshRow(row);
+    setRefreshResults((s) => ({ ...s, [row.id]: { resolved: res.resolved, message: res.message } }));
+    setRefreshing((s) => ({ ...s, [row.id]: false }));
+    toast({
+      title: res.resolved ? "Solucionado" : "Sigue pendiente",
+      description: res.message,
+    });
+  };
+
+  const handleRefreshAll = async (list: PolicyEvent[]) => {
+    setRefreshAll(true);
+    let solved = 0;
+    for (const row of list) {
+      const res = await refreshRow(row);
+      setRefreshResults((s) => ({
+        ...s,
+        [row.id]: { resolved: res.resolved, message: res.message },
+      }));
+      if (res.resolved) solved += 1;
+    }
+    setRefreshAll(false);
+    toast({
+      title: "Revalidación completada",
+      description: `${solved} de ${list.length} pendientes quedaron solucionados.`,
+    });
+  };
+
 
   const [filter, setFilter] = useState<string>(initialFilter ?? "all");
   const [search, setSearch] = useState("");
