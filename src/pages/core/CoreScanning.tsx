@@ -134,6 +134,9 @@ export default function CoreScanning() {
   const { ring, handleTapFocus, enableContinuousFocus, unsupportedMsg } = useCameraTapFocus();
   const cam = useCameraControls();
   const [camDeviceId, setCamDeviceId] = useState<string | null>(null);
+  const [camError, setCamError] = useState<string | null>(null);
+  const [camAttempt, setCamAttempt] = useState(0);
+  const startingRef = useRef(false);
 
   // Load active factory operators + recent scans
   useEffect(() => {
@@ -249,12 +252,23 @@ export default function CoreScanning() {
   useEffect(() => {
     if (!cameraOpen) return;
     let cancelled = false;
+    setCamError(null);
+
     (async () => {
-      const { Html5Qrcode } = await import("html5-qrcode");
-      if (cancelled || !cameraDivRef.current) return;
-      const scanner = new Html5Qrcode(cameraDivRef.current.id);
-      scannerRef.current = scanner;
+      if (startingRef.current) return;
+      startingRef.current = true;
       try {
+        // Ensure no previous stream is left running.
+        const prev = scannerRef.current;
+        scannerRef.current = null;
+        if (prev) {
+          try { await prev.stop(); } catch { /* noop */ }
+          try { prev.clear?.(); } catch { /* noop */ }
+        }
+        const { Html5Qrcode } = await import("html5-qrcode");
+        if (cancelled || !cameraDivRef.current) return;
+        const scanner = new Html5Qrcode(cameraDivRef.current.id);
+        scannerRef.current = scanner;
         await scanner.start(
           (camDeviceId
             ? { deviceId: { exact: camDeviceId }, ...SCANNER_VIDEO_CONSTRAINTS }
@@ -270,24 +284,35 @@ export default function CoreScanning() {
           () => { /* ignore decode errors */ },
         );
         setTimeout(() => {
-          void enableContinuousFocus(cameraDivRef.current);
-          void cam.probeCapabilities(cameraDivRef.current);
-          if (cam.nearMode) void cam.applyNearMode(cameraDivRef.current, true);
+          try {
+            void enableContinuousFocus(cameraDivRef.current);
+            void cam.probeCapabilities(cameraDivRef.current);
+            if (cam.nearMode) void cam.applyNearMode(cameraDivRef.current, true);
+          } catch { /* noop */ }
         }, 600);
       } catch (e: any) {
-        toast({ title: "Error de cámara", description: e?.message || String(e), variant: "destructive" });
-        setCameraOpen(false);
+        console.error("[scanner] start failed", e);
+        if (!cancelled) {
+          setCamError(e?.message || String(e) || "No se pudo iniciar la cámara.");
+          toast({ title: "Error de cámara", description: "No se pudo iniciar la cámara.", variant: "destructive" });
+        }
+      } finally {
+        startingRef.current = false;
       }
     })();
+
     return () => {
       cancelled = true;
       const s = scannerRef.current;
+      scannerRef.current = null;
       if (s) {
-        s.stop().catch(() => {}).finally(() => s.clear?.());
-        scannerRef.current = null;
+        try {
+          s.stop().then(() => { try { s.clear?.(); } catch { /* noop */ } }).catch(() => {});
+        } catch { /* noop */ }
       }
     };
-  }, [cameraOpen, camDeviceId, setSearchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraOpen, camDeviceId, camAttempt]);
 
   const pendingProcs = useMemo(() => processes.filter((p) => p.status === "pending"), [processes]);
   const completedProcs = useMemo(() => processes.filter((p) => p.status === "completed"), [processes]);
@@ -855,11 +880,31 @@ export default function CoreScanning() {
             <div id="qr-camera-region" ref={cameraDivRef} className="w-full" />
             {ring && <FocusRing key={ring.id} x={ring.x} y={ring.y} />}
           </div>
+          {camError && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs space-y-2">
+              <p>No se pudo iniciar la cámara. Revisa permisos o intenta cambiar de cámara.</p>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => { setCamError(null); setCamAttempt((n) => n + 1); }}>Reintentar</Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const id = await cam.nextDeviceId();
+                      if (id) { cam.resetTorch(); setCamError(null); setCamDeviceId(id); }
+                    } catch { /* noop */ }
+                  }}
+                >
+                  Cambiar cámara
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2 justify-center pt-2">
             <Button
               size="sm"
               variant={cam.nearMode ? "default" : "outline"}
-              onClick={() => void cam.applyNearMode(cameraDivRef.current, !cam.nearMode)}
+              onClick={() => { try { void cam.applyNearMode(cameraDivRef.current, !cam.nearMode); } catch { /* noop */ } }}
             >
               Modo QR cercano
             </Button>
@@ -867,14 +912,16 @@ export default function CoreScanning() {
               size="sm"
               variant="outline"
               onClick={async () => {
-                const id = await cam.nextDeviceId();
-                if (id) { cam.resetTorch(); setCamDeviceId(id); }
+                try {
+                  const id = await cam.nextDeviceId();
+                  if (id) { cam.resetTorch(); setCamDeviceId(id); }
+                } catch { /* noop */ }
               }}
             >
               Cambiar cámara
             </Button>
             {cam.torchSupported && (
-              <Button size="sm" variant={cam.torchOn ? "default" : "outline"} onClick={() => void cam.toggleTorch(cameraDivRef.current)}>
+              <Button size="sm" variant={cam.torchOn ? "default" : "outline"} onClick={() => { try { void cam.toggleTorch(cameraDivRef.current); } catch { /* noop */ } }}>
                 Luz
               </Button>
             )}
