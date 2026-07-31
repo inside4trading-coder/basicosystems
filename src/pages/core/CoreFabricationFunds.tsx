@@ -624,15 +624,39 @@ export default function CoreFabricationFunds() {
             </div>
           </Card>
 
-          {/* Cards de las tres partidas principales */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Disponible interno total */}
+          <Card className="p-4 border-emerald-200 bg-emerald-50/60 dark:bg-emerald-950/20">
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Disponible total para fabricar</p>
+            <p className="text-3xl font-black text-emerald-800 dark:text-emerald-300 mt-1">
+              {usd(Number(partidaCards.factory.fund?.available_amount ?? 0) + Number(partidaCards.nonRestock.fund?.available_amount ?? 0))}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Producción habitual <strong className="font-mono">{usd(Number(partidaCards.factory.fund?.available_amount ?? 0))}</strong>
+              {" + "}
+              Liberado por no restock <strong className="font-mono">{usd(Number(partidaCards.nonRestock.fund?.available_amount ?? 0))}</strong>
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1 italic">
+              Proveedor externo y pendiente por resolver se contabilizan aparte.
+            </p>
+          </Card>
+
+          {/* Cards de las partidas principales */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
 
             <PartidaCard
-              title="Fábrica"
-              description="Reserva destinada a fabricación interna."
+              title="General de fabricación"
+              description="Producción habitual: reserva destinada a fabricación interna."
               fund={partidaCards.factory.fund}
               movementsCount={partidaCards.factory.count}
               lastMovementAt={partidaCards.factory.last}
+              tone="emerald"
+            />
+            <PartidaCard
+              title="Liberado por no restock"
+              description="Dinero reservado de prendas que no se repondrán, disponible para futuras fabricaciones."
+              fund={partidaCards.nonRestock.fund}
+              movementsCount={partidaCards.nonRestock.count}
+              lastMovementAt={partidaCards.nonRestock.last}
               tone="emerald"
             />
             <PartidaCard
@@ -644,7 +668,7 @@ export default function CoreFabricationFunds() {
               tone="blue"
             />
             <PartidaCard
-              title="Pendiente de clasificación"
+              title="Pendiente por resolver"
               description="Dinero reservado cuyo origen financiero todavía debe definirse."
               fund={partidaCards.pending.fund}
               movementsCount={partidaCards.pending.count}
@@ -654,6 +678,7 @@ export default function CoreFabricationFunds() {
               onClick={() => { setMovFilter("pending_classification"); setTab("movimientos"); }}
             />
           </div>
+
 
           <p className="text-[11px] text-muted-foreground italic">
             Estos saldos representan reservas registradas. Los pagos externos todavía no se descuentan automáticamente.
