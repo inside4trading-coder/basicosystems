@@ -133,10 +133,15 @@ export async function revalidateAttentionRow(row: PolicyEvent): Promise<Revalida
           message: "Todavía falta configurar el catálogo de fabricación.",
         };
       }
+      const route = await resolveRouteInfo({
+        ...row,
+        core_product_id: productId ?? row.core_product_id,
+      } as PolicyEvent);
       return {
         resolved: true,
         reason: "map_now_configured",
         message: "Mapa Woo/Core configurado.",
+        ...route,
       };
     }
 
@@ -144,11 +149,13 @@ export async function revalidateAttentionRow(row: PolicyEvent): Promise<Revalida
     if (COST_ACTIONS.has(row.action) || row.warning === "unit_cost_missing") {
       const cost = await resolveUnitCost(row);
       if (cost != null && cost > 0) {
+        const route = await resolveRouteInfo(row);
         return {
           resolved: true,
           reason: "cost_now_configured",
           message: `Costo configurado (${cost.toFixed(2)} USD).`,
           unitCost: cost,
+          ...route,
         };
       }
       return {
