@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Keyboard } from "lucide-react";
+import { useCameraTapFocus } from "@/hooks/useCameraTapFocus";
+import { FocusRing } from "@/components/core/CameraFocusRing";
 
 interface Props {
   open: boolean;
@@ -16,6 +18,7 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState(false);
   const [manualCode, setManualCode] = useState("");
+  const { ring, handleTapFocus, enableContinuousFocus, unsupportedMsg } = useCameraTapFocus();
 
   useEffect(() => {
     if (!open || manual) return;
