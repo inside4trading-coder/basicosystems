@@ -160,6 +160,19 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
           onChange={(e) => setSearch(e.target.value)}
           className="w-72 ml-auto"
         />
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={refreshAll || filtered.length === 0}
+          onClick={() => handleRefreshAll(filtered)}
+        >
+          {refreshAll ? (
+            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+          ) : (
+            <RefreshCw className="w-3 h-3 mr-1" />
+          )}
+          Actualizar pendientes
+        </Button>
         <Button size="sm" variant="ghost" asChild>
           <Link to="/core/mapa-woo-core?tab=policy-review">
             Ver historial completo <ExternalLink className="w-3 h-3 ml-1" />
