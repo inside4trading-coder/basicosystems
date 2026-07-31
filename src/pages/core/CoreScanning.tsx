@@ -834,7 +834,17 @@ export default function CoreScanning() {
             <DialogTitle>Escanear QR</DialogTitle>
             <DialogDescription>Apunta la cámara al código QR de la unidad.</DialogDescription>
           </DialogHeader>
-          <div id="qr-camera-region" ref={cameraDivRef} className="w-full" />
+          <div
+            className="relative w-full"
+            onClick={(e) => handleTapFocus(e, cameraDivRef.current)}
+            onTouchStart={(e) => handleTapFocus(e, cameraDivRef.current)}
+          >
+            <div id="qr-camera-region" ref={cameraDivRef} className="w-full" />
+            {ring && <FocusRing key={ring.id} x={ring.x} y={ring.y} />}
+          </div>
+          {unsupportedMsg && (
+            <p className="text-[11px] text-muted-foreground text-center">{unsupportedMsg}</p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setCameraOpen(false)}>
               <ScanLine className="h-4 w-4" /> Cerrar
