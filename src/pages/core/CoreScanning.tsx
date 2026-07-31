@@ -264,6 +264,7 @@ export default function CoreScanning() {
           },
           () => { /* ignore decode errors */ },
         );
+        setTimeout(() => { void enableContinuousFocus(cameraDivRef.current); }, 600);
       } catch (e: any) {
         toast({ title: "Error de cámara", description: e?.message || String(e), variant: "destructive" });
         setCameraOpen(false);
