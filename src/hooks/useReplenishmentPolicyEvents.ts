@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { revalidateAttentionRow, type RevalidationResult } from "@/lib/coreRevalidate";
 
 export type PolicyEvent = {
   id: string;
