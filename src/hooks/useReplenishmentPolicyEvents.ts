@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { revalidateAttentionRow, type RevalidationResult } from "@/lib/coreRevalidate";
 
 export type PolicyEvent = {
   id: string;
@@ -775,7 +776,75 @@ export function useReplenishmentPolicyEvents() {
     }
   };
 
+  // ------- Revalidación ("Actualizar") -------
+  const refreshRow = async (row: PolicyEvent): Promise<RevalidationResult> => {
+    const result = await revalidateAttentionRow(row);
+    if (!result.resolved) return result;
+
+    const uid = await getCurrentUserId();
+    const now = new Date().toISOString();
+    const stamp = {
+      resolved_by_refresh: true,
+      resolved_reason: result.reason,
+      resolved_unit_cost: result.unitCost ?? null,
+      refreshed_at: now,
+    };
+
+    try {
+      if (row._kind === "policy_event") {
+        const { error } = await supabase
+          .from("core_replenishment_policy_events" as any)
+          .update({
+            status: "resolved",
+            resolved_at: now,
+            resolution_data: { ...(row.resolution_data ?? {}), ...stamp },
+          })
+          .eq("id", row.id);
+        if (error) throw error;
+      } else if (row.sourcePendingItemId) {
+        const { error } = await supabase
+          .from("core_fabrication_fund_pending_items" as any)
+          .update({ status: "resolved", resolved_at: now, resolved_by: uid })
+          .eq("id", row.sourcePendingItemId);
+        if (error) throw error;
+      } else if (row.sourceMovementId) {
+        const key =
+          row._kind === "internal_missing_core"
+            ? "unlinked_core_resolution"
+            : "pending_classification_resolution";
+        const current = await readMovementResolution(row.sourceMovementId);
+        const next = {
+          ...(current ?? {}),
+          [key]: {
+            ...((current as any)?.[key] ?? {}),
+            status: "closed",
+            ...stamp,
+            resolved_at: now,
+            resolved_by: uid,
+          },
+        };
+        const { error } = await supabase
+          .from("core_fabrication_fund_movements" as any)
+          .update({ cost_snapshot_data: next })
+          .eq("id", row.sourceMovementId);
+        if (error) throw error;
+      } else {
+        return {
+          resolved: false,
+          reason: "not_validatable",
+          message: "No se pudo validar automáticamente.",
+        };
+      }
+    } catch (e: any) {
+      return { resolved: false, reason: "update_failed", message: e.message };
+    }
+
+    invalidateAll();
+    return result;
+  };
+
   return {
+    refreshRow,
     rows,
     isLoading:
       eventsQuery.isLoading || pendingItemsQuery.isLoading || pendingClassMovsQuery.isLoading || internalMissingCoreQuery.isLoading,

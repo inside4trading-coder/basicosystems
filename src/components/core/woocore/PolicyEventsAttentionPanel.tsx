@@ -13,6 +13,8 @@ import {
   MapPin,
   DollarSign,
   Layers,
+  RefreshCw,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { POLICY_ACTION_LABELS, describePolicyAction } from "@/lib/policyBlocked";
@@ -75,7 +77,44 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
     setEventStatus,
     closePendingClassification,
     resolvePendingItem,
+    refreshRow,
   } = useReplenishmentPolicyEvents();
+
+  const [refreshing, setRefreshing] = useState<Record<string, boolean>>({});
+  const [refreshAll, setRefreshAll] = useState(false);
+  const [refreshResults, setRefreshResults] = useState<
+    Record<string, { resolved: boolean; message: string }>
+  >({});
+
+  const handleRefreshRow = async (row: PolicyEvent) => {
+    setRefreshing((s) => ({ ...s, [row.id]: true }));
+    const res = await refreshRow(row);
+    setRefreshResults((s) => ({ ...s, [row.id]: { resolved: res.resolved, message: res.message } }));
+    setRefreshing((s) => ({ ...s, [row.id]: false }));
+    toast({
+      title: res.resolved ? "Solucionado" : "Sigue pendiente",
+      description: res.message,
+    });
+  };
+
+  const handleRefreshAll = async (list: PolicyEvent[]) => {
+    setRefreshAll(true);
+    let solved = 0;
+    for (const row of list) {
+      const res = await refreshRow(row);
+      setRefreshResults((s) => ({
+        ...s,
+        [row.id]: { resolved: res.resolved, message: res.message },
+      }));
+      if (res.resolved) solved += 1;
+    }
+    setRefreshAll(false);
+    toast({
+      title: "Revalidación completada",
+      description: `${solved} de ${list.length} pendientes quedaron solucionados.`,
+    });
+  };
+
 
   const [filter, setFilter] = useState<string>(initialFilter ?? "all");
   const [search, setSearch] = useState("");
@@ -123,6 +162,19 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
           onChange={(e) => setSearch(e.target.value)}
           className="w-72 ml-auto"
         />
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={refreshAll || filtered.length === 0}
+          onClick={() => handleRefreshAll(filtered)}
+        >
+          {refreshAll ? (
+            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+          ) : (
+            <RefreshCw className="w-3 h-3 mr-1" />
+          )}
+          Actualizar pendientes
+        </Button>
         <Button size="sm" variant="ghost" asChild>
           <Link to="/core/mapa-woo-core?tab=policy-review">
             Ver historial completo <ExternalLink className="w-3 h-3 ml-1" />
@@ -158,8 +210,15 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                 const p = resolveProductLabel(r);
                 const rep = resolveReplacementLabel(r);
                 const isSynthetic = !!r._synthetic;
+                const refreshInfo = refreshResults[r.id];
+                const justSolved = refreshInfo?.resolved === true;
                 return (
-                  <tr key={r.id} className="border-t align-top">
+                  <tr
+                    key={r.id}
+                    className={`border-t align-top ${
+                      justSolved ? "bg-emerald-50 dark:bg-emerald-950/30" : ""
+                    }`}
+                  >
                     <td className="p-2 whitespace-nowrap text-xs">
                       {new Date(r.created_at).toLocaleString()}
                     </td>
@@ -209,7 +268,16 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                       )}
                     </td>
                     <td className="p-2">
-                      {r.isCorrected ? (
+                      {justSolved ? (
+                        <div className="flex flex-col gap-1">
+                          <Badge className="bg-emerald-600 text-white w-fit">
+                            <CheckCircle2 className="w-3 h-3 mr-1" /> Solucionado
+                          </Badge>
+                          <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                            {refreshInfo?.message}
+                          </span>
+                        </div>
+                      ) : r.isCorrected ? (
                         <div className="flex flex-col gap-1">
                           {r.pendingClassificationResolution?.action === "no_restock" ? (
                             <>
@@ -234,11 +302,29 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                           )}
                         </div>
                       ) : (
-                        <Badge variant="outline">{r.status}</Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="outline" className="w-fit">{r.status}</Badge>
+                          {refreshInfo && !refreshInfo.resolved && (
+                            <span className="text-[11px] text-amber-600">{refreshInfo.message}</span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="p-2">
                       <div className="flex flex-col gap-1 min-w-[170px]">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={!!refreshing[r.id] || refreshAll}
+                          onClick={() => handleRefreshRow(r)}
+                        >
+                          {refreshing[r.id] ? (
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-3 h-3 mr-1" />
+                          )}
+                          Actualizar
+                        </Button>
                         {r.action === "suggest_replacement" && (
                           <>
                             <Button size="sm" onClick={() => setReplacementEvent(r)}>
