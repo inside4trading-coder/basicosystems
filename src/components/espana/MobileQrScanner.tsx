@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Keyboard } from "lucide-react";
+import { useCameraTapFocus } from "@/hooks/useCameraTapFocus";
+import { FocusRing } from "@/components/core/CameraFocusRing";
 
 interface Props {
   open: boolean;
@@ -16,6 +18,7 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState(false);
   const [manualCode, setManualCode] = useState("");
+  const { ring, handleTapFocus, enableContinuousFocus, unsupportedMsg } = useCameraTapFocus();
 
   useEffect(() => {
     if (!open || manual) return;
@@ -41,6 +44,7 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
           },
           () => { /* ignore per-frame errors */ },
         );
+        setTimeout(() => { void enableContinuousFocus(cameraDivRef.current); }, 600);
       } catch (e: any) {
         setError(e?.message || String(e) || "No se pudo abrir la cámara. Revisa los permisos.");
       }
@@ -79,16 +83,26 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
           {!manual ? (
             <>
               <div
-                id="mobile-qr-scanner-region"
-                ref={cameraDivRef}
-                className="bg-black w-full aspect-square sm:aspect-video"
-              />
+                className="relative w-full"
+                onClick={(e) => handleTapFocus(e, cameraDivRef.current)}
+                onTouchStart={(e) => handleTapFocus(e, cameraDivRef.current)}
+              >
+                <div
+                  id="mobile-qr-scanner-region"
+                  ref={cameraDivRef}
+                  className="bg-black w-full aspect-square sm:aspect-video"
+                />
+                {ring && <FocusRing key={ring.id} x={ring.x} y={ring.y} />}
+              </div>
               {error && (
                 <div className="p-3 text-xs text-destructive bg-destructive/10">{error}</div>
               )}
               <p className="text-xs text-muted-foreground text-center px-4 py-2">
-                Apunta al QR o código de barras.
+                Apunta al QR o código de barras. Toca la imagen para enfocar.
               </p>
+              {unsupportedMsg && (
+                <p className="text-[11px] text-muted-foreground text-center px-4 pb-2">{unsupportedMsg}</p>
+              )}
               <div className="p-4 grid grid-cols-2 gap-2 border-t">
                 <Button variant="outline" onClick={onClose}>Cancelar</Button>
                 <Button variant="secondary" onClick={() => setManual(true)}>

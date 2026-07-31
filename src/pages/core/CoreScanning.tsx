@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { UnitInventorySection } from "@/components/core/UnitInventorySection";
+import { useCameraTapFocus } from "@/hooks/useCameraTapFocus";
+import { FocusRing } from "@/components/core/CameraFocusRing";
 
 type Unit = {
   id: string;
@@ -128,6 +130,7 @@ export default function CoreScanning() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const cameraDivRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<any>(null);
+  const { ring, handleTapFocus, enableContinuousFocus, unsupportedMsg } = useCameraTapFocus();
 
   // Load active factory operators + recent scans
   useEffect(() => {
@@ -261,6 +264,7 @@ export default function CoreScanning() {
           },
           () => { /* ignore decode errors */ },
         );
+        setTimeout(() => { void enableContinuousFocus(cameraDivRef.current); }, 600);
       } catch (e: any) {
         toast({ title: "Error de cámara", description: e?.message || String(e), variant: "destructive" });
         setCameraOpen(false);
@@ -834,7 +838,17 @@ export default function CoreScanning() {
             <DialogTitle>Escanear QR</DialogTitle>
             <DialogDescription>Apunta la cámara al código QR de la unidad.</DialogDescription>
           </DialogHeader>
-          <div id="qr-camera-region" ref={cameraDivRef} className="w-full" />
+          <div
+            className="relative w-full"
+            onClick={(e) => handleTapFocus(e, cameraDivRef.current)}
+            onTouchStart={(e) => handleTapFocus(e, cameraDivRef.current)}
+          >
+            <div id="qr-camera-region" ref={cameraDivRef} className="w-full" />
+            {ring && <FocusRing key={ring.id} x={ring.x} y={ring.y} />}
+          </div>
+          {unsupportedMsg && (
+            <p className="text-[11px] text-muted-foreground text-center">{unsupportedMsg}</p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setCameraOpen(false)}>
               <ScanLine className="h-4 w-4" /> Cerrar
