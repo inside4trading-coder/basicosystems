@@ -44,6 +44,7 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
           },
           () => { /* ignore per-frame errors */ },
         );
+        setTimeout(() => { void enableContinuousFocus(cameraDivRef.current); }, 600);
       } catch (e: any) {
         setError(e?.message || String(e) || "No se pudo abrir la cámara. Revisa los permisos.");
       }
