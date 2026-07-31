@@ -49,10 +49,12 @@ type Pending = {
 
 type Run = {
   id: string; status: string; created_at: string;
+  period_start: string | null; period_end: string | null;
   orders_checked: number; items_checked: number; movements_created: number;
   pending_items_created: number; reversals_created: number; errors_count: number;
   summary: any;
 };
+
 
 const FUND_LABEL: Record<string, string> = {
   general: "General de fabricación",
