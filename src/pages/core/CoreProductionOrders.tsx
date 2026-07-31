@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  ClipboardList, Plus, Layers, QrCode, X, Ban, Lock, Eye, ShieldAlert, PackageCheck, PackageOpen,
+  ClipboardList, Plus, Layers, QrCode, X, Ban, Lock, Eye, ShieldAlert, PackageCheck, PackageOpen, FileDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
@@ -29,6 +29,7 @@ import { normalizeSize } from "@/lib/coreNormalize";
 import { ProductionPipelineSection } from "@/components/core/ProductionPipelineSection";
 import { PolicyBlockedDialog } from "@/components/core/woocore/PolicyBlockedDialog";
 import { parsePolicyBlocked, type BlockedLine } from "@/lib/policyBlocked";
+import { downloadProductionOrderBackupPdf } from "@/lib/coreProductionOrderPdf";
 
 type Unit = {
   id: string;
