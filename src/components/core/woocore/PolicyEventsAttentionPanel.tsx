@@ -268,7 +268,16 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                       )}
                     </td>
                     <td className="p-2">
-                      {r.isCorrected ? (
+                      {justSolved ? (
+                        <div className="flex flex-col gap-1">
+                          <Badge className="bg-emerald-600 text-white w-fit">
+                            <CheckCircle2 className="w-3 h-3 mr-1" /> Solucionado
+                          </Badge>
+                          <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                            {refreshInfo?.message}
+                          </span>
+                        </div>
+                      ) : r.isCorrected ? (
                         <div className="flex flex-col gap-1">
                           {r.pendingClassificationResolution?.action === "no_restock" ? (
                             <>
