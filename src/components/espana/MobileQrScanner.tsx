@@ -82,16 +82,26 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
           {!manual ? (
             <>
               <div
-                id="mobile-qr-scanner-region"
-                ref={cameraDivRef}
-                className="bg-black w-full aspect-square sm:aspect-video"
-              />
+                className="relative w-full"
+                onClick={(e) => handleTapFocus(e, cameraDivRef.current)}
+                onTouchStart={(e) => handleTapFocus(e, cameraDivRef.current)}
+              >
+                <div
+                  id="mobile-qr-scanner-region"
+                  ref={cameraDivRef}
+                  className="bg-black w-full aspect-square sm:aspect-video"
+                />
+                {ring && <FocusRing key={ring.id} x={ring.x} y={ring.y} />}
+              </div>
               {error && (
                 <div className="p-3 text-xs text-destructive bg-destructive/10">{error}</div>
               )}
               <p className="text-xs text-muted-foreground text-center px-4 py-2">
-                Apunta al QR o código de barras.
+                Apunta al QR o código de barras. Toca la imagen para enfocar.
               </p>
+              {unsupportedMsg && (
+                <p className="text-[11px] text-muted-foreground text-center px-4 pb-2">{unsupportedMsg}</p>
+              )}
               <div className="p-4 grid grid-cols-2 gap-2 border-t">
                 <Button variant="outline" onClick={onClose}>Cancelar</Button>
                 <Button variant="secondary" onClick={() => setManual(true)}>
