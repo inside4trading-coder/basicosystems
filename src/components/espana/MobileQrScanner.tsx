@@ -113,6 +113,7 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
                 <Button
                   size="sm"
                   variant={cam.nearMode ? "default" : "outline"}
+                  disabled={!streamActive || !cam.zoomSupported}
                   onClick={() => void cam.applyNearMode(cameraDivRef.current, !cam.nearMode)}
                 >
                   Modo QR cercano
@@ -120,6 +121,7 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
                 <Button
                   size="sm"
                   variant="outline"
+                  disabled={cam.devices.length < 2 && streamActive}
                   onClick={async () => {
                     const id = await cam.nextDeviceId();
                     if (id) { cam.resetTorch(); setCamDeviceId(id); }
@@ -127,7 +129,8 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
                 >
                   Cambiar cámara
                 </Button>
-                {cam.torchSupported && (
+                {streamActive && cam.torchSupported && (
+
                   <Button size="sm" variant={cam.torchOn ? "default" : "outline"} onClick={() => void cam.toggleTorch(cameraDivRef.current)}>
                     Luz
                   </Button>
