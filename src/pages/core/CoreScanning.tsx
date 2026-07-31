@@ -130,6 +130,7 @@ export default function CoreScanning() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const cameraDivRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<any>(null);
+  const { ring, handleTapFocus, enableContinuousFocus, unsupportedMsg } = useCameraTapFocus();
 
   // Load active factory operators + recent scans
   useEffect(() => {
