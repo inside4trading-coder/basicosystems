@@ -56,7 +56,7 @@ type Run = {
 
 const FUND_LABEL: Record<string, string> = {
   general: "General de fabricación",
-  non_restockable: "No restockeable",
+  non_restockable: "Liberado por no restock",
   product_specific: "Por producto",
   replacement: "Reemplazo",
   pending: "Pendiente",
@@ -260,12 +260,14 @@ export default function CoreFabricationFunds() {
     const factory = pick("general");
     const external = pick("external_supplier");
     const pending = pick("pending");
+    const nonRestock = pick("non_restockable");
     const movsBy = (fundId?: string | null) => movements.filter(m => fundId && m.fund_id === fundId);
     const last = (list: Movement[]) => list.length ? list[0].created_at : null;
     return {
       factory: { fund: factory, count: movsBy(factory?.id).length, last: last(movsBy(factory?.id)) },
       external: { fund: external, count: movsBy(external?.id).length, last: last(movsBy(external?.id)) },
       pending: { fund: pending, count: movsBy(pending?.id).length, last: last(movsBy(pending?.id)) },
+      nonRestock: { fund: nonRestock, count: movsBy(nonRestock?.id).length, last: last(movsBy(nonRestock?.id)) },
     };
   }, [funds, movements]);
 
@@ -677,7 +679,7 @@ export default function CoreFabricationFunds() {
             <KpiCard label="Partida generada" value={usd(totals.generatedTotal)} sub="Ventas confirmadas posted" tone="emerald" />
             <KpiCard label="Ejecutado en inventario" value={usd(totals.executedTotal)} sub="Unidades ya ingresadas" tone="muted" />
             <KpiCard label="Disponible sin asignar" value={usd(totals.availableUnassigned)} sub="Libre para fabricar" tone="emerald" />
-            <KpiCard label="Partida no restockeable" value={usd(totals.nonR)} tone="orange" />
+            <KpiCard label="Liberado por no restock" value={usd(totals.nonR)} sub="Disponible para futuras fabricaciones" tone="emerald" />
             <KpiCard label="Pendientes históricos" value={`${totals.pendingHist} ítems`} tone="yellow" />
             <KpiCard label="Pendientes último run" value={String(totals.lastRunPend)} tone="muted" />
             <KpiCard label="Pendientes del rango" value={`${totals.rangeCount} ítems`} sub={usd(totals.rangeRevenue) + " revenue"} tone="yellow" />
