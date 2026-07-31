@@ -269,10 +269,9 @@ export default function CoreScanning() {
         if (cancelled || !cameraDivRef.current) return;
         const scanner = new Html5Qrcode(cameraDivRef.current.id);
         scannerRef.current = scanner;
-        await scanner.start(
-          (camDeviceId
-            ? { deviceId: { exact: camDeviceId }, ...SCANNER_VIDEO_CONSTRAINTS }
-            : { facingMode: "environment", ...SCANNER_VIDEO_CONSTRAINTS }) as any,
+        await startScannerWithFallback(
+          scanner,
+          camDeviceId,
           { fps: 10, qrbox: { width: 240, height: 240 } },
           (decoded: string) => {
             try {
@@ -281,8 +280,8 @@ export default function CoreScanning() {
               setSearchParams({ unit: token });
             } catch { /* ignore */ }
           },
-          () => { /* ignore decode errors */ },
         );
+        if (!cancelled) setStreamActive(true);
         setTimeout(() => {
           try {
             void enableContinuousFocus(cameraDivRef.current);
@@ -291,10 +290,11 @@ export default function CoreScanning() {
           } catch { /* noop */ }
         }, 600);
       } catch (e: any) {
-        console.error("[scanner] start failed", e);
+        console.error("[scanner] start failed", e?.name, e?.message ?? e);
         if (!cancelled) {
+          setStreamActive(false);
           setCamError(e?.message || String(e) || "No se pudo iniciar la cámara.");
-          toast({ title: "Error de cámara", description: "No se pudo iniciar la cámara.", variant: "destructive" });
+          toast({ title: "Error de cámara", description: "No se pudo iniciar la cámara. Revisa permisos o prueba cambiar cámara.", variant: "destructive" });
         }
       } finally {
         startingRef.current = false;
@@ -303,6 +303,8 @@ export default function CoreScanning() {
 
     return () => {
       cancelled = true;
+      setStreamActive(false);
+
       const s = scannerRef.current;
       scannerRef.current = null;
       if (s) {
