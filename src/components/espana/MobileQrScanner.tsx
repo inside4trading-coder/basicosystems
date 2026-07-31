@@ -22,6 +22,7 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
   const { ring, handleTapFocus, enableContinuousFocus, unsupportedMsg } = useCameraTapFocus();
   const cam = useCameraControls();
   const [camDeviceId, setCamDeviceId] = useState<string | null>(null);
+  const [streamActive, setStreamActive] = useState(false);
 
   useEffect(() => {
     if (!open || manual) return;
