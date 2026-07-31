@@ -83,6 +83,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
+                      onClick={handleNavClick}
                       end
                       className="hover:bg-sidebar-accent/50 rounded-md transition-colors"
                       activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-semibold"
@@ -106,6 +107,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
+                        onClick={handleNavClick}
                         end
                         className="hover:bg-sidebar-accent/50 rounded-md transition-colors"
                         activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-semibold"
