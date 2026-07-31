@@ -2564,6 +2564,66 @@ export type Database = {
         }
         Relationships: []
       }
+      core_production_order_lines_backup_reset_op000008_20260731: {
+        Row: {
+          core_product_id: string | null
+          core_variant_id: string | null
+          cost_source: string | null
+          created_at: string | null
+          estimated_unit_cost: number | null
+          id: string | null
+          notes: string | null
+          production_order_id: string | null
+          quantity_completed: number | null
+          quantity_ordered: number | null
+          quantity_pending: number | null
+          size: string | null
+          sku: string | null
+          status: string | null
+          updated_at: string | null
+          variant_label: string | null
+          variant_sku: string | null
+        }
+        Insert: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          cost_source?: string | null
+          created_at?: string | null
+          estimated_unit_cost?: number | null
+          id?: string | null
+          notes?: string | null
+          production_order_id?: string | null
+          quantity_completed?: number | null
+          quantity_ordered?: number | null
+          quantity_pending?: number | null
+          size?: string | null
+          sku?: string | null
+          status?: string | null
+          updated_at?: string | null
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Update: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          cost_source?: string | null
+          created_at?: string | null
+          estimated_unit_cost?: number | null
+          id?: string | null
+          notes?: string | null
+          production_order_id?: string | null
+          quantity_completed?: number | null
+          quantity_ordered?: number | null
+          quantity_pending?: number | null
+          size?: string | null
+          sku?: string | null
+          status?: string | null
+          updated_at?: string | null
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Relationships: []
+      }
       core_production_order_need_links: {
         Row: {
           created_at: string
@@ -2729,6 +2789,99 @@ export type Database = {
         }
         Relationships: []
       }
+      core_production_orders_backup_reset_op000008_20260731: {
+        Row: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cancelled_reason: string | null
+          completed_quantity: number | null
+          core_product_id: string | null
+          created_at: string | null
+          created_by: string | null
+          expected_date: string | null
+          id: string | null
+          is_overproduction: boolean | null
+          manual_close_notes: string | null
+          manual_close_reason: string | null
+          manually_closed_at: string | null
+          manually_closed_by: string | null
+          notes: string | null
+          order_code: string | null
+          order_type: string | null
+          pending_quantity: number | null
+          priority: string | null
+          product_name: string | null
+          reason: string | null
+          responsible_user_id: string | null
+          sku: string | null
+          source: string | null
+          status: string | null
+          total_quantity: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
+          completed_quantity?: number | null
+          core_product_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          expected_date?: string | null
+          id?: string | null
+          is_overproduction?: boolean | null
+          manual_close_notes?: string | null
+          manual_close_reason?: string | null
+          manually_closed_at?: string | null
+          manually_closed_by?: string | null
+          notes?: string | null
+          order_code?: string | null
+          order_type?: string | null
+          pending_quantity?: number | null
+          priority?: string | null
+          product_name?: string | null
+          reason?: string | null
+          responsible_user_id?: string | null
+          sku?: string | null
+          source?: string | null
+          status?: string | null
+          total_quantity?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
+          completed_quantity?: number | null
+          core_product_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          expected_date?: string | null
+          id?: string | null
+          is_overproduction?: boolean | null
+          manual_close_notes?: string | null
+          manual_close_reason?: string | null
+          manually_closed_at?: string | null
+          manually_closed_by?: string | null
+          notes?: string | null
+          order_code?: string | null
+          order_type?: string | null
+          pending_quantity?: number | null
+          priority?: string | null
+          product_name?: string | null
+          reason?: string | null
+          responsible_user_id?: string | null
+          sku?: string | null
+          source?: string | null
+          status?: string | null
+          total_quantity?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       core_production_scan_events: {
         Row: {
           core_product_id: string | null
@@ -2798,6 +2951,81 @@ export type Database = {
           size?: string | null
           sku?: string | null
           status?: string
+          unit_code?: string | null
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Relationships: []
+      }
+      core_production_scan_events_backup_reset_op000008_20260731: {
+        Row: {
+          core_product_id: string | null
+          core_variant_id: string | null
+          created_at: string | null
+          event_type: string | null
+          id: string | null
+          notes: string | null
+          operator_id: string | null
+          operator_name_snapshot: string | null
+          process_name: string | null
+          process_order: number | null
+          process_type: string | null
+          production_order_id: string | null
+          production_order_line_id: string | null
+          production_unit_id: string | null
+          production_unit_process_id: string | null
+          scanned_by_user_id: string | null
+          size: string | null
+          sku: string | null
+          status: string | null
+          unit_code: string | null
+          variant_label: string | null
+          variant_sku: string | null
+        }
+        Insert: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string | null
+          event_type?: string | null
+          id?: string | null
+          notes?: string | null
+          operator_id?: string | null
+          operator_name_snapshot?: string | null
+          process_name?: string | null
+          process_order?: number | null
+          process_type?: string | null
+          production_order_id?: string | null
+          production_order_line_id?: string | null
+          production_unit_id?: string | null
+          production_unit_process_id?: string | null
+          scanned_by_user_id?: string | null
+          size?: string | null
+          sku?: string | null
+          status?: string | null
+          unit_code?: string | null
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Update: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string | null
+          event_type?: string | null
+          id?: string | null
+          notes?: string | null
+          operator_id?: string | null
+          operator_name_snapshot?: string | null
+          process_name?: string | null
+          process_order?: number | null
+          process_type?: string | null
+          production_order_id?: string | null
+          production_order_line_id?: string | null
+          production_unit_id?: string | null
+          production_unit_process_id?: string | null
+          scanned_by_user_id?: string | null
+          size?: string | null
+          sku?: string | null
+          status?: string | null
           unit_code?: string | null
           variant_label?: string | null
           variant_sku?: string | null
@@ -2888,6 +3116,63 @@ export type Database = {
           status?: string
           suggested_role?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      core_production_unit_processes_backup_reset_op000008_20260731: {
+        Row: {
+          adds_to_payroll: boolean | null
+          completed_at: string | null
+          completed_by_operator_id: string | null
+          created_at: string | null
+          id: string | null
+          notes: string | null
+          process_name: string | null
+          process_order: number | null
+          process_type: string | null
+          production_order_process_id: string | null
+          production_unit_id: string | null
+          rate_snapshot: Json | null
+          scanned_by_user_id: string | null
+          status: string | null
+          suggested_role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          adds_to_payroll?: boolean | null
+          completed_at?: string | null
+          completed_by_operator_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          notes?: string | null
+          process_name?: string | null
+          process_order?: number | null
+          process_type?: string | null
+          production_order_process_id?: string | null
+          production_unit_id?: string | null
+          rate_snapshot?: Json | null
+          scanned_by_user_id?: string | null
+          status?: string | null
+          suggested_role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          adds_to_payroll?: boolean | null
+          completed_at?: string | null
+          completed_by_operator_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          notes?: string | null
+          process_name?: string | null
+          process_order?: number | null
+          process_type?: string | null
+          production_order_process_id?: string | null
+          production_unit_id?: string | null
+          rate_snapshot?: Json | null
+          scanned_by_user_id?: string | null
+          status?: string | null
+          suggested_role?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -2987,6 +3272,102 @@ export type Database = {
         }
         Relationships: []
       }
+      core_production_units_backup_reset_op000008_20260731: {
+        Row: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cancelled_reason: string | null
+          core_product_id: string | null
+          core_variant_id: string | null
+          created_at: string | null
+          created_by: string | null
+          entered_inventory_at: string | null
+          entered_inventory_by: string | null
+          id: string | null
+          inventory_entry_source: string | null
+          notes: string | null
+          print_count: number | null
+          printed_at: string | null
+          printed_by: string | null
+          production_order_id: string | null
+          production_order_line_id: string | null
+          qr_generated_at: string | null
+          qr_generated_by: string | null
+          qr_payload: string | null
+          qr_token: string | null
+          size: string | null
+          sku: string | null
+          status: string | null
+          unit_code: string | null
+          updated_at: string | null
+          updated_by: string | null
+          variant_label: string | null
+          variant_sku: string | null
+        }
+        Insert: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          entered_inventory_at?: string | null
+          entered_inventory_by?: string | null
+          id?: string | null
+          inventory_entry_source?: string | null
+          notes?: string | null
+          print_count?: number | null
+          printed_at?: string | null
+          printed_by?: string | null
+          production_order_id?: string | null
+          production_order_line_id?: string | null
+          qr_generated_at?: string | null
+          qr_generated_by?: string | null
+          qr_payload?: string | null
+          qr_token?: string | null
+          size?: string | null
+          sku?: string | null
+          status?: string | null
+          unit_code?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Update: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          entered_inventory_at?: string | null
+          entered_inventory_by?: string | null
+          id?: string | null
+          inventory_entry_source?: string | null
+          notes?: string | null
+          print_count?: number | null
+          printed_at?: string | null
+          printed_by?: string | null
+          production_order_id?: string | null
+          production_order_line_id?: string | null
+          qr_generated_at?: string | null
+          qr_generated_by?: string | null
+          qr_payload?: string | null
+          qr_token?: string | null
+          size?: string | null
+          sku?: string | null
+          status?: string | null
+          unit_code?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          variant_label?: string | null
+          variant_sku?: string | null
+        }
+        Relationships: []
+      }
       core_production_work_entries: {
         Row: {
           core_product_id: string | null
@@ -3062,6 +3443,84 @@ export type Database = {
           scanned_by_user_id?: string | null
           unit_code?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      core_production_work_entries_backup_reset_op000008_20260731: {
+        Row: {
+          core_product_id: string | null
+          core_variant_id: string | null
+          created_at: string | null
+          currency: string | null
+          id: string | null
+          notes: string | null
+          operator_id: string | null
+          operator_name_snapshot: string | null
+          payroll_amount: number | null
+          payroll_multiplier_snapshot: number | null
+          payroll_status: string | null
+          payroll_week_end: string | null
+          payroll_week_start: string | null
+          process_name: string | null
+          process_type: string | null
+          production_order_id: string | null
+          production_unit_id: string | null
+          production_unit_process_id: string | null
+          rate_snapshot: number | null
+          scan_event_id: string | null
+          scanned_by_user_id: string | null
+          unit_code: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string | null
+          notes?: string | null
+          operator_id?: string | null
+          operator_name_snapshot?: string | null
+          payroll_amount?: number | null
+          payroll_multiplier_snapshot?: number | null
+          payroll_status?: string | null
+          payroll_week_end?: string | null
+          payroll_week_start?: string | null
+          process_name?: string | null
+          process_type?: string | null
+          production_order_id?: string | null
+          production_unit_id?: string | null
+          production_unit_process_id?: string | null
+          rate_snapshot?: number | null
+          scan_event_id?: string | null
+          scanned_by_user_id?: string | null
+          unit_code?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          core_product_id?: string | null
+          core_variant_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string | null
+          notes?: string | null
+          operator_id?: string | null
+          operator_name_snapshot?: string | null
+          payroll_amount?: number | null
+          payroll_multiplier_snapshot?: number | null
+          payroll_status?: string | null
+          payroll_week_end?: string | null
+          payroll_week_start?: string | null
+          process_name?: string | null
+          process_type?: string | null
+          production_order_id?: string | null
+          production_unit_id?: string | null
+          production_unit_process_id?: string | null
+          rate_snapshot?: number | null
+          scan_event_id?: string | null
+          scanned_by_user_id?: string | null
+          unit_code?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
