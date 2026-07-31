@@ -126,6 +126,18 @@ const TABLE = "sublime_merch_items";
 const T_SHIP = "sublime_merch_shipments";
 const T_BOX = "sublime_merch_boxes";
 
+function sortByNewest<T extends { created_at?: string | null; inserted_at?: string | null; updated_at?: string | null }>(
+  items: T[]
+): T[] {
+  const timestamp = (item: T) => item.created_at ?? item.inserted_at ?? item.updated_at ?? "";
+  return [...items].sort((a, b) => {
+    const ta = new Date(timestamp(a)).getTime();
+    const tb = new Date(timestamp(b)).getTime();
+    return tb - ta;
+  });
+}
+
+
 export function useUnassignedItems() {
   return useQuery({
     queryKey: ["sublime-merch", "unassigned"],
@@ -137,7 +149,8 @@ export function useUnassignedItems() {
         .neq("estado", "cancelled")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as SublimeMerchItem[];
+      return sortByNewest((data ?? []) as SublimeMerchItem[]);
+
     },
   });
 }
@@ -172,7 +185,8 @@ export function useInTransitItems() {
         .not("estado", "in", "(available,cancelled)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as SublimeMerchItem[];
+      return sortByNewest((data ?? []) as SublimeMerchItem[]);
+
     },
   });
 }
@@ -693,10 +707,11 @@ export function useAvailableItems() {
         .from(TABLE)
         .select("*")
         .in("estado", ["received", "available"])
-        .order("received_at", { ascending: false, nullsFirst: false });
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as SublimeMerchItem[];
+      return sortByNewest((data ?? []) as SublimeMerchItem[]);
     },
+
   });
 }
 
