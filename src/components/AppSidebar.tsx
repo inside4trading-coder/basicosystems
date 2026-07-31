@@ -39,7 +39,7 @@ const adminItems = [
 ];
 
 export function AppSidebar({ userRole }: { userRole?: string }) {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const { signOut } = useAuth();
   const navigate = useNavigate();
@@ -55,6 +55,10 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
   const role = (userRole as ProfileRole | undefined) ?? null;
   const visibleItems = mainItems.filter((i) => canAccessRoute(role, i.url));
 
+
+  const handleNavClick = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   const handleLogout = async () => {
     await signOut();
