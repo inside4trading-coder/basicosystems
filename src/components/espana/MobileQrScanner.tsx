@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { X, Keyboard } from "lucide-react";
 import { useCameraTapFocus } from "@/hooks/useCameraTapFocus";
 import { FocusRing } from "@/components/core/CameraFocusRing";
-import { useCameraControls, SCANNER_VIDEO_CONSTRAINTS } from "@/hooks/useCameraControls";
+import { useCameraControls, startScannerWithFallback } from "@/hooks/useCameraControls";
 
 interface Props {
   open: boolean;
@@ -22,6 +22,7 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
   const { ring, handleTapFocus, enableContinuousFocus, unsupportedMsg } = useCameraTapFocus();
   const cam = useCameraControls();
   const [camDeviceId, setCamDeviceId] = useState<string | null>(null);
+  const [streamActive, setStreamActive] = useState(false);
 
   useEffect(() => {
     if (!open || manual) return;
@@ -34,10 +35,9 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
         if (cancelled || !cameraDivRef.current) return;
         const scanner = new Html5Qrcode(cameraDivRef.current.id);
         scannerRef.current = scanner;
-        await scanner.start(
-          (camDeviceId
-            ? { deviceId: { exact: camDeviceId }, ...SCANNER_VIDEO_CONSTRAINTS }
-            : { facingMode: "environment", ...SCANNER_VIDEO_CONSTRAINTS }) as any,
+        await startScannerWithFallback(
+          scanner,
+          camDeviceId,
           { fps: 10, qrbox: { width: 240, height: 240 } },
           (decoded: string) => {
             const t = (decoded || "").trim();
@@ -47,17 +47,20 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
             if (s) s.stop().then(() => { try { s.clear?.(); } catch { /* noop */ } }).catch(() => {});
             onDetected(t);
           },
-          () => { /* ignore per-frame errors */ },
         );
+        if (!cancelled) setStreamActive(true);
         setTimeout(() => {
           void enableContinuousFocus(cameraDivRef.current);
           void cam.probeCapabilities(cameraDivRef.current);
           if (cam.nearMode) void cam.applyNearMode(cameraDivRef.current, true);
         }, 600);
       } catch (e: any) {
-        setError(e?.message || String(e) || "No se pudo abrir la cámara. Revisa los permisos.");
+        console.error("[scanner] start failed", e?.name, e?.message ?? e);
+        setStreamActive(false);
+        setError("No se pudo iniciar la cámara. Revisa permisos o prueba cambiar cámara.");
       }
     })();
+
 
     return () => {
       cancelled = true;
@@ -110,6 +113,7 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
                 <Button
                   size="sm"
                   variant={cam.nearMode ? "default" : "outline"}
+                  disabled={!streamActive || !cam.zoomSupported}
                   onClick={() => void cam.applyNearMode(cameraDivRef.current, !cam.nearMode)}
                 >
                   Modo QR cercano
@@ -117,6 +121,7 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
                 <Button
                   size="sm"
                   variant="outline"
+                  disabled={cam.devices.length < 2 && streamActive}
                   onClick={async () => {
                     const id = await cam.nextDeviceId();
                     if (id) { cam.resetTorch(); setCamDeviceId(id); }
@@ -124,7 +129,8 @@ export function MobileQrScanner({ open, onClose, onDetected }: Props) {
                 >
                   Cambiar cámara
                 </Button>
-                {cam.torchSupported && (
+                {streamActive && cam.torchSupported && (
+
                   <Button size="sm" variant={cam.torchOn ? "default" : "outline"} onClick={() => void cam.toggleTorch(cameraDivRef.current)}>
                     Luz
                   </Button>

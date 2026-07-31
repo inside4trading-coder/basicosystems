@@ -103,8 +103,39 @@ export function useCameraControls() {
   };
 }
 
-/** Video constraints shared by scanners: rear camera, high resolution. */
+/** Safe video constraints shared by scanners: rear camera, moderate resolution. */
 export const SCANNER_VIDEO_CONSTRAINTS = {
-  width: { ideal: 1920 },
-  height: { ideal: 1080 },
+  width: { ideal: 1280 },
+  height: { ideal: 720 },
 } as const;
+
+/**
+ * Starts an html5-qrcode scanner with progressively simpler constraints.
+ * Never includes focus/zoom/torch in the initial request — those are applied
+ * afterwards, only when the live track supports them.
+ */
+export async function startScannerWithFallback(
+  scanner: any,
+  deviceId: string | null,
+  config: any,
+  onDecode: (text: string) => void,
+): Promise<void> {
+  const attempts: any[] = [];
+  if (deviceId) attempts.push({ deviceId: { exact: deviceId } });
+  attempts.push({ facingMode: { ideal: "environment" }, ...SCANNER_VIDEO_CONSTRAINTS });
+  attempts.push({ facingMode: "environment" });
+  attempts.push(true);
+
+  let lastError: any = null;
+  for (const constraint of attempts) {
+    try {
+      await scanner.start(constraint, config, onDecode, () => { /* ignore decode errors */ });
+      return;
+    } catch (e: any) {
+      lastError = e;
+      console.error("[scanner] getUserMedia failed", e?.name, e?.message ?? e, constraint);
+    }
+  }
+  throw lastError ?? new Error("No se pudo iniciar la cámara.");
+}
+
