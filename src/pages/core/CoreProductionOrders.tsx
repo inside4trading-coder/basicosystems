@@ -471,6 +471,15 @@ export default function CoreProductionOrders() {
     }
   };
 
+  const handleBackupPdf = async (o: Order) => {
+    try {
+      await downloadProductionOrderBackupPdf(o);
+      toast.success(`PDF de respaldo generado: ${o.order_code}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error generando PDF de respaldo");
+    }
+  };
+
   const openDetail = async (o: Order) => {
     setDetailOrder(o);
     const [{ data: lines }, { data: procs }, { data: links }, { data: uns }] = await Promise.all([
