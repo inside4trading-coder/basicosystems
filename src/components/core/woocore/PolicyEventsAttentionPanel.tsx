@@ -312,6 +312,19 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                     </td>
                     <td className="p-2">
                       <div className="flex flex-col gap-1 min-w-[170px]">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={!!refreshing[r.id] || refreshAll}
+                          onClick={() => handleRefreshRow(r)}
+                        >
+                          {refreshing[r.id] ? (
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-3 h-3 mr-1" />
+                          )}
+                          Actualizar
+                        </Button>
                         {r.action === "suggest_replacement" && (
                           <>
                             <Button size="sm" onClick={() => setReplacementEvent(r)}>
