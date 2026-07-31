@@ -210,8 +210,15 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                 const p = resolveProductLabel(r);
                 const rep = resolveReplacementLabel(r);
                 const isSynthetic = !!r._synthetic;
+                const refreshInfo = refreshResults[r.id];
+                const justSolved = refreshInfo?.resolved === true;
                 return (
-                  <tr key={r.id} className="border-t align-top">
+                  <tr
+                    key={r.id}
+                    className={`border-t align-top ${
+                      justSolved ? "bg-emerald-50 dark:bg-emerald-950/30" : ""
+                    }`}
+                  >
                     <td className="p-2 whitespace-nowrap text-xs">
                       {new Date(r.created_at).toLocaleString()}
                     </td>
