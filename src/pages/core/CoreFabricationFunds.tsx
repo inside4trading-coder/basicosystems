@@ -56,14 +56,14 @@ type Run = {
 
 const FUND_LABEL: Record<string, string> = {
   general: "General de fabricación",
-  non_restockable: "No restockeable",
+  non_restockable: "Liberado por no restock",
   product_specific: "Por producto",
   replacement: "Reemplazo",
   pending: "Pendiente",
 };
 const FUND_BADGE: Record<string, string> = {
   general: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  non_restockable: "bg-orange-100 text-orange-800 border-orange-300",
+  non_restockable: "bg-teal-100 text-teal-800 border-teal-300",
   product_specific: "bg-blue-100 text-blue-800 border-blue-300",
   replacement: "bg-purple-100 text-purple-800 border-purple-300",
   pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
@@ -260,12 +260,14 @@ export default function CoreFabricationFunds() {
     const factory = pick("general");
     const external = pick("external_supplier");
     const pending = pick("pending");
+    const nonRestock = pick("non_restockable");
     const movsBy = (fundId?: string | null) => movements.filter(m => fundId && m.fund_id === fundId);
     const last = (list: Movement[]) => list.length ? list[0].created_at : null;
     return {
       factory: { fund: factory, count: movsBy(factory?.id).length, last: last(movsBy(factory?.id)) },
       external: { fund: external, count: movsBy(external?.id).length, last: last(movsBy(external?.id)) },
       pending: { fund: pending, count: movsBy(pending?.id).length, last: last(movsBy(pending?.id)) },
+      nonRestock: { fund: nonRestock, count: movsBy(nonRestock?.id).length, last: last(movsBy(nonRestock?.id)) },
     };
   }, [funds, movements]);
 
@@ -622,15 +624,39 @@ export default function CoreFabricationFunds() {
             </div>
           </Card>
 
-          {/* Cards de las tres partidas principales */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Disponible interno total */}
+          <Card className="p-4 border-emerald-200 bg-emerald-50/60 dark:bg-emerald-950/20">
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Disponible total para fabricar</p>
+            <p className="text-3xl font-black text-emerald-800 dark:text-emerald-300 mt-1">
+              {usd(Number(partidaCards.factory.fund?.available_amount ?? 0) + Number(partidaCards.nonRestock.fund?.available_amount ?? 0))}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Producción habitual <strong className="font-mono">{usd(Number(partidaCards.factory.fund?.available_amount ?? 0))}</strong>
+              {" + "}
+              Liberado por no restock <strong className="font-mono">{usd(Number(partidaCards.nonRestock.fund?.available_amount ?? 0))}</strong>
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1 italic">
+              Proveedor externo y pendiente por resolver se contabilizan aparte.
+            </p>
+          </Card>
+
+          {/* Cards de las partidas principales */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
 
             <PartidaCard
-              title="Fábrica"
-              description="Reserva destinada a fabricación interna."
+              title="General de fabricación"
+              description="Producción habitual: reserva destinada a fabricación interna."
               fund={partidaCards.factory.fund}
               movementsCount={partidaCards.factory.count}
               lastMovementAt={partidaCards.factory.last}
+              tone="emerald"
+            />
+            <PartidaCard
+              title="Liberado por no restock"
+              description="Dinero reservado de prendas que no se repondrán, disponible para futuras fabricaciones."
+              fund={partidaCards.nonRestock.fund}
+              movementsCount={partidaCards.nonRestock.count}
+              lastMovementAt={partidaCards.nonRestock.last}
               tone="emerald"
             />
             <PartidaCard
@@ -642,7 +668,7 @@ export default function CoreFabricationFunds() {
               tone="blue"
             />
             <PartidaCard
-              title="Pendiente de clasificación"
+              title="Pendiente por resolver"
               description="Dinero reservado cuyo origen financiero todavía debe definirse."
               fund={partidaCards.pending.fund}
               movementsCount={partidaCards.pending.count}
@@ -652,6 +678,7 @@ export default function CoreFabricationFunds() {
               onClick={() => { setMovFilter("pending_classification"); setTab("movimientos"); }}
             />
           </div>
+
 
           <p className="text-[11px] text-muted-foreground italic">
             Estos saldos representan reservas registradas. Los pagos externos todavía no se descuentan automáticamente.
@@ -677,7 +704,7 @@ export default function CoreFabricationFunds() {
             <KpiCard label="Partida generada" value={usd(totals.generatedTotal)} sub="Ventas confirmadas posted" tone="emerald" />
             <KpiCard label="Ejecutado en inventario" value={usd(totals.executedTotal)} sub="Unidades ya ingresadas" tone="muted" />
             <KpiCard label="Disponible sin asignar" value={usd(totals.availableUnassigned)} sub="Libre para fabricar" tone="emerald" />
-            <KpiCard label="Partida no restockeable" value={usd(totals.nonR)} tone="orange" />
+            <KpiCard label="Liberado por no restock" value={usd(totals.nonR)} sub="Disponible para futuras fabricaciones" tone="emerald" />
             <KpiCard label="Pendientes históricos" value={`${totals.pendingHist} ítems`} tone="yellow" />
             <KpiCard label="Pendientes último run" value={String(totals.lastRunPend)} tone="muted" />
             <KpiCard label="Pendientes del rango" value={`${totals.rangeCount} ítems`} sub={usd(totals.rangeRevenue) + " revenue"} tone="yellow" />
