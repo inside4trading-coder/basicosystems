@@ -752,9 +752,14 @@ export default function CoreProductionOrders() {
         <TableCell className="text-xs text-muted-foreground">{o.source}</TableCell>
         <TableCell className="text-xs">{new Date(o.created_at).toLocaleString()}</TableCell>
         <TableCell className="text-right">
-          <Button size="sm" variant="outline" onClick={() => openDetail(o)}>
-            <Eye className="h-3 w-3 mr-1" /> Ver
-          </Button>
+          <div className="flex items-center justify-end gap-1">
+            <Button size="sm" variant="outline" onClick={() => openDetail(o)}>
+              <Eye className="h-3 w-3 mr-1" /> Ver
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleBackupPdf(o)}>
+              <FileDown className="h-3 w-3 mr-1" /> PDF respaldo
+            </Button>
+          </div>
         </TableCell>
       </TableRow>
     );
