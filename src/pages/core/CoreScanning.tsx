@@ -134,6 +134,9 @@ export default function CoreScanning() {
   const { ring, handleTapFocus, enableContinuousFocus, unsupportedMsg } = useCameraTapFocus();
   const cam = useCameraControls();
   const [camDeviceId, setCamDeviceId] = useState<string | null>(null);
+  const [camError, setCamError] = useState<string | null>(null);
+  const [camAttempt, setCamAttempt] = useState(0);
+  const startingRef = useRef(false);
 
   // Load active factory operators + recent scans
   useEffect(() => {
