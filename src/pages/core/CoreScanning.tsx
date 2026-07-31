@@ -19,6 +19,7 @@ import { toast } from "@/hooks/use-toast";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { UnitInventorySection } from "@/components/core/UnitInventorySection";
 import { useCameraTapFocus } from "@/hooks/useCameraTapFocus";
+import { useCameraControls, SCANNER_VIDEO_CONSTRAINTS } from "@/hooks/useCameraControls";
 import { FocusRing } from "@/components/core/CameraFocusRing";
 
 type Unit = {
@@ -131,6 +132,8 @@ export default function CoreScanning() {
   const cameraDivRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<any>(null);
   const { ring, handleTapFocus, enableContinuousFocus, unsupportedMsg } = useCameraTapFocus();
+  const cam = useCameraControls();
+  const [camDeviceId, setCamDeviceId] = useState<string | null>(null);
 
   // Load active factory operators + recent scans
   useEffect(() => {
@@ -253,7 +256,9 @@ export default function CoreScanning() {
       scannerRef.current = scanner;
       try {
         await scanner.start(
-          { facingMode: "environment" },
+          (camDeviceId
+            ? { deviceId: { exact: camDeviceId }, ...SCANNER_VIDEO_CONSTRAINTS }
+            : { facingMode: "environment", ...SCANNER_VIDEO_CONSTRAINTS }) as any,
           { fps: 10, qrbox: { width: 240, height: 240 } },
           (decoded: string) => {
             try {
@@ -264,7 +269,11 @@ export default function CoreScanning() {
           },
           () => { /* ignore decode errors */ },
         );
-        setTimeout(() => { void enableContinuousFocus(cameraDivRef.current); }, 600);
+        setTimeout(() => {
+          void enableContinuousFocus(cameraDivRef.current);
+          void cam.probeCapabilities(cameraDivRef.current);
+          if (cam.nearMode) void cam.applyNearMode(cameraDivRef.current, true);
+        }, 600);
       } catch (e: any) {
         toast({ title: "Error de cámara", description: e?.message || String(e), variant: "destructive" });
         setCameraOpen(false);
@@ -278,7 +287,7 @@ export default function CoreScanning() {
         scannerRef.current = null;
       }
     };
-  }, [cameraOpen, setSearchParams]);
+  }, [cameraOpen, camDeviceId, setSearchParams]);
 
   const pendingProcs = useMemo(() => processes.filter((p) => p.status === "pending"), [processes]);
   const completedProcs = useMemo(() => processes.filter((p) => p.status === "completed"), [processes]);
@@ -846,6 +855,33 @@ export default function CoreScanning() {
             <div id="qr-camera-region" ref={cameraDivRef} className="w-full" />
             {ring && <FocusRing key={ring.id} x={ring.x} y={ring.y} />}
           </div>
+          <div className="flex flex-wrap gap-2 justify-center pt-2">
+            <Button
+              size="sm"
+              variant={cam.nearMode ? "default" : "outline"}
+              onClick={() => void cam.applyNearMode(cameraDivRef.current, !cam.nearMode)}
+            >
+              Modo QR cercano
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                const id = await cam.nextDeviceId();
+                if (id) { cam.resetTorch(); setCamDeviceId(id); }
+              }}
+            >
+              Cambiar cámara
+            </Button>
+            {cam.torchSupported && (
+              <Button size="sm" variant={cam.torchOn ? "default" : "outline"} onClick={() => void cam.toggleTorch(cameraDivRef.current)}>
+                Luz
+              </Button>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground text-center">
+            Para QR pequeños: activa Modo QR cercano y aleja un poco la etiqueta.
+          </p>
           {unsupportedMsg && (
             <p className="text-[11px] text-muted-foreground text-center">{unsupportedMsg}</p>
           )}
