@@ -4,7 +4,7 @@ import { isValidOrder, isExcludedFromRevenue } from "@/config/orderStatuses";
 import { formatLocalDate } from "@/lib/dateUtils";
 import { safeOrderUsd, isUnconvertibleOrder } from "@/lib/orderUsd";
 
-export type Period = "today" | "week" | "month" | "year" | "custom";
+export type Period = "today" | "week" | "month" | "last_month" | "year" | "custom";
 
 interface KPI {
   value: number;
@@ -39,6 +39,7 @@ function getDateRange(period: Period, customRange?: { start: Date; end: Date }):
   }
   const now = new Date();
   let start: Date;
+  let end: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
   switch (period) {
     case "today":
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -51,13 +52,17 @@ function getDateRange(period: Period, customRange?: { start: Date; end: Date }):
     case "month":
       start = new Date(now.getFullYear(), now.getMonth(), 1);
       break;
+    case "last_month":
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      break;
     case "year":
       start = new Date(now.getFullYear(), 0, 1);
       break;
     default:
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }
-  return { start, end: now };
+  return { start, end };
 }
 
 function getPrevDateRange(period: Period, customRange?: { start: Date; end: Date }): { start: Date; end: Date } {

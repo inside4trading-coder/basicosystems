@@ -30,6 +30,7 @@ const periods: { key: Period; label: string }[] = [
   { key: "today", label: "Hoy" },
   { key: "week", label: "Esta semana" },
   { key: "month", label: "Este mes" },
+  { key: "last_month", label: "Mes pasado" },
 ];
 
 const statusLabels: Record<string, { label: string; className: string }> = {
