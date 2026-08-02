@@ -1,38 +1,38 @@
-## Estado verificado (lecturas hechas en base de datos)
+## Estado verificado (solo lectura)
 
-- `core_fabrication_fund_movements` con `fund_bucket = 'external_supplier'`: 1 `sale_generated` **posted** ($5.34, Gorra Vintage Washed Azul Marino, pedido Woo 34411 / item 29305), 1 `sale_generated` **reversed** ($3.40, Pack de anillos) y su `reversal` (-$3.40, razón "Reverso por estado cancelled", pedido 34281 = `cancelled`). Neto del pack = $0.
-- `core_external_purchase_order_lines` está **vacía**: ninguna prenda tiene línea de compra externa todavía.
-- El evento de la Gorra existe (`a25ff41f…`, `action = external_supplier_review`, qty 1, costo 5.34) pero con `status = 'resolved'` (resuelto por el flujo de revalidación), por eso el filtro `open/reviewed` de `usePendingExternalEvents()` lo excluye.
-- El RPC `core_create_external_purchase_orders_from_events` **no valida el status del evento**: solo exige `action = 'external_supplier_review'` y que no exista línea previa. Por tanto un evento `resolved` puede convertirse en orden sin tocar backend.
+- `core_woo_product_map` woo_product_id **1101** → core_product_id `1bcb44a9…` (`mapped`): **el padre YA está conectado**.
+- `core_woo_variant_map` woo_variation_id **1103** existe pero con **`core_variant_id = NULL`**: falta el vínculo de variante.
+- El catálogo Core tiene la variante buscada: `JGM08 M` (id `81845d4b…`), además de S, L, XL.
 
-## Cambios
+Por eso `hasWooCoreMap()` en `src/lib/coreRevalidate.ts` devuelve `mapped: false` y muestra "Falta configurar el mapa Woo/Core".
 
-### 1. `src/hooks/useExternalPurchaseOrders.ts` — nueva fuente de `usePendingExternalEvents()`
+## Qué construir (solo frontend)
 
-Fuente principal: `core_fabrication_fund_movements` con `fund_bucket = 'external_supplier'`, `movement_type = 'sale_generated'`, `status = 'posted'` (esto ya excluye reversados y reversos).
+### 1. `src/lib/coreRevalidate.ts`
+- Nueva función `resolveVariantLinkByParent(row, coreProductId)`:
+  - Lee la fila de `core_woo_variant_map` de la variación (talla/SKU Woo) y el SKU/talla del evento.
+  - Normaliza con `normalizeSize` (ya existe en `coreNormalize.ts`) más una normalización de SKU: `JGM08-M` / `JGM08 M` / `Talla M` / `m` → tokens comparables.
+  - Busca en `core_product_variants` del `core_product_id` del padre por, en orden: `variant_sku`/`woo_sku` normalizado, luego `size`/`normalized_size`.
+  - Si hay **1 coincidencia** → `upsert` en `core_woo_variant_map` (`woo_variation_id`, `core_variant_id`, `core_product_id`, `mapping_status = 'mapped'`) y devuelve el `core_variant_id`.
+  - Si hay **0** → `{ status: 'not_found' }`; si hay **varias** → `{ status: 'ambiguous' }`.
+- `hasWooCoreMap()` pasa a llamar a esta resolución cuando el padre está mapeado y falta la variante.
+- Nuevos resultados de revalidación:
+  - resuelto: `reason: "variant_link_resolved_by_parent_and_sku"`, con `coreProductId` + `coreVariantId` ya listos para el flujo.
+  - no encontrado: `"Producto conectado, falta vincular la talla {X}."`
+  - ambiguo: `"Encontramos varias variantes posibles. Selecciona la correcta."`
+- Mensaje genérico de mapa faltante cambia a: **"Falta vincular esta talla con el producto del catálogo."**
 
-Para cada movimiento:
-- Buscar evento en `core_replenishment_policy_events` con `action = 'external_supplier_review'`, **sin filtrar por status**, por `source_id = movement.id`, con fallback por `woo_order_item_id = movement.source_order_item_id`.
-- Excluir el movimiento si su evento ya tiene línea en `core_external_purchase_order_lines`.
+### 2. Trazabilidad
+Al vincular, se registra en `core_product_strategy_decisions` (tabla de auditoría ya usada por el módulo) con `decision_type: 'variant_link_refresh'` y `new_values`: `resolved_by_refresh: true`, `resolved_reason`, `woo_product_id`, `woo_variation_id`, `core_product_id`, `core_variant_id`, `sku_matched`.
 
-Fila devuelta (tipo `PendingExternalRow`, reemplaza/extiende `PendingExternalEvent`):
-`movement_id`, `event_id | null`, `product_name`, `sku`, `variant_label`, `quantity`, `unit_cost`, `source_order_id`, `source_order_item_id`, `supplier_name` (evento → política), `core_product_id`, `core_variant_id`, `status` derivado ("Pendiente de compra").
+### 3. Continuidad del flujo
+`continueOperationalFlow` (`src/lib/coreNeedsFromEvent.ts`) ya crea/actualiza `core_production_needs` cuando la ruta es `internal_factory`, vincula `sourceMovementId` y aplica 3 capas de idempotencia. Solo hay que pasarle el `coreVariantId` recién resuelto — no requiere cambios, salvo que el evento se cierre únicamente si el flujo devuelve `ok`.
 
-Enriquecimiento de nombre/variante desde el movimiento primero (`product_name`, `sku`), y `core_products` / `core_product_variants` solo como respaldo.
+### 4. `src/hooks/useReplenishmentPolicyEvents.ts`
+Sin cambios de lógica: ya cierra el evento solo tras `continueOperationalFlow`. Se revisa que el nuevo `coreVariantId` se propague a `row` antes de continuar.
 
-### 2. `src/components/core/woocore/external/ExternalPendingEventsList.tsx`
-
-- Columnas: Checkbox · Producto · Variante/talla · Proveedor · Cantidad · Costo unit. · Pedido / order_item · Estado.
-- Nombre y SKU tomados del movimiento (se acaban los UUID en pantalla).
-- Filas **con** `event_id`: seleccionables; "Crear orden externa" sigue usando `ExternalOrderPreviewDialog` + RPC actual, pasando los `event_id`.
-- Filas **sin** `event_id`: badge "Sin evento", checkbox deshabilitado y tooltip "No se puede crear orden externa porque falta evento external_supplier_review."
-- Se mantiene el aviso de "sin proveedor configurado".
-
-## Reglas respetadas
-- Sin migraciones, sin tablas nuevas, sin edge functions, sin tocar Woo, OP, QR, inventario ni saldos.
-- El reverso del pack de anillos queda como está (es correcto) y no aparece en pendientes.
+## Fuera de alcance
+Sin cambios en Woo, OP, QR, inventario, movimientos financieros ni reproceso de ventas. Sin migraciones de base de datos.
 
 ## Validación
-- `/core/mapa-woo-core → Reposición externa → Órdenes a proveedor → Pendientes` muestra exactamente la Gorra Vintage ($5.34), seleccionable.
-- Coincide con `/core/necesidades → Proveedor externo` y con el dinero de `external_supplier` en Partidas.
-- Typecheck 0 errores.
+Pulsar Actualizar en la fila JGM08 M → vincula Woo 1103 → Core `81845d4b…`, crea la necesidad interna en Abiertas, la fila sale de Requieren atención, y una segunda pulsación no duplica. Typecheck al final.
