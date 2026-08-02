@@ -1,57 +1,50 @@
-## Auditoría read-only (ya ejecutada)
+## Estado verificado (lecturas hechas)
 
-OP-000008 → `f8254185-183c-4cd0-b961-6187545cf42a`
+- En `core_fabrication_fund_movements` ya existen movimientos con `fund_bucket = 'external_supplier'`: 1 `sale_generated` posted ($5.34), 1 `sale_generated` reversed ($3.40) y 1 `reversal` (-$3.40). Es decir, **el backend ya suma a la partida de proveedor externo**; no hace falta tocar el procesamiento de ventas.
+- La card “Proveedores externos” ya existe en `/core/partidas-fabricacion` (`PartidaCard`, línea ~675) pero, a diferencia de “Pendiente por resolver”, **no tiene `onClick` para ver detalle**.
+- En `/core/necesidades` las pestañas actuales son sólo “Fabricación interna” y “Requieren atención”: **no hay pestaña de proveedor externo**.
+- Ya existe flujo de compras externas (`ExternalReplenishmentPanel`, `core_external_purchase_order_lines`, RPCs de órdenes externas) — se reutiliza, no se crea nada nuevo.
 
-| Dato | Valor |
-|---|---|
-| Estado actual | `partially_completed` |
-| Cantidad total / completada / pendiente | 9 / 1 / 8 |
-| Líneas | 9 (una con `quantity_completed = 1`) |
-| Unidades/QR | 9 (6 `printed`, 2 `in_production`, 1 `completed`) |
-| Procesos de unidad | 23 (6 completados) |
-| Escaneos | 9 |
-| Entradas de trabajo | 6, todas `payroll_status = pending` |
-| Vínculos a nómina cerrada/pagada | **0** (`core_payroll_work_entry_links` sin filas) |
-| Unidades en inventario | 0 |
-| Impresiones | 9 unidades con `print_count > 0` (se conservan) |
+Conclusión: el trabajo es de **presentación**. No se crean tablas ni se modifica el cálculo financiero.
 
-Conclusión: no hay nómina cerrada ni pagada, así que las 6 entradas de trabajo se pueden eliminar sin reversas lógicas.
+## Qué se construye
 
-## Backups (migración, sufijo `_backup_reset_op000008_20260731`)
+### 1. Nueva pestaña “Proveedor externo” en `/core/necesidades`
+Nuevo componente `src/components/core/needs/ExternalRestockList.tsx`, montado como tercera pestaña en `CoreProductionNeeds.tsx`.
 
-Crear tablas nuevas con `CREATE TABLE ... AS SELECT` filtrando solo por OP-000008:
+Fuente de datos (solo lectura):
+- `core_fabrication_fund_movements` con `fund_bucket = 'external_supplier'`, `movement_type = 'sale_generated'`, `status = 'posted'`.
+- Enriquecido con `core_products` / `core_product_variants` para nombre, SKU y talla cuando el movimiento no los trae.
+- Cruce con `core_external_purchase_order_lines` (por `core_product_id` + `core_variant_id`/SKU) para derivar el estado.
 
-- `core_production_scan_events_backup_reset_op000008_20260731`
-- `core_production_unit_processes_backup_reset_op000008_20260731`
-- `core_production_work_entries_backup_reset_op000008_20260731`
-- `core_production_units_backup_reset_op000008_20260731`
-- `core_production_order_lines_backup_reset_op000008_20260731`
-- `core_production_orders_backup_reset_op000008_20260731`
+### 2. Dos vistas dentro de la pestaña
+- **Agrupada (por defecto)**: por producto + variante/talla → `SKU · Talla`, cantidad total a reponer, costo reservado total, nº de pedidos involucrados. Fila expandible al detalle.
+- **Detalle**: fecha de venta, producto, SKU, variante/talla, cantidad, costo reservado, pedido (`source_order_id`), `source_order_item_id`, estado.
 
-Sin RLS pública ni GRANTs a `anon`/`authenticated` (son tablas técnicas de respaldo; solo `service_role`).
+Estados derivados:
+- **Pendiente de compra** — sin línea en orden externa.
+- **En orden de compra** — existe línea en orden externa `draft/approved/ordered`.
+- **Recibido / cerrado** — línea recibida o cancelada.
 
-## Limpieza (misma migración, una transacción)
+Acciones por fila:
+- **Ver movimiento** → navega a `/core/partidas-fabricacion` con filtro de movimientos externos aplicado y resaltado del movimiento.
+- **Preparar compra** → abre el flujo externo ya existente (panel de reposición externa / preview de orden externa) con la selección correspondiente; si no hay evento asociado, el botón queda deshabilitado con tooltip explicativo.
 
-A. Borrar `core_production_work_entries` de la OP (6 filas, ninguna ligada a nómina).
+Filtro de fecha desde el baseline vigente (27/07/2026), coherente con el resto del módulo.
 
-B. Borrar `core_production_scan_events` de la OP (9 filas).
+### 3. Card “Proveedores externos” en `/core/partidas-fabricacion`
+- Añadir `onClick` que fija el filtro de movimientos a bucket `external_supplier` y salta a la pestaña “Movimientos” (mismo patrón que “Pendiente por resolver”).
+- La card ya muestra monto acumulado y cantidad de movimientos; se verifica que el conteo use los movimientos del fondo externo `posted`.
+- El listado de movimientos filtrado muestra producto, SKU, variante, pedido, costo y fecha (columnas ya presentes; se completan las que falten desde el enriquecimiento).
 
-C. Resetear `core_production_unit_processes` de unidades de la OP (23 filas):
-`status = 'pending'`, `completed_at = null`, `completed_by_operator_id = null`, `scanned_by_user_id = null`, `notes = null`, `updated_at = now()`.
+## Reglas respetadas
+- No se crean órdenes de producción internas, unidades ni QR.
+- No se consume inventario interno.
+- Estos ítems no aparecen en la pestaña “Fabricación interna”.
+- No se toca Woo, OP, QR ni el edge function de partidas.
+- Sin tablas nuevas ni migraciones.
 
-D. Resetear `core_production_units` (9 filas) conservando `unit_code`, `qr_token`, `qr_payload`, `print_count`, `printed_at`:
-`status = 'printed'` si tienen impresión (todas la tienen), `entered_inventory_at/by = null`, `inventory_entry_source = null`.
-
-E. Resetear líneas: `quantity_completed = 0`, `quantity_pending = quantity_ordered`, `status = 'pending'`.
-
-F. Resetear cabecera: `completed_quantity = 0`, `pending_quantity = total_quantity` (9), `status = 'open'`. No se toca `total_quantity`.
-
-G. Registrar una fila en `core_audit_logs` con la acción `reset_op_progress`.
-
-## Fuera de alcance (no se toca)
-
-Woo, Partidas de fabricación, Necesidades, saldos, inventario, otras OP, unidades/QR (no se borran), líneas (no se borran), la OP (no se borra).
-
-## Validación posterior
-
-Consultas read-only para confirmar: OP existe con `status = open` y avance 0/9; 9 líneas; 9 unidades con su `unit_code`/`qr_token` intactos; 0 procesos completados; 0 escaneos; 0 work entries. Más `tsgo` (no hay cambios de código frontend previstos, pero se verifica).
+## Detalles técnicos
+- Archivos: `src/components/core/needs/ExternalRestockList.tsx` (nuevo), `src/pages/core/CoreProductionNeeds.tsx` (pestaña), `src/pages/core/CoreFabricationFunds.tsx` (onClick + filtro externo), y un hook pequeño `useExternalRestockItems` (probablemente dentro de `useExternalPurchaseOrders.ts` para no dispersar).
+- Agrupación en cliente por clave `core_product_id|core_variant_id|sku_normalizado`.
+- Validación final con Playwright sobre `/core/necesidades` y `/core/partidas-fabricacion` + typecheck.
