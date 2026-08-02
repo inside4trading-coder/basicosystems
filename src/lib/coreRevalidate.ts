@@ -3,6 +3,7 @@
 // + resolución de ruta operativa (resolve_core_replenishment_action).
 // No crea OP, ni unidades/QR, ni movimientos financieros, ni toca Woo.
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeSize } from "@/lib/coreNormalize";
 import type { PolicyEvent } from "@/hooks/useReplenishmentPolicyEvents";
 
 export type RevalidationResult = {
