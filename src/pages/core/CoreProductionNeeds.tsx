@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ListChecks, Play, Plus, RotateCcw, History, AlertCircle, CheckCircle2, Ban, Pencil, AlertTriangle } from "lucide-react";
 import { PolicyEventsAttentionPanel } from "@/components/core/woocore/PolicyEventsAttentionPanel";
+import ExternalRestockList from "@/components/core/needs/ExternalRestockList";
 import { useReplenishmentPolicyEvents } from "@/hooks/useReplenishmentPolicyEvents";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
