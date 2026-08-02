@@ -1,50 +1,38 @@
-## Estado verificado (lecturas hechas)
+## Estado verificado (lecturas hechas en base de datos)
 
-- En `core_fabrication_fund_movements` ya existen movimientos con `fund_bucket = 'external_supplier'`: 1 `sale_generated` posted ($5.34), 1 `sale_generated` reversed ($3.40) y 1 `reversal` (-$3.40). Es decir, **el backend ya suma a la partida de proveedor externo**; no hace falta tocar el procesamiento de ventas.
-- La card “Proveedores externos” ya existe en `/core/partidas-fabricacion` (`PartidaCard`, línea ~675) pero, a diferencia de “Pendiente por resolver”, **no tiene `onClick` para ver detalle**.
-- En `/core/necesidades` las pestañas actuales son sólo “Fabricación interna” y “Requieren atención”: **no hay pestaña de proveedor externo**.
-- Ya existe flujo de compras externas (`ExternalReplenishmentPanel`, `core_external_purchase_order_lines`, RPCs de órdenes externas) — se reutiliza, no se crea nada nuevo.
+- `core_fabrication_fund_movements` con `fund_bucket = 'external_supplier'`: 1 `sale_generated` **posted** ($5.34, Gorra Vintage Washed Azul Marino, pedido Woo 34411 / item 29305), 1 `sale_generated` **reversed** ($3.40, Pack de anillos) y su `reversal` (-$3.40, razón "Reverso por estado cancelled", pedido 34281 = `cancelled`). Neto del pack = $0.
+- `core_external_purchase_order_lines` está **vacía**: ninguna prenda tiene línea de compra externa todavía.
+- El evento de la Gorra existe (`a25ff41f…`, `action = external_supplier_review`, qty 1, costo 5.34) pero con `status = 'resolved'` (resuelto por el flujo de revalidación), por eso el filtro `open/reviewed` de `usePendingExternalEvents()` lo excluye.
+- El RPC `core_create_external_purchase_orders_from_events` **no valida el status del evento**: solo exige `action = 'external_supplier_review'` y que no exista línea previa. Por tanto un evento `resolved` puede convertirse en orden sin tocar backend.
 
-Conclusión: el trabajo es de **presentación**. No se crean tablas ni se modifica el cálculo financiero.
+## Cambios
 
-## Qué se construye
+### 1. `src/hooks/useExternalPurchaseOrders.ts` — nueva fuente de `usePendingExternalEvents()`
 
-### 1. Nueva pestaña “Proveedor externo” en `/core/necesidades`
-Nuevo componente `src/components/core/needs/ExternalRestockList.tsx`, montado como tercera pestaña en `CoreProductionNeeds.tsx`.
+Fuente principal: `core_fabrication_fund_movements` con `fund_bucket = 'external_supplier'`, `movement_type = 'sale_generated'`, `status = 'posted'` (esto ya excluye reversados y reversos).
 
-Fuente de datos (solo lectura):
-- `core_fabrication_fund_movements` con `fund_bucket = 'external_supplier'`, `movement_type = 'sale_generated'`, `status = 'posted'`.
-- Enriquecido con `core_products` / `core_product_variants` para nombre, SKU y talla cuando el movimiento no los trae.
-- Cruce con `core_external_purchase_order_lines` (por `core_product_id` + `core_variant_id`/SKU) para derivar el estado.
+Para cada movimiento:
+- Buscar evento en `core_replenishment_policy_events` con `action = 'external_supplier_review'`, **sin filtrar por status**, por `source_id = movement.id`, con fallback por `woo_order_item_id = movement.source_order_item_id`.
+- Excluir el movimiento si su evento ya tiene línea en `core_external_purchase_order_lines`.
 
-### 2. Dos vistas dentro de la pestaña
-- **Agrupada (por defecto)**: por producto + variante/talla → `SKU · Talla`, cantidad total a reponer, costo reservado total, nº de pedidos involucrados. Fila expandible al detalle.
-- **Detalle**: fecha de venta, producto, SKU, variante/talla, cantidad, costo reservado, pedido (`source_order_id`), `source_order_item_id`, estado.
+Fila devuelta (tipo `PendingExternalRow`, reemplaza/extiende `PendingExternalEvent`):
+`movement_id`, `event_id | null`, `product_name`, `sku`, `variant_label`, `quantity`, `unit_cost`, `source_order_id`, `source_order_item_id`, `supplier_name` (evento → política), `core_product_id`, `core_variant_id`, `status` derivado ("Pendiente de compra").
 
-Estados derivados:
-- **Pendiente de compra** — sin línea en orden externa.
-- **En orden de compra** — existe línea en orden externa `draft/approved/ordered`.
-- **Recibido / cerrado** — línea recibida o cancelada.
+Enriquecimiento de nombre/variante desde el movimiento primero (`product_name`, `sku`), y `core_products` / `core_product_variants` solo como respaldo.
 
-Acciones por fila:
-- **Ver movimiento** → navega a `/core/partidas-fabricacion` con filtro de movimientos externos aplicado y resaltado del movimiento.
-- **Preparar compra** → abre el flujo externo ya existente (panel de reposición externa / preview de orden externa) con la selección correspondiente; si no hay evento asociado, el botón queda deshabilitado con tooltip explicativo.
+### 2. `src/components/core/woocore/external/ExternalPendingEventsList.tsx`
 
-Filtro de fecha desde el baseline vigente (27/07/2026), coherente con el resto del módulo.
-
-### 3. Card “Proveedores externos” en `/core/partidas-fabricacion`
-- Añadir `onClick` que fija el filtro de movimientos a bucket `external_supplier` y salta a la pestaña “Movimientos” (mismo patrón que “Pendiente por resolver”).
-- La card ya muestra monto acumulado y cantidad de movimientos; se verifica que el conteo use los movimientos del fondo externo `posted`.
-- El listado de movimientos filtrado muestra producto, SKU, variante, pedido, costo y fecha (columnas ya presentes; se completan las que falten desde el enriquecimiento).
+- Columnas: Checkbox · Producto · Variante/talla · Proveedor · Cantidad · Costo unit. · Pedido / order_item · Estado.
+- Nombre y SKU tomados del movimiento (se acaban los UUID en pantalla).
+- Filas **con** `event_id`: seleccionables; "Crear orden externa" sigue usando `ExternalOrderPreviewDialog` + RPC actual, pasando los `event_id`.
+- Filas **sin** `event_id`: badge "Sin evento", checkbox deshabilitado y tooltip "No se puede crear orden externa porque falta evento external_supplier_review."
+- Se mantiene el aviso de "sin proveedor configurado".
 
 ## Reglas respetadas
-- No se crean órdenes de producción internas, unidades ni QR.
-- No se consume inventario interno.
-- Estos ítems no aparecen en la pestaña “Fabricación interna”.
-- No se toca Woo, OP, QR ni el edge function de partidas.
-- Sin tablas nuevas ni migraciones.
+- Sin migraciones, sin tablas nuevas, sin edge functions, sin tocar Woo, OP, QR, inventario ni saldos.
+- El reverso del pack de anillos queda como está (es correcto) y no aparece en pendientes.
 
-## Detalles técnicos
-- Archivos: `src/components/core/needs/ExternalRestockList.tsx` (nuevo), `src/pages/core/CoreProductionNeeds.tsx` (pestaña), `src/pages/core/CoreFabricationFunds.tsx` (onClick + filtro externo), y un hook pequeño `useExternalRestockItems` (probablemente dentro de `useExternalPurchaseOrders.ts` para no dispersar).
-- Agrupación en cliente por clave `core_product_id|core_variant_id|sku_normalizado`.
-- Validación final con Playwright sobre `/core/necesidades` y `/core/partidas-fabricacion` + typecheck.
+## Validación
+- `/core/mapa-woo-core → Reposición externa → Órdenes a proveedor → Pendientes` muestra exactamente la Gorra Vintage ($5.34), seleccionable.
+- Coincide con `/core/necesidades → Proveedor externo` y con el dinero de `external_supplier` en Partidas.
+- Typecheck 0 errores.
