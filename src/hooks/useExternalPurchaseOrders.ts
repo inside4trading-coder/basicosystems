@@ -18,6 +18,19 @@ export interface PendingExternalEvent {
   created_at: string;
 }
 
+export interface PendingExternalRow extends Omit<PendingExternalEvent, "id"> {
+  /** event_id (null si el movimiento no tiene evento external_supplier_review) */
+  id: string | null;
+  event_id: string | null;
+  movement_id: string;
+  product_name: string | null;
+  sku: string | null;
+  variant_label: string | null;
+  source_order_id: string | null;
+  source_order_item_id: string | null;
+}
+
+
 export interface ExternalPurchaseOrder {
   id: string;
   order_number: string;
@@ -65,27 +78,83 @@ export interface ExternalPurchaseOrderLine {
 export function usePendingExternalEvents() {
   return useQuery({
     queryKey: ["ext-po-pending-events"],
-    queryFn: async () => {
-      // eventos external_supplier_review sin línea externa
-      const { data: events, error } = await supabase
+    queryFn: async (): Promise<PendingExternalRow[]> => {
+      // Fuente: movimientos reales de partida proveedor externo (posted = no reversados)
+      const { data: movs, error: movErr } = await supabase
+        .from("core_fabrication_fund_movements")
+        .select("*")
+        .eq("fund_bucket", "external_supplier")
+        .eq("movement_type", "sale_generated")
+        .eq("status", "posted")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (movErr) throw movErr;
+      const movements = (movs ?? []) as any[];
+      if (movements.length === 0) return [];
+
+      // Eventos external_supplier_review (cualquier status) para enlazar
+      const { data: evs } = await supabase
         .from("core_replenishment_policy_events")
         .select("*")
         .eq("action", "external_supplier_review")
-        .in("status", ["open", "reviewed"])
         .order("created_at", { ascending: false })
-        .limit(500);
-      if (error) throw error;
-      const evs = (events ?? []) as any[];
-      if (evs.length === 0) return [] as PendingExternalEvent[];
-      const { data: lines } = await supabase
-        .from("core_external_purchase_order_lines")
-        .select("policy_event_id")
-        .in("policy_event_id", evs.map(e => e.id));
-      const usedIds = new Set((lines ?? []).map(l => l.policy_event_id));
-      return evs.filter(e => !usedIds.has(e.id)) as PendingExternalEvent[];
+        .limit(1000);
+      const events = (evs ?? []) as any[];
+      const bySourceId = new Map<string, any>();
+      const byOrderItem = new Map<string, any>();
+      for (const e of events) {
+        if (e.source_id && !bySourceId.has(e.source_id)) bySourceId.set(e.source_id, e);
+        const oi = e.woo_order_item_id != null ? String(e.woo_order_item_id) : null;
+        if (oi && !byOrderItem.has(oi)) byOrderItem.set(oi, e);
+      }
+
+      // Excluir los que ya tienen línea de orden externa
+      const eventIds = events.map(e => e.id);
+      let usedIds = new Set<string>();
+      if (eventIds.length > 0) {
+        const { data: lines } = await supabase
+          .from("core_external_purchase_order_lines")
+          .select("policy_event_id")
+          .in("policy_event_id", eventIds);
+        usedIds = new Set((lines ?? []).map(l => l.policy_event_id as string));
+      }
+
+      const rows: PendingExternalRow[] = [];
+      for (const m of movements) {
+        const ev =
+          (m.id ? bySourceId.get(m.id) : null) ??
+          (m.source_order_item_id ? byOrderItem.get(String(m.source_order_item_id)) : null) ??
+          null;
+        if (ev && usedIds.has(ev.id)) continue;
+        rows.push({
+          id: ev?.id ?? null,
+          event_id: ev?.id ?? null,
+          movement_id: m.id,
+          action: "external_supplier_review",
+          status: ev?.status ?? "sin_evento",
+          core_product_id: m.core_product_id ?? ev?.core_product_id ?? null,
+          core_variant_id: m.core_variant_id ?? ev?.core_variant_id ?? null,
+          woo_product_id: m.woo_product_id ?? ev?.woo_product_id ?? null,
+          woo_variation_id: m.woo_variation_id ?? ev?.woo_variation_id ?? null,
+          quantity: m.quantity ?? ev?.quantity ?? 0,
+          unit_cost: m.unit_cost_snapshot ?? ev?.unit_cost ?? 0,
+          external_supplier_name: ev?.external_supplier_name ?? null,
+          external_supplier_unit_cost_usd: ev?.external_supplier_unit_cost_usd ?? null,
+          policy_id: ev?.policy_id ?? null,
+          message: ev?.message ?? null,
+          created_at: m.created_at,
+          product_name: m.product_name ?? null,
+          sku: m.sku ?? null,
+          variant_label: (m.cost_snapshot_data?.variant_label ?? m.cost_snapshot_data?.size ?? null) as string | null,
+          source_order_id: m.source_order_id != null ? String(m.source_order_id) : null,
+          source_order_item_id: m.source_order_item_id != null ? String(m.source_order_item_id) : null,
+        });
+      }
+      return rows;
     },
   });
 }
+
 
 export function useExternalPurchaseOrders(status?: string) {
   return useQuery({
