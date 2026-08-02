@@ -18,6 +18,19 @@ export interface PendingExternalEvent {
   created_at: string;
 }
 
+export interface PendingExternalRow extends Omit<PendingExternalEvent, "id"> {
+  /** event_id (null si el movimiento no tiene evento external_supplier_review) */
+  id: string | null;
+  event_id: string | null;
+  movement_id: string;
+  product_name: string | null;
+  sku: string | null;
+  variant_label: string | null;
+  source_order_id: string | null;
+  source_order_item_id: string | null;
+}
+
+
 export interface ExternalPurchaseOrder {
   id: string;
   order_number: string;
