@@ -688,6 +688,7 @@ export default function CoreFabricationFunds() {
               movementsCount={partidaCards.external.count}
               lastMovementAt={partidaCards.external.last}
               tone="blue"
+              onClick={() => { setMovFilter("external_supplier"); setTab("movimientos"); }}
             />
             <PartidaCard
               title="Pendiente por resolver"
