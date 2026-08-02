@@ -789,6 +789,7 @@ export default function CoreFabricationFunds() {
                 <SelectContent>
                   <SelectItem value="all">Todos los movimientos</SelectItem>
                   <SelectItem value="pending_classification">Pendiente de clasificación</SelectItem>
+                  <SelectItem value="external_supplier">Proveedores externos</SelectItem>
                 </SelectContent>
               </Select>
               {movFilter !== "all" && (
@@ -797,8 +798,12 @@ export default function CoreFabricationFunds() {
             </div>
             {(() => {
               const pendingFundId = partidaCards.pending.fund?.id ?? null;
+              const externalFundId = partidaCards.external.fund?.id ?? null;
               const filtered = movements.filter(m => {
                 if (movFilter === "all") return true;
+                if (movFilter === "external_supplier") {
+                  return m.fund_bucket === "external_supplier" || (externalFundId && m.fund_id === externalFundId);
+                }
                 return m.fund_bucket === "pending_classification" || (pendingFundId && m.fund_id === pendingFundId);
               });
               const total = filtered.reduce((s, m) => s + Number(m.amount || 0), 0);
@@ -807,6 +812,11 @@ export default function CoreFabricationFunds() {
                   {movFilter === "pending_classification" && (
                     <div className="text-xs bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 rounded px-3 py-2">
                       Mostrando <strong>{filtered.length}</strong> movimiento{filtered.length === 1 ? "" : "s"} pendiente{filtered.length === 1 ? "" : "s"} de clasificación · Total <strong className="font-mono">{usd(total)}</strong>
+                    </div>
+                  )}
+                  {movFilter === "external_supplier" && (
+                    <div className="text-xs bg-blue-50 dark:bg-blue-950/20 border border-blue-200 rounded px-3 py-2">
+                      Mostrando <strong>{filtered.length}</strong> movimiento{filtered.length === 1 ? "" : "s"} de proveedores externos · Total <strong className="font-mono">{usd(total)}</strong>
                     </div>
                   )}
                   <div className="rounded-lg border overflow-x-auto">
