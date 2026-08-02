@@ -259,12 +259,29 @@ export async function revalidateAttentionRow(row: PolicyEvent): Promise<Revalida
   try {
     // B / C — falta mapeo o vínculo Core
     if (MAP_ACTIONS.has(row.action) || row.warning === "missing_core_ids") {
-      const { mapped, productId } = await hasWooCoreMap(row);
+      const check = await hasWooCoreMap(row);
+      const { mapped, productId, variantId } = check;
       if (!mapped) {
+        if (check.parentConnected && check.variantIssue === "ambiguous") {
+          return {
+            resolved: false,
+            reason: "variant_link_ambiguous",
+            message: "Encontramos varias variantes posibles. Selecciona la correcta.",
+          };
+        }
+        if (check.parentConnected) {
+          return {
+            resolved: false,
+            reason: "variant_link_missing",
+            message: check.sizeLabel
+              ? `Producto conectado, falta vincular la talla ${check.sizeLabel}.`
+              : "Producto conectado, falta vincular la variante.",
+          };
+        }
         return {
           resolved: false,
           reason: "map_still_missing",
-          message: "Todavía falta configurar el mapa Woo/Core.",
+          message: "Falta vincular esta talla con el producto del catálogo.",
         };
       }
       const inCatalog = await hasFabricationCatalog(productId ?? row.core_product_id);
@@ -278,12 +295,20 @@ export async function revalidateAttentionRow(row: PolicyEvent): Promise<Revalida
       const route = await resolveRouteInfo({
         ...row,
         core_product_id: productId ?? row.core_product_id,
+        core_variant_id: variantId ?? row.core_variant_id,
       } as PolicyEvent);
       return {
         resolved: true,
-        reason: "map_now_configured",
-        message: "Mapa Woo/Core configurado.",
+        reason: variantId && !row.core_variant_id
+          ? "variant_link_resolved_by_parent_and_sku"
+          : "map_now_configured",
+        message:
+          variantId && !row.core_variant_id
+            ? "Talla vinculada con el catálogo."
+            : "Mapa Woo/Core configurado.",
         ...route,
+        coreProductId: route.coreProductId ?? productId ?? row.core_product_id ?? null,
+        coreVariantId: route.coreVariantId ?? variantId ?? row.core_variant_id ?? null,
       };
     }
 
