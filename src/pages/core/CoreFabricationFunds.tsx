@@ -197,6 +197,15 @@ export default function CoreFabricationFunds() {
   }
   useEffect(() => { load(); }, []);
 
+  // Deep-link: /core/partidas-fabricacion?mov=external abre movimientos externos.
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("mov") === "external") {
+      setMovFilter("external_supplier");
+      setTab("movimientos");
+    }
+  }, []);
+
 
   const totals = useMemo(() => {
     const general = funds.filter(f => f.fund_type === "general").reduce((s, f) => s + Number(f.available_amount), 0);
