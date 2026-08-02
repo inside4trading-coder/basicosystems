@@ -201,6 +201,8 @@ export default function CoreWooCoreMap() {
   useEffect(() => {
     const initialSearch = searchParams.get("search");
     if (initialSearch && !search) setSearch(initialSearch);
+    const initialTab = searchParams.get("tab");
+    if (initialTab === "external") setTab("external");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
