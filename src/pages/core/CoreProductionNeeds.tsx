@@ -401,12 +401,18 @@ export default function CoreProductionNeeds() {
       <Tabs defaultValue="internal">
         <TabsList>
           <TabsTrigger value="internal">Fabricación interna</TabsTrigger>
+          <TabsTrigger value="external">Proveedor externo</TabsTrigger>
           <AttentionTabTrigger />
         </TabsList>
 
         <TabsContent value="attention" className="mt-4">
           <PolicyEventsAttentionPanel />
         </TabsContent>
+
+        <TabsContent value="external" className="mt-4">
+          <ExternalRestockList />
+        </TabsContent>
+
 
         <TabsContent value="internal" className="mt-4">
 
