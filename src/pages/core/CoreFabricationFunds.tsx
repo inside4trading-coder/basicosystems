@@ -149,7 +149,7 @@ export default function CoreFabricationFunds() {
   const [pendings, setPendings] = useState<Pending[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [units, setUnits] = useState<ProdUnit[]>([]);
-  const [movFilter, setMovFilter] = useState<"all" | "pending_classification">("all");
+  const [movFilter, setMovFilter] = useState<"all" | "pending_classification" | "external_supplier">("all");
   const [reconEvents, setReconEvents] = useState<any[]>([]);
   const [reconFilter, setReconFilter] = useState<"all" | "positive" | "negative" | "reclass" | "pending">("all");
   const [reconSearch, setReconSearch] = useState("");
@@ -196,6 +196,15 @@ export default function CoreFabricationFunds() {
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+
+  // Deep-link: /core/partidas-fabricacion?mov=external abre movimientos externos.
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("mov") === "external") {
+      setMovFilter("external_supplier");
+      setTab("movimientos");
+    }
+  }, []);
 
 
   const totals = useMemo(() => {
@@ -679,6 +688,7 @@ export default function CoreFabricationFunds() {
               movementsCount={partidaCards.external.count}
               lastMovementAt={partidaCards.external.last}
               tone="blue"
+              onClick={() => { setMovFilter("external_supplier"); setTab("movimientos"); }}
             />
             <PartidaCard
               title="Pendiente por resolver"
@@ -779,6 +789,7 @@ export default function CoreFabricationFunds() {
                 <SelectContent>
                   <SelectItem value="all">Todos los movimientos</SelectItem>
                   <SelectItem value="pending_classification">Pendiente de clasificación</SelectItem>
+                  <SelectItem value="external_supplier">Proveedores externos</SelectItem>
                 </SelectContent>
               </Select>
               {movFilter !== "all" && (
@@ -787,8 +798,12 @@ export default function CoreFabricationFunds() {
             </div>
             {(() => {
               const pendingFundId = partidaCards.pending.fund?.id ?? null;
+              const externalFundId = partidaCards.external.fund?.id ?? null;
               const filtered = movements.filter(m => {
                 if (movFilter === "all") return true;
+                if (movFilter === "external_supplier") {
+                  return m.fund_bucket === "external_supplier" || (externalFundId && m.fund_id === externalFundId);
+                }
                 return m.fund_bucket === "pending_classification" || (pendingFundId && m.fund_id === pendingFundId);
               });
               const total = filtered.reduce((s, m) => s + Number(m.amount || 0), 0);
@@ -797,6 +812,11 @@ export default function CoreFabricationFunds() {
                   {movFilter === "pending_classification" && (
                     <div className="text-xs bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 rounded px-3 py-2">
                       Mostrando <strong>{filtered.length}</strong> movimiento{filtered.length === 1 ? "" : "s"} pendiente{filtered.length === 1 ? "" : "s"} de clasificación · Total <strong className="font-mono">{usd(total)}</strong>
+                    </div>
+                  )}
+                  {movFilter === "external_supplier" && (
+                    <div className="text-xs bg-blue-50 dark:bg-blue-950/20 border border-blue-200 rounded px-3 py-2">
+                      Mostrando <strong>{filtered.length}</strong> movimiento{filtered.length === 1 ? "" : "s"} de proveedores externos · Total <strong className="font-mono">{usd(total)}</strong>
                     </div>
                   )}
                   <div className="rounded-lg border overflow-x-auto">

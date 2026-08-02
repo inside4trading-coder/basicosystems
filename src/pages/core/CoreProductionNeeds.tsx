@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ListChecks, Play, Plus, RotateCcw, History, AlertCircle, CheckCircle2, Ban, Pencil, AlertTriangle } from "lucide-react";
 import { PolicyEventsAttentionPanel } from "@/components/core/woocore/PolicyEventsAttentionPanel";
+import ExternalRestockList from "@/components/core/needs/ExternalRestockList";
 import { useReplenishmentPolicyEvents } from "@/hooks/useReplenishmentPolicyEvents";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
@@ -401,12 +402,18 @@ export default function CoreProductionNeeds() {
       <Tabs defaultValue="internal">
         <TabsList>
           <TabsTrigger value="internal">Fabricación interna</TabsTrigger>
+          <TabsTrigger value="external">Proveedor externo</TabsTrigger>
           <AttentionTabTrigger />
         </TabsList>
 
         <TabsContent value="attention" className="mt-4">
           <PolicyEventsAttentionPanel />
         </TabsContent>
+
+        <TabsContent value="external" className="mt-4">
+          <ExternalRestockList />
+        </TabsContent>
+
 
         <TabsContent value="internal" className="mt-4">
 
