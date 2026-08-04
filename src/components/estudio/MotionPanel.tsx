@@ -21,8 +21,12 @@ const ASPECT_OPTIONS = [
   { value: "16:9", label: "Horizontal 16:9" },
 ];
 
+// "Automática" es el default a propósito: cada modelo acepta un juego distinto de
+// resoluciones y OpenRouter no publica cuál, así que forzar una es la causa más común de
+// que la generación se rechace con un 400.
 const RESOLUTION_OPTIONS = [
-  { value: "480p", label: "480p (borrador, más barato)" },
+  { value: "auto", label: "Automática (la que soporte el modelo)" },
+  { value: "480p", label: "480p (borrador — no todos los modelos la aceptan)" },
   { value: "720p", label: "720p" },
   { value: "1080p", label: "1080p (mejor calidad)" },
 ];
@@ -59,6 +63,7 @@ export interface MotionSettings {
 export function MotionPanel({
   sourceImagePath,
   settings,
+  onJobChange,
 }: {
   sourceImagePath: string;
   /**
@@ -66,6 +71,12 @@ export function MotionPanel({
    * en vez de volver a pedirla: aquí solo queda confirmar y generar.
    */
   settings?: MotionSettings;
+  /**
+   * Se llama al lanzar el video y en cada cambio de estado, para que la lista de videos
+   * recientes lo refleje. Esa lista es lo que hace que el video sobreviva a recargar la
+   * página: el estado de este panel se pierde al montar de nuevo.
+   */
+  onJobChange?: () => void;
 }) {
   const [presets, setPresets] = useState<MotionPreset[]>([]);
   const [models, setModels] = useState<EnabledModel[]>([]);
@@ -73,7 +84,7 @@ export function MotionPanel({
   const [videoModel, setVideoModel] = useState<string>(settings?.videoModel ?? "");
   const [duration, setDuration] = useState<number>(settings?.duration ?? 5);
   const [aspectRatio, setAspectRatio] = useState<string>(settings?.aspectRatio ?? "9:16");
-  const [resolution, setResolution] = useState<string>(settings?.resolution ?? "720p");
+  const [resolution, setResolution] = useState<string>(settings?.resolution ?? "auto");
 
   const [submitting, setSubmitting] = useState(false);
   const [job, setJob] = useState<VideoJob | null>(null);
@@ -151,13 +162,15 @@ export function MotionPanel({
       if (row.status === "completed" && row.video_storage_path) {
         stopPolling();
         setVideoUrl(await resolveEstudioSignedUrl(row.video_storage_path));
+        onJobChange?.();
         toast.success("Video listo.");
       } else if (row.status === "failed") {
         stopPolling();
+        onJobChange?.();
         toast.error(row.error_message ?? "La generación de video falló.");
       }
     },
-    [stopPolling],
+    [stopPolling, onJobChange],
   );
 
   useEffect(() => stopPolling, [stopPolling]);
@@ -201,6 +214,8 @@ export function MotionPanel({
       toast.error(e instanceof Error ? e.message : "No se pudo iniciar la generación de video.");
     } finally {
       setSubmitting(false);
+      // También cuando falla: el trabajo ya quedó registrado y debe verse en la lista.
+      onJobChange?.();
     }
   };
 
@@ -226,7 +241,8 @@ export function MotionPanel({
           {settings ? (
             <p className="text-sm">
               <span className="text-muted-foreground">Configuración elegida: </span>
-              {settings.presetName} · {duration} s · {aspectRatio} · {resolution}
+              {settings.presetName} · {duration} s · {aspectRatio} ·{" "}
+              {resolution === "auto" ? "resolución automática" : resolution}
             </p>
           ) : (
             <>

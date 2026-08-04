@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { estudioDb } from "@/lib/estudioDb";
@@ -22,11 +22,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Sparkles, Download, ImagePlus, AlertTriangle, X } from "lucide-react";
+import { Loader2, Sparkles, Download, ImagePlus, AlertTriangle, X, RefreshCw } from "lucide-react";
 import {
   uploadEstudioSourcePhoto,
   resolveEstudioSignedUrl,
   downloadEstudioImage,
+  downloadEstudioFile,
   downloadBlob,
 } from "@/lib/estudioStorage";
 import {
@@ -73,8 +74,12 @@ const MOTION_ASPECT_OPTIONS: DropdownOption[] = [
   { value: "16:9", label: "Horizontal 16:9" },
 ];
 
+// "Automática" es el default a propósito: cada modelo acepta un juego distinto de
+// resoluciones y OpenRouter no publica cuál, así que forzar una es la causa más común de
+// que la generación se rechace con un 400.
 const MOTION_RESOLUTION_OPTIONS: DropdownOption[] = [
-  { value: "480p", label: "480p (borrador, más barato)" },
+  { value: "auto", label: "Automática (la que soporte el modelo)" },
+  { value: "480p", label: "480p (borrador — no todos los modelos la aceptan)" },
   { value: "720p", label: "720p" },
   { value: "1080p", label: "1080p (mejor calidad)" },
 ];
@@ -82,9 +87,13 @@ const MOTION_RESOLUTION_OPTIONS: DropdownOption[] = [
 const STATUS_LABELS: Record<string, string> = {
   pending: "En cola",
   processing: "Generando…",
+  in_progress: "Generando…",
   completed: "Lista",
   failed: "Falló",
 };
+
+/** Cada cuánto se reconsulta un video que sigue generándose. */
+const VIDEO_POLL_MS = 8000;
 
 interface PromptPreset {
   id: string;
@@ -112,6 +121,18 @@ interface ImageJob {
   view_type: ViewType | null;
   is_inferred: boolean | null;
   generated_image_path: string | null;
+  cost_usd: number | null;
+  error_message: string | null;
+}
+
+interface VideoJob {
+  id: string;
+  created_at: string;
+  status: string;
+  duration_seconds: number;
+  resolution: string | null;
+  aspect_ratio: string | null;
+  video_storage_path: string | null;
   cost_usd: number | null;
   error_message: string | null;
 }
@@ -223,7 +244,7 @@ export default function EstudioVisual() {
   const [videoModel, setVideoModel] = useState<string>("");
   const [motionDuration, setMotionDuration] = useState<number>(5);
   const [motionAspect, setMotionAspect] = useState<string>("9:16");
-  const [motionResolution, setMotionResolution] = useState<string>("720p");
+  const [motionResolution, setMotionResolution] = useState<string>("auto");
 
   const [views, setViews] = useState<Record<ViewType, ViewInput>>({
     frente: { include: true, file: null, previewUrl: null },
@@ -240,6 +261,8 @@ export default function EstudioVisual() {
   const [generating, setGenerating] = useState(false);
   const [results, setResults] = useState<ViewResult[]>([]);
   const [history, setHistory] = useState<ImageJob[]>([]);
+  const [videos, setVideos] = useState<VideoJob[]>([]);
+  const [videoUrls, setVideoUrls] = useState<Record<string, string>>({});
   const [presetsError, setPresetsError] = useState<string | null>(null);
 
   const selectedPreset = presets.find((p) => p.id === presetId) ?? null;
@@ -323,17 +346,50 @@ export default function EstudioVisual() {
     setHistory((data ?? []) as ImageJob[]);
   };
 
+  const loadVideos = useCallback(async () => {
+    const { data } = await estudioDb
+      .from("estudio_video_jobs")
+      .select("id, created_at, status, duration_seconds, resolution, aspect_ratio, video_storage_path, cost_usd, error_message")
+      .order("created_at", { ascending: false })
+      .limit(12);
+    const list = (data ?? []) as VideoJob[];
+    setVideos(list);
+
+    const ready = list.filter((v) => v.status === "completed" && v.video_storage_path);
+    const urls = await Promise.all(
+      ready.map(async (v) => [v.id, await resolveEstudioSignedUrl(v.video_storage_path!)] as const),
+    );
+    setVideoUrls(Object.fromEntries(urls));
+  }, []);
+
+  /**
+   * Recupera los videos que quedaron a medias porque se cerró la pestaña durante la
+   * generación: la función consulta OpenRouter y baja al bucket los que ya terminaron.
+   */
+  const reconcileVideos = useCallback(async () => {
+    await supabase.functions.invoke("estudio-video-status", { body: {} }).catch(() => {});
+    await loadVideos();
+  }, [loadVideos]);
+
   useEffect(() => {
     loadPresets();
     loadModels();
     loadMotionPresets();
     loadBrand();
     loadHistory();
-    // Recupera videos que quedaron a medias si se cerró la pestaña durante la generación.
-    supabase.functions.invoke("estudio-video-status", { body: {} }).catch(() => {});
+    reconcileVideos();
     // Carga inicial: las mismas funciones se vuelven a llamar al cerrar cada diálogo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Mientras haya un video generándose se sigue consultando, también si la generación
+  // empezó en otra sesión del navegador.
+  const hasRunningVideos = videos.some((v) => v.status === "pending" || v.status === "in_progress");
+  useEffect(() => {
+    if (!hasRunningVideos) return;
+    const id = window.setInterval(reconcileVideos, VIDEO_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [hasRunningVideos, reconcileVideos]);
 
   // Al cambiar de estilo se adoptan su prompt, su modelo y su dimensión como punto de partida.
   useEffect(() => {
@@ -879,7 +935,11 @@ export default function EstudioVisual() {
                     </div>
 
                     {generationType === "motion" && r.generatedPath && (
-                      <MotionPanel sourceImagePath={r.generatedPath} settings={motionSettings} />
+                      <MotionPanel
+                        sourceImagePath={r.generatedPath}
+                        settings={motionSettings}
+                        onJobChange={loadVideos}
+                      />
                     )}
                   </>
                 )}
@@ -888,6 +948,71 @@ export default function EstudioVisual() {
           </div>
         </div>
       )}
+
+      <Card className="p-6 rounded-2xl">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h2 className="text-lg font-semibold">Videos recientes</h2>
+          <Button variant="ghost" size="sm" onClick={reconcileVideos}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Actualizar
+          </Button>
+        </div>
+        {videos.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Todavía no hay videos.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {videos.map((v) => (
+              <div key={v.id} className="border rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="font-medium">{v.duration_seconds} s</span>
+                  <span
+                    className={
+                      v.status === "completed"
+                        ? "text-emerald-600"
+                        : v.status === "failed"
+                          ? "text-destructive"
+                          : "text-muted-foreground"
+                    }
+                  >
+                    {STATUS_LABELS[v.status] ?? v.status}
+                  </span>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  {new Date(v.created_at).toLocaleString("es-VE")}
+                  {v.aspect_ratio && ` · ${v.aspect_ratio}`}
+                  {v.resolution && ` · ${v.resolution}`}
+                  {v.cost_usd != null && ` · $${v.cost_usd.toFixed(4)}`}
+                </p>
+
+                {videoUrls[v.id] && (
+                  <video src={videoUrls[v.id]} controls loop className="w-full rounded-lg border" />
+                )}
+
+                {v.status === "completed" && v.video_storage_path && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      downloadEstudioFile(
+                        v.video_storage_path!,
+                        `estudio-motion-${v.id.slice(0, 8)}-${v.duration_seconds}s.mp4`,
+                      )
+                    }
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Descargar
+                  </Button>
+                )}
+
+                {v.status === "failed" && v.error_message && (
+                  <p className="text-xs text-destructive">{v.error_message}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       <Card className="p-6 rounded-2xl">
         <h2 className="text-lg font-semibold mb-4">Generaciones recientes</h2>
