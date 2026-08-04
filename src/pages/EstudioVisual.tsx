@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { estudioDb } from "@/lib/estudioDb";
+import { readEdgeFunctionError } from "@/lib/estudioErrors";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Sparkles, Download, ImagePlus } from "lucide-react";
+import { Loader2, Sparkles, Download, ImagePlus, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   uploadEstudioSourcePhoto,
   resolveEstudioSignedUrl,
@@ -26,6 +29,13 @@ const PHOTO_TYPE_LABELS: Record<PhotoType, string> = {
   fondo_blanco: "Fondo blanco",
   modelo: "Con modelo",
   mockup: "Mockup lifestyle",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "En cola",
+  processing: "Generando…",
+  completed: "Lista",
+  failed: "Falló",
 };
 
 interface PromptPreset {
@@ -49,32 +59,65 @@ interface ImageJob {
   error_message: string | null;
 }
 
+/**
+ * Previsualiza un Blob gestionando el ciclo de vida del object URL.
+ * Llamar a `URL.createObjectURL` dentro del JSX crea un blob nuevo en cada re-render
+ * (por ejemplo, en cada tecla del nombre del producto) y ninguno se libera.
+ */
+function BlobPreview({ blob, alt, className }: { blob: Blob; alt: string; className?: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(blob);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [blob]);
+
+  return url ? <img src={url} alt={alt} className={className} /> : null;
+}
+
 export default function EstudioVisual() {
   const [photoType, setPhotoType] = useState<PhotoType>("fondo_blanco");
   const [presets, setPresets] = useState<PromptPreset[]>([]);
   const [promptText, setPromptText] = useState("");
   const [brand, setBrand] = useState<EstudioBrandSettings | null>(null);
+  // Vive aparte de `brand` porque no es un ajuste de composición: decide si la variante
+  // de Story llega a generarse. Default `false`, igual que la columna en base.
+  const [generateStory, setGenerateStory] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [productName, setProductName] = useState("");
   const [productPrice, setProductPrice] = useState("");
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<{
+    generatedPath: string;
     generatedUrl: string;
     feedBlob: Blob | null;
     storyBlob: Blob | null;
     costUsd: number | null;
   } | null>(null);
   const [history, setHistory] = useState<ImageJob[]>([]);
+  const [presetsError, setPresetsError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadPresets = async () => {
-    const { data } = await supabase.from("estudio_prompt_presets").select("*") as any;
+    const { data, error } = await estudioDb.from("estudio_prompt_presets").select("*");
+    // Sin esto la pantalla queda con el prompt vacío y sin explicación — que es exactamente
+    // lo que pasa si la migración del módulo todavía no se aplicó a la base.
+    if (error) {
+      setPresetsError(
+        error.code === "PGRST205"
+          ? "El módulo no está instalado en la base de datos todavía (falta aplicar su migración)."
+          : "No se pudieron cargar los prompts.",
+      );
+      return;
+    }
+    setPresetsError(null);
     setPresets((data ?? []) as PromptPreset[]);
   };
 
   const loadBrand = async () => {
-    const { data } = await (supabase.from("estudio_brand_template").select("*").maybeSingle() as any);
+    const { data } = await estudioDb.from("estudio_brand_template").select("*").maybeSingle();
     if (!data) return;
     let logoUrl: string | null = null;
     if (data.logo_storage_path) {
@@ -88,14 +131,15 @@ export default function EstudioVisual() {
       showProductName: data.show_product_name,
       showPrice: data.show_price,
     });
+    setGenerateStory(Boolean(data.generate_story_variant));
   };
 
   const loadHistory = async () => {
-    const { data } = await (supabase
+    const { data } = await estudioDb
       .from("estudio_image_jobs")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(10) as any);
+      .limit(10);
     setHistory((data ?? []) as ImageJob[]);
   };
 
@@ -139,25 +183,39 @@ export default function EstudioVisual() {
           productPrice: productPrice || undefined,
         },
       });
-      if (error) throw error;
+
+      // supabase-js convierte cualquier respuesta no-2xx en un FunctionsHttpError genérico y
+      // descarta el cuerpo, así que el motivo real ("saldo insuficiente", "límite alcanzado")
+      // se pierde. Lo recuperamos leyendo el cuerpo de la respuesta original.
+      if (error) throw new Error(await readEdgeFunctionError(error));
       if (data?.error) throw new Error(data.error);
 
       const generatedUrl = await resolveEstudioSignedUrl(data.generatedImagePath);
 
-      let feedBlob: Blob | null = null;
-      let storyBlob: Blob | null = null;
-      if (brand) {
-        feedBlob = await composeInstagramFeed(generatedUrl, brand, { productName, productPrice });
-        if ((brand as any).generateStoryVariant !== false) {
-          storyBlob = await composeInstagramStory(generatedUrl, brand, { productName, productPrice });
-        }
-      }
-
-      setResult({ generatedUrl, feedBlob, storyBlob, costUsd: data.costUsd ?? null });
+      // La imagen ya está generada y pagada: se muestra aunque falle el compositing.
+      setResult({
+        generatedPath: data.generatedImagePath,
+        generatedUrl,
+        feedBlob: null,
+        storyBlob: null,
+        costUsd: data.costUsd ?? null,
+      });
       toast.success("Imagen generada correctamente.");
       loadHistory();
-    } catch (e: any) {
-      toast.error(e.message ?? "No se pudo generar la imagen.");
+
+      if (brand) {
+        try {
+          const feedBlob = await composeInstagramFeed(generatedUrl, brand, { productName, productPrice });
+          const storyBlob = generateStory
+            ? await composeInstagramStory(generatedUrl, brand, { productName, productPrice })
+            : null;
+          setResult((prev) => (prev ? { ...prev, feedBlob, storyBlob } : prev));
+        } catch {
+          toast.warning("La foto se generó, pero no se pudieron componer las variantes de Instagram.");
+        }
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo generar la imagen.");
     } finally {
       setGenerating(false);
     }
@@ -165,12 +223,29 @@ export default function EstudioVisual() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-black tracking-tight">Estudio Visual</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Genera la foto de estudio con IA y sus variantes para Instagram a partir de una foto de la prenda.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight">Estudio Visual</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Genera la foto de estudio con IA y sus variantes para Instagram a partir de una foto de la prenda.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/estudio-visual/configuracion">
+            <Settings className="mr-2 h-4 w-4" />
+            Configuración
+          </Link>
+        </Button>
       </div>
+
+      {presetsError && (
+        <Card className="p-4 rounded-2xl border-destructive/40 bg-destructive/5">
+          <p className="text-sm text-destructive font-medium">{presetsError}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Hasta entonces la generación no va a funcionar, aunque el formulario se vea completo.
+          </p>
+        </Card>
+      )}
 
       <Card className="p-6 rounded-2xl space-y-5">
         <div>
@@ -229,7 +304,7 @@ export default function EstudioVisual() {
           />
           <p className="text-xs text-muted-foreground mt-1">
             Este cambio aplica solo a esta generación. Para guardarlo como default, ajústalo desde
-            Configuración → Estudio Visual.
+            Configuración (botón arriba a la derecha).
           </p>
         </div>
 
@@ -252,7 +327,7 @@ export default function EstudioVisual() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => downloadEstudioImage(result.generatedUrl, "estudio-foto.png")}
+                onClick={() => downloadEstudioImage(result.generatedPath, "estudio-foto.png")}
               >
                 <Download className="mr-2 h-4 w-4" />
                 Descargar
@@ -261,7 +336,7 @@ export default function EstudioVisual() {
             {result.feedBlob && (
               <div className="space-y-2">
                 <p className="text-sm font-medium">Instagram — Post (1080×1080)</p>
-                <img src={URL.createObjectURL(result.feedBlob)} alt="Instagram feed" className="w-full rounded-lg border" />
+                <BlobPreview blob={result.feedBlob} alt="Instagram feed" className="w-full rounded-lg border" />
                 <Button variant="outline" size="sm" onClick={() => downloadBlob(result.feedBlob!, "instagram-feed.png")}>
                   <Download className="mr-2 h-4 w-4" />
                   Descargar
@@ -271,7 +346,7 @@ export default function EstudioVisual() {
             {result.storyBlob && (
               <div className="space-y-2">
                 <p className="text-sm font-medium">Instagram — Story (1080×1920)</p>
-                <img src={URL.createObjectURL(result.storyBlob)} alt="Instagram story" className="w-full rounded-lg border" />
+                <BlobPreview blob={result.storyBlob} alt="Instagram story" className="w-full rounded-lg border" />
                 <Button variant="outline" size="sm" onClick={() => downloadBlob(result.storyBlob!, "instagram-story.png")}>
                   <Download className="mr-2 h-4 w-4" />
                   Descargar
@@ -289,20 +364,45 @@ export default function EstudioVisual() {
         ) : (
           <div className="space-y-2">
             {history.map((job) => (
-              <div key={job.id} className="flex items-center justify-between text-sm border-b py-2 last:border-0">
-                <span>{PHOTO_TYPE_LABELS[job.photo_type]}</span>
-                <span className="text-muted-foreground">{new Date(job.created_at).toLocaleString("es-VE")}</span>
-                <span
-                  className={
-                    job.status === "completed"
-                      ? "text-emerald-600"
-                      : job.status === "failed"
-                        ? "text-destructive"
-                        : "text-muted-foreground"
-                  }
-                >
-                  {job.status}
-                </span>
+              <div key={job.id} className="border-b py-2 last:border-0 space-y-1">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-medium">{PHOTO_TYPE_LABELS[job.photo_type]}</span>
+                  <span className="text-muted-foreground">
+                    {new Date(job.created_at).toLocaleString("es-VE")}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    {job.cost_usd != null && (
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        ${job.cost_usd.toFixed(4)}
+                      </span>
+                    )}
+                    <span
+                      className={
+                        job.status === "completed"
+                          ? "text-emerald-600"
+                          : job.status === "failed"
+                            ? "text-destructive"
+                            : "text-muted-foreground"
+                      }
+                    >
+                      {STATUS_LABELS[job.status] ?? job.status}
+                    </span>
+                    {job.status === "completed" && job.generated_image_path && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          downloadEstudioImage(job.generated_image_path!, `estudio-${job.id.slice(0, 8)}.png`)
+                        }
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {job.status === "failed" && job.error_message && (
+                  <p className="text-xs text-destructive">{job.error_message}</p>
+                )}
               </div>
             ))}
           </div>
