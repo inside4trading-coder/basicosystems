@@ -6447,6 +6447,280 @@ export type Database = {
         }
         Relationships: []
       }
+      estudio_brand_template: {
+        Row: {
+          generate_story_variant: boolean
+          id: string
+          logo_position: string
+          logo_storage_path: string | null
+          primary_color: string
+          secondary_color: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          generate_story_variant?: boolean
+          id?: string
+          logo_position?: string
+          logo_storage_path?: string | null
+          primary_color?: string
+          secondary_color?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          generate_story_variant?: boolean
+          id?: string
+          logo_position?: string
+          logo_storage_path?: string | null
+          primary_color?: string
+          secondary_color?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      estudio_enabled_models: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          kind: string
+          label: string | null
+          model_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          kind: string
+          label?: string | null
+          model_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          kind?: string
+          label?: string | null
+          model_id?: string
+        }
+        Relationships: []
+      }
+      estudio_image_jobs: {
+        Row: {
+          cost_usd: number | null
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          generated_image_path: string | null
+          id: string
+          image_model: string
+          instagram_feed_path: string | null
+          instagram_story_path: string | null
+          is_inferred: boolean
+          output_size: string | null
+          photo_type: string
+          prompt_preset_id: string | null
+          prompt_used: string
+          session_id: string | null
+          source_photo_path: string
+          status: string
+          view_type: string
+        }
+        Insert: {
+          cost_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          generated_image_path?: string | null
+          id?: string
+          image_model: string
+          instagram_feed_path?: string | null
+          instagram_story_path?: string | null
+          is_inferred?: boolean
+          output_size?: string | null
+          photo_type: string
+          prompt_preset_id?: string | null
+          prompt_used: string
+          session_id?: string | null
+          source_photo_path: string
+          status?: string
+          view_type?: string
+        }
+        Update: {
+          cost_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          generated_image_path?: string | null
+          id?: string
+          image_model?: string
+          instagram_feed_path?: string | null
+          instagram_story_path?: string | null
+          is_inferred?: boolean
+          output_size?: string | null
+          photo_type?: string
+          prompt_preset_id?: string | null
+          prompt_used?: string
+          session_id?: string | null
+          source_photo_path?: string
+          status?: string
+          view_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estudio_image_jobs_prompt_preset_id_fkey"
+            columns: ["prompt_preset_id"]
+            isOneToOne: false
+            referencedRelation: "estudio_prompt_presets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estudio_motion_presets: {
+        Row: {
+          created_at: string
+          default_duration_seconds: number
+          id: string
+          is_default: boolean
+          name: string
+          prompt_text: string
+          updated_at: string
+          video_model: string
+        }
+        Insert: {
+          created_at?: string
+          default_duration_seconds?: number
+          id?: string
+          is_default?: boolean
+          name: string
+          prompt_text: string
+          updated_at?: string
+          video_model?: string
+        }
+        Update: {
+          created_at?: string
+          default_duration_seconds?: number
+          id?: string
+          is_default?: boolean
+          name?: string
+          prompt_text?: string
+          updated_at?: string
+          video_model?: string
+        }
+        Relationships: []
+      }
+      estudio_prompt_presets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          garment_category: string | null
+          id: string
+          image_model: string
+          is_default: boolean
+          name: string
+          output_size: string
+          photo_type: string
+          prompt_text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          garment_category?: string | null
+          id?: string
+          image_model?: string
+          is_default?: boolean
+          name: string
+          output_size?: string
+          photo_type: string
+          prompt_text: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          garment_category?: string | null
+          id?: string
+          image_model?: string
+          is_default?: boolean
+          name?: string
+          output_size?: string
+          photo_type?: string
+          prompt_text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      estudio_video_jobs: {
+        Row: {
+          aspect_ratio: string | null
+          cost_usd: number | null
+          created_at: string
+          created_by: string | null
+          duration_seconds: number
+          error_message: string | null
+          generate_audio: boolean
+          id: string
+          motion_preset_id: string | null
+          openrouter_job_id: string | null
+          prompt_used: string
+          resolution: string | null
+          source_image_path: string
+          status: string
+          updated_at: string
+          video_model: string
+          video_storage_path: string | null
+        }
+        Insert: {
+          aspect_ratio?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          duration_seconds: number
+          error_message?: string | null
+          generate_audio?: boolean
+          id?: string
+          motion_preset_id?: string | null
+          openrouter_job_id?: string | null
+          prompt_used: string
+          resolution?: string | null
+          source_image_path: string
+          status?: string
+          updated_at?: string
+          video_model: string
+          video_storage_path?: string | null
+        }
+        Update: {
+          aspect_ratio?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number
+          error_message?: string | null
+          generate_audio?: boolean
+          id?: string
+          motion_preset_id?: string | null
+          openrouter_job_id?: string | null
+          prompt_used?: string
+          resolution?: string | null
+          source_image_path?: string
+          status?: string
+          updated_at?: string
+          video_model?: string
+          video_storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estudio_video_jobs_motion_preset_id_fkey"
+            columns: ["motion_preset_id"]
+            isOneToOne: false
+            referencedRelation: "estudio_motion_presets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fondo_aportes: {
         Row: {
           comprobante_privado_url: string | null
