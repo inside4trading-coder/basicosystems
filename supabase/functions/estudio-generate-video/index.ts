@@ -17,6 +17,48 @@ const BUCKET = "estudio-visual";
 // pero se da margen porque la generación puede encolarse.
 const SOURCE_URL_TTL_SECONDS = 60 * 60;
 
+/**
+ * Saca el motivo legible de un error de OpenRouter.
+ *
+ * El proveedor de video devuelve su propio error anidado como texto dentro del mensaje
+ * ("HTTP 400: {\"error\": {\"message\": \"Invalid resolution: 480p\"}}"), así que volcar el
+ * cuerpo tal cual le muestra al usuario un bloque de JSON escapado en vez del motivo.
+ */
+function readOpenRouterError(raw: string): string {
+  let message = raw.trim();
+  try {
+    const outer = JSON.parse(raw);
+    message = String(outer?.error?.message ?? outer?.message ?? message);
+  } catch {
+    return message.slice(0, 300);
+  }
+
+  const nested = message.match(/\{[\s\S]*\}/);
+  if (nested) {
+    try {
+      const inner = JSON.parse(nested[0]);
+      message = String(inner?.error?.message ?? inner?.message ?? message);
+    } catch {
+      // El mensaje no traía JSON anidado: se queda el de afuera.
+    }
+  }
+  return message.trim().slice(0, 300);
+}
+
+/** Los parámetros que más rechazan los modelos: vale la pena decir qué hacer. */
+function hintForError(message: string): string {
+  if (/resolution/i.test(message)) {
+    return ' Ese modelo no acepta esa resolución: elige "Automática" o prueba con 720p.';
+  }
+  if (/duration/i.test(message)) {
+    return " Ese modelo no acepta esa duración: prueba con otra (muchos solo aceptan 4, 6 u 8 segundos).";
+  }
+  if (/aspect/i.test(message)) {
+    return " Ese modelo no acepta ese formato: prueba con 16:9 o 9:16.";
+  }
+  return "";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -52,7 +94,11 @@ Deno.serve(async (req) => {
     const motionPresetId = (body?.motionPresetId as string | undefined) ?? null;
     const promptOverride = body?.promptOverride as string | undefined;
     const durationSeconds = Number(body?.durationSeconds ?? 5);
-    const resolution = (body?.resolution as string | undefined) ?? "720p";
+    // Vacío o "auto" = no mandar el parámetro y dejar que el modelo elija. Es la única
+    // opción que funciona con cualquier modelo: OpenRouter no publica qué resoluciones
+    // acepta cada uno, así que no hay forma de validarlo por adelantado.
+    const rawResolution = (body?.resolution as string | undefined)?.trim();
+    const resolution = !rawResolution || rawResolution === "auto" ? null : rawResolution;
     const aspectRatio = (body?.aspectRatio as string | undefined) ?? "9:16";
     const videoModelOverride = body?.videoModel as string | undefined;
 
@@ -133,7 +179,9 @@ Deno.serve(async (req) => {
           },
         ],
         duration: durationSeconds,
-        resolution,
+        // Solo se manda si el usuario eligió una explícita: mandar una que el modelo no
+        // soporta es un 400 seguro (ej. Veo rechaza 480p).
+        ...(resolution ? { resolution } : {}),
         aspect_ratio: aspectRatio,
         // Loops de producto: sin audio (además, generarlo encarece).
         generate_audio: false,
@@ -157,13 +205,11 @@ Deno.serve(async (req) => {
       return json(200, { jobId: job.id, error: "Saldo insuficiente en la cuenta de OpenRouter." });
     }
     if (!aiRes.ok) {
-      const detail = (await aiRes.text().catch(() => "")).slice(0, 300);
-      await failJob(`OpenRouter respondió ${aiRes.status}: ${detail}`);
+      const detail = readOpenRouterError(await aiRes.text().catch(() => ""));
+      const message = `La generación de video fue rechazada (${aiRes.status}): ${detail}${hintForError(detail)}`;
+      await failJob(message);
       // 200 con `error` para que supabase-js no enmascare el motivo real.
-      return json(200, {
-        jobId: job.id,
-        error: `La generación de video fue rechazada (${aiRes.status}). ${detail}`,
-      });
+      return json(200, { jobId: job.id, error: message });
     }
 
     const submitted = await aiRes.json();

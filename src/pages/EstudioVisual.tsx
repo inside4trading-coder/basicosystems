@@ -73,8 +73,12 @@ const MOTION_ASPECT_OPTIONS: DropdownOption[] = [
   { value: "16:9", label: "Horizontal 16:9" },
 ];
 
+// "Automática" es el default a propósito: cada modelo acepta un juego distinto de
+// resoluciones y OpenRouter no publica cuál, así que forzar una es la causa más común de
+// que la generación se rechace con un 400.
 const MOTION_RESOLUTION_OPTIONS: DropdownOption[] = [
-  { value: "480p", label: "480p (borrador, más barato)" },
+  { value: "auto", label: "Automática (la que soporte el modelo)" },
+  { value: "480p", label: "480p (borrador — no todos los modelos la aceptan)" },
   { value: "720p", label: "720p" },
   { value: "1080p", label: "1080p (mejor calidad)" },
 ];
@@ -223,7 +227,7 @@ export default function EstudioVisual() {
   const [videoModel, setVideoModel] = useState<string>("");
   const [motionDuration, setMotionDuration] = useState<number>(5);
   const [motionAspect, setMotionAspect] = useState<string>("9:16");
-  const [motionResolution, setMotionResolution] = useState<string>("720p");
+  const [motionResolution, setMotionResolution] = useState<string>("auto");
 
   const [views, setViews] = useState<Record<ViewType, ViewInput>>({
     frente: { include: true, file: null, previewUrl: null },

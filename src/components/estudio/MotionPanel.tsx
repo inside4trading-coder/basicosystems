@@ -21,8 +21,12 @@ const ASPECT_OPTIONS = [
   { value: "16:9", label: "Horizontal 16:9" },
 ];
 
+// "Automática" es el default a propósito: cada modelo acepta un juego distinto de
+// resoluciones y OpenRouter no publica cuál, así que forzar una es la causa más común de
+// que la generación se rechace con un 400.
 const RESOLUTION_OPTIONS = [
-  { value: "480p", label: "480p (borrador, más barato)" },
+  { value: "auto", label: "Automática (la que soporte el modelo)" },
+  { value: "480p", label: "480p (borrador — no todos los modelos la aceptan)" },
   { value: "720p", label: "720p" },
   { value: "1080p", label: "1080p (mejor calidad)" },
 ];
@@ -73,7 +77,7 @@ export function MotionPanel({
   const [videoModel, setVideoModel] = useState<string>(settings?.videoModel ?? "");
   const [duration, setDuration] = useState<number>(settings?.duration ?? 5);
   const [aspectRatio, setAspectRatio] = useState<string>(settings?.aspectRatio ?? "9:16");
-  const [resolution, setResolution] = useState<string>(settings?.resolution ?? "720p");
+  const [resolution, setResolution] = useState<string>(settings?.resolution ?? "auto");
 
   const [submitting, setSubmitting] = useState(false);
   const [job, setJob] = useState<VideoJob | null>(null);
@@ -226,7 +230,8 @@ export function MotionPanel({
           {settings ? (
             <p className="text-sm">
               <span className="text-muted-foreground">Configuración elegida: </span>
-              {settings.presetName} · {duration} s · {aspectRatio} · {resolution}
+              {settings.presetName} · {duration} s · {aspectRatio} ·{" "}
+              {resolution === "auto" ? "resolución automática" : resolution}
             </p>
           ) : (
             <>
