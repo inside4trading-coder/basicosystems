@@ -63,6 +63,7 @@ export interface MotionSettings {
 export function MotionPanel({
   sourceImagePath,
   settings,
+  onJobChange,
 }: {
   sourceImagePath: string;
   /**
@@ -70,6 +71,12 @@ export function MotionPanel({
    * en vez de volver a pedirla: aquí solo queda confirmar y generar.
    */
   settings?: MotionSettings;
+  /**
+   * Se llama al lanzar el video y en cada cambio de estado, para que la lista de videos
+   * recientes lo refleje. Esa lista es lo que hace que el video sobreviva a recargar la
+   * página: el estado de este panel se pierde al montar de nuevo.
+   */
+  onJobChange?: () => void;
 }) {
   const [presets, setPresets] = useState<MotionPreset[]>([]);
   const [models, setModels] = useState<EnabledModel[]>([]);
@@ -155,13 +162,15 @@ export function MotionPanel({
       if (row.status === "completed" && row.video_storage_path) {
         stopPolling();
         setVideoUrl(await resolveEstudioSignedUrl(row.video_storage_path));
+        onJobChange?.();
         toast.success("Video listo.");
       } else if (row.status === "failed") {
         stopPolling();
+        onJobChange?.();
         toast.error(row.error_message ?? "La generación de video falló.");
       }
     },
-    [stopPolling],
+    [stopPolling, onJobChange],
   );
 
   useEffect(() => stopPolling, [stopPolling]);
@@ -205,6 +214,8 @@ export function MotionPanel({
       toast.error(e instanceof Error ? e.message : "No se pudo iniciar la generación de video.");
     } finally {
       setSubmitting(false);
+      // También cuando falla: el trabajo ya quedó registrado y debe verse en la lista.
+      onJobChange?.();
     }
   };
 
