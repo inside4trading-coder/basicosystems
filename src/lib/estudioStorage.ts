@@ -46,7 +46,8 @@ export async function resolveEstudioSignedUrl(path: string): Promise<string> {
   return data.signedUrl;
 }
 
-export async function downloadEstudioImage(path: string, filename: string): Promise<void> {
+/** Descarga cualquier archivo del bucket (imagen o video) resolviendo su signed URL. */
+export async function downloadEstudioFile(path: string, filename: string): Promise<void> {
   const resolved = await resolveEstudioSignedUrl(path);
   if (!resolved) return;
   try {
@@ -64,6 +65,9 @@ export async function downloadEstudioImage(path: string, filename: string): Prom
     window.open(resolved, "_blank");
   }
 }
+
+/** Alias histórico de `downloadEstudioFile`. */
+export const downloadEstudioImage = downloadEstudioFile;
 
 /** Descarga un Blob generado en el navegador (ej. las variantes de Instagram compuestas en Canvas). */
 export function downloadBlob(blob: Blob, filename: string): void {

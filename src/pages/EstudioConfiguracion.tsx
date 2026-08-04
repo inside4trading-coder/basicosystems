@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import PromptTab from "@/components/estudio/config/PromptTab";
 import BrandTab from "@/components/estudio/config/BrandTab";
+import ModelsTab from "@/components/estudio/config/ModelsTab";
+import MotionTab from "@/components/estudio/config/MotionTab";
 
 export default function EstudioConfiguracion() {
   return (
@@ -24,12 +26,20 @@ export default function EstudioConfiguracion() {
       </div>
 
       <Tabs defaultValue="prompts" className="w-full">
-        <TabsList>
+        <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="prompts">Prompt IA</TabsTrigger>
+          <TabsTrigger value="models">Modelos</TabsTrigger>
+          <TabsTrigger value="motion">Movimiento</TabsTrigger>
           <TabsTrigger value="brand">Plantilla Instagram</TabsTrigger>
         </TabsList>
         <TabsContent value="prompts" className="mt-6">
           <PromptTab />
+        </TabsContent>
+        <TabsContent value="models" className="mt-6">
+          <ModelsTab />
+        </TabsContent>
+        <TabsContent value="motion" className="mt-6">
+          <MotionTab />
         </TabsContent>
         <TabsContent value="brand" className="mt-6">
           <BrandTab />
