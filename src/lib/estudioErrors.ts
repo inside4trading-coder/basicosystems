@@ -20,3 +20,17 @@ export async function readEdgeFunctionError(error: unknown): Promise<string> {
 
   return (error as { message?: string })?.message ?? "La generación falló.";
 }
+
+/**
+ * Traduce un error de PostgREST a algo accionable.
+ *
+ * `PGRST205` significa que la tabla no existe: pasa cuando la migración del módulo todavía no
+ * se aplicó. Sin este mensaje la pantalla queda vacía o colgada y parece que el módulo
+ * simplemente no tiene datos, que es engañoso.
+ */
+export function describeEstudioLoadError(error: { code?: string } | null, fallback: string): string {
+  if (error?.code === "PGRST205") {
+    return "El módulo no está instalado en la base de datos todavía (falta aplicar su migración).";
+  }
+  return fallback;
+}

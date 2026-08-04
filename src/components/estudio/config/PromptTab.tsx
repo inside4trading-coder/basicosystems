@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Save } from "lucide-react";
+import { EstudioLoadError } from "@/components/estudio/EstudioLoadError";
+import { describeEstudioLoadError } from "@/lib/estudioErrors";
 
 type PhotoType = "fondo_blanco" | "modelo" | "mockup";
 
@@ -42,16 +44,25 @@ export default function PromptTab() {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await estudioDb
-      .from("estudio_prompt_presets")
-      .select("*")
-      .order("photo_type");
-    if (error) toast.error("No se pudieron cargar los presets de prompt.");
-    setPresets((data ?? []) as Preset[]);
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const { data, error } = await estudioDb
+        .from("estudio_prompt_presets")
+        .select("*")
+        .order("photo_type");
+      if (error) {
+        setLoadError(describeEstudioLoadError(error, "No se pudieron cargar los presets de prompt."));
+        return;
+      }
+      setPresets((data ?? []) as Preset[]);
+    } finally {
+      // En `finally` para que la pestaña nunca se quede colgada en "Cargando…".
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -81,6 +92,8 @@ export default function PromptTab() {
   };
 
   if (loading) return <p className="text-sm text-muted-foreground">Cargando…</p>;
+
+  if (loadError) return <EstudioLoadError message={loadError} onRetry={load} />;
 
   const byType = (Object.keys(PHOTO_TYPE_LABELS) as PhotoType[]).map((type) => ({
     type,
