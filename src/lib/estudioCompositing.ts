@@ -5,13 +5,6 @@ export interface EstudioBrandSettings {
   primaryColor: string;
   secondaryColor: string;
   logoPosition: LogoPosition;
-  showProductName: boolean;
-  showPrice: boolean;
-}
-
-export interface EstudioOverlayText {
-  productName?: string | null;
-  productPrice?: string | null;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -79,40 +72,11 @@ async function drawLogo(ctx: CanvasRenderingContext2D, canvasW: number, canvasH:
   }
 }
 
-function drawTextBanner(
-  ctx: CanvasRenderingContext2D,
-  canvasW: number,
-  canvasH: number,
-  brand: EstudioBrandSettings,
-  overlay: EstudioOverlayText,
-) {
-  const lines: string[] = [];
-  if (brand.showProductName && overlay.productName) lines.push(overlay.productName);
-  if (brand.showPrice && overlay.productPrice) lines.push(overlay.productPrice);
-  if (lines.length === 0) return;
-
-  const bannerHeight = 44 + lines.length * 56;
-  ctx.fillStyle = brand.secondaryColor;
-  ctx.fillRect(0, canvasH - bannerHeight, canvasW, bannerHeight);
-
-  ctx.fillStyle = "#ffffff";
-  ctx.textBaseline = "middle";
-  ctx.textAlign = "left";
-  lines.forEach((line, i) => {
-    ctx.font = i === 0 ? "600 34px system-ui, sans-serif" : "400 28px system-ui, sans-serif";
-    if (i === 0) ctx.fillStyle = brand.primaryColor === brand.secondaryColor ? "#ffffff" : brand.primaryColor;
-    else ctx.fillStyle = "#ffffff";
-    const y = canvasH - bannerHeight + 44 + i * 56;
-    ctx.fillText(line, LOGO_MARGIN, y);
-  });
-}
-
 async function composeVariant(
   baseImageUrl: string,
   width: number,
   height: number,
   brand: EstudioBrandSettings,
-  overlay: EstudioOverlayText,
 ): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -123,7 +87,6 @@ async function composeVariant(
   const baseImg = await loadImage(baseImageUrl);
   drawCover(ctx, baseImg, width, height);
   await drawLogo(ctx, width, height, brand);
-  drawTextBanner(ctx, width, height, brand, overlay);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("No se pudo generar la imagen."))), "image/png");
@@ -131,19 +94,11 @@ async function composeVariant(
 }
 
 /** Recorta/compone la foto generada por IA al formato de post de feed de Instagram (1080x1080). */
-export function composeInstagramFeed(
-  baseImageUrl: string,
-  brand: EstudioBrandSettings,
-  overlay: EstudioOverlayText = {},
-): Promise<Blob> {
-  return composeVariant(baseImageUrl, 1080, 1080, brand, overlay);
+export function composeInstagramFeed(baseImageUrl: string, brand: EstudioBrandSettings): Promise<Blob> {
+  return composeVariant(baseImageUrl, 1080, 1080, brand);
 }
 
 /** Recorta/compone la foto generada por IA al formato de story/reel de Instagram (1080x1920). */
-export function composeInstagramStory(
-  baseImageUrl: string,
-  brand: EstudioBrandSettings,
-  overlay: EstudioOverlayText = {},
-): Promise<Blob> {
-  return composeVariant(baseImageUrl, 1080, 1920, brand, overlay);
+export function composeInstagramStory(baseImageUrl: string, brand: EstudioBrandSettings): Promise<Blob> {
+  return composeVariant(baseImageUrl, 1080, 1920, brand);
 }

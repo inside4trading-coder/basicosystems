@@ -1,19 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { estudioDb } from "@/lib/estudioDb";
-import { readEdgeFunctionError } from "@/lib/estudioErrors";
+import { readEdgeFunctionError, describeEstudioLoadError } from "@/lib/estudioErrors";
 import { loadEnabledModels, modelLabel, type EnabledModel } from "@/lib/estudioModels";
-import { MotionPanel } from "@/components/estudio/MotionPanel";
+import { MotionPanel, type MotionSettings } from "@/components/estudio/MotionPanel";
+import {
+  DropdownWithManageDialog,
+  ManageDialogButton,
+  type DropdownOption,
+} from "@/components/estudio/DropdownWithManageDialog";
+import { EstudioLoadError } from "@/components/estudio/EstudioLoadError";
+import PromptTab from "@/components/estudio/config/PromptTab";
+import ModelsTab from "@/components/estudio/config/ModelsTab";
+import MotionTab from "@/components/estudio/config/MotionTab";
+import BrandTab from "@/components/estudio/config/BrandTab";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Sparkles, Download, ImagePlus, Settings } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, Sparkles, Download, ImagePlus, AlertTriangle, X } from "lucide-react";
 import {
   uploadEstudioSourcePhoto,
   resolveEstudioSignedUrl,
@@ -27,12 +36,48 @@ import {
 } from "@/lib/estudioCompositing";
 
 type PhotoType = "fondo_blanco" | "modelo" | "mockup";
+type ViewType = "frente" | "espalda" | "detalle" | "tres_cuartos";
+type GenerationType = "estatica" | "motion";
 
 const PHOTO_TYPE_LABELS: Record<PhotoType, string> = {
   fondo_blanco: "Fondo blanco",
   modelo: "Con modelo",
   mockup: "Mockup lifestyle",
 };
+
+const VIEW_LABELS: Record<ViewType, string> = {
+  frente: "Frente",
+  espalda: "Espalda",
+  detalle: "Detalle",
+  tres_cuartos: "Tres cuartos",
+};
+
+/** El frente es obligatorio: es la única vista que siempre parte de una foto real. */
+const OPTIONAL_VIEWS: ViewType[] = ["espalda", "detalle", "tres_cuartos"];
+
+const SIZE_OPTIONS: DropdownOption[] = [
+  { value: "1080x1350", label: "Vertical 4:5 — 1080×1350 (catálogo y post)" },
+  { value: "1080x1080", label: "Cuadrado 1:1 — 1080×1080" },
+  { value: "1080x1920", label: "Vertical 9:16 — 1080×1920 (story / reel)" },
+];
+
+const GENERATION_TYPE_OPTIONS: DropdownOption[] = [
+  { value: "estatica", label: "Foto estática" },
+  { value: "motion", label: "Foto motion (video corto)" },
+];
+
+const MOTION_ASPECT_OPTIONS: DropdownOption[] = [
+  { value: "9:16", label: "Vertical 9:16 (Reel / Story)" },
+  { value: "1:1", label: "Cuadrado 1:1 (Post)" },
+  { value: "4:5", label: "Vertical 4:5 (Post)" },
+  { value: "16:9", label: "Horizontal 16:9" },
+];
+
+const MOTION_RESOLUTION_OPTIONS: DropdownOption[] = [
+  { value: "480p", label: "480p (borrador, más barato)" },
+  { value: "720p", label: "720p" },
+  { value: "1080p", label: "1080p (mejor calidad)" },
+];
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "En cola",
@@ -47,6 +92,15 @@ interface PromptPreset {
   photo_type: PhotoType;
   prompt_text: string;
   image_model: string;
+  output_size: string | null;
+  is_default: boolean;
+}
+
+interface MotionPreset {
+  id: string;
+  name: string;
+  default_duration_seconds: number;
+  video_model: string;
   is_default: boolean;
 }
 
@@ -55,17 +109,36 @@ interface ImageJob {
   created_at: string;
   status: string;
   photo_type: PhotoType;
+  view_type: ViewType | null;
+  is_inferred: boolean | null;
   generated_image_path: string | null;
-  instagram_feed_path: string | null;
-  instagram_story_path: string | null;
   cost_usd: number | null;
   error_message: string | null;
 }
 
+interface ViewInput {
+  include: boolean;
+  file: File | null;
+  previewUrl: string | null;
+}
+
+interface ViewResult {
+  viewType: ViewType;
+  isInferred: boolean;
+  generatedPath?: string;
+  generatedUrl?: string;
+  feedBlob?: Blob | null;
+  storyBlob?: Blob | null;
+  costUsd?: number | null;
+  errorMessage?: string;
+}
+
+const emptyViewInput = (): ViewInput => ({ include: false, file: null, previewUrl: null });
+
 /**
  * Previsualiza un Blob gestionando el ciclo de vida del object URL.
  * Llamar a `URL.createObjectURL` dentro del JSX crea un blob nuevo en cada re-render
- * (por ejemplo, en cada tecla del nombre del producto) y ninguno se libera.
+ * y ninguno se libera.
  */
 function BlobPreview({ blob, alt, className }: { blob: Blob; alt: string; className?: string }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -79,47 +152,150 @@ function BlobPreview({ blob, alt, className }: { blob: Blob; alt: string; classN
   return url ? <img src={url} alt={alt} className={className} /> : null;
 }
 
+/** Selector de foto para una vista de la sesión. */
+function ViewPhotoPicker({
+  view,
+  input,
+  onFile,
+  onClear,
+}: {
+  view: ViewType;
+  input: ViewInput;
+  onFile: (file: File) => void;
+  onClear: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="flex items-center gap-3">
+      <input
+        ref={ref}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onFile(f);
+          e.target.value = "";
+        }}
+      />
+      <Button type="button" variant="outline" size="sm" onClick={() => ref.current?.click()}>
+        <ImagePlus className="mr-2 h-4 w-4" />
+        {input.file ? "Cambiar foto" : "Subir foto"}
+      </Button>
+      {input.previewUrl && (
+        <div className="relative">
+          <img
+            src={input.previewUrl}
+            alt={`Foto ${VIEW_LABELS[view]}`}
+            className="h-16 w-16 object-cover rounded-lg border"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute -right-2 -top-2 h-5 w-5"
+            aria-label="Quitar foto"
+            onClick={onClear}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function EstudioVisual() {
-  const [photoType, setPhotoType] = useState<PhotoType>("fondo_blanco");
+  // Estilo de fotografía = una fila de estudio_prompt_presets (tipo + nombre).
   const [presets, setPresets] = useState<PromptPreset[]>([]);
+  const [presetId, setPresetId] = useState<string>("");
   const [promptText, setPromptText] = useState("");
+  const [outputSize, setOutputSize] = useState<string>(SIZE_OPTIONS[0].value);
+
+  const [imageModels, setImageModels] = useState<EnabledModel[]>([]);
+  const [imageModel, setImageModel] = useState<string>("");
+
+  const [generationType, setGenerationType] = useState<GenerationType>("estatica");
+  const [motionPresets, setMotionPresets] = useState<MotionPreset[]>([]);
+  const [motionPresetId, setMotionPresetId] = useState<string>("");
+  const [videoModels, setVideoModels] = useState<EnabledModel[]>([]);
+  const [videoModel, setVideoModel] = useState<string>("");
+  const [motionDuration, setMotionDuration] = useState<number>(5);
+  const [motionAspect, setMotionAspect] = useState<string>("9:16");
+  const [motionResolution, setMotionResolution] = useState<string>("720p");
+
+  const [views, setViews] = useState<Record<ViewType, ViewInput>>({
+    frente: { include: true, file: null, previewUrl: null },
+    espalda: emptyViewInput(),
+    detalle: emptyViewInput(),
+    tres_cuartos: emptyViewInput(),
+  });
+
   const [brand, setBrand] = useState<EstudioBrandSettings | null>(null);
   // Vive aparte de `brand` porque no es un ajuste de composición: decide si la variante
   // de Story llega a generarse. Default `false`, igual que la columna en base.
   const [generateStory, setGenerateStory] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [productName, setProductName] = useState("");
-  const [productPrice, setProductPrice] = useState("");
+
   const [generating, setGenerating] = useState(false);
-  const [result, setResult] = useState<{
-    generatedPath: string;
-    generatedUrl: string;
-    feedBlob: Blob | null;
-    storyBlob: Blob | null;
-    costUsd: number | null;
-  } | null>(null);
+  const [results, setResults] = useState<ViewResult[]>([]);
   const [history, setHistory] = useState<ImageJob[]>([]);
   const [presetsError, setPresetsError] = useState<string | null>(null);
-  const [imageModels, setImageModels] = useState<EnabledModel[]>([]);
-  // Modelo elegido para esta generación; arranca del preset y puede cambiarse aquí mismo.
-  const [imageModel, setImageModel] = useState<string>("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedPreset = presets.find((p) => p.id === presetId) ?? null;
 
   const loadPresets = async () => {
-    const { data, error } = await estudioDb.from("estudio_prompt_presets").select("*");
+    const { data, error } = await estudioDb
+      .from("estudio_prompt_presets")
+      .select("*")
+      .order("photo_type")
+      .order("name");
     // Sin esto la pantalla queda con el prompt vacío y sin explicación — que es exactamente
     // lo que pasa si la migración del módulo todavía no se aplicó a la base.
     if (error) {
-      setPresetsError(
-        error.code === "PGRST205"
-          ? "El módulo no está instalado en la base de datos todavía (falta aplicar su migración)."
-          : "No se pudieron cargar los prompts.",
-      );
+      setPresetsError(describeEstudioLoadError(error, "No se pudieron cargar los estilos de fotografía."));
       return;
     }
     setPresetsError(null);
-    setPresets((data ?? []) as PromptPreset[]);
+    const list = (data ?? []) as PromptPreset[];
+    setPresets(list);
+    setPresetId((current) => {
+      if (current && list.some((p) => p.id === current)) return current;
+      return (list.find((p) => p.is_default) ?? list[0])?.id ?? "";
+    });
+  };
+
+  const loadModels = async () => {
+    const [images, videos] = await Promise.all([
+      loadEnabledModels("image"),
+      loadEnabledModels("video"),
+    ]);
+    setImageModels(images);
+    setVideoModels(videos);
+    setImageModel((current) => (current && images.some((m) => m.model_id === current) ? current : ""));
+    setVideoModel((current) =>
+      current && videos.some((m) => m.model_id === current) ? current : videos[0]?.model_id ?? "",
+    );
+  };
+
+  const loadMotionPresets = async () => {
+    const { data } = await estudioDb
+      .from("estudio_motion_presets")
+      .select("id, name, default_duration_seconds, video_model, is_default")
+      .order("created_at");
+    const list = (data ?? []) as MotionPreset[];
+    setMotionPresets(list);
+
+    // Si el preset elegido sigue existiendo se respeta; si no, se adopta el default.
+    const keep = motionPresetId && list.some((p) => p.id === motionPresetId);
+    if (keep) return;
+
+    const preferred = list.find((p) => p.is_default) ?? list[0];
+    setMotionPresetId(preferred?.id ?? "");
+    if (preferred) {
+      setMotionDuration(preferred.default_duration_seconds);
+      setVideoModel((m) => m || preferred.video_model);
+    }
   };
 
   const loadBrand = async () => {
@@ -134,8 +310,6 @@ export default function EstudioVisual() {
       primaryColor: data.primary_color,
       secondaryColor: data.secondary_color,
       logoPosition: data.logo_position,
-      showProductName: data.show_product_name,
-      showPrice: data.show_price,
     });
     setGenerateStory(Boolean(data.generate_story_variant));
   };
@@ -145,84 +319,184 @@ export default function EstudioVisual() {
       .from("estudio_image_jobs")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(12);
     setHistory((data ?? []) as ImageJob[]);
   };
 
   useEffect(() => {
     loadPresets();
+    loadModels();
+    loadMotionPresets();
     loadBrand();
     loadHistory();
-    loadEnabledModels("image").then(setImageModels);
     // Recupera videos que quedaron a medias si se cerró la pestaña durante la generación.
     supabase.functions.invoke("estudio-video-status", { body: {} }).catch(() => {});
+    // Carga inicial: las mismas funciones se vuelven a llamar al cerrar cada diálogo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Al cambiar de estilo se adoptan su prompt, su modelo y su dimensión como punto de partida.
   useEffect(() => {
-    const defaultPreset = presets.find((p) => p.photo_type === photoType && p.is_default);
-    setPromptText(defaultPreset?.prompt_text ?? "");
-    if (defaultPreset?.image_model) setImageModel(defaultPreset.image_model);
-  }, [photoType, presets]);
+    if (!selectedPreset) return;
+    setPromptText(selectedPreset.prompt_text);
+    if (selectedPreset.image_model) setImageModel(selectedPreset.image_model);
+    if (selectedPreset.output_size) setOutputSize(selectedPreset.output_size);
+  }, [selectedPreset?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onFileChange = (f: File | null) => {
-    setFile(f);
-    setResult(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(f ? URL.createObjectURL(f) : null);
+  // Libera las previsualizaciones al desmontar.
+  useEffect(() => {
+    return () => {
+      Object.values(views).forEach((v) => v.previewUrl && URL.revokeObjectURL(v.previewUrl));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const setViewFile = (view: ViewType, file: File | null) => {
+    setViews((prev) => {
+      const current = prev[view];
+      if (current.previewUrl) URL.revokeObjectURL(current.previewUrl);
+      return {
+        ...prev,
+        [view]: {
+          include: view === "frente" ? true : file ? true : current.include,
+          file,
+          previewUrl: file ? URL.createObjectURL(file) : null,
+        },
+      };
+    });
+    setResults([]);
   };
 
+  const toggleView = (view: ViewType, include: boolean) => {
+    setViews((prev) => ({ ...prev, [view]: { ...prev[view], include } }));
+  };
+
+  const motionSettings: MotionSettings | undefined = useMemo(() => {
+    if (generationType !== "motion") return undefined;
+    return {
+      presetId: motionPresetId,
+      presetName: motionPresets.find((p) => p.id === motionPresetId)?.name ?? "Movimiento",
+      videoModel,
+      duration: motionDuration,
+      aspectRatio: motionAspect,
+      resolution: motionResolution,
+    };
+  }, [
+    generationType,
+    motionPresetId,
+    motionPresets,
+    videoModel,
+    motionDuration,
+    motionAspect,
+    motionResolution,
+  ]);
+
   const handleGenerate = async () => {
-    if (!file) {
-      toast.error("Sube una foto de la prenda primero.");
+    const frontFile = views.frente.file;
+    if (!frontFile) {
+      toast.error("Sube la foto frontal de la prenda.");
       return;
     }
+    if (!selectedPreset) {
+      toast.error("Elige un estilo de fotografía.");
+      return;
+    }
+
     setGenerating(true);
-    setResult(null);
+    setResults([]);
     try {
-      const sourcePhotoPath = await uploadEstudioSourcePhoto(file);
+      const frontPath = await uploadEstudioSourcePhoto(frontFile);
 
-      const defaultPreset = presets.find((p) => p.photo_type === photoType && p.is_default);
-      const promptOverride = promptText !== defaultPreset?.prompt_text ? promptText : undefined;
+      // Una vista sin foto propia se deduce del frente: se marca como inferida para que
+      // nunca se confunda con una foto real de esa vista.
+      const requests: { viewType: ViewType; sourcePath: string; isInferred: boolean }[] = [
+        { viewType: "frente", sourcePath: frontPath, isInferred: false },
+      ];
+      for (const view of OPTIONAL_VIEWS) {
+        const input = views[view];
+        if (!input.include) continue;
+        const sourcePath = input.file ? await uploadEstudioSourcePhoto(input.file) : frontPath;
+        requests.push({ viewType: view, sourcePath, isInferred: !input.file });
+      }
 
-      const { data, error } = await supabase.functions.invoke("estudio-generate-image", {
-        body: {
-          sourcePhotoPath,
-          photoType,
-          promptOverride,
-          imageModel: imageModel || undefined,
-          productName: productName || undefined,
-          productPrice: productPrice || undefined,
-        },
-      });
+      const sessionId = crypto.randomUUID();
+      const promptOverride = promptText !== selectedPreset.prompt_text ? promptText : undefined;
 
-      // supabase-js convierte cualquier respuesta no-2xx en un FunctionsHttpError genérico y
-      // descarta el cuerpo, así que el motivo real ("saldo insuficiente", "límite alcanzado")
-      // se pierde. Lo recuperamos leyendo el cuerpo de la respuesta original.
-      if (error) throw new Error(await readEdgeFunctionError(error));
-      if (data?.error) throw new Error(data.error);
+      const generated = await Promise.all(
+        requests.map(async (item): Promise<ViewResult> => {
+          try {
+            const { data, error } = await supabase.functions.invoke("estudio-generate-image", {
+              body: {
+                sourcePhotoPath: item.sourcePath,
+                photoType: selectedPreset.photo_type,
+                promptPresetId: selectedPreset.id,
+                promptOverride,
+                imageModel: imageModel || undefined,
+                outputSize,
+                sessionId,
+                viewType: item.viewType,
+                isInferred: item.isInferred,
+              },
+            });
 
-      const generatedUrl = await resolveEstudioSignedUrl(data.generatedImagePath);
+            // supabase-js convierte cualquier respuesta no-2xx en un FunctionsHttpError
+            // genérico y descarta el cuerpo, así que el motivo real ("saldo insuficiente",
+            // "límite alcanzado") se pierde si no se lee la respuesta original.
+            if (error) throw new Error(await readEdgeFunctionError(error));
+            if (data?.error) throw new Error(data.error);
 
-      // La imagen ya está generada y pagada: se muestra aunque falle el compositing.
-      setResult({
-        generatedPath: data.generatedImagePath,
-        generatedUrl,
-        feedBlob: null,
-        storyBlob: null,
-        costUsd: data.costUsd ?? null,
-      });
-      toast.success("Imagen generada correctamente.");
+            return {
+              viewType: item.viewType,
+              isInferred: item.isInferred,
+              generatedPath: data.generatedImagePath,
+              generatedUrl: await resolveEstudioSignedUrl(data.generatedImagePath),
+              costUsd: data.costUsd ?? null,
+              feedBlob: null,
+              storyBlob: null,
+            };
+          } catch (e) {
+            return {
+              viewType: item.viewType,
+              isInferred: item.isInferred,
+              errorMessage: e instanceof Error ? e.message : "La generación falló.",
+            };
+          }
+        }),
+      );
+
+      setResults(generated);
       loadHistory();
 
-      if (brand) {
-        try {
-          const feedBlob = await composeInstagramFeed(generatedUrl, brand, { productName, productPrice });
-          const storyBlob = generateStory
-            ? await composeInstagramStory(generatedUrl, brand, { productName, productPrice })
-            : null;
-          setResult((prev) => (prev ? { ...prev, feedBlob, storyBlob } : prev));
-        } catch {
-          toast.warning("La foto se generó, pero no se pudieron componer las variantes de Instagram.");
+      const okCount = generated.filter((r) => r.generatedPath).length;
+      if (okCount === 0) {
+        toast.error(generated[0]?.errorMessage ?? "Ninguna vista se pudo generar.");
+      } else if (okCount < generated.length) {
+        toast.warning(`Se generaron ${okCount} de ${generated.length} vistas.`);
+      } else {
+        toast.success(okCount === 1 ? "Imagen generada correctamente." : `${okCount} vistas generadas.`);
+      }
+
+      // Las imágenes ya están generadas y pagadas: se muestran aunque falle el compositing.
+      if (brand && okCount > 0) {
+        let composingFailed = false;
+        const composed = await Promise.all(
+          generated.map(async (r) => {
+            if (!r.generatedUrl) return r;
+            try {
+              return {
+                ...r,
+                feedBlob: await composeInstagramFeed(r.generatedUrl, brand),
+                storyBlob: generateStory ? await composeInstagramStory(r.generatedUrl, brand) : null,
+              };
+            } catch {
+              composingFailed = true;
+              return r;
+            }
+          }),
+        );
+        setResults(composed);
+        if (composingFailed) {
+          toast.warning("Las fotos se generaron, pero alguna variante de Instagram no se pudo componer.");
         }
       }
     } catch (e) {
@@ -232,165 +506,388 @@ export default function EstudioVisual() {
     }
   };
 
+  const styleOptions: DropdownOption[] = presets.map((p) => ({
+    value: p.id,
+    label: `${PHOTO_TYPE_LABELS[p.photo_type]} — ${p.name}`,
+  }));
+
+  const inferredCount = OPTIONAL_VIEWS.filter((v) => views[v].include && !views[v].file).length;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight">Estudio Visual</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Genera la foto de estudio con IA y sus variantes para Instagram a partir de una foto de la prenda.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/estudio-visual/configuracion">
-            <Settings className="mr-2 h-4 w-4" />
-            Configuración
-          </Link>
-        </Button>
+      <div>
+        <h1 className="text-3xl font-black tracking-tight">Estudio Visual</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Genera la foto de estudio con IA y sus variantes para Instagram a partir de una foto de la prenda.
+        </p>
       </div>
 
       {presetsError && (
-        <Card className="p-4 rounded-2xl border-destructive/40 bg-destructive/5">
-          <p className="text-sm text-destructive font-medium">{presetsError}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Hasta entonces la generación no va a funcionar, aunque el formulario se vea completo.
-          </p>
-        </Card>
+        <EstudioLoadError
+          message={presetsError}
+          hint="Hasta entonces la generación no va a funcionar, aunque el formulario se vea completo."
+          onRetry={loadPresets}
+        />
       )}
 
-      <Card className="p-6 rounded-2xl space-y-5">
-        <div>
-          <Label className="mb-2 block">Tipo de fotografía</Label>
-          <Tabs value={photoType} onValueChange={(v) => setPhotoType(v as PhotoType)}>
-            <TabsList>
-              {(Object.keys(PHOTO_TYPE_LABELS) as PhotoType[]).map((t) => (
-                <TabsTrigger key={t} value={t}>
-                  {PHOTO_TYPE_LABELS[t]}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-
-        <div>
-          <Label className="mb-2 block">Foto de la prenda</Label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
-          />
-          <div className="flex items-center gap-4">
-            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-              <ImagePlus className="mr-2 h-4 w-4" />
-              {file ? "Cambiar foto" : "Subir foto"}
-            </Button>
-            {previewUrl && (
-              <img src={previewUrl} alt="Foto original" className="h-20 w-20 object-cover rounded-lg border" />
-            )}
-          </div>
-        </div>
-
+      <Card className="p-6 rounded-2xl space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <Label htmlFor="productName">Nombre del producto (opcional)</Label>
-            <Input id="productName" value={productName} onChange={(e) => setProductName(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="productPrice">Precio (opcional)</Label>
-            <Input id="productPrice" value={productPrice} onChange={(e) => setProductPrice(e.target.value)} />
-          </div>
+          <DropdownWithManageDialog
+            label="Estilo de fotografía"
+            value={presetId}
+            onValueChange={setPresetId}
+            options={styleOptions}
+            placeholder="Elige un estilo"
+            emptyMessage="No hay estilos guardados todavía."
+            manage={{
+              title: "Estilos de fotografía",
+              description: "Prompt y modelo por defecto de cada estilo.",
+              onClose: loadPresets,
+              children: <PromptTab />,
+            }}
+          />
+
+          <DropdownWithManageDialog
+            label="Dimensiones"
+            value={outputSize}
+            onValueChange={setOutputSize}
+            options={SIZE_OPTIONS}
+            hint="Se le exige al modelo este tamaño exacto de salida."
+          />
+
+          <DropdownWithManageDialog
+            label="Modelo de generación"
+            value={imageModel}
+            onValueChange={setImageModel}
+            options={imageModels.map((m) => ({ value: m.model_id, label: modelLabel(m) }))}
+            placeholder="Elige un modelo"
+            emptyMessage="No hay modelos habilitados."
+            manage={{
+              title: "Modelos habilitados",
+              description: "Controla qué modelos de imagen y de video se pueden elegir.",
+              onClose: loadModels,
+              children: <ModelsTab />,
+            }}
+          />
+
+          <DropdownWithManageDialog
+            label="Tipo de generación"
+            value={generationType}
+            onValueChange={(v) => setGenerationType(v as GenerationType)}
+            options={GENERATION_TYPE_OPTIONS}
+            hint={
+              generationType === "motion"
+                ? "El video se genera después, con la foto ya lista."
+                : undefined
+            }
+            manage={
+              generationType === "motion"
+                ? {
+                    title: "Tipos de movimiento",
+                    description: "Cómo debe moverse la prenda en el video.",
+                    onClose: loadMotionPresets,
+                    children: <MotionTab />,
+                  }
+                : undefined
+            }
+          />
         </div>
 
-        <div>
-          <Label className="mb-2 block">Modelo de generación</Label>
-          {imageModels.length === 0 ? (
+        {generationType === "motion" && (
+          <div className="rounded-xl border p-4 space-y-5">
             <p className="text-sm text-muted-foreground">
-              No hay modelos habilitados. Actívalos en Configuración → Modelos.
+              Configuración del video. Primero se genera la foto; el video se lanza después con un
+              botón de confirmación, ya con esta configuración.
             </p>
-          ) : (
-            <Select value={imageModel} onValueChange={setImageModel}>
-              <SelectTrigger className="w-full max-w-md">
-                <SelectValue placeholder="Elige un modelo" />
-              </SelectTrigger>
-              <SelectContent>
-                {imageModels.map((m) => (
-                  <SelectItem key={m.model_id} value={m.model_id}>
-                    {modelLabel(m)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <Label className="mb-2 block">Tipo de movimiento</Label>
+                <Select
+                  value={motionPresetId}
+                  onValueChange={(id) => {
+                    setMotionPresetId(id);
+                    const p = motionPresets.find((x) => x.id === id);
+                    if (p) {
+                      setMotionDuration(p.default_duration_seconds);
+                      setVideoModel(p.video_model);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Elige un movimiento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {motionPresets.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Modelo de video</Label>
+                {videoModels.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No hay modelos de video habilitados.
+                  </p>
+                ) : (
+                  <Select value={videoModel} onValueChange={setVideoModel}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Elige un modelo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {videoModels.map((m) => (
+                        <SelectItem key={m.model_id} value={m.model_id}>
+                          {modelLabel(m)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label>Duración</Label>
+                <span className="text-sm font-medium tabular-nums">{motionDuration} s</span>
+              </div>
+              <Slider
+                min={1}
+                max={12}
+                step={1}
+                value={[motionDuration]}
+                onValueChange={([v]) => setMotionDuration(v)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                No todos los modelos aceptan cualquier duración; si la rechaza, se avisa con el
+                motivo exacto.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <Label className="mb-2 block">Formato del video</Label>
+                <Select value={motionAspect} onValueChange={setMotionAspect}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MOTION_ASPECT_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="mb-2 block">Resolución</Label>
+                <Select value={motionResolution} onValueChange={setMotionResolution}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MOTION_RESOLUTION_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div>
+            <Label className="block">Vistas de la prenda</Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              El frente es obligatorio. Para las demás vistas puedes subir su propia foto o dejar
+              que la IA la deduzca del frente.
+            </p>
+          </div>
+
+          <div className="rounded-xl border divide-y">
+            <div className="p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm">{VIEW_LABELS.frente}</span>
+                <span className="text-xs text-muted-foreground">(obligatoria)</span>
+              </div>
+              <ViewPhotoPicker
+                view="frente"
+                input={views.frente}
+                onFile={(f) => setViewFile("frente", f)}
+                onClear={() => setViewFile("frente", null)}
+              />
+            </div>
+
+            {OPTIONAL_VIEWS.map((view) => {
+              const input = views[view];
+              return (
+                <div key={view} className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor={`view-${view}`} className="font-medium text-sm">
+                      {VIEW_LABELS[view]}
+                    </Label>
+                    <Switch
+                      id={`view-${view}`}
+                      checked={input.include}
+                      onCheckedChange={(v) => toggleView(view, v)}
+                    />
+                  </div>
+                  {input.include && (
+                    <>
+                      <ViewPhotoPicker
+                        view={view}
+                        input={input}
+                        onFile={(f) => setViewFile(view, f)}
+                        onClear={() => setViewFile(view, null)}
+                      />
+                      {!input.file && (
+                        <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5">
+                          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                          Sin foto propia, la IA deduce esta vista desde el frente. Puede no
+                          coincidir con la prenda real.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div>
           <Label htmlFor="prompt" className="mb-2 block">
             Prompt para esta generación
           </Label>
-          <Textarea
-            id="prompt"
-            rows={5}
-            value={promptText}
-            onChange={(e) => setPromptText(e.target.value)}
-          />
+          <Textarea id="prompt" rows={5} value={promptText} onChange={(e) => setPromptText(e.target.value)} />
           <p className="text-xs text-muted-foreground mt-1">
-            Este cambio aplica solo a esta generación. Para guardarlo como default, ajústalo desde
-            Configuración (botón arriba a la derecha).
+            Este cambio aplica solo a esta generación. Para guardarlo como default, edítalo con el
+            lápiz de "Estilo de fotografía".
           </p>
         </div>
 
-        <Button onClick={handleGenerate} disabled={generating || !file}>
-          {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-          Generar
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={handleGenerate} disabled={generating || !views.frente.file}>
+            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            {generating ? "Generando…" : "Generar"}
+          </Button>
+          <ManageDialogButton
+            buttonLabel="Plantilla de Instagram"
+            manage={{
+              title: "Plantilla de Instagram",
+              description: "Logo, colores y posición aplicados a las variantes de Instagram.",
+              onClose: loadBrand,
+              children: <BrandTab />,
+            }}
+          />
+          {inferredCount > 0 && (
+            <span className="text-xs text-amber-600 dark:text-amber-500">
+              {inferredCount} {inferredCount === 1 ? "vista inferida" : "vistas inferidas"} por IA
+            </span>
+          )}
+        </div>
       </Card>
 
-      {result && (
-        <Card className="p-6 rounded-2xl space-y-4">
-          <h2 className="text-lg font-semibold">Resultado</h2>
-          {result.costUsd != null && (
-            <p className="text-xs text-muted-foreground">Costo de esta generación: ${result.costUsd.toFixed(4)} USD</p>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Foto generada</p>
-              <img src={result.generatedUrl} alt="Foto generada" className="w-full rounded-lg border" />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => downloadEstudioImage(result.generatedPath, "estudio-foto.png")}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Descargar
-              </Button>
-            </div>
-            {result.feedBlob && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Instagram — Post (1080×1080)</p>
-                <BlobPreview blob={result.feedBlob} alt="Instagram feed" className="w-full rounded-lg border" />
-                <Button variant="outline" size="sm" onClick={() => downloadBlob(result.feedBlob!, "instagram-feed.png")}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Descargar
-                </Button>
-              </div>
-            )}
-            {result.storyBlob && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Instagram — Story (1080×1920)</p>
-                <BlobPreview blob={result.storyBlob} alt="Instagram story" className="w-full rounded-lg border" />
-                <Button variant="outline" size="sm" onClick={() => downloadBlob(result.storyBlob!, "instagram-story.png")}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Descargar
-                </Button>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
+      {results.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Resultado de la sesión</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {results.map((r) => (
+              <Card key={r.viewType} className="p-6 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium">{VIEW_LABELS[r.viewType]}</span>
+                  {r.isInferred ? (
+                    <span className="text-xs rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5">
+                      Inferido por IA
+                    </span>
+                  ) : (
+                    <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5">
+                      Desde foto real
+                    </span>
+                  )}
+                </div>
 
-      {result && <MotionPanel sourceImagePath={result.generatedPath} />}
+                {r.errorMessage ? (
+                  <p className="text-sm text-destructive">{r.errorMessage}</p>
+                ) : (
+                  <>
+                    {r.isInferred && (
+                      <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                        Esta vista no se fotografió: la IA la dedujo del frente y puede no coincidir
+                        con la prenda real. Revísala antes de publicarla.
+                      </p>
+                    )}
+                    {r.generatedUrl && (
+                      <img
+                        src={r.generatedUrl}
+                        alt={`Foto generada — ${VIEW_LABELS[r.viewType]}`}
+                        className="w-full rounded-lg border"
+                      />
+                    )}
+                    {r.costUsd != null && (
+                      <p className="text-xs text-muted-foreground">
+                        Costo: ${r.costUsd.toFixed(4)} USD
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          r.generatedPath && downloadEstudioImage(r.generatedPath, `estudio-${r.viewType}.png`)
+                        }
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Foto
+                      </Button>
+                      {r.feedBlob && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => downloadBlob(r.feedBlob!, `instagram-feed-${r.viewType}.png`)}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Post IG
+                        </Button>
+                      )}
+                      {r.storyBlob && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => downloadBlob(r.storyBlob!, `instagram-story-${r.viewType}.png`)}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Story IG
+                        </Button>
+                      )}
+                      {r.feedBlob && (
+                        <BlobPreview
+                          blob={r.feedBlob}
+                          alt="Variante de Instagram"
+                          className="h-12 w-12 object-cover rounded border"
+                        />
+                      )}
+                    </div>
+
+                    {generationType === "motion" && r.generatedPath && (
+                      <MotionPanel sourceImagePath={r.generatedPath} settings={motionSettings} />
+                    )}
+                  </>
+                )}
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Card className="p-6 rounded-2xl">
         <h2 className="text-lg font-semibold mb-4">Generaciones recientes</h2>
@@ -401,11 +898,23 @@ export default function EstudioVisual() {
             {history.map((job) => (
               <div key={job.id} className="border-b py-2 last:border-0 space-y-1">
                 <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium">{PHOTO_TYPE_LABELS[job.photo_type]}</span>
-                  <span className="text-muted-foreground">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-medium truncate">{PHOTO_TYPE_LABELS[job.photo_type]}</span>
+                    {job.view_type && (
+                      <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5 shrink-0">
+                        {VIEW_LABELS[job.view_type]}
+                      </span>
+                    )}
+                    {job.is_inferred && (
+                      <span className="text-xs rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 shrink-0">
+                        Inferido
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-muted-foreground shrink-0">
                     {new Date(job.created_at).toLocaleString("es-VE")}
                   </span>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     {job.cost_usd != null && (
                       <span className="text-xs text-muted-foreground tabular-nums">
                         ${job.cost_usd.toFixed(4)}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { estudioDb } from "@/lib/estudioDb";
+import { loadEnabledModels, modelLabel, type EnabledModel } from "@/lib/estudioModels";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -19,18 +20,6 @@ const PHOTO_TYPE_LABELS: Record<PhotoType, string> = {
   mockup: "Mockup lifestyle",
 };
 
-// IDs verificados contra GET https://openrouter.ai/api/v1/models.
-// Ojo: "openai/gpt-image-1" y "openai/gpt-image-2" NO existen en OpenRouter — si se usan,
-// toda generación falla. Esta lista se reemplazará por el catálogo dinámico curado (Mejora B).
-const MODEL_OPTIONS = [
-  { value: "google/gemini-2.5-flash-image", label: "Gemini 2.5 Flash Image (económico, ~$0.04/imagen)" },
-  { value: "google/gemini-3.1-flash-image", label: "Gemini 3.1 Flash Image" },
-  { value: "google/gemini-3-pro-image", label: "Gemini 3 Pro Image (mayor calidad)" },
-  { value: "openai/gpt-5-image-mini", label: "GPT-5 Image Mini (borradores)" },
-  { value: "openai/gpt-5-image", label: "GPT-5 Image" },
-  { value: "openai/gpt-5.4-image-2", label: "GPT-5.4 Image 2 (mejor calidad, más costoso)" },
-];
-
 interface Preset {
   id: string;
   name: string;
@@ -42,6 +31,7 @@ interface Preset {
 
 export default function PromptTab() {
   const [presets, setPresets] = useState<Preset[]>([]);
+  const [models, setModels] = useState<EnabledModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -50,15 +40,18 @@ export default function PromptTab() {
     setLoading(true);
     setLoadError(null);
     try {
-      const { data, error } = await estudioDb
-        .from("estudio_prompt_presets")
-        .select("*")
-        .order("photo_type");
+      const [{ data, error }, imageModels] = await Promise.all([
+        estudioDb.from("estudio_prompt_presets").select("*").order("photo_type"),
+        // El modelo por defecto solo puede salir del catálogo curado: elegir aquí uno que
+        // el admin no habilitó haría fallar toda generación con ese estilo.
+        loadEnabledModels("image"),
+      ]);
       if (error) {
         setLoadError(describeEstudioLoadError(error, "No se pudieron cargar los presets de prompt."));
         return;
       }
       setPresets((data ?? []) as Preset[]);
+      setModels(imageModels);
     } finally {
       // En `finally` para que la pestaña nunca se quede colgada en "Cargando…".
       setLoading(false);
@@ -121,14 +114,21 @@ export default function PromptTab() {
               <div className="flex items-center gap-3">
                 <Select value={preset.image_model} onValueChange={(v) => update(preset.id, { image_model: v })}>
                   <SelectTrigger className="w-full max-w-md">
-                    <SelectValue />
+                    <SelectValue placeholder="Elige un modelo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MODEL_OPTIONS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        {m.label}
+                    {models.map((m) => (
+                      <SelectItem key={m.model_id} value={m.model_id}>
+                        {modelLabel(m)}
                       </SelectItem>
                     ))}
+                    {/* El modelo guardado puede haberse deshabilitado después: se muestra
+                        igual para no perderlo en silencio al guardar. */}
+                    {preset.image_model && !models.some((m) => m.model_id === preset.image_model) && (
+                      <SelectItem value={preset.image_model}>
+                        {preset.image_model} (ya no está habilitado)
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
                 <Button size="sm" onClick={() => save(preset)} disabled={savingId === preset.id}>

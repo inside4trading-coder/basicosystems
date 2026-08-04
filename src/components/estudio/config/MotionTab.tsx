@@ -85,7 +85,8 @@ export default function MotionTab() {
       {models.length === 0 && (
         <Card className="p-4 rounded-2xl border-destructive/40 bg-destructive/5">
           <p className="text-sm text-destructive">
-            No hay modelos de video habilitados. Habilita al menos uno en la pestaña "Modelos".
+            No hay modelos de video habilitados. Habilita al menos uno con el lápiz de "Modelo de
+            generación".
           </p>
         </Card>
       )}
