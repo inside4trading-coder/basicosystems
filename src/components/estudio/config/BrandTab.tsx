@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Save, Upload } from "lucide-react";
+import { Loader2, Save, Upload, RefreshCw } from "lucide-react";
 import { resolveEstudioSignedUrl } from "@/lib/estudioStorage";
 
 const ESTUDIO_BUCKET = "estudio-visual";
@@ -36,20 +36,37 @@ export default function BrandTab() {
   const [brand, setBrand] = useState<BrandTemplate | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await estudioDb.from("estudio_brand_template").select("*").maybeSingle();
-    if (error) toast.error("No se pudo cargar la plantilla de marca.");
-    if (data) {
+    setLoadError(null);
+    try {
+      const { data, error } = await estudioDb.from("estudio_brand_template").select("*").maybeSingle();
+
+      if (error) {
+        setLoadError(
+          error.code === "PGRST205"
+            ? "El módulo no está instalado en la base de datos todavía (falta aplicar su migración)."
+            : "No se pudo cargar la plantilla de marca.",
+        );
+        return;
+      }
+      if (!data) {
+        setLoadError("No hay ninguna plantilla de marca guardada todavía.");
+        return;
+      }
+
       setBrand(data as BrandTemplate);
       if (data.logo_storage_path) {
         setLogoPreview(await resolveEstudioSignedUrl(data.logo_storage_path));
       }
+    } finally {
+      // En `finally` para que la pestaña nunca se quede colgada en "Cargando…".
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -98,7 +115,24 @@ export default function BrandTab() {
     }
   };
 
-  if (loading || !brand) return <p className="text-sm text-muted-foreground">Cargando…</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">Cargando…</p>;
+
+  if (!brand) {
+    return (
+      <Card className="p-6 rounded-2xl border-destructive/40 bg-destructive/5 space-y-3">
+        <p className="text-sm text-destructive font-medium">
+          {loadError ?? "No se pudo cargar la plantilla de marca."}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Hasta que exista la plantilla no se pueden componer las variantes de Instagram.
+        </p>
+        <Button variant="outline" size="sm" onClick={load}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Reintentar
+        </Button>
+      </Card>
+    );
+  }
 
   return (
     <Card className="p-6 rounded-2xl space-y-6">

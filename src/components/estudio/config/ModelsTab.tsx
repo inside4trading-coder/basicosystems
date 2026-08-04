@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Image as ImageIcon, Clapperboard } from "lucide-react";
+import { describeEstudioLoadError } from "@/lib/estudioErrors";
 
 interface Row {
   modelId: string;
@@ -30,7 +31,12 @@ export default function ModelsTab() {
     setLoading(true);
     setCatalogError(null);
 
-    const { data: enabledRows } = await estudioDb.from("estudio_enabled_models").select("*");
+    const { data: enabledRows, error: enabledErr } = await estudioDb
+      .from("estudio_enabled_models")
+      .select("*");
+    if (enabledErr) {
+      setCatalogError(describeEstudioLoadError(enabledErr, "No se pudieron leer los modelos guardados."));
+    }
     const enabled = (enabledRows ?? []) as EnabledModel[];
     const enabledMap = new Map(enabled.map((e) => [`${e.kind}:${e.model_id}`, e]));
 

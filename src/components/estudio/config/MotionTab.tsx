@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Save } from "lucide-react";
+import { EstudioLoadError } from "@/components/estudio/EstudioLoadError";
+import { describeEstudioLoadError } from "@/lib/estudioErrors";
 
 interface MotionPreset {
   id: string;
@@ -24,6 +26,7 @@ export default function MotionTab() {
   const [models, setModels] = useState<EnabledModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -31,7 +34,12 @@ export default function MotionTab() {
       estudioDb.from("estudio_motion_presets").select("*").order("created_at"),
       loadEnabledModels("video"),
     ]);
-    if (error) toast.error("No se pudieron cargar los presets de movimiento.");
+    if (error) {
+      setLoadError(describeEstudioLoadError(error, "No se pudieron cargar los presets de movimiento."));
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPresets((data ?? []) as MotionPreset[]);
     setModels(videoModels);
     setLoading(false);
@@ -64,6 +72,8 @@ export default function MotionTab() {
   };
 
   if (loading) return <p className="text-sm text-muted-foreground">Cargando…</p>;
+
+  if (loadError) return <EstudioLoadError message={loadError} onRetry={load} />;
 
   return (
     <div className="space-y-6">
