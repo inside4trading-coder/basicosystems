@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
     const photoType = body?.photoType as PhotoType | undefined;
     const promptPresetId = body?.promptPresetId as string | undefined;
     const promptOverride = body?.promptOverride as string | undefined;
+    const imageModelOverride = body?.imageModel as string | undefined;
     const productName = (body?.productName as string | undefined) ?? null;
     const productPrice = (body?.productPrice as string | undefined) ?? null;
 
@@ -74,29 +75,39 @@ Deno.serve(async (req) => {
       return json(400, { error: `photoType debe ser uno de: ${PHOTO_TYPES.join(", ")}` });
     }
 
-    // 3. Resolver preset (el indicado, o el default de ese photo_type)
-    let presetId = promptPresetId ?? null;
-    let promptText = promptOverride ?? null;
-    let imageModel: string | null = null;
-
-    if (!promptText) {
-      const presetQuery = presetId
-        ? admin.from("estudio_prompt_presets").select("*").eq("id", presetId).maybeSingle()
-        : admin
-            .from("estudio_prompt_presets")
-            .select("*")
-            .eq("photo_type", photoType)
-            .eq("is_default", true)
-            .maybeSingle();
-      const { data: preset, error: presetErr } = await presetQuery;
-      if (presetErr || !preset) {
-        return json(400, { error: "No se encontró un preset de prompt para este tipo de fotografía." });
-      }
-      presetId = preset.id;
-      promptText = preset.prompt_text;
-      imageModel = preset.image_model;
+    // 3. Resolver preset. Se carga SIEMPRE (aunque venga un prompt propio) porque de él salen
+    //    también el modelo y el tamaño de salida.
+    const presetQuery = promptPresetId
+      ? admin.from("estudio_prompt_presets").select("*").eq("id", promptPresetId).maybeSingle()
+      : admin
+          .from("estudio_prompt_presets")
+          .select("*")
+          .eq("photo_type", photoType)
+          .eq("is_default", true)
+          .maybeSingle();
+    const { data: preset, error: presetErr } = await presetQuery;
+    if (presetErr || !preset) {
+      return json(400, { error: "No se encontró un preset de prompt para este tipo de fotografía." });
     }
-    if (!imageModel) imageModel = "google/gemini-2.5-flash-image";
+
+    const presetId = preset.id;
+    const promptText = promptOverride?.trim() || preset.prompt_text;
+    // Tamaño explícito: es lo que convierte al módulo en "estandarizado" de verdad.
+    const outputSize = (preset.output_size as string | undefined) ?? "1080x1350";
+
+    let imageModel = imageModelOverride?.trim() || preset.image_model || "google/gemini-2.5-flash-image";
+
+    // El modelo debe estar habilitado por el admin (control de costo). Si el catálogo aún no
+    // está poblado, no se bloquea la generación.
+    const { data: enabledModels } = await admin
+      .from("estudio_enabled_models")
+      .select("model_id")
+      .eq("kind", "image")
+      .eq("is_enabled", true);
+    const allowList = (enabledModels ?? []).map((m: { model_id: string }) => m.model_id);
+    if (allowList.length > 0 && !allowList.includes(imageModel)) {
+      return json(200, { error: `El modelo "${imageModel}" no está habilitado.` });
+    }
 
     // 4. Crear el job (status: processing)
     const { data: job, error: jobErr } = await admin
@@ -140,7 +151,12 @@ Deno.serve(async (req) => {
         model: imageModel,
         prompt: promptText,
         input_references: [{ type: "image_url", image_url: { url: photoBase64 } }],
+        // Sin `size` la imagen sale con la dimensión que decida el modelo — que es justo lo
+        // contrario de lo que promete el módulo.
+        size: outputSize,
+        output_format: "png",
       }),
+      signal: AbortSignal.timeout(180_000),
     });
 
     if (aiRes.status === 429) {
@@ -148,14 +164,14 @@ Deno.serve(async (req) => {
         status: "failed",
         error_message: "Límite de OpenRouter alcanzado.",
       }).eq("id", job.id);
-      return json(429, { error: "Límite de OpenRouter alcanzado, intenta de nuevo en unos minutos." });
+      return json(200, { error: "Límite de OpenRouter alcanzado, intenta de nuevo en unos minutos." });
     }
     if (aiRes.status === 402) {
       await admin.from("estudio_image_jobs").update({
         status: "failed",
         error_message: "Saldo insuficiente en la cuenta de OpenRouter.",
       }).eq("id", job.id);
-      return json(402, { error: "Saldo insuficiente en la cuenta de OpenRouter." });
+      return json(200, { error: "Saldo insuficiente en la cuenta de OpenRouter." });
     }
     if (!aiRes.ok) {
       const errText = await aiRes.text().catch(() => "");
@@ -163,7 +179,7 @@ Deno.serve(async (req) => {
         status: "failed",
         error_message: `OpenRouter respondió ${aiRes.status}: ${errText.slice(0, 300)}`,
       }).eq("id", job.id);
-      return json(502, { error: "La generación de imagen falló. Intenta de nuevo." });
+      return json(200, { error: `La generación falló (OpenRouter respondió ${aiRes.status}).` });
     }
 
     const aiData = await aiRes.json();
@@ -176,7 +192,7 @@ Deno.serve(async (req) => {
         status: "failed",
         error_message: "OpenRouter no devolvió una imagen generada.",
       }).eq("id", job.id);
-      return json(502, { error: "OpenRouter no devolvió una imagen generada." });
+      return json(200, { error: "OpenRouter no devolvió una imagen generada." });
     }
 
     // 7. Subir la imagen generada al bucket

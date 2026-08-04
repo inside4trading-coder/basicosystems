@@ -3,6 +3,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { estudioDb } from "@/lib/estudioDb";
 import { readEdgeFunctionError } from "@/lib/estudioErrors";
+import { loadEnabledModels, modelLabel, type EnabledModel } from "@/lib/estudioModels";
+import { MotionPanel } from "@/components/estudio/MotionPanel";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -98,6 +101,9 @@ export default function EstudioVisual() {
   } | null>(null);
   const [history, setHistory] = useState<ImageJob[]>([]);
   const [presetsError, setPresetsError] = useState<string | null>(null);
+  const [imageModels, setImageModels] = useState<EnabledModel[]>([]);
+  // Modelo elegido para esta generación; arranca del preset y puede cambiarse aquí mismo.
+  const [imageModel, setImageModel] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadPresets = async () => {
@@ -147,11 +153,15 @@ export default function EstudioVisual() {
     loadPresets();
     loadBrand();
     loadHistory();
+    loadEnabledModels("image").then(setImageModels);
+    // Recupera videos que quedaron a medias si se cerró la pestaña durante la generación.
+    supabase.functions.invoke("estudio-video-status", { body: {} }).catch(() => {});
   }, []);
 
   useEffect(() => {
     const defaultPreset = presets.find((p) => p.photo_type === photoType && p.is_default);
     setPromptText(defaultPreset?.prompt_text ?? "");
+    if (defaultPreset?.image_model) setImageModel(defaultPreset.image_model);
   }, [photoType, presets]);
 
   const onFileChange = (f: File | null) => {
@@ -179,6 +189,7 @@ export default function EstudioVisual() {
           sourcePhotoPath,
           photoType,
           promptOverride,
+          imageModel: imageModel || undefined,
           productName: productName || undefined,
           productPrice: productPrice || undefined,
         },
@@ -293,6 +304,28 @@ export default function EstudioVisual() {
         </div>
 
         <div>
+          <Label className="mb-2 block">Modelo de generación</Label>
+          {imageModels.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No hay modelos habilitados. Actívalos en Configuración → Modelos.
+            </p>
+          ) : (
+            <Select value={imageModel} onValueChange={setImageModel}>
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue placeholder="Elige un modelo" />
+              </SelectTrigger>
+              <SelectContent>
+                {imageModels.map((m) => (
+                  <SelectItem key={m.model_id} value={m.model_id}>
+                    {modelLabel(m)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        <div>
           <Label htmlFor="prompt" className="mb-2 block">
             Prompt para esta generación
           </Label>
@@ -356,6 +389,8 @@ export default function EstudioVisual() {
           </div>
         </Card>
       )}
+
+      {result && <MotionPanel sourceImagePath={result.generatedPath} />}
 
       <Card className="p-6 rounded-2xl">
         <h2 className="text-lg font-semibold mb-4">Generaciones recientes</h2>
