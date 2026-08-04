@@ -45,14 +45,35 @@ interface VideoJob {
   duration_seconds: number;
 }
 
-export function MotionPanel({ sourceImagePath }: { sourceImagePath: string }) {
+/** Configuración de movimiento elegida antes de generar, en la pantalla principal. */
+export interface MotionSettings {
+  presetId: string;
+  /** Solo para mostrarlo en el resumen, sin volver a consultar los presets. */
+  presetName: string;
+  videoModel: string;
+  duration: number;
+  aspectRatio: string;
+  resolution: string;
+}
+
+export function MotionPanel({
+  sourceImagePath,
+  settings,
+}: {
+  sourceImagePath: string;
+  /**
+   * Cuando la pantalla ya preguntó cómo debe moverse la foto, el panel hereda esa elección
+   * en vez de volver a pedirla: aquí solo queda confirmar y generar.
+   */
+  settings?: MotionSettings;
+}) {
   const [presets, setPresets] = useState<MotionPreset[]>([]);
   const [models, setModels] = useState<EnabledModel[]>([]);
-  const [presetId, setPresetId] = useState<string>("");
-  const [videoModel, setVideoModel] = useState<string>("");
-  const [duration, setDuration] = useState<number>(5);
-  const [aspectRatio, setAspectRatio] = useState<string>("9:16");
-  const [resolution, setResolution] = useState<string>("720p");
+  const [presetId, setPresetId] = useState<string>(settings?.presetId ?? "");
+  const [videoModel, setVideoModel] = useState<string>(settings?.videoModel ?? "");
+  const [duration, setDuration] = useState<number>(settings?.duration ?? 5);
+  const [aspectRatio, setAspectRatio] = useState<string>(settings?.aspectRatio ?? "9:16");
+  const [resolution, setResolution] = useState<string>(settings?.resolution ?? "720p");
 
   const [submitting, setSubmitting] = useState(false);
   const [job, setJob] = useState<VideoJob | null>(null);
@@ -60,6 +81,11 @@ export function MotionPanel({ sourceImagePath }: { sourceImagePath: string }) {
   const pollRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Con la configuración ya elegida arriba no hace falta consultar nada: el panel solo
+    // confirma y genera. Con varias vistas en pantalla, esto evita repetir las consultas
+    // una vez por tarjeta.
+    if (settings) return;
+
     (async () => {
       const [{ data }, videoModels] = await Promise.all([
         estudioDb.from("estudio_motion_presets").select("*").order("created_at"),
@@ -76,7 +102,19 @@ export function MotionPanel({ sourceImagePath }: { sourceImagePath: string }) {
         setVideoModel(preferred.video_model);
       }
     })();
+    // Solo al montar: el panel aparece cuando ya existe la imagen, con la elección hecha.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // La configuración de arriba puede cambiar después de generar la foto; se refleja aquí.
+  useEffect(() => {
+    if (!settings) return;
+    setPresetId(settings.presetId);
+    setVideoModel(settings.videoModel);
+    setDuration(settings.duration);
+    setAspectRatio(settings.aspectRatio);
+    setResolution(settings.resolution);
+  }, [settings]);
 
   // Al cambiar de preset se adoptan su duración y su modelo como punto de partida.
   const onPresetChange = (id: string) => {
@@ -126,7 +164,7 @@ export function MotionPanel({ sourceImagePath }: { sourceImagePath: string }) {
 
   const handleGenerate = async () => {
     if (!videoModel) {
-      toast.error("Habilita al menos un modelo de video en Configuración.");
+      toast.error('Habilita al menos un modelo de video con el lápiz junto a "Modelo de generación".');
       return;
     }
     setSubmitting(true);
@@ -175,100 +213,109 @@ export function MotionPanel({ sourceImagePath }: { sourceImagePath: string }) {
         <h2 className="text-lg font-semibold">Dar movimiento</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        Convierte esta imagen en un video corto para Reels o Stories. El video se genera a partir
-        de la foto limpia, sin el logo superpuesto.
+        Convierte esta imagen en un video corto para Reels o Stories. El video se genera a partir de la foto
+        limpia, sin el logo superpuesto.
       </p>
 
-      {models.length === 0 ? (
+      {!settings && models.length === 0 ? (
         <p className="text-sm text-destructive">
-          No hay modelos de video habilitados. Actívalos en Configuración → Modelos.
+          No hay modelos de video habilitados. Actívalos con el lápiz junto a "Modelo de generación".
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <Label className="mb-2 block">Tipo de movimiento</Label>
-              <Select value={presetId} onValueChange={onPresetChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Elige un movimiento" />
-                </SelectTrigger>
-                <SelectContent>
-                  {presets.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label className="mb-2 block">Modelo de video</Label>
-              <Select value={videoModel} onValueChange={setVideoModel}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Elige un modelo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {models.map((m) => (
-                    <SelectItem key={m.model_id} value={m.model_id}>
-                      {modelLabel(m)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label>Duración</Label>
-              <span className="text-sm font-medium tabular-nums">{duration} s</span>
-            </div>
-            <Slider
-              min={1}
-              max={12}
-              step={1}
-              value={[duration]}
-              onValueChange={([v]) => setDuration(v)}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              No todos los modelos aceptan cualquier duración; si la rechaza, se avisa con el
-              motivo exacto.
+          {settings ? (
+            <p className="text-sm">
+              <span className="text-muted-foreground">Configuración elegida: </span>
+              {settings.presetName} · {duration} s · {aspectRatio} · {resolution}
             </p>
-          </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label className="mb-2 block">Tipo de movimiento</Label>
+                  <Select value={presetId} onValueChange={onPresetChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Elige un movimiento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {presets.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <Label className="mb-2 block">Formato</Label>
-              <Select value={aspectRatio} onValueChange={setAspectRatio}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ASPECT_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="mb-2 block">Resolución</Label>
-              <Select value={resolution} onValueChange={setResolution}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {RESOLUTION_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+                <div>
+                  <Label className="mb-2 block">Modelo de video</Label>
+                  <Select value={videoModel} onValueChange={setVideoModel}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Elige un modelo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {models.map((m) => (
+                        <SelectItem key={m.model_id} value={m.model_id}>
+                          {modelLabel(m)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Duración</Label>
+                  <span className="text-sm font-medium tabular-nums">{duration} s</span>
+                </div>
+                <Slider
+                  min={1}
+                  max={12}
+                  step={1}
+                  value={[duration]}
+                  onValueChange={([v]) => setDuration(v)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  No todos los modelos aceptan cualquier duración; si la rechaza, se avisa con el motivo
+                  exacto.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label className="mb-2 block">Formato</Label>
+                  <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ASPECT_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="mb-2 block">Resolución</Label>
+                  <Select value={resolution} onValueChange={setResolution}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RESOLUTION_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          )}
 
           <Button onClick={handleGenerate} disabled={submitting || running}>
             {submitting || running ? (
@@ -281,8 +328,8 @@ export function MotionPanel({ sourceImagePath }: { sourceImagePath: string }) {
 
           {running && (
             <p className="text-xs text-muted-foreground">
-              La generación tarda entre 30 segundos y varios minutos. Puedes cerrar la pestaña:
-              al volver al módulo, el video se recupera automáticamente.
+              La generación tarda entre 30 segundos y varios minutos. Puedes cerrar la pestaña: al volver al
+              módulo, el video se recupera automáticamente.
             </p>
           )}
 

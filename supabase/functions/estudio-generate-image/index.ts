@@ -16,6 +16,33 @@ const BUCKET = "estudio-visual";
 const PHOTO_TYPES = ["fondo_blanco", "modelo", "mockup"] as const;
 type PhotoType = (typeof PHOTO_TYPES)[number];
 
+const VIEW_TYPES = ["frente", "espalda", "detalle", "tres_cuartos"] as const;
+type ViewType = (typeof VIEW_TYPES)[number];
+
+// El tamaño se le exige tal cual a OpenRouter, así que se acepta solo de esta lista en vez
+// de reenviar lo que llegue en el body.
+const OUTPUT_SIZES = ["1080x1350", "1080x1080", "1080x1920"] as const;
+
+/**
+ * Modificador que se concatena al prompt del preset según la vista pedida.
+ *
+ * Vive aquí y no en el cliente para que `prompt_used` guarde exactamente lo que se le
+ * mandó al modelo: si una vista sale mal, el registro dice por qué.
+ */
+const VIEW_PROMPT: Record<ViewType, string> = {
+  frente: "",
+  espalda:
+    "Genera la vista trasera de esta misma prenda, manteniendo exactamente el mismo estilo, fondo, encuadre e iluminación.",
+  detalle:
+    "Acércate al estampado o detalle principal de la prenda: primer plano nítido, mismo estilo, fondo e iluminación.",
+  tres_cuartos:
+    "Vista de tres cuartos de la prenda (girada aproximadamente 45 grados), manteniendo el mismo estilo, fondo e iluminación.",
+};
+
+/** Aviso extra cuando la vista se deduce del frente en vez de partir de su propia foto. */
+const INFERRED_SUFFIX =
+  "No inventes elementos de diseño que no puedas ver en la foto de referencia: si una zona no es visible, resuélvela de la forma más simple y neutra posible, coherente con el resto de la prenda.";
+
 function arrayBufferToBase64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
   let binary = "";
@@ -67,12 +94,20 @@ Deno.serve(async (req) => {
     const promptPresetId = body?.promptPresetId as string | undefined;
     const promptOverride = body?.promptOverride as string | undefined;
     const imageModelOverride = body?.imageModel as string | undefined;
-    const productName = (body?.productName as string | undefined) ?? null;
-    const productPrice = (body?.productPrice as string | undefined) ?? null;
+    const outputSizeOverride = body?.outputSize as string | undefined;
+    const sessionId = (body?.sessionId as string | undefined) ?? null;
+    const viewType = (body?.viewType as ViewType | undefined) ?? "frente";
+    const isInferred = Boolean(body?.isInferred);
 
     if (!sourcePhotoPath) return json(400, { error: "sourcePhotoPath requerido" });
     if (!photoType || !PHOTO_TYPES.includes(photoType)) {
       return json(400, { error: `photoType debe ser uno de: ${PHOTO_TYPES.join(", ")}` });
+    }
+    if (!VIEW_TYPES.includes(viewType)) {
+      return json(400, { error: `viewType debe ser uno de: ${VIEW_TYPES.join(", ")}` });
+    }
+    if (outputSizeOverride && !OUTPUT_SIZES.includes(outputSizeOverride as typeof OUTPUT_SIZES[number])) {
+      return json(400, { error: `outputSize debe ser uno de: ${OUTPUT_SIZES.join(", ")}` });
     }
 
     // 3. Resolver preset. Se carga SIEMPRE (aunque venga un prompt propio) porque de él salen
@@ -91,9 +126,18 @@ Deno.serve(async (req) => {
     }
 
     const presetId = preset.id;
-    const promptText = promptOverride?.trim() || preset.prompt_text;
+    const basePrompt = promptOverride?.trim() || preset.prompt_text;
+    const promptText = [
+      basePrompt,
+      VIEW_PROMPT[viewType],
+      isInferred ? INFERRED_SUFFIX : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
     // Tamaño explícito: es lo que convierte al módulo en "estandarizado" de verdad.
-    const outputSize = (preset.output_size as string | undefined) ?? "1080x1350";
+    // El preset define el default; la pantalla puede ajustarlo por corrida.
+    const outputSize =
+      outputSizeOverride?.trim() || (preset.output_size as string | undefined) || "1080x1350";
 
     let imageModel = imageModelOverride?.trim() || preset.image_model || "google/gemini-2.5-flash-image";
 
@@ -120,8 +164,10 @@ Deno.serve(async (req) => {
         prompt_preset_id: presetId,
         prompt_used: promptText,
         image_model: imageModel,
-        product_name: productName,
-        product_price: productPrice,
+        output_size: outputSize,
+        session_id: sessionId,
+        view_type: viewType,
+        is_inferred: isInferred,
       })
       .select()
       .single();
@@ -216,7 +262,13 @@ Deno.serve(async (req) => {
       .update({ status: "completed", generated_image_path: generatedPath, cost_usd: costUsd })
       .eq("id", job.id);
 
-    return json(200, { jobId: job.id, generatedImagePath: generatedPath, costUsd });
+    return json(200, {
+      jobId: job.id,
+      generatedImagePath: generatedPath,
+      costUsd,
+      viewType,
+      isInferred,
+    });
   } catch (e) {
     return json(500, { error: (e as Error).message ?? "Error inesperado" });
   }

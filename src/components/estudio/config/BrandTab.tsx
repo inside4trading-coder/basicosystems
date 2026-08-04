@@ -19,8 +19,6 @@ interface BrandTemplate {
   primary_color: string;
   secondary_color: string;
   logo_position: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center";
-  show_product_name: boolean;
-  show_price: boolean;
   generate_story_variant: boolean;
 }
 
@@ -99,8 +97,6 @@ export default function BrandTab() {
           primary_color: brand.primary_color,
           secondary_color: brand.secondary_color,
           logo_position: brand.logo_position,
-          show_product_name: brand.show_product_name,
-          show_price: brand.show_price,
           generate_story_variant: brand.generate_story_variant,
           updated_at: new Date().toISOString(),
         })
@@ -209,22 +205,6 @@ export default function BrandTab() {
       </div>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between max-w-md">
-          <Label htmlFor="showName">Mostrar nombre del producto</Label>
-          <Switch
-            id="showName"
-            checked={brand.show_product_name}
-            onCheckedChange={(v) => setBrand({ ...brand, show_product_name: v })}
-          />
-        </div>
-        <div className="flex items-center justify-between max-w-md">
-          <Label htmlFor="showPrice">Mostrar precio</Label>
-          <Switch
-            id="showPrice"
-            checked={brand.show_price}
-            onCheckedChange={(v) => setBrand({ ...brand, show_price: v })}
-          />
-        </div>
         <div className="flex items-center justify-between max-w-md">
           <Label htmlFor="storyVariant">Generar también variante de Story (1080×1920)</Label>
           <Switch
