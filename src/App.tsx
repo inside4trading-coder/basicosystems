@@ -73,6 +73,8 @@ import EspanaEtiquetas from "./pages/espana/EspanaEtiquetas";
 import PosPublico from "./pages/pos-publico/PosPublico";
 import FondoTransparente from "./pages/FondoTransparente";
 import FuerzaVenezuela from "./pages/FuerzaVenezuela";
+import EstudioVisual from "./pages/EstudioVisual";
+import EstudioConfiguracion from "./pages/EstudioConfiguracion";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -182,6 +184,8 @@ const App = () => (
                 <Route path="etiquetas" element={<EspanaEtiquetas />} />
               </Route>
               <Route path="/fondo-transparente" element={<FondoTransparente />} />
+              <Route path="/estudio-visual" element={<EstudioVisual />} />
+              <Route path="/estudio-visual/configuracion" element={<EstudioConfiguracion />} />
             </Route>
             <Route path="/crew/incidencias" element={<CrewIncidencias />} />
             <Route path="/sublime/fichaje" element={<SublimeFichajePublico />} />
