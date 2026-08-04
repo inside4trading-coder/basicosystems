@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { estudioDb } from "@/lib/estudioDb";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -40,7 +41,7 @@ export default function BrandTab() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await (supabase.from("estudio_brand_template").select("*").maybeSingle() as any);
+    const { data, error } = await estudioDb.from("estudio_brand_template").select("*").maybeSingle();
     if (error) toast.error("No se pudo cargar la plantilla de marca.");
     if (data) {
       setBrand(data as BrandTemplate);
@@ -73,25 +74,28 @@ export default function BrandTab() {
   const save = async () => {
     if (!brand) return;
     setSaving(true);
-    const { error } = await (sb
-      .from("estudio_brand_template")
-      .update({
-        logo_storage_path: brand.logo_storage_path,
-        primary_color: brand.primary_color,
-        secondary_color: brand.secondary_color,
-        logo_position: brand.logo_position,
-        show_product_name: brand.show_product_name,
-        show_price: brand.show_price,
-        generate_story_variant: brand.generate_story_variant,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", brand.id) as any);
-    setSaving(false);
-    if (error) {
-      toast.error("No se pudo guardar la plantilla.");
-      return;
+    try {
+      const { error } = await estudioDb
+        .from("estudio_brand_template")
+        .update({
+          logo_storage_path: brand.logo_storage_path,
+          primary_color: brand.primary_color,
+          secondary_color: brand.secondary_color,
+          logo_position: brand.logo_position,
+          show_product_name: brand.show_product_name,
+          show_price: brand.show_price,
+          generate_story_variant: brand.generate_story_variant,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", brand.id);
+      if (error) throw error;
+      toast.success("Plantilla de marca guardada.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar la plantilla.");
+    } finally {
+      // En `finally` para que un fallo no deje el botón girando indefinidamente.
+      setSaving(false);
     }
-    toast.success("Plantilla de marca guardada.");
   };
 
   if (loading || !brand) return <p className="text-sm text-muted-foreground">Cargando…</p>;

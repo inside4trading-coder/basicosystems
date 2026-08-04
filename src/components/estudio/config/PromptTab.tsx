@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { estudioDb } from "@/lib/estudioDb";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -17,10 +17,16 @@ const PHOTO_TYPE_LABELS: Record<PhotoType, string> = {
   mockup: "Mockup lifestyle",
 };
 
+// IDs verificados contra GET https://openrouter.ai/api/v1/models.
+// Ojo: "openai/gpt-image-1" y "openai/gpt-image-2" NO existen en OpenRouter — si se usan,
+// toda generación falla. Esta lista se reemplazará por el catálogo dinámico curado (Mejora B).
 const MODEL_OPTIONS = [
   { value: "google/gemini-2.5-flash-image", label: "Gemini 2.5 Flash Image (económico, ~$0.04/imagen)" },
-  { value: "openai/gpt-image-2", label: "GPT Image 2 (mejor calidad, más costoso)" },
-  { value: "openai/gpt-image-1", label: "GPT Image 1" },
+  { value: "google/gemini-3.1-flash-image", label: "Gemini 3.1 Flash Image" },
+  { value: "google/gemini-3-pro-image", label: "Gemini 3 Pro Image (mayor calidad)" },
+  { value: "openai/gpt-5-image-mini", label: "GPT-5 Image Mini (borradores)" },
+  { value: "openai/gpt-5-image", label: "GPT-5 Image" },
+  { value: "openai/gpt-5.4-image-2", label: "GPT-5.4 Image 2 (mejor calidad, más costoso)" },
 ];
 
 interface Preset {
@@ -39,10 +45,10 @@ export default function PromptTab() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await (supabase
+    const { data, error } = await estudioDb
       .from("estudio_prompt_presets")
       .select("*")
-      .order("photo_type") as any);
+      .order("photo_type");
     if (error) toast.error("No se pudieron cargar los presets de prompt.");
     setPresets((data ?? []) as Preset[]);
     setLoading(false);
@@ -58,14 +64,14 @@ export default function PromptTab() {
 
   const save = async (preset: Preset) => {
     setSavingId(preset.id);
-    const { error } = await (supabase
+    const { error } = await estudioDb
       .from("estudio_prompt_presets")
       .update({
         prompt_text: preset.prompt_text,
         image_model: preset.image_model,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", preset.id) as any);
+      .eq("id", preset.id);
     setSavingId(null);
     if (error) {
       toast.error("No se pudo guardar el cambio.");
