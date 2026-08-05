@@ -155,6 +155,7 @@ Deno.serve(async (req) => {
     const sessionId = (body?.sessionId as string | undefined) ?? null;
     const viewType = (body?.viewType as ViewType | undefined) ?? "frente";
     const isInferred = Boolean(body?.isInferred);
+    const modelPhotoPath = (body?.modelPhotoPath as string | undefined)?.trim() || null;
 
     if (!sourcePhotoPath) return json(400, { error: "sourcePhotoPath requerido" });
     if (!photoType || !PHOTO_TYPES.includes(photoType)) {
@@ -163,9 +164,13 @@ Deno.serve(async (req) => {
     if (!VIEW_TYPES.includes(viewType)) {
       return json(400, { error: `viewType debe ser uno de: ${VIEW_TYPES.join(", ")}` });
     }
-    if (outputSizeOverride && !OUTPUT_SIZES.includes(outputSizeOverride as typeof OUTPUT_SIZES[number])) {
-      return json(400, { error: `outputSize debe ser uno de: ${OUTPUT_SIZES.join(", ")}` });
+    const requestedAspect = outputSizeOverride?.trim()
+      ? LEGACY_SIZE_TO_ASPECT[outputSizeOverride.trim()] ?? outputSizeOverride.trim()
+      : "";
+    if (requestedAspect && !ASPECT_RATIOS.includes(requestedAspect as typeof ASPECT_RATIOS[number])) {
+      return json(400, { error: `La proporción debe ser una de: ${ASPECT_RATIOS.join(", ")}` });
     }
+
 
     // 3. Resolver preset. Se carga SIEMPRE (aunque venga un prompt propio) porque de él salen
     //    también el modelo y el tamaño de salida.
