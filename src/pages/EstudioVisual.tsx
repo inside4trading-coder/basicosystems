@@ -808,7 +808,7 @@ export default function EstudioVisual() {
                   {input.include && (
                     <>
                       <ViewPhotoPicker
-                        view={view}
+                        altLabel={VIEW_LABELS[view]}
                         input={input}
                         onFile={(f) => setViewFile(view, f)}
                         onClear={() => setViewFile(view, null)}
