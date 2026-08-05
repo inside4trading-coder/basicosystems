@@ -181,18 +181,19 @@ function BlobPreview({ blob, alt, className }: { blob: Blob; alt: string; classN
   return url ? <img src={url} alt={alt} className={className} /> : null;
 }
 
-/** Selector de foto para una vista de la sesión. */
+/** Selector de foto (una vista de la prenda, o la persona que va a lucirla). */
 function ViewPhotoPicker({
-  view,
+  altLabel,
   input,
   onFile,
   onClear,
 }: {
-  view: ViewType;
+  altLabel: string;
   input: ViewInput;
   onFile: (file: File) => void;
   onClear: () => void;
 }) {
+
   const ref = useRef<HTMLInputElement>(null);
 
   return (
