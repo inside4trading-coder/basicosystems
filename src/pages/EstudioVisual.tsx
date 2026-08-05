@@ -547,12 +547,14 @@ export default function EstudioVisual() {
             return {
               viewType: item.viewType,
               isInferred: item.isInferred,
+              usesModelReference: Boolean(data.usesModelReference ?? modelPath),
               generatedPath: data.generatedImagePath,
               generatedUrl: await resolveEstudioSignedUrl(data.generatedImagePath),
               costUsd: data.costUsd ?? null,
               feedBlob: null,
               storyBlob: null,
             };
+
           } catch (e) {
             return {
               viewType: item.viewType,
