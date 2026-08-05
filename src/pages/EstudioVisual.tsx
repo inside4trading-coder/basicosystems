@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Sparkles, Download, ImagePlus, AlertTriangle, X, RefreshCw } from "lucide-react";
+import { Loader2, Sparkles, Download, ImagePlus, AlertTriangle, X, RefreshCw, Eye } from "lucide-react";
 import {
   uploadEstudioSourcePhoto,
   resolveEstudioSignedUrl,
