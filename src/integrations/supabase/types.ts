@@ -6519,6 +6519,7 @@ export type Database = {
           instagram_feed_path: string | null
           instagram_story_path: string | null
           is_inferred: boolean
+          model_photo_path: string | null
           output_size: string | null
           photo_type: string
           prompt_preset_id: string | null
@@ -6526,6 +6527,7 @@ export type Database = {
           session_id: string | null
           source_photo_path: string
           status: string
+          uses_model_reference: boolean
           view_type: string
         }
         Insert: {
@@ -6539,6 +6541,7 @@ export type Database = {
           instagram_feed_path?: string | null
           instagram_story_path?: string | null
           is_inferred?: boolean
+          model_photo_path?: string | null
           output_size?: string | null
           photo_type: string
           prompt_preset_id?: string | null
@@ -6546,6 +6549,7 @@ export type Database = {
           session_id?: string | null
           source_photo_path: string
           status?: string
+          uses_model_reference?: boolean
           view_type?: string
         }
         Update: {
@@ -6559,6 +6563,7 @@ export type Database = {
           instagram_feed_path?: string | null
           instagram_story_path?: string | null
           is_inferred?: boolean
+          model_photo_path?: string | null
           output_size?: string | null
           photo_type?: string
           prompt_preset_id?: string | null
@@ -6566,6 +6571,7 @@ export type Database = {
           session_id?: string | null
           source_photo_path?: string
           status?: string
+          uses_model_reference?: boolean
           view_type?: string
         }
         Relationships: [

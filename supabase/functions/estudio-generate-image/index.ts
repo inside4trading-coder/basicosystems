@@ -19,9 +19,17 @@ type PhotoType = (typeof PHOTO_TYPES)[number];
 const VIEW_TYPES = ["frente", "espalda", "detalle", "tres_cuartos"] as const;
 type ViewType = (typeof VIEW_TYPES)[number];
 
-// El tamaño se le exige tal cual a OpenRouter, así que se acepta solo de esta lista en vez
-// de reenviar lo que llegue en el body.
-const OUTPUT_SIZES = ["1080x1350", "1080x1080", "1080x1920"] as const;
+// Ningún modelo del catálogo de OpenRouter publica un parámetro `size`: publican
+// `aspect_ratio` y, algunos, `resolution` ("1K"/"2K"/"4K"). Se acepta solo esta lista.
+const ASPECT_RATIOS = ["4:5", "1:1", "9:16"] as const;
+
+// Compatibilidad con presets/clientes viejos que todavía guardan el tamaño en píxeles.
+const LEGACY_SIZE_TO_ASPECT: Record<string, string> = {
+  "1080x1350": "4:5",
+  "1080x1080": "1:1",
+  "1080x1920": "9:16",
+};
+
 
 /**
  * Modificador que se concatena al prompt del preset según la vista pedida.
@@ -43,6 +51,45 @@ const VIEW_PROMPT: Record<ViewType, string> = {
 const INFERRED_SUFFIX =
   "No inventes elementos de diseño que no puedas ver en la foto de referencia: si una zona no es visible, resuélvela de la forma más simple y neutra posible, coherente con el resto de la prenda.";
 
+/**
+ * Instrucción que se agrega cuando además de la prenda se manda la foto de una persona real.
+ * Nombra las referencias por posición, así que depende del orden de `input_references`:
+ * prenda primero, modelo después.
+ */
+const MODEL_REFERENCE_SUFFIX =
+  "La primera imagen de referencia es la prenda; la segunda es la persona que debe lucirla. Reproduce a esa persona —rostro, tono de piel, tipo de cuerpo y cabello— sin alterarla, y vístela con la prenda respetando su corte, color, textura y todo detalle de diseño o texto.";
+
+interface ImageModelCapabilities {
+  maxInputReferences: number | null;
+  supportsResolution: boolean;
+}
+
+// El catálogo cambia poco y se consulta en cada generación, así que se cachea en memoria.
+const CAPS_TTL_MS = 10 * 60 * 1000;
+let capsCache: { at: number; byId: Record<string, ImageModelCapabilities> } | null = null;
+
+async function loadImageModelCapabilities(): Promise<Record<string, ImageModelCapabilities>> {
+  if (capsCache && Date.now() - capsCache.at < CAPS_TTL_MS) return capsCache.byId;
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/images/models");
+    if (!res.ok) return capsCache?.byId ?? {};
+    const models = (await res.json())?.data ?? [];
+    const byId: Record<string, ImageModelCapabilities> = {};
+    for (const m of models as any[]) {
+      const params = m?.supported_parameters ?? {};
+      const max = params?.input_references?.max;
+      byId[m.id] = {
+        maxInputReferences: typeof max === "number" ? max : null,
+        supportsResolution: Object.prototype.hasOwnProperty.call(params, "resolution"),
+      };
+    }
+    capsCache = { at: Date.now(), byId };
+    return byId;
+  } catch {
+    return capsCache?.byId ?? {};
+  }
+}
+
 function arrayBufferToBase64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
   let binary = "";
@@ -52,6 +99,16 @@ function arrayBufferToBase64(buf: ArrayBuffer): string {
   }
   return btoa(binary);
 }
+
+async function downloadAsBase64(
+  admin: any,
+  path: string,
+): Promise<string | null> {
+  const { data: blob, error } = await admin.storage.from(BUCKET).download(path);
+  if (error || !blob) return null;
+  return `data:${blob.type || "image/jpeg"};base64,${arrayBufferToBase64(await blob.arrayBuffer())}`;
+}
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -98,6 +155,7 @@ Deno.serve(async (req) => {
     const sessionId = (body?.sessionId as string | undefined) ?? null;
     const viewType = (body?.viewType as ViewType | undefined) ?? "frente";
     const isInferred = Boolean(body?.isInferred);
+    const modelPhotoPath = (body?.modelPhotoPath as string | undefined)?.trim() || null;
 
     if (!sourcePhotoPath) return json(400, { error: "sourcePhotoPath requerido" });
     if (!photoType || !PHOTO_TYPES.includes(photoType)) {
@@ -106,9 +164,13 @@ Deno.serve(async (req) => {
     if (!VIEW_TYPES.includes(viewType)) {
       return json(400, { error: `viewType debe ser uno de: ${VIEW_TYPES.join(", ")}` });
     }
-    if (outputSizeOverride && !OUTPUT_SIZES.includes(outputSizeOverride as typeof OUTPUT_SIZES[number])) {
-      return json(400, { error: `outputSize debe ser uno de: ${OUTPUT_SIZES.join(", ")}` });
+    const requestedAspect = outputSizeOverride?.trim()
+      ? LEGACY_SIZE_TO_ASPECT[outputSizeOverride.trim()] ?? outputSizeOverride.trim()
+      : "";
+    if (requestedAspect && !ASPECT_RATIOS.includes(requestedAspect as typeof ASPECT_RATIOS[number])) {
+      return json(400, { error: `La proporción debe ser una de: ${ASPECT_RATIOS.join(", ")}` });
     }
+
 
     // 3. Resolver preset. Se carga SIEMPRE (aunque venga un prompt propio) porque de él salen
     //    también el modelo y el tamaño de salida.
@@ -126,20 +188,25 @@ Deno.serve(async (req) => {
     }
 
     const presetId = preset.id;
+    const usesModelReference = Boolean(modelPhotoPath);
     const basePrompt = promptOverride?.trim() || preset.prompt_text;
     const promptText = [
       basePrompt,
       VIEW_PROMPT[viewType],
       isInferred ? INFERRED_SUFFIX : "",
+      usesModelReference ? MODEL_REFERENCE_SUFFIX : "",
     ]
       .filter(Boolean)
       .join(" ");
-    // Tamaño explícito: es lo que convierte al módulo en "estandarizado" de verdad.
+    // Proporción explícita: es lo que convierte al módulo en "estandarizado" de verdad.
     // El preset define el default; la pantalla puede ajustarlo por corrida.
-    const outputSize =
-      outputSizeOverride?.trim() || (preset.output_size as string | undefined) || "1080x1350";
+    const presetAspectRaw = (preset.output_size as string | undefined) ?? "";
+    const presetAspect = LEGACY_SIZE_TO_ASPECT[presetAspectRaw] ?? presetAspectRaw;
+    const aspectRatio =
+      requestedAspect ||
+      (ASPECT_RATIOS.includes(presetAspect as typeof ASPECT_RATIOS[number]) ? presetAspect : "4:5");
 
-    let imageModel = imageModelOverride?.trim() || preset.image_model || "google/gemini-2.5-flash-image";
+    const imageModel = imageModelOverride?.trim() || preset.image_model || "google/gemini-2.5-flash-image";
 
     // El modelo debe estar habilitado por el admin (control de costo). Si el catálogo aún no
     // está poblado, no se bloquea la generación.
@@ -153,6 +220,15 @@ Deno.serve(async (req) => {
       return json(200, { error: `El modelo "${imageModel}" no está habilitado.` });
     }
 
+    // Capacidades publicadas por OpenRouter para este modelo: cuántas referencias admite y
+    // si acepta `resolution`. Se valida antes de gastar la llamada.
+    const caps = (await loadImageModelCapabilities())[imageModel];
+    if (usesModelReference && caps?.maxInputReferences != null && caps.maxInputReferences < 2) {
+      return json(200, {
+        error: `El modelo "${imageModel}" solo acepta ${caps.maxInputReferences} imagen de referencia, así que no puede combinar prenda y modelo. Elige otro modelo o quita la foto del modelo.`,
+      });
+    }
+
     // 4. Crear el job (status: processing)
     const { data: job, error: jobErr } = await admin
       .from("estudio_image_jobs")
@@ -164,27 +240,38 @@ Deno.serve(async (req) => {
         prompt_preset_id: presetId,
         prompt_used: promptText,
         image_model: imageModel,
-        output_size: outputSize,
+        output_size: aspectRatio,
         session_id: sessionId,
         view_type: viewType,
         is_inferred: isInferred,
+        model_photo_path: modelPhotoPath,
+        uses_model_reference: usesModelReference,
       })
       .select()
       .single();
     if (jobErr || !job) return json(500, { error: "No se pudo crear el registro de generación." });
 
-    // 5. Descargar la foto original y convertirla a base64
-    const { data: photoBlob, error: downloadErr } = await admin.storage
-      .from(BUCKET)
-      .download(sourcePhotoPath);
-    if (downloadErr || !photoBlob) {
+    // 5. Descargar la foto original (y la del modelo, si la hay) y convertirlas a base64
+    const photoBase64 = await downloadAsBase64(admin, sourcePhotoPath);
+    if (!photoBase64) {
       await admin.from("estudio_image_jobs").update({
         status: "failed",
         error_message: "No se pudo leer la foto original del bucket.",
       }).eq("id", job.id);
       return json(400, { error: "No se pudo leer la foto original del bucket." });
     }
-    const photoBase64 = `data:${photoBlob.type || "image/jpeg"};base64,${arrayBufferToBase64(await photoBlob.arrayBuffer())}`;
+
+    let modelPhotoBase64: string | null = null;
+    if (modelPhotoPath) {
+      modelPhotoBase64 = await downloadAsBase64(admin, modelPhotoPath);
+      if (!modelPhotoBase64) {
+        await admin.from("estudio_image_jobs").update({
+          status: "failed",
+          error_message: "No se pudo leer la foto del modelo del bucket.",
+        }).eq("id", job.id);
+        return json(200, { error: "No se pudo leer la foto del modelo del bucket." });
+      }
+    }
 
     // 6. Llamar a OpenRouter (endpoint dedicado de imágenes)
     const aiRes = await fetch("https://openrouter.ai/api/v1/images", {
@@ -196,14 +283,20 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: imageModel,
         prompt: promptText,
-        input_references: [{ type: "image_url", image_url: { url: photoBase64 } }],
-        // Sin `size` la imagen sale con la dimensión que decida el modelo — que es justo lo
-        // contrario de lo que promete el módulo.
-        size: outputSize,
+        // El orden importa: el prompt nombra las referencias por posición.
+        input_references: [
+          { type: "image_url", image_url: { url: photoBase64 } },
+          ...(modelPhotoBase64 ? [{ type: "image_url", image_url: { url: modelPhotoBase64 } }] : []),
+        ],
+        // Ningún modelo publica `size`; la proporción se pide con `aspect_ratio`, y solo se
+        // manda `resolution` en los modelos que la publican.
+        aspect_ratio: aspectRatio,
+        ...(caps?.supportsResolution ? { resolution: "2K" } : {}),
         output_format: "png",
       }),
       signal: AbortSignal.timeout(180_000),
     });
+
 
     if (aiRes.status === 429) {
       await admin.from("estudio_image_jobs").update({
@@ -268,7 +361,9 @@ Deno.serve(async (req) => {
       costUsd,
       viewType,
       isInferred,
+      usesModelReference,
     });
+
   } catch (e) {
     return json(500, { error: (e as Error).message ?? "Error inesperado" });
   }

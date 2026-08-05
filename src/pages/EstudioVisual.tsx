@@ -56,11 +56,25 @@ const VIEW_LABELS: Record<ViewType, string> = {
 /** El frente es obligatorio: es la única vista que siempre parte de una foto real. */
 const OPTIONAL_VIEWS: ViewType[] = ["espalda", "detalle", "tres_cuartos"];
 
+// Ningún modelo de imagen de OpenRouter acepta un tamaño en píxeles: la salida se pide por
+// proporción (`aspect_ratio`), así que el desplegable ofrece proporciones, no medidas.
 const SIZE_OPTIONS: DropdownOption[] = [
-  { value: "1080x1350", label: "Vertical 4:5 — 1080×1350 (catálogo y post)" },
-  { value: "1080x1080", label: "Cuadrado 1:1 — 1080×1080" },
-  { value: "1080x1920", label: "Vertical 9:16 — 1080×1920 (story / reel)" },
+  { value: "4:5", label: "Vertical 4:5 (catálogo y post)" },
+  { value: "1:1", label: "Cuadrado 1:1" },
+  { value: "9:16", label: "Vertical 9:16 (story / reel)" },
 ];
+
+// Los estilos guardados antes de este cambio todavía pueden traer el tamaño en píxeles.
+const LEGACY_SIZE_TO_ASPECT: Record<string, string> = {
+  "1080x1350": "4:5",
+  "1080x1080": "1:1",
+  "1080x1920": "9:16",
+};
+
+const normalizeAspect = (value: string): string =>
+  LEGACY_SIZE_TO_ASPECT[value] ?? (SIZE_OPTIONS.some((o) => o.value === value) ? value : "4:5");
+
+
 
 const GENERATION_TYPE_OPTIONS: DropdownOption[] = [
   { value: "estatica", label: "Foto estática" },
@@ -120,10 +134,12 @@ interface ImageJob {
   photo_type: PhotoType;
   view_type: ViewType | null;
   is_inferred: boolean | null;
+  uses_model_reference: boolean | null;
   generated_image_path: string | null;
   cost_usd: number | null;
   error_message: string | null;
 }
+
 
 interface VideoJob {
   id: string;
@@ -146,6 +162,8 @@ interface ViewInput {
 interface ViewResult {
   viewType: ViewType;
   isInferred: boolean;
+  /** La imagen combinó la prenda con la foto de una persona real. */
+  usesModelReference?: boolean;
   generatedPath?: string;
   generatedUrl?: string;
   feedBlob?: Blob | null;
@@ -153,6 +171,7 @@ interface ViewResult {
   costUsd?: number | null;
   errorMessage?: string;
 }
+
 
 const emptyViewInput = (): ViewInput => ({ include: false, file: null, previewUrl: null });
 
@@ -173,18 +192,19 @@ function BlobPreview({ blob, alt, className }: { blob: Blob; alt: string; classN
   return url ? <img src={url} alt={alt} className={className} /> : null;
 }
 
-/** Selector de foto para una vista de la sesión. */
+/** Selector de foto (una vista de la prenda, o la persona que va a lucirla). */
 function ViewPhotoPicker({
-  view,
+  altLabel,
   input,
   onFile,
   onClear,
 }: {
-  view: ViewType;
+  altLabel: string;
   input: ViewInput;
   onFile: (file: File) => void;
   onClear: () => void;
 }) {
+
   const ref = useRef<HTMLInputElement>(null);
 
   return (
@@ -208,7 +228,7 @@ function ViewPhotoPicker({
         <div className="relative">
           <img
             src={input.previewUrl}
-            alt={`Foto ${VIEW_LABELS[view]}`}
+            alt={`Foto ${altLabel}`}
             className="h-16 w-16 object-cover rounded-lg border"
           />
           <Button
@@ -252,6 +272,12 @@ export default function EstudioVisual() {
     detalle: emptyViewInput(),
     tres_cuartos: emptyViewInput(),
   });
+
+  // Foto de la persona que debe lucir la prenda. Es opcional: sin ella el módulo funciona
+  // igual que antes.
+  const [modelPhoto, setModelPhoto] = useState<ViewInput>(emptyViewInput());
+
+
 
   const [brand, setBrand] = useState<EstudioBrandSettings | null>(null);
   // Vive aparte de `brand` porque no es un ajuste de composición: decide si la variante
@@ -396,13 +422,14 @@ export default function EstudioVisual() {
     if (!selectedPreset) return;
     setPromptText(selectedPreset.prompt_text);
     if (selectedPreset.image_model) setImageModel(selectedPreset.image_model);
-    if (selectedPreset.output_size) setOutputSize(selectedPreset.output_size);
+    if (selectedPreset.output_size) setOutputSize(normalizeAspect(selectedPreset.output_size));
   }, [selectedPreset?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Libera las previsualizaciones al desmontar.
   useEffect(() => {
     return () => {
       Object.values(views).forEach((v) => v.previewUrl && URL.revokeObjectURL(v.previewUrl));
+      if (modelPhoto.previewUrl) URL.revokeObjectURL(modelPhoto.previewUrl);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -422,6 +449,19 @@ export default function EstudioVisual() {
     });
     setResults([]);
   };
+
+  const setModelPhotoFile = (file: File | null) => {
+    setModelPhoto((prev) => {
+      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return {
+        include: Boolean(file),
+        file,
+        previewUrl: file ? URL.createObjectURL(file) : null,
+      };
+    });
+    setResults([]);
+  };
+
 
   const toggleView = (view: ViewType, include: boolean) => {
     setViews((prev) => ({ ...prev, [view]: { ...prev[view], include } }));
@@ -462,6 +502,7 @@ export default function EstudioVisual() {
     setResults([]);
     try {
       const frontPath = await uploadEstudioSourcePhoto(frontFile);
+      const modelPath = modelPhoto.file ? await uploadEstudioSourcePhoto(modelPhoto.file) : null;
 
       // Una vista sin foto propia se deduce del frente: se marca como inferida para que
       // nunca se confunda con una foto real de esa vista.
@@ -484,6 +525,7 @@ export default function EstudioVisual() {
             const { data, error } = await supabase.functions.invoke("estudio-generate-image", {
               body: {
                 sourcePhotoPath: item.sourcePath,
+                modelPhotoPath: modelPath ?? undefined,
                 photoType: selectedPreset.photo_type,
                 promptPresetId: selectedPreset.id,
                 promptOverride,
@@ -495,6 +537,7 @@ export default function EstudioVisual() {
               },
             });
 
+
             // supabase-js convierte cualquier respuesta no-2xx en un FunctionsHttpError
             // genérico y descarta el cuerpo, así que el motivo real ("saldo insuficiente",
             // "límite alcanzado") se pierde si no se lee la respuesta original.
@@ -504,12 +547,14 @@ export default function EstudioVisual() {
             return {
               viewType: item.viewType,
               isInferred: item.isInferred,
+              usesModelReference: Boolean(data.usesModelReference ?? modelPath),
               generatedPath: data.generatedImagePath,
               generatedUrl: await resolveEstudioSignedUrl(data.generatedImagePath),
               costUsd: data.costUsd ?? null,
               feedBlob: null,
               storyBlob: null,
             };
+
           } catch (e) {
             return {
               viewType: item.viewType,
@@ -775,7 +820,7 @@ export default function EstudioVisual() {
                 <span className="text-xs text-muted-foreground">(obligatoria)</span>
               </div>
               <ViewPhotoPicker
-                view="frente"
+                altLabel={VIEW_LABELS.frente}
                 input={views.frente}
                 onFile={(f) => setViewFile("frente", f)}
                 onClear={() => setViewFile("frente", null)}
@@ -799,7 +844,7 @@ export default function EstudioVisual() {
                   {input.include && (
                     <>
                       <ViewPhotoPicker
-                        view={view}
+                        altLabel={VIEW_LABELS[view]}
                         input={input}
                         onFile={(f) => setViewFile(view, f)}
                         onClear={() => setViewFile(view, null)}
@@ -818,6 +863,31 @@ export default function EstudioVisual() {
             })}
           </div>
         </div>
+
+        <div className="space-y-3 rounded-xl border p-4">
+          <div>
+            <Label className="block">Modelo (persona que lleva la prenda)</Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Opcional. Si subes la foto de una persona, la IA la usa como referencia junto con la
+              prenda para generar la pieza de campaña.
+            </p>
+          </div>
+          <ViewPhotoPicker
+            altLabel="del modelo"
+            input={modelPhoto}
+            onFile={(f) => setModelPhotoFile(f)}
+            onClear={() => setModelPhotoFile(null)}
+          />
+          {modelPhoto.file && (
+            <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              El resultado es una persona sintetizada a partir de esa foto, no una fotografía real:
+              se marca así en la tarjeta y en el historial. Usa solo fotos con permiso de la persona.
+            </p>
+          )}
+        </div>
+
+
 
         <div>
           <Label htmlFor="prompt" className="mb-2 block">
@@ -858,23 +928,35 @@ export default function EstudioVisual() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {results.map((r) => (
               <Card key={r.viewType} className="p-6 rounded-2xl space-y-3">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
                   <span className="font-medium">{VIEW_LABELS[r.viewType]}</span>
-                  {r.isInferred ? (
-                    <span className="text-xs rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5">
-                      Inferido por IA
-                    </span>
-                  ) : (
-                    <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5">
-                      Desde foto real
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {r.usesModelReference && (
+                      <span className="text-xs rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2 py-0.5">
+                        Modelo sintetizado
+                      </span>
+                    )}
+                    {r.isInferred ? (
+                      <span className="text-xs rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5">
+                        Inferido por IA
+                      </span>
+                    ) : (
+                      <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5">
+                        Desde foto real
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {r.errorMessage ? (
                   <p className="text-sm text-destructive">{r.errorMessage}</p>
                 ) : (
                   <>
+                    {r.usesModelReference && (
+                      <p className="text-xs text-sky-700 dark:text-sky-400">
+                        Modelo sintetizado a partir de una foto de referencia.
+                      </p>
+                    )}
                     {r.isInferred && (
                       <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5">
                         <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
@@ -882,6 +964,7 @@ export default function EstudioVisual() {
                         con la prenda real. Revísala antes de publicarla.
                       </p>
                     )}
+
                     {r.generatedUrl && (
                       <img
                         src={r.generatedUrl}
@@ -1035,7 +1118,16 @@ export default function EstudioVisual() {
                         Inferido
                       </span>
                     )}
+                    {job.uses_model_reference && (
+                      <span
+                        className="text-xs rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2 py-0.5 shrink-0"
+                        title="Modelo sintetizado a partir de una foto de referencia"
+                      >
+                        Modelo sintetizado
+                      </span>
+                    )}
                   </div>
+
                   <span className="text-muted-foreground shrink-0">
                     {new Date(job.created_at).toLocaleString("es-VE")}
                   </span>
