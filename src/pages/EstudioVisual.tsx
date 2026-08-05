@@ -255,6 +255,21 @@ export default function EstudioVisual() {
   const [promptText, setPromptText] = useState("");
   const [outputSize, setOutputSize] = useState<string>(SIZE_OPTIONS[0].value);
 
+  // Vista previa a pantalla completa de una imagen ya generada.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>("");
+  const openPreview = useCallback(async (path: string, title: string) => {
+    const url = await resolveEstudioSignedUrl(path);
+    if (!url) {
+      toast.error("No se pudo abrir la vista previa.");
+      return;
+    }
+    setPreviewTitle(title);
+    setPreviewUrl(url);
+  }, []);
+
+
+
   const [imageModels, setImageModels] = useState<EnabledModel[]>([]);
   const [imageModel, setImageModel] = useState<string>("");
 
