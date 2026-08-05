@@ -1218,6 +1218,9 @@ export default function EstudioVisual() {
           </div>
         )}
       </Card>
+
+      <ImageLightbox url={previewUrl} title={previewTitle} onClose={() => setPreviewUrl(null)} />
     </div>
+
   );
 }
