@@ -19,9 +19,17 @@ type PhotoType = (typeof PHOTO_TYPES)[number];
 const VIEW_TYPES = ["frente", "espalda", "detalle", "tres_cuartos"] as const;
 type ViewType = (typeof VIEW_TYPES)[number];
 
-// El tamaño se le exige tal cual a OpenRouter, así que se acepta solo de esta lista en vez
-// de reenviar lo que llegue en el body.
-const OUTPUT_SIZES = ["1080x1350", "1080x1080", "1080x1920"] as const;
+// Ningún modelo del catálogo de OpenRouter publica un parámetro `size`: publican
+// `aspect_ratio` y, algunos, `resolution` ("1K"/"2K"/"4K"). Se acepta solo esta lista.
+const ASPECT_RATIOS = ["4:5", "1:1", "9:16"] as const;
+
+// Compatibilidad con presets/clientes viejos que todavía guardan el tamaño en píxeles.
+const LEGACY_SIZE_TO_ASPECT: Record<string, string> = {
+  "1080x1350": "4:5",
+  "1080x1080": "1:1",
+  "1080x1920": "9:16",
+};
+
 
 /**
  * Modificador que se concatena al prompt del preset según la vista pedida.
