@@ -1118,7 +1118,16 @@ export default function EstudioVisual() {
                         Inferido
                       </span>
                     )}
+                    {job.uses_model_reference && (
+                      <span
+                        className="text-xs rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2 py-0.5 shrink-0"
+                        title="Modelo sintetizado a partir de una foto de referencia"
+                      >
+                        Modelo sintetizado
+                      </span>
+                    )}
                   </div>
+
                   <span className="text-muted-foreground shrink-0">
                     {new Date(job.created_at).toLocaleString("es-VE")}
                   </span>
