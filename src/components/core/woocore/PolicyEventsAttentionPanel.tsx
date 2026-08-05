@@ -83,13 +83,24 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
   const [refreshing, setRefreshing] = useState<Record<string, boolean>>({});
   const [refreshAll, setRefreshAll] = useState(false);
   const [refreshResults, setRefreshResults] = useState<
-    Record<string, { resolved: boolean; message: string }>
+    Record<
+      string,
+      { resolved: boolean; message: string; reason?: string; selfReplacement?: boolean }
+    >
   >({});
 
   const handleRefreshRow = async (row: PolicyEvent) => {
     setRefreshing((s) => ({ ...s, [row.id]: true }));
     const res = await refreshRow(row);
-    setRefreshResults((s) => ({ ...s, [row.id]: { resolved: res.resolved, message: res.message } }));
+    setRefreshResults((s) => ({
+      ...s,
+      [row.id]: {
+        resolved: res.resolved,
+        message: res.message,
+        reason: res.reason,
+        selfReplacement: (res as any).selfReplacement,
+      },
+    }));
     setRefreshing((s) => ({ ...s, [row.id]: false }));
     toast({
       title: res.resolved ? "Solucionado" : "Sigue pendiente",
@@ -104,7 +115,12 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
       const res = await refreshRow(row);
       setRefreshResults((s) => ({
         ...s,
-        [row.id]: { resolved: res.resolved, message: res.message },
+        [row.id]: {
+          resolved: res.resolved,
+          message: res.message,
+          reason: res.reason,
+          selfReplacement: (res as any).selfReplacement,
+        },
       }));
       if (res.resolved) solved += 1;
     }
