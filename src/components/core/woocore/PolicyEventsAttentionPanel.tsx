@@ -212,6 +212,12 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                 const isSynthetic = !!r._synthetic;
                 const refreshInfo = refreshResults[r.id];
                 const justSolved = refreshInfo?.resolved === true;
+                const preferOriginal =
+                  r.action === "suggest_replacement" &&
+                  !!refreshInfo &&
+                  ((refreshInfo as any).selfReplacement === true ||
+                    refreshInfo.reason === "original_product_now_fabricable" ||
+                    refreshInfo.reason === "self_replacement_original_not_ready");
                 return (
                   <tr
                     key={r.id}
