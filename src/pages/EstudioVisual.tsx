@@ -217,7 +217,7 @@ function ViewPhotoPicker({
         <div className="relative">
           <img
             src={input.previewUrl}
-            alt={`Foto ${VIEW_LABELS[view]}`}
+            alt={`Foto ${altLabel}`}
             className="h-16 w-16 object-cover rounded-lg border"
           />
           <Button
