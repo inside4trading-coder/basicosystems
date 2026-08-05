@@ -502,6 +502,7 @@ export default function EstudioVisual() {
     setResults([]);
     try {
       const frontPath = await uploadEstudioSourcePhoto(frontFile);
+      const modelPath = modelPhoto.file ? await uploadEstudioSourcePhoto(modelPhoto.file) : null;
 
       // Una vista sin foto propia se deduce del frente: se marca como inferida para que
       // nunca se confunda con una foto real de esa vista.
@@ -524,6 +525,7 @@ export default function EstudioVisual() {
             const { data, error } = await supabase.functions.invoke("estudio-generate-image", {
               body: {
                 sourcePhotoPath: item.sourcePath,
+                modelPhotoPath: modelPath ?? undefined,
                 photoType: selectedPreset.photo_type,
                 promptPresetId: selectedPreset.id,
                 promptOverride,
@@ -534,6 +536,7 @@ export default function EstudioVisual() {
                 isInferred: item.isInferred,
               },
             });
+
 
             // supabase-js convierte cualquier respuesta no-2xx en un FunctionsHttpError
             // genérico y descarta el cuerpo, así que el motivo real ("saldo insuficiente",
