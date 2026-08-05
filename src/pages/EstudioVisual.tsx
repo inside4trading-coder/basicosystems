@@ -864,6 +864,31 @@ export default function EstudioVisual() {
           </div>
         </div>
 
+        <div className="space-y-3 rounded-xl border p-4">
+          <div>
+            <Label className="block">Modelo (persona que lleva la prenda)</Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Opcional. Si subes la foto de una persona, la IA la usa como referencia junto con la
+              prenda para generar la pieza de campaña.
+            </p>
+          </div>
+          <ViewPhotoPicker
+            altLabel="del modelo"
+            input={modelPhoto}
+            onFile={(f) => setModelPhotoFile(f)}
+            onClear={() => setModelPhotoFile(null)}
+          />
+          {modelPhoto.file && (
+            <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              El resultado es una persona sintetizada a partir de esa foto, no una fotografía real:
+              se marca así en la tarjeta y en el historial. Usa solo fotos con permiso de la persona.
+            </p>
+          )}
+        </div>
+
+
+
         <div>
           <Label htmlFor="prompt" className="mb-2 block">
             Prompt para esta generación
