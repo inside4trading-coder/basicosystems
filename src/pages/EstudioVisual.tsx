@@ -784,7 +784,7 @@ export default function EstudioVisual() {
                 <span className="text-xs text-muted-foreground">(obligatoria)</span>
               </div>
               <ViewPhotoPicker
-                view="frente"
+                altLabel={VIEW_LABELS.frente}
                 input={views.frente}
                 onFile={(f) => setViewFile("frente", f)}
                 onClear={() => setViewFile("frente", null)}
