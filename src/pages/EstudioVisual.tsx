@@ -262,6 +262,12 @@ export default function EstudioVisual() {
     tres_cuartos: emptyViewInput(),
   });
 
+  // Foto de la persona que debe lucir la prenda. Es opcional: sin ella el módulo funciona
+  // igual que antes.
+  const [modelPhoto, setModelPhoto] = useState<ViewInput>(emptyViewInput());
+
+
+
   const [brand, setBrand] = useState<EstudioBrandSettings | null>(null);
   // Vive aparte de `brand` porque no es un ajuste de composición: decide si la variante
   // de Story llega a generarse. Default `false`, igual que la columna en base.
