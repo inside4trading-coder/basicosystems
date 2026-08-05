@@ -151,6 +151,8 @@ interface ViewInput {
 interface ViewResult {
   viewType: ViewType;
   isInferred: boolean;
+  /** La imagen combinó la prenda con la foto de una persona real. */
+  usesModelReference?: boolean;
   generatedPath?: string;
   generatedUrl?: string;
   feedBlob?: Blob | null;
@@ -158,6 +160,7 @@ interface ViewResult {
   costUsd?: number | null;
   errorMessage?: string;
 }
+
 
 const emptyViewInput = (): ViewInput => ({ include: false, file: null, previewUrl: null });
 
