@@ -574,7 +574,9 @@ export function useReplenishmentPolicyEvents() {
     qc.invalidateQueries({ queryKey: ["policy_events_summary"] });
     qc.invalidateQueries({ queryKey: ["fab_fund_pending_items"] });
     qc.invalidateQueries({ queryKey: ["fab_fund_movements"] });
+    qc.invalidateQueries({ queryKey: ["core_needs_covered_sources"] });
   };
+
 
   const setEventStatus = async (id: string, newStatus: "reviewed" | "resolved" | "ignored") => {
     // synthetic rows cannot be transitioned
