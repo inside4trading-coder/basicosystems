@@ -361,7 +361,9 @@ Deno.serve(async (req) => {
       costUsd,
       viewType,
       isInferred,
+      usesModelReference,
     });
+
   } catch (e) {
     return json(500, { error: (e as Error).message ?? "Error inesperado" });
   }
