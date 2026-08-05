@@ -1181,16 +1181,33 @@ export default function EstudioVisual() {
                       {STATUS_LABELS[job.status] ?? job.status}
                     </span>
                     {job.status === "completed" && job.generated_image_path && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          downloadEstudioImage(job.generated_image_path!, `estudio-${job.id.slice(0, 8)}.png`)
-                        }
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Vista previa"
+                          onClick={() =>
+                            openPreview(
+                              job.generated_image_path!,
+                              `${PHOTO_TYPE_LABELS[job.photo_type]}${job.view_type ? ` — ${VIEW_LABELS[job.view_type]}` : ""}`,
+                            )
+                          }
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Descargar"
+                          onClick={() =>
+                            downloadEstudioImage(job.generated_image_path!, `estudio-${job.id.slice(0, 8)}.png`)
+                          }
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
+
                   </div>
                 </div>
                 {job.status === "failed" && job.error_message && (
