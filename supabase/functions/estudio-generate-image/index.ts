@@ -51,6 +51,45 @@ const VIEW_PROMPT: Record<ViewType, string> = {
 const INFERRED_SUFFIX =
   "No inventes elementos de diseño que no puedas ver en la foto de referencia: si una zona no es visible, resuélvela de la forma más simple y neutra posible, coherente con el resto de la prenda.";
 
+/**
+ * Instrucción que se agrega cuando además de la prenda se manda la foto de una persona real.
+ * Nombra las referencias por posición, así que depende del orden de `input_references`:
+ * prenda primero, modelo después.
+ */
+const MODEL_REFERENCE_SUFFIX =
+  "La primera imagen de referencia es la prenda; la segunda es la persona que debe lucirla. Reproduce a esa persona —rostro, tono de piel, tipo de cuerpo y cabello— sin alterarla, y vístela con la prenda respetando su corte, color, textura y todo detalle de diseño o texto.";
+
+interface ImageModelCapabilities {
+  maxInputReferences: number | null;
+  supportsResolution: boolean;
+}
+
+// El catálogo cambia poco y se consulta en cada generación, así que se cachea en memoria.
+const CAPS_TTL_MS = 10 * 60 * 1000;
+let capsCache: { at: number; byId: Record<string, ImageModelCapabilities> } | null = null;
+
+async function loadImageModelCapabilities(): Promise<Record<string, ImageModelCapabilities>> {
+  if (capsCache && Date.now() - capsCache.at < CAPS_TTL_MS) return capsCache.byId;
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/images/models");
+    if (!res.ok) return capsCache?.byId ?? {};
+    const models = (await res.json())?.data ?? [];
+    const byId: Record<string, ImageModelCapabilities> = {};
+    for (const m of models as any[]) {
+      const params = m?.supported_parameters ?? {};
+      const max = params?.input_references?.max;
+      byId[m.id] = {
+        maxInputReferences: typeof max === "number" ? max : null,
+        supportsResolution: Object.prototype.hasOwnProperty.call(params, "resolution"),
+      };
+    }
+    capsCache = { at: Date.now(), byId };
+    return byId;
+  } catch {
+    return capsCache?.byId ?? {};
+  }
+}
+
 function arrayBufferToBase64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
   let binary = "";
@@ -60,6 +99,16 @@ function arrayBufferToBase64(buf: ArrayBuffer): string {
   }
   return btoa(binary);
 }
+
+async function downloadAsBase64(
+  admin: any,
+  path: string,
+): Promise<string | null> {
+  const { data: blob, error } = await admin.storage.from(BUCKET).download(path);
+  if (error || !blob) return null;
+  return `data:${blob.type || "image/jpeg"};base64,${arrayBufferToBase64(await blob.arrayBuffer())}`;
+}
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
