@@ -928,23 +928,35 @@ export default function EstudioVisual() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {results.map((r) => (
               <Card key={r.viewType} className="p-6 rounded-2xl space-y-3">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
                   <span className="font-medium">{VIEW_LABELS[r.viewType]}</span>
-                  {r.isInferred ? (
-                    <span className="text-xs rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5">
-                      Inferido por IA
-                    </span>
-                  ) : (
-                    <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5">
-                      Desde foto real
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {r.usesModelReference && (
+                      <span className="text-xs rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2 py-0.5">
+                        Modelo sintetizado
+                      </span>
+                    )}
+                    {r.isInferred ? (
+                      <span className="text-xs rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5">
+                        Inferido por IA
+                      </span>
+                    ) : (
+                      <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5">
+                        Desde foto real
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {r.errorMessage ? (
                   <p className="text-sm text-destructive">{r.errorMessage}</p>
                 ) : (
                   <>
+                    {r.usesModelReference && (
+                      <p className="text-xs text-sky-700 dark:text-sky-400">
+                        Modelo sintetizado a partir de una foto de referencia.
+                      </p>
+                    )}
                     {r.isInferred && (
                       <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5">
                         <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
@@ -952,6 +964,7 @@ export default function EstudioVisual() {
                         con la prenda real. Revísala antes de publicarla.
                       </p>
                     )}
+
                     {r.generatedUrl && (
                       <img
                         src={r.generatedUrl}
