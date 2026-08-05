@@ -11,6 +11,7 @@ import {
   type DropdownOption,
 } from "@/components/estudio/DropdownWithManageDialog";
 import { EstudioLoadError } from "@/components/estudio/EstudioLoadError";
+import { ImageLightbox } from "@/components/estudio/ImageLightbox";
 import PromptTab from "@/components/estudio/config/PromptTab";
 import ModelsTab from "@/components/estudio/config/ModelsTab";
 import MotionTab from "@/components/estudio/config/MotionTab";
