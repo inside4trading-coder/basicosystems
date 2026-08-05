@@ -56,11 +56,14 @@ const VIEW_LABELS: Record<ViewType, string> = {
 /** El frente es obligatorio: es la única vista que siempre parte de una foto real. */
 const OPTIONAL_VIEWS: ViewType[] = ["espalda", "detalle", "tres_cuartos"];
 
+// Ningún modelo de imagen de OpenRouter acepta un tamaño en píxeles: la salida se pide por
+// proporción (`aspect_ratio`), así que el desplegable ofrece proporciones, no medidas.
 const SIZE_OPTIONS: DropdownOption[] = [
-  { value: "1080x1350", label: "Vertical 4:5 — 1080×1350 (catálogo y post)" },
-  { value: "1080x1080", label: "Cuadrado 1:1 — 1080×1080" },
-  { value: "1080x1920", label: "Vertical 9:16 — 1080×1920 (story / reel)" },
+  { value: "4:5", label: "Vertical 4:5 (catálogo y post)" },
+  { value: "1:1", label: "Cuadrado 1:1" },
+  { value: "9:16", label: "Vertical 9:16 (story / reel)" },
 ];
+
 
 const GENERATION_TYPE_OPTIONS: DropdownOption[] = [
   { value: "estatica", label: "Foto estática" },
