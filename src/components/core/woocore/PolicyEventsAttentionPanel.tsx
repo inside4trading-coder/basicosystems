@@ -320,7 +320,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                       <div className="flex flex-col gap-1 min-w-[170px]">
                         <Button
                           size="sm"
-                          variant="secondary"
+                          variant={preferOriginal ? "default" : "secondary"}
                           disabled={!!refreshing[r.id] || refreshAll}
                           onClick={() => handleRefreshRow(r)}
                         >
@@ -333,7 +333,11 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         </Button>
                         {r.action === "suggest_replacement" && (
                           <>
-                            <Button size="sm" onClick={() => setReplacementEvent(r)}>
+                            <Button
+                              size="sm"
+                              variant={preferOriginal ? "outline" : "default"}
+                              onClick={() => setReplacementEvent(r)}
+                            >
                               <Wand2 className="w-3 h-3 mr-1" /> Aplicar reemplazo
                             </Button>
                             <Button size="sm" variant="outline" asChild>
