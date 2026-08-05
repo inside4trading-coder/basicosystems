@@ -179,10 +179,59 @@ export function useReplenishmentPolicyEvents() {
     },
   });
 
+  // Orígenes ya cubiertos por una necesidad de producción (o por un evento resuelto
+  // que ya generó necesidad). Sirve para no mostrar alertas fantasma.
+  const coveredQuery = useQuery({
+    queryKey: ["core_needs_covered_sources"],
+    queryFn: async () => {
+      const movementIds = new Set<string>();
+      const orderItemKeys = new Set<string>();
+
+      const { data: srcs } = await supabase
+        .from("core_production_need_sources")
+        .select("production_need_id, fabrication_fund_movement_id, source_order_id, source_order_item_id")
+        .limit(2000);
+      (srcs ?? []).forEach((s: any) => {
+        if (s.fabrication_fund_movement_id) movementIds.add(s.fabrication_fund_movement_id);
+        const k = makeDedupeKey(s.source_order_id, s.source_order_item_id);
+        if (k) orderItemKeys.add(k);
+      });
+
+      const { data: evs } = await supabase
+        .from("core_replenishment_policy_events" as any)
+        .select("id, status, source_id, woo_order_id, woo_order_item_id, resolution_data")
+        .eq("status", "resolved")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      (evs ?? []).forEach((e: any) => {
+        const rd = e.resolution_data ?? {};
+        if (!rd.created_need_id) return;
+        if (e.source_id) movementIds.add(e.source_id);
+        if (rd.origin_movement_id) movementIds.add(rd.origin_movement_id);
+        const k = makeDedupeKey(e.woo_order_id, e.woo_order_item_id);
+        if (k) orderItemKeys.add(k);
+      });
+
+      return { movementIds, orderItemKeys };
+    },
+  });
+
   const policyRows = eventsQuery.data ?? [];
   const pendingItems = pendingItemsQuery.data ?? [];
-  const pendingClassMovs = pendingClassMovsQuery.data ?? [];
-  const internalMissingCoreMovs = internalMissingCoreQuery.data ?? [];
+  const covered = coveredQuery.data ?? {
+    movementIds: new Set<string>(),
+    orderItemKeys: new Set<string>(),
+  };
+  const isCovered = (movementId?: string | null, key?: string | null) =>
+    (!!movementId && covered.movementIds.has(movementId)) ||
+    (!!key && covered.orderItemKeys.has(key));
+  const pendingClassMovs = (pendingClassMovsQuery.data ?? []).filter(
+    (m: any) => !isCovered(m.id, makeDedupeKey(m.source_order_id, m.source_order_item_id)),
+  );
+  const internalMissingCoreMovs = (internalMissingCoreQuery.data ?? []).filter(
+    (m: any) => !isCovered(m.id, makeDedupeKey(m.source_order_id, m.source_order_item_id)),
+  );
+
 
   // Bridge events referenced by corrected pending_classification movements
   // (used to show which product replaced the original one).
@@ -525,7 +574,9 @@ export function useReplenishmentPolicyEvents() {
     qc.invalidateQueries({ queryKey: ["policy_events_summary"] });
     qc.invalidateQueries({ queryKey: ["fab_fund_pending_items"] });
     qc.invalidateQueries({ queryKey: ["fab_fund_movements"] });
+    qc.invalidateQueries({ queryKey: ["core_needs_covered_sources"] });
   };
+
 
   const setEventStatus = async (id: string, newStatus: "reviewed" | "resolved" | "ignored") => {
     // synthetic rows cannot be transitioned
@@ -853,9 +904,54 @@ export function useReplenishmentPolicyEvents() {
           message: "No se pudo validar automáticamente.",
         };
       }
+      // Cerrar también el movimiento origen (si el evento venía de una reserva
+      // sin vínculo Core) y dejar trazado el vínculo necesidad ↔ movimiento.
+      const originMovementId =
+        row.sourceMovementId ??
+        (row.resolution_data as any)?.origin_movement_id ??
+        (row.source_type === "fabrication_fund_movement" ? (row as any).source_id : null) ??
+        null;
+      if (flow.needId && originMovementId) {
+        const { data: existingLink } = await supabase
+          .from("core_production_need_sources")
+          .select("id")
+          .eq("fabrication_fund_movement_id", originMovementId)
+          .maybeSingle();
+        if (!existingLink) {
+          await supabase.from("core_production_need_sources").insert({
+            production_need_id: flow.needId,
+            fabrication_fund_movement_id: originMovementId,
+            source_order_id: row.woo_order_id ?? null,
+            source_order_item_id: row.woo_order_item_id ?? null,
+            quantity: Number(row.quantity ?? 1) || 1,
+            amount: row.amount ?? null,
+            currency: "USD",
+          });
+        }
+        if (row._kind === "policy_event") {
+          const current = await readMovementResolution(originMovementId);
+          await supabase
+            .from("core_fabrication_fund_movements" as any)
+            .update({
+              cost_snapshot_data: {
+                ...(current ?? {}),
+                unlinked_core_resolution: {
+                  ...((current as any)?.unlinked_core_resolution ?? {}),
+                  status: "closed",
+                  ...stamp,
+                  resolved_reason: "need_created_or_already_exists",
+                  resolved_at: now,
+                  resolved_by: uid,
+                },
+              },
+            })
+            .eq("id", originMovementId);
+        }
+      }
     } catch (e: any) {
       return { ...result, resolved: false, reason: "update_failed", message: e.message };
     }
+
 
     invalidateAll();
     qc.invalidateQueries({ queryKey: ["core_production_needs"] });
