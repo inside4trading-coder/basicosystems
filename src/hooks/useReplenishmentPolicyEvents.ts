@@ -799,8 +799,12 @@ export function useReplenishmentPolicyEvents() {
       resolved_by_refresh: true,
       resolved_reason: result.reason,
       resolved_unit_cost: result.unitCost ?? null,
+      unit_cost: result.unitCost ?? null,
+      core_product_id: result.coreProductId ?? row.core_product_id ?? null,
+      core_variant_id: result.coreVariantId ?? row.core_variant_id ?? null,
       created_need_id: flow.needId ?? null,
-      route: flow.route ?? null,
+      route: flow.route ?? result.route ?? null,
+      ...(result.selfReplacement ? { self_replacement: true } : {}),
       refreshed_at: now,
     };
 

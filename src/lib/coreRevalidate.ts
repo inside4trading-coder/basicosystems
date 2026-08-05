@@ -17,6 +17,7 @@ export type RevalidationResult = {
   coreProductId?: string | null;
   coreVariantId?: string | null;
   createdNeedId?: string | null;
+  selfReplacement?: boolean;
 };
 
 const NOT_VALIDATABLE: RevalidationResult = {
@@ -27,6 +28,7 @@ const NOT_VALIDATABLE: RevalidationResult = {
 
 const COST_ACTIONS = new Set(["missing_cost", "financial_review", "manual_cost_review"]);
 const MAP_ACTIONS = new Set(["missing_map"]);
+const REPLACEMENT_ACTIONS = new Set(["suggest_replacement"]);
 
 /** Resuelve ruta/política actual (solo lectura). */
 export async function resolveRouteInfo(row: PolicyEvent): Promise<{
@@ -254,6 +256,82 @@ async function hasFabricationCatalog(coreProductId: string | null | undefined): 
   return !!data;
 }
 
+/**
+ * Revalida el PRODUCTO ORIGINAL de un evento "Reemplazo sugerido".
+ * No aplica reemplazo: solo comprueba si el original ya es fabricable.
+ */
+export async function revalidateOriginalProduct(row: PolicyEvent): Promise<RevalidationResult> {
+  // 1) Mapa Woo/Core del producto original (vincula la talla si falta y es única)
+  const check = await hasWooCoreMap(row);
+  const coreProductId = check.productId ?? row.core_product_id ?? null;
+  const coreVariantId = check.variantId ?? row.core_variant_id ?? null;
+
+  // 4) Detectar reemplazo auto-referencial / no-op
+  const selfReplacement =
+    (!!row.replacement_product_id && !!coreProductId && row.replacement_product_id === coreProductId) ||
+    (!!row.replacement_woo_product_id &&
+      !!row.woo_product_id &&
+      row.replacement_woo_product_id === row.woo_product_id);
+
+  const notReady = (reason: string, message: string): RevalidationResult => ({
+    resolved: false,
+    reason: selfReplacement ? "self_replacement_original_not_ready" : reason,
+    message: selfReplacement
+      ? "El reemplazo sugerido apunta al mismo producto. Revisa la política."
+      : message,
+    coreProductId,
+    coreVariantId,
+    selfReplacement,
+  });
+
+  if (!check.mapped) {
+    return notReady(
+      "original_not_ready_link",
+      "Falta vincular esta talla con el producto del catálogo.",
+    );
+  }
+
+  const rowResolved = {
+    ...row,
+    core_product_id: coreProductId,
+    core_variant_id: coreVariantId,
+  } as PolicyEvent;
+
+  // 2) Costo
+  const cost = await resolveUnitCost(rowResolved);
+  if (cost == null || !(cost > 0)) {
+    return notReady(
+      "original_not_ready_cost",
+      "Todavía falta vincular producto/talla o costo para fabricar.",
+    );
+  }
+
+  // 3) Ruta operativa
+  const route = await resolveRouteInfo(rowResolved);
+  const lifecycleTerminal = ["discontinued", "archived", "inactive"].includes(
+    String(route.lifecycleStatus ?? "").toLowerCase(),
+  );
+  if (route.route !== "internal_factory" || route.restockEnabled === false || lifecycleTerminal) {
+    return notReady(
+      "original_not_ready_route",
+      "El producto original no está habilitado para fabricación interna.",
+    );
+  }
+
+  return {
+    resolved: true,
+    reason: "original_product_now_fabricable",
+    message: "Producto original listo para fabricar.",
+    unitCost: cost,
+    route: "internal_factory",
+    lifecycleStatus: route.lifecycleStatus,
+    restockEnabled: route.restockEnabled,
+    coreProductId: route.coreProductId ?? coreProductId,
+    coreVariantId: route.coreVariantId ?? coreVariantId,
+    selfReplacement,
+  };
+}
+
 /** Revalida una fila contra la configuración actual (solo lectura). */
 export async function revalidateAttentionRow(row: PolicyEvent): Promise<RevalidationResult> {
   try {
@@ -330,6 +408,11 @@ export async function revalidateAttentionRow(row: PolicyEvent): Promise<Revalida
         reason: "cost_still_missing",
         message: "Todavía falta configurar costo/catálogo.",
       };
+    }
+
+    // D — reemplazo sugerido: revalidar primero el producto ORIGINAL
+    if (REPLACEMENT_ACTIONS.has(row.action)) {
+      return await revalidateOriginalProduct(row);
     }
 
     return NOT_VALIDATABLE;

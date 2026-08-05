@@ -83,13 +83,24 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
   const [refreshing, setRefreshing] = useState<Record<string, boolean>>({});
   const [refreshAll, setRefreshAll] = useState(false);
   const [refreshResults, setRefreshResults] = useState<
-    Record<string, { resolved: boolean; message: string }>
+    Record<
+      string,
+      { resolved: boolean; message: string; reason?: string; selfReplacement?: boolean }
+    >
   >({});
 
   const handleRefreshRow = async (row: PolicyEvent) => {
     setRefreshing((s) => ({ ...s, [row.id]: true }));
     const res = await refreshRow(row);
-    setRefreshResults((s) => ({ ...s, [row.id]: { resolved: res.resolved, message: res.message } }));
+    setRefreshResults((s) => ({
+      ...s,
+      [row.id]: {
+        resolved: res.resolved,
+        message: res.message,
+        reason: res.reason,
+        selfReplacement: (res as any).selfReplacement,
+      },
+    }));
     setRefreshing((s) => ({ ...s, [row.id]: false }));
     toast({
       title: res.resolved ? "Solucionado" : "Sigue pendiente",
@@ -104,7 +115,12 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
       const res = await refreshRow(row);
       setRefreshResults((s) => ({
         ...s,
-        [row.id]: { resolved: res.resolved, message: res.message },
+        [row.id]: {
+          resolved: res.resolved,
+          message: res.message,
+          reason: res.reason,
+          selfReplacement: (res as any).selfReplacement,
+        },
       }));
       if (res.resolved) solved += 1;
     }
@@ -212,6 +228,12 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                 const isSynthetic = !!r._synthetic;
                 const refreshInfo = refreshResults[r.id];
                 const justSolved = refreshInfo?.resolved === true;
+                const preferOriginal =
+                  r.action === "suggest_replacement" &&
+                  !!refreshInfo &&
+                  ((refreshInfo as any).selfReplacement === true ||
+                    (refreshInfo as any).reason === "original_product_now_fabricable" ||
+                    (refreshInfo as any).reason === "self_replacement_original_not_ready");
                 return (
                   <tr
                     key={r.id}
@@ -314,7 +336,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                       <div className="flex flex-col gap-1 min-w-[170px]">
                         <Button
                           size="sm"
-                          variant="secondary"
+                          variant={preferOriginal ? "default" : "secondary"}
                           disabled={!!refreshing[r.id] || refreshAll}
                           onClick={() => handleRefreshRow(r)}
                         >
@@ -327,7 +349,11 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         </Button>
                         {r.action === "suggest_replacement" && (
                           <>
-                            <Button size="sm" onClick={() => setReplacementEvent(r)}>
+                            <Button
+                              size="sm"
+                              variant={preferOriginal ? "outline" : "default"}
+                              onClick={() => setReplacementEvent(r)}
+                            >
                               <Wand2 className="w-3 h-3 mr-1" /> Aplicar reemplazo
                             </Button>
                             <Button size="sm" variant="outline" asChild>
