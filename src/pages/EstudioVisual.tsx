@@ -411,13 +411,14 @@ export default function EstudioVisual() {
     if (!selectedPreset) return;
     setPromptText(selectedPreset.prompt_text);
     if (selectedPreset.image_model) setImageModel(selectedPreset.image_model);
-    if (selectedPreset.output_size) setOutputSize(selectedPreset.output_size);
+    if (selectedPreset.output_size) setOutputSize(normalizeAspect(selectedPreset.output_size));
   }, [selectedPreset?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Libera las previsualizaciones al desmontar.
   useEffect(() => {
     return () => {
       Object.values(views).forEach((v) => v.previewUrl && URL.revokeObjectURL(v.previewUrl));
+      if (modelPhoto.previewUrl) URL.revokeObjectURL(modelPhoto.previewUrl);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -437,6 +438,19 @@ export default function EstudioVisual() {
     });
     setResults([]);
   };
+
+  const setModelPhotoFile = (file: File | null) => {
+    setModelPhoto((prev) => {
+      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return {
+        include: Boolean(file),
+        file,
+        previewUrl: file ? URL.createObjectURL(file) : null,
+      };
+    });
+    setResults([]);
+  };
+
 
   const toggleView = (view: ViewType, include: boolean) => {
     setViews((prev) => ({ ...prev, [view]: { ...prev[view], include } }));
