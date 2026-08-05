@@ -17,6 +17,7 @@ export type RevalidationResult = {
   coreProductId?: string | null;
   coreVariantId?: string | null;
   createdNeedId?: string | null;
+  selfReplacement?: boolean;
 };
 
 const NOT_VALIDATABLE: RevalidationResult = {
@@ -27,6 +28,7 @@ const NOT_VALIDATABLE: RevalidationResult = {
 
 const COST_ACTIONS = new Set(["missing_cost", "financial_review", "manual_cost_review"]);
 const MAP_ACTIONS = new Set(["missing_map"]);
+const REPLACEMENT_ACTIONS = new Set(["suggest_replacement"]);
 
 /** Resuelve ruta/política actual (solo lectura). */
 export async function resolveRouteInfo(row: PolicyEvent): Promise<{
