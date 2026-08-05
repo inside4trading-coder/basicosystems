@@ -216,8 +216,8 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                   r.action === "suggest_replacement" &&
                   !!refreshInfo &&
                   ((refreshInfo as any).selfReplacement === true ||
-                    refreshInfo.reason === "original_product_now_fabricable" ||
-                    refreshInfo.reason === "self_replacement_original_not_ready");
+                    (refreshInfo as any).reason === "original_product_now_fabricable" ||
+                    (refreshInfo as any).reason === "self_replacement_original_not_ready");
                 return (
                   <tr
                     key={r.id}
