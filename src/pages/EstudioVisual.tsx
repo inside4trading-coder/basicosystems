@@ -123,10 +123,12 @@ interface ImageJob {
   photo_type: PhotoType;
   view_type: ViewType | null;
   is_inferred: boolean | null;
+  uses_model_reference: boolean | null;
   generated_image_path: string | null;
   cost_usd: number | null;
   error_message: string | null;
 }
+
 
 interface VideoJob {
   id: string;
