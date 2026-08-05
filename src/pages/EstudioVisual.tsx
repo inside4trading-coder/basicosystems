@@ -982,12 +982,28 @@ export default function EstudioVisual() {
                     )}
 
                     {r.generatedUrl && (
-                      <img
-                        src={r.generatedUrl}
-                        alt={`Foto generada — ${VIEW_LABELS[r.viewType]}`}
-                        className="w-full rounded-lg border"
-                      />
+                      <button
+                        type="button"
+                        className="group relative block w-full"
+                        onClick={() => {
+                          setPreviewTitle(`Foto generada — ${VIEW_LABELS[r.viewType]}`);
+                          setPreviewUrl(r.generatedUrl!);
+                        }}
+                        aria-label="Ver imagen en grande"
+                      >
+                        <img
+                          src={r.generatedUrl}
+                          alt={`Foto generada — ${VIEW_LABELS[r.viewType]}`}
+                          className="w-full rounded-lg border transition-opacity group-hover:opacity-90"
+                        />
+                        <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="rounded-full bg-background/80 p-2">
+                            <Eye className="h-5 w-5" />
+                          </span>
+                        </span>
+                      </button>
                     )}
+
                     {r.costUsd != null && (
                       <p className="text-xs text-muted-foreground">
                         Costo: ${r.costUsd.toFixed(4)} USD
