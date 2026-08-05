@@ -64,6 +64,17 @@ const SIZE_OPTIONS: DropdownOption[] = [
   { value: "9:16", label: "Vertical 9:16 (story / reel)" },
 ];
 
+// Los estilos guardados antes de este cambio todavía pueden traer el tamaño en píxeles.
+const LEGACY_SIZE_TO_ASPECT: Record<string, string> = {
+  "1080x1350": "4:5",
+  "1080x1080": "1:1",
+  "1080x1920": "9:16",
+};
+
+const normalizeAspect = (value: string): string =>
+  LEGACY_SIZE_TO_ASPECT[value] ?? (SIZE_OPTIONS.some((o) => o.value === value) ? value : "4:5");
+
+
 
 const GENERATION_TYPE_OPTIONS: DropdownOption[] = [
   { value: "estatica", label: "Foto estática" },
