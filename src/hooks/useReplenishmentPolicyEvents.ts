@@ -902,9 +902,54 @@ export function useReplenishmentPolicyEvents() {
           message: "No se pudo validar automáticamente.",
         };
       }
+      // Cerrar también el movimiento origen (si el evento venía de una reserva
+      // sin vínculo Core) y dejar trazado el vínculo necesidad ↔ movimiento.
+      const originMovementId =
+        row.sourceMovementId ??
+        (row.resolution_data as any)?.origin_movement_id ??
+        (row.source_type === "fabrication_fund_movement" ? (row as any).source_id : null) ??
+        null;
+      if (flow.needId && originMovementId) {
+        const { data: existingLink } = await supabase
+          .from("core_production_need_sources")
+          .select("id")
+          .eq("fabrication_fund_movement_id", originMovementId)
+          .maybeSingle();
+        if (!existingLink) {
+          await supabase.from("core_production_need_sources").insert({
+            production_need_id: flow.needId,
+            fabrication_fund_movement_id: originMovementId,
+            source_order_id: row.woo_order_id ?? null,
+            source_order_item_id: row.woo_order_item_id ?? null,
+            quantity: Number(row.quantity ?? 1) || 1,
+            amount: row.amount ?? null,
+            currency: "USD",
+          });
+        }
+        if (row._kind === "policy_event") {
+          const current = await readMovementResolution(originMovementId);
+          await supabase
+            .from("core_fabrication_fund_movements" as any)
+            .update({
+              cost_snapshot_data: {
+                ...(current ?? {}),
+                unlinked_core_resolution: {
+                  ...((current as any)?.unlinked_core_resolution ?? {}),
+                  status: "closed",
+                  ...stamp,
+                  resolved_reason: "need_created_or_already_exists",
+                  resolved_at: now,
+                  resolved_by: uid,
+                },
+              },
+            })
+            .eq("id", originMovementId);
+        }
+      }
     } catch (e: any) {
       return { ...result, resolved: false, reason: "update_failed", message: e.message };
     }
+
 
     invalidateAll();
     qc.invalidateQueries({ queryKey: ["core_production_needs"] });
