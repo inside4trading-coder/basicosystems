@@ -334,6 +334,11 @@ export async function revalidateAttentionRow(row: PolicyEvent): Promise<Revalida
       };
     }
 
+    // D — reemplazo sugerido: revalidar primero el producto ORIGINAL
+    if (REPLACEMENT_ACTIONS.has(row.action)) {
+      return await revalidateOriginalProduct(row);
+    }
+
     return NOT_VALIDATABLE;
   } catch {
     return NOT_VALIDATABLE;
