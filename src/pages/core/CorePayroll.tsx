@@ -439,6 +439,13 @@ export default function CorePayroll() {
       {openRunId && (
         <RunDetailDialog runId={openRunId} onClose={() => setOpenRunId(null)} onChange={loadAll} />
       )}
+
+      <TransferWorkEntryDialog
+        entry={transferEntry}
+        onClose={() => setTransferEntry(null)}
+        onTransferred={loadAll}
+      />
+
     </div>
   );
 }
