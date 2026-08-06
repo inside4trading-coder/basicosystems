@@ -262,20 +262,20 @@ export async function downloadProductionOrderBackupPdf(order: OrderLike) {
     y += 4;
   }
 
-  // Tabla de líneas
+  // Tabla de líneas agrupada por material (corte)
   ensureSpace(24);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text("Productos / líneas", M, y);
+  doc.text("Corte por material", M, y);
   y += 6;
 
   const cols = [
-    { label: "SKU", x: M, w: 32 },
-    { label: "Producto", x: M + 32, w: 58 },
-    { label: "Talla", x: M + 90, w: 22 },
-    { label: "Ord.", x: M + 112, w: 22 },
-    { label: "Gen.", x: M + 134, w: 22 },
-    { label: "Compl.", x: M + 156, w: 24 },
+    { label: "SKU", x: M, w: 34 },
+    { label: "Pieza", x: M + 34, w: 66 },
+    { label: "Talla", x: M + 100, w: 20 },
+    { label: "Ord.", x: M + 120, w: 20 },
+    { label: "Gen.", x: M + 140, w: 20 },
+    { label: "Compl.", x: M + 160, w: 20 },
   ];
 
   const drawHead = () => {
@@ -287,35 +287,51 @@ export async function downloadProductionOrderBackupPdf(order: OrderLike) {
     y += 6;
     doc.setFont("helvetica", "normal");
   };
-  drawHead();
 
-  doc.setFontSize(8.5);
   if (lineRows.length === 0) {
+    drawHead();
+    doc.setFontSize(8.5);
     doc.text("Sin líneas registradas", M + 1, y);
     y += 6;
   }
-  for (const l of lineRows) {
-    ensureSpace(8);
-    if (y === 18) drawHead();
-    const gen = generatedByKey.get(keyOf(l.variant_sku ?? l.sku, l.size)) ?? 0;
-    const vals = [
-      String(l.variant_sku ?? l.sku ?? "—"),
-      String(l.variant_label ?? order.product_name ?? "—"),
-      String(l.size ?? "—"),
-      String(l.quantity_ordered ?? 0),
-      String(gen),
-      String(l.quantity_completed ?? 0),
-    ];
-    vals.forEach((v, i) => {
-      const c = cols[i];
-      const t = (doc.splitTextToSize(v, c.w - 2) as string[])[0] ?? "";
-      doc.text(t, c.x + 1, y);
-    });
-    y += 5.2;
-    doc.setDrawColor(235);
-    doc.line(M, y - 3.6, W - M, y - 3.6);
+
+  for (const material of groupedMaterials) {
+    const rows = groups.get(material)!;
+    ensureSpace(20);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    const totalOrd = rows.reduce((a, r) => a + Number(r.quantity_ordered ?? 0), 0);
+    doc.setFillColor(225, 225, 225);
+    doc.rect(M, y - 4, W - M * 2, 6.5, "F");
+    doc.text(`MATERIAL: ${material}`, M + 1, y);
+    doc.text(`${totalOrd} u.`, W - M - 1, y, { align: "right" });
+    y += 8;
+    drawHead();
+    doc.setFontSize(8.5);
+    for (const l of rows) {
+      ensureSpace(8);
+      const gen = generatedByKey.get(keyOf(l.variant_sku ?? l.sku, l.size)) ?? 0;
+      const vals = [
+        String(l.variant_sku ?? l.sku ?? "—"),
+        String(pieceFor(l)),
+        String(l.size ?? "—"),
+        String(l.quantity_ordered ?? 0),
+        String(gen),
+        String(l.quantity_completed ?? 0),
+      ];
+      vals.forEach((v, i) => {
+        const c = cols[i];
+        const t = (doc.splitTextToSize(v, c.w - 2) as string[])[0] ?? "";
+        doc.text(t, c.x + 1, y);
+      });
+      y += 5.2;
+      doc.setDrawColor(235);
+      doc.line(M, y - 3.6, W - M, y - 3.6);
+    }
+    y += 5;
   }
-  y += 6;
+  y += 2;
+
 
   // Procesos
   if (procRows.length) {
