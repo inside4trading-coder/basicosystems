@@ -60,6 +60,104 @@ export async function downloadProductionOrderBackupPdf(order: OrderLike) {
   const linkRows = ((links as any[]) ?? []) as any[];
   const unitRows = ((units as any[]) ?? []) as any[];
 
+  // ---- Resolución de material principal y nombre de pieza por línea ----
+  const productIds = Array.from(new Set(lineRows.map((l) => l.core_product_id).filter(Boolean)));
+  const variantIds = Array.from(new Set(lineRows.map((l) => l.core_variant_id).filter(Boolean)));
+
+  const [{ data: products }, { data: variants }] = await Promise.all([
+    productIds.length
+      ? supabase.from("core_products").select("id, name, cost_structure_id").in("id", productIds)
+      : Promise.resolve({ data: [] as any[] }),
+    variantIds.length
+      ? supabase
+          .from("core_product_variants")
+          .select("id, core_product_id, cost_structure_id, uses_parent_cost_structure, cost_override_enabled")
+          .in("id", variantIds)
+      : Promise.resolve({ data: [] as any[] }),
+  ]);
+
+  const productById = new Map<string, any>(((products as any[]) ?? []).map((p) => [p.id, p]));
+  const variantById = new Map<string, any>(((variants as any[]) ?? []).map((v) => [v.id, v]));
+
+  const structureIdFor = (l: any): string | null => {
+    const v = l.core_variant_id ? variantById.get(l.core_variant_id) : null;
+    if (v && v.cost_override_enabled && !v.uses_parent_cost_structure && v.cost_structure_id) {
+      return v.cost_structure_id as string;
+    }
+    const pid = l.core_product_id ?? v?.core_product_id ?? null;
+    const p = pid ? productById.get(pid) : null;
+    return (p?.cost_structure_id as string) ?? (v?.cost_structure_id as string) ?? null;
+  };
+
+  const structureIds = Array.from(
+    new Set(lineRows.map((l) => structureIdFor(l)).filter(Boolean) as string[]),
+  );
+
+  const { data: items } = structureIds.length
+    ? await supabase
+        .from("core_cost_structure_items")
+        .select("cost_structure_id, name, raw_material_id, sort_order")
+        .eq("section", "raw_material")
+        .in("cost_structure_id", structureIds)
+        .order("sort_order", { ascending: true, nullsFirst: false })
+    : { data: [] as any[] };
+
+  const itemRows = ((items as any[]) ?? []) as any[];
+  const rawIds = Array.from(new Set(itemRows.map((i) => i.raw_material_id).filter(Boolean)));
+  const { data: raws } = rawIds.length
+    ? await supabase
+        .from("core_raw_materials")
+        .select("id, name, category_id, core_raw_material_categories(name)")
+        .in("id", rawIds)
+    : { data: [] as any[] };
+  const rawById = new Map<string, any>(((raws as any[]) ?? []).map((r) => [r.id, r]));
+
+  const isFabric = (r: any) => {
+    const cat = (r?.core_raw_material_categories?.name ?? "").toLowerCase();
+    return cat.includes("tela") || cat.includes("fabric");
+  };
+
+  const materialByStructure = new Map<string, string>();
+  for (const sid of structureIds) {
+    const rows = itemRows.filter((i) => i.cost_structure_id === sid);
+    if (!rows.length) continue;
+    const fabric = rows.find((i) => i.raw_material_id && isFabric(rawById.get(i.raw_material_id)));
+    const chosen = fabric ?? rows[0];
+    const name =
+      (chosen.raw_material_id ? rawById.get(chosen.raw_material_id)?.name : null) ??
+      chosen.name ??
+      null;
+    if (name) materialByStructure.set(sid, String(name).trim());
+  }
+
+  const materialFor = (l: any) => {
+    const sid = structureIdFor(l);
+    return (sid && materialByStructure.get(sid)) || "Sin material";
+  };
+  const pieceFor = (l: any) => {
+    const v = l.core_variant_id ? variantById.get(l.core_variant_id) : null;
+    const pid = l.core_product_id ?? v?.core_product_id ?? null;
+    return productById.get(pid)?.name ?? order.product_name ?? l.variant_label ?? "—";
+  };
+
+  const skuOf = (l: any) => String(l.variant_sku ?? l.sku ?? "").trim().toUpperCase();
+
+  const groups = new Map<string, any[]>();
+  for (const l of lineRows) {
+    const m = materialFor(l);
+    if (!groups.has(m)) groups.set(m, []);
+    groups.get(m)!.push(l);
+  }
+  const groupedMaterials = Array.from(groups.keys()).sort((a, b) => {
+    if (a === "Sin material") return 1;
+    if (b === "Sin material") return -1;
+    return a.localeCompare(b, "es");
+  });
+  for (const m of groupedMaterials) {
+    groups.get(m)!.sort((a, b) => skuOf(a).localeCompare(skuOf(b)) || String(a.size ?? "").localeCompare(String(b.size ?? "")));
+  }
+
+
   const generatedByKey = new Map<string, number>();
   for (const u of unitRows) {
     const k = keyOf(u.variant_sku, u.size);
