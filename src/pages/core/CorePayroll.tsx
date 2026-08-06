@@ -514,6 +514,7 @@ function WorkEntryTable({ entries, showRateActions, onTransfer }: { entries: Wor
 function OperatorsPendingPanel({
   summaries,
   totalAll,
+  onTransfer,
 }: {
   summaries: Array<{
     operatorId: string;
@@ -524,7 +525,9 @@ function OperatorsPendingPanel({
     byUnit: Set<string>;
   }>;
   totalAll: number;
+  onTransfer?: (e: WorkEntry) => void;
 }) {
+
   const [openId, setOpenId] = useState<string | null>(null);
   if (summaries.length === 0) {
     return <Card><CardContent className="p-6 text-sm text-muted-foreground">Sin trabajos pendientes por operario.</CardContent></Card>;
