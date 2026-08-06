@@ -456,7 +456,7 @@ function KpiCard({ icon: Icon, label, value, tone }: { icon: any; label: string;
   );
 }
 
-function WorkEntryTable({ entries, showRateActions }: { entries: WorkEntry[]; showRateActions?: boolean }) {
+function WorkEntryTable({ entries, showRateActions, onTransfer }: { entries: WorkEntry[]; showRateActions?: boolean; onTransfer?: (e: WorkEntry) => void }) {
   if (entries.length === 0) return <Card><CardContent className="p-6 text-sm text-muted-foreground">Sin trabajos.</CardContent></Card>;
   return (
     <Card>
@@ -471,6 +471,7 @@ function WorkEntryTable({ entries, showRateActions }: { entries: WorkEntry[]; sh
               <TableHead>Tarifa</TableHead>
               <TableHead>Monto</TableHead>
               <TableHead>Estado</TableHead>
+              {onTransfer && <TableHead className="text-right">Acciones</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -483,6 +484,23 @@ function WorkEntryTable({ entries, showRateActions }: { entries: WorkEntry[]; sh
                 <TableCell>{fmt(e.rate_snapshot, e.currency ?? "USD")}</TableCell>
                 <TableCell>{fmt(e.payroll_amount, e.currency ?? "USD")}</TableCell>
                 <TableCell><StatusBadge s={e.payroll_status} /></TableCell>
+                {onTransfer && (
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!["pending", "missing_rate"].includes(e.payroll_status)}
+                      title={
+                        ["pending", "missing_rate"].includes(e.payroll_status)
+                          ? "Transferir a otro operario"
+                          : "Este trabajo ya está en una nómina cerrada. Requiere ajuste manual."
+                      }
+                      onClick={() => onTransfer(e)}
+                    >
+                      Transferir
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -491,6 +509,7 @@ function WorkEntryTable({ entries, showRateActions }: { entries: WorkEntry[]; sh
     </Card>
   );
 }
+
 
 function OperatorsPendingPanel({
   summaries,
