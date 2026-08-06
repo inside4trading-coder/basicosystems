@@ -399,12 +399,13 @@ export default function CorePayroll() {
         </TabsContent>
 
         <TabsContent value="pending">
-          <WorkEntryTable entries={pendingEntries} />
+          <WorkEntryTable entries={pendingEntries} onTransfer={setTransferEntry} />
         </TabsContent>
 
         <TabsContent value="missing">
-          <WorkEntryTable entries={missingRateEntries} showRateActions />
+          <WorkEntryTable entries={missingRateEntries} showRateActions onTransfer={setTransferEntry} />
         </TabsContent>
+
       </Tabs>
 
       {/* Generate dialog */}
