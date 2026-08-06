@@ -134,6 +134,8 @@ export default function CorePayroll() {
   const [periodEnd, setPeriodEnd] = useState(week.end);
   const [paymentDate, setPaymentDate] = useState(week.payment);
   const [openRunId, setOpenRunId] = useState<string | null>(null);
+  const [transferEntry, setTransferEntry] = useState<WorkEntry | null>(null);
+
 
   const loadAll = useCallback(async () => {
     setLoading(true);
