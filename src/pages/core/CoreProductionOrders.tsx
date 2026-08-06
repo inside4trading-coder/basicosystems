@@ -1088,32 +1088,32 @@ export default function CoreProductionOrders() {
 
       {/* Detalle */}
       <Sheet open={!!detailOrder} onOpenChange={(o) => !o && setDetailOrder(null)}>
-        <SheetContent className="w-[640px] sm:max-w-[640px] overflow-y-auto">
+        <SheetContent className="w-full max-w-full sm:w-[640px] sm:max-w-[640px] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
           {detailOrder && (
             <>
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <span className="font-mono">{detailOrder.order_code}</span>
+              <SheetHeader className="text-left">
+                <SheetTitle className="flex flex-wrap items-center gap-2 pr-8">
+                  <span className="font-mono break-all">{detailOrder.order_code}</span>
                   <Badge variant="outline" className={STATUS_BADGE[detailOrder.status]}>
                     {STATUS_LABEL[detailOrder.status] ?? detailOrder.status}
                   </Badge>
                 </SheetTitle>
               </SheetHeader>
-              <div className="mt-3">
-                <Button size="sm" variant="outline" onClick={() => handleBackupPdf(detailOrder)}>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => handleBackupPdf(detailOrder)}>
                   <FileDown className="h-3 w-3 mr-1" /> PDF respaldo
                 </Button>
               </div>
-              <div className="space-y-4 mt-4">
-                <Card className="p-3">
-                  <div className="font-medium">{detailOrder.product_name}</div>
-                  <div className="text-xs text-muted-foreground font-mono">{detailOrder.sku}</div>
-                  <div className="grid grid-cols-3 gap-2 mt-3 text-sm">
+              <div className="space-y-4 mt-4 min-w-0">
+                <Card className="p-3 min-w-0">
+                  <div className="font-medium break-words">{detailOrder.product_name}</div>
+                  <div className="text-xs text-muted-foreground font-mono break-all">{detailOrder.sku}</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-sm">
                     <div><div className="text-xs text-muted-foreground">Total</div>{detailOrder.total_quantity}</div>
                     <div><div className="text-xs text-muted-foreground">Pendientes prod.</div>{detailOrder.pending_quantity}</div>
                     <div><div className="text-xs text-muted-foreground">Completadas prod.</div>{detailOrder.completed_quantity}</div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 text-sm">
                     <div>
                       <div className="text-xs text-muted-foreground">Ingresadas inventario</div>
                       <span className="text-emerald-700 font-semibold">{invByOrder[detailOrder.id]?.entered ?? 0}</span>
@@ -1129,6 +1129,7 @@ export default function CoreProductionOrders() {
                       {renderInventoryBadge(invByOrder[detailOrder.id])}
                     </div>
                   </div>
+
                   {detailOrder.is_overproduction && (
                     <Badge variant="outline" className="mt-2 bg-orange-100 text-orange-800 border-orange-300">
                       Sobreproducción autorizada
@@ -1146,42 +1147,63 @@ export default function CoreProductionOrders() {
                   )}
                 </Card>
 
-                <div>
+                <div className="min-w-0">
                   <h4 className="text-sm font-semibold mb-2">Líneas ({detailLines.length})</h4>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Producto</TableHead>
-                        <TableHead>Talla</TableHead>
-                        <TableHead>SKU variante</TableHead>
-                        <TableHead className="text-right">Ord.</TableHead>
-                        <TableHead className="text-right">Compl.</TableHead>
-                        <TableHead className="text-right">Pend.</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {detailLines.map((l) => (
-                        <TableRow key={l.id}>
-                          <TableCell className="font-mono text-xs">{l.sku ?? "—"}</TableCell>
-                          <TableCell>{l.size ?? l.variant_label}</TableCell>
-                          <TableCell className="font-mono text-xs">{l.variant_sku}</TableCell>
-                          <TableCell className="text-right">{l.quantity_ordered}</TableCell>
-                          <TableCell className="text-right">{l.quantity_completed}</TableCell>
-                          <TableCell className="text-right">{l.quantity_pending}</TableCell>
+                  {/* Móvil: cards */}
+                  <div className="grid gap-2 sm:hidden">
+                    {detailLines.map((l) => (
+                      <div key={l.id} className="rounded-lg border p-3 text-sm min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-mono text-xs break-all">{l.sku ?? "—"}</span>
+                          <Badge variant="outline" className="shrink-0">{l.size ?? l.variant_label}</Badge>
+                        </div>
+                        <div className="font-mono text-[11px] text-muted-foreground break-all mt-1">{l.variant_sku}</div>
+                        <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
+                          <div><div className="text-muted-foreground">Ord.</div>{l.quantity_ordered}</div>
+                          <div><div className="text-muted-foreground">Compl.</div>{l.quantity_completed}</div>
+                          <div><div className="text-muted-foreground">Pend.</div>{l.quantity_pending}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Desktop: tabla */}
+                  <div className="hidden sm:block w-full overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Producto</TableHead>
+                          <TableHead>Talla</TableHead>
+                          <TableHead>SKU variante</TableHead>
+                          <TableHead className="text-right">Ord.</TableHead>
+                          <TableHead className="text-right">Compl.</TableHead>
+                          <TableHead className="text-right">Pend.</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {detailLines.map((l) => (
+                          <TableRow key={l.id}>
+                            <TableCell className="font-mono text-xs">{l.sku ?? "—"}</TableCell>
+                            <TableCell>{l.size ?? l.variant_label}</TableCell>
+                            <TableCell className="font-mono text-xs">{l.variant_sku}</TableCell>
+                            <TableCell className="text-right">{l.quantity_ordered}</TableCell>
+                            <TableCell className="text-right">{l.quantity_completed}</TableCell>
+                            <TableCell className="text-right">{l.quantity_pending}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
                     <h4 className="text-sm font-semibold flex items-center gap-2">
                       <PackageCheck className="h-4 w-4" /> Pipeline de producción
                     </h4>
                     <Button
                       size="sm"
                       variant="outline"
+                      className="w-full sm:w-auto"
                       onClick={() => window.open("/core/inventario", "_blank")}
                     >
                       Abrir inventario
@@ -1195,81 +1217,104 @@ export default function CoreProductionOrders() {
                 </div>
 
 
-                <div>
+
+                <div className="min-w-0">
                   <h4 className="text-sm font-semibold mb-2">Procesos requeridos</h4>
                   {detailProcesses.length === 0 ? (
                     <div className="text-xs text-muted-foreground">
                       Sin procesos asociados a la estructura de costos.
                     </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>#</TableHead>
-                          <TableHead>Proceso</TableHead>
-                          <TableHead>Rol</TableHead>
-                          <TableHead>Nómina</TableHead>
-                          <TableHead>Estado</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+                    <>
+                      {/* Móvil: cards */}
+                      <div className="grid gap-2 sm:hidden">
                         {detailProcesses.map((p) => (
-                          <TableRow key={p.id}>
-                            <TableCell>{p.process_order}</TableCell>
-                            <TableCell>{p.process_name}</TableCell>
-                            <TableCell className="text-xs">{p.suggested_role ?? "—"}</TableCell>
-                            <TableCell>{p.adds_to_payroll ? "Sí" : "No"}</TableCell>
-                            <TableCell><Badge variant="outline">{p.status}</Badge></TableCell>
-                          </TableRow>
+                          <div key={p.id} className="rounded-lg border p-3 text-sm min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="font-medium break-words">
+                                {p.process_order}. {p.process_name}
+                              </span>
+                              <Badge variant="outline" className="shrink-0">{p.status}</Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1 break-words">
+                              Rol: {p.suggested_role ?? "—"} · Nómina: {p.adds_to_payroll ? "Sí" : "No"}
+                            </div>
+                          </div>
                         ))}
-                      </TableBody>
-                    </Table>
+                      </div>
+                      {/* Desktop: tabla */}
+                      <div className="hidden sm:block w-full overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>#</TableHead>
+                              <TableHead>Proceso</TableHead>
+                              <TableHead>Rol</TableHead>
+                              <TableHead>Nómina</TableHead>
+                              <TableHead>Estado</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {detailProcesses.map((p) => (
+                              <TableRow key={p.id}>
+                                <TableCell>{p.process_order}</TableCell>
+                                <TableCell>{p.process_name}</TableCell>
+                                <TableCell className="text-xs">{p.suggested_role ?? "—"}</TableCell>
+                                <TableCell>{p.adds_to_payroll ? "Sí" : "No"}</TableCell>
+                                <TableCell><Badge variant="outline">{p.status}</Badge></TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </>
                   )}
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <h4 className="text-sm font-semibold mb-2">Necesidades origen</h4>
                   {detailLinks.length === 0 ? (
                     <div className="text-xs text-muted-foreground">Sin necesidades vinculadas (orden manual).</div>
                   ) : (
                     <ul className="text-sm space-y-1">
                       {detailLinks.map((l: any) => (
-                        <li key={l.id} className="flex justify-between border rounded p-2">
-                          <span className="font-mono text-xs">
+                        <li key={l.id} className="flex flex-col sm:flex-row sm:justify-between gap-1 border rounded p-2 min-w-0">
+                          <span className="font-mono text-xs break-all">
                             {l.core_production_needs?.variant_sku ?? l.production_need_id}
                           </span>
-                          <span>cant. tomada: <b>{l.quantity_taken}</b></span>
+                          <span className="text-xs sm:text-sm">cant. tomada: <b>{l.quantity_taken}</b></span>
                         </li>
                       ))}
                     </ul>
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-2 pt-2 border-t">
+                <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2 pt-2 border-t">
                   {detailOrder.status === "open" && (
-                    <Button size="sm" onClick={() => changeStatus(detailOrder, "in_production")}>
+                    <Button size="sm" className="w-full sm:w-auto" onClick={() => changeStatus(detailOrder, "in_production")}>
                       Marcar en producción
                     </Button>
                   )}
                   {detailOrder.status === "in_production" && (
-                    <Button size="sm" variant="outline" onClick={() => changeStatus(detailOrder, "open")}>
+                    <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => changeStatus(detailOrder, "open")}>
                       Volver a abierta
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" disabled title="Se construye en el siguiente bloque">
+                  <Button size="sm" variant="outline" className="w-full sm:w-auto" disabled title="Se construye en el siguiente bloque">
                     <QrCode className="h-3 w-3 mr-1" /> Generar QR / Ficha Viajera
                   </Button>
                   {!["closed", "cancelled", "manually_closed"].includes(detailOrder.status) && (
                     <>
-                      <Button size="sm" variant="outline" onClick={() => setCloseOpen(detailOrder)}>
+                      <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setCloseOpen(detailOrder)}>
                         <Lock className="h-3 w-3 mr-1" /> Cerrar manualmente
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => setCancelOpen(detailOrder)}>
+                      <Button size="sm" variant="destructive" className="w-full sm:w-auto" onClick={() => setCancelOpen(detailOrder)}>
                         <Ban className="h-3 w-3 mr-1" /> Cancelar
                       </Button>
                     </>
                   )}
                 </div>
+
                 <div className="text-xs text-muted-foreground italic pt-2">
                   QR / ficha viajera / escaneo / nómina / inventario se construirán en bloques posteriores.
                 </div>
