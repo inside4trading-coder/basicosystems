@@ -14,6 +14,8 @@ import { toast } from "@/hooks/use-toast";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { Wallet, Plus, CheckCircle2, AlertTriangle, FileText, Printer, RefreshCw, DollarSign, Users, ListChecks } from "lucide-react";
 import { formatDMY } from "@/lib/dateUtils";
+import { TransferWorkEntryDialog } from "@/components/core/payroll/TransferWorkEntryDialog";
+
 
 type WorkEntry = {
   id: string;
