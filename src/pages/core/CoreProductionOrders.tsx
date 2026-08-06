@@ -1147,42 +1147,63 @@ export default function CoreProductionOrders() {
                   )}
                 </Card>
 
-                <div>
+                <div className="min-w-0">
                   <h4 className="text-sm font-semibold mb-2">Líneas ({detailLines.length})</h4>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Producto</TableHead>
-                        <TableHead>Talla</TableHead>
-                        <TableHead>SKU variante</TableHead>
-                        <TableHead className="text-right">Ord.</TableHead>
-                        <TableHead className="text-right">Compl.</TableHead>
-                        <TableHead className="text-right">Pend.</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {detailLines.map((l) => (
-                        <TableRow key={l.id}>
-                          <TableCell className="font-mono text-xs">{l.sku ?? "—"}</TableCell>
-                          <TableCell>{l.size ?? l.variant_label}</TableCell>
-                          <TableCell className="font-mono text-xs">{l.variant_sku}</TableCell>
-                          <TableCell className="text-right">{l.quantity_ordered}</TableCell>
-                          <TableCell className="text-right">{l.quantity_completed}</TableCell>
-                          <TableCell className="text-right">{l.quantity_pending}</TableCell>
+                  {/* Móvil: cards */}
+                  <div className="grid gap-2 sm:hidden">
+                    {detailLines.map((l) => (
+                      <div key={l.id} className="rounded-lg border p-3 text-sm min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-mono text-xs break-all">{l.sku ?? "—"}</span>
+                          <Badge variant="outline" className="shrink-0">{l.size ?? l.variant_label}</Badge>
+                        </div>
+                        <div className="font-mono text-[11px] text-muted-foreground break-all mt-1">{l.variant_sku}</div>
+                        <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
+                          <div><div className="text-muted-foreground">Ord.</div>{l.quantity_ordered}</div>
+                          <div><div className="text-muted-foreground">Compl.</div>{l.quantity_completed}</div>
+                          <div><div className="text-muted-foreground">Pend.</div>{l.quantity_pending}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Desktop: tabla */}
+                  <div className="hidden sm:block w-full overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Producto</TableHead>
+                          <TableHead>Talla</TableHead>
+                          <TableHead>SKU variante</TableHead>
+                          <TableHead className="text-right">Ord.</TableHead>
+                          <TableHead className="text-right">Compl.</TableHead>
+                          <TableHead className="text-right">Pend.</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {detailLines.map((l) => (
+                          <TableRow key={l.id}>
+                            <TableCell className="font-mono text-xs">{l.sku ?? "—"}</TableCell>
+                            <TableCell>{l.size ?? l.variant_label}</TableCell>
+                            <TableCell className="font-mono text-xs">{l.variant_sku}</TableCell>
+                            <TableCell className="text-right">{l.quantity_ordered}</TableCell>
+                            <TableCell className="text-right">{l.quantity_completed}</TableCell>
+                            <TableCell className="text-right">{l.quantity_pending}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
                     <h4 className="text-sm font-semibold flex items-center gap-2">
                       <PackageCheck className="h-4 w-4" /> Pipeline de producción
                     </h4>
                     <Button
                       size="sm"
                       variant="outline"
+                      className="w-full sm:w-auto"
                       onClick={() => window.open("/core/inventario", "_blank")}
                     >
                       Abrir inventario
@@ -1194,6 +1215,7 @@ export default function CoreProductionOrders() {
                     onRepair={() => openDetail(detailOrder)}
                   />
                 </div>
+
 
 
                 <div>
