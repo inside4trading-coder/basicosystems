@@ -9083,6 +9083,14 @@ export type Database = {
         }
         Returns: Json
       }
+      core_transfer_work_entry: {
+        Args: {
+          p_new_operator_id: string
+          p_reason: string
+          p_work_entry_id: string
+        }
+        Returns: Json
+      }
       core_update_external_purchase_order_draft: {
         Args: { p_header?: Json; p_lines?: Json; p_order_id: string }
         Returns: Json
