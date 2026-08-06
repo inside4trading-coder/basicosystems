@@ -348,8 +348,13 @@ export default function CorePayroll() {
         </TabsList>
 
         <TabsContent value="operators">
-          <OperatorsPendingPanel summaries={operatorSummaries} totalAll={kpis.totalPendingAll} />
+          <OperatorsPendingPanel
+            summaries={operatorSummaries}
+            totalAll={kpis.totalPendingAll}
+            onTransfer={setTransferEntry}
+          />
         </TabsContent>
+
 
         <TabsContent value="runs">
           <Card>
