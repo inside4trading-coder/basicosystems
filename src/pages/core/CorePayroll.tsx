@@ -589,6 +589,7 @@ function OperatorsPendingPanel({
                               <TableHead>Proceso</TableHead>
                               <TableHead className="text-right">Tarifa</TableHead>
                               <TableHead className="text-right">Monto</TableHead>
+                              {onTransfer && <TableHead className="text-right">Acciones</TableHead>}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -599,8 +600,26 @@ function OperatorsPendingPanel({
                                 <TableCell className="text-sm">{e.process_name}</TableCell>
                                 <TableCell className="text-right">{fmt(e.rate_snapshot, e.currency ?? "USD")}</TableCell>
                                 <TableCell className="text-right">{fmt(e.payroll_amount, e.currency ?? "USD")}</TableCell>
+                                {onTransfer && (
+                                  <TableCell className="text-right">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={!["pending", "missing_rate"].includes(e.payroll_status)}
+                                      title={
+                                        ["pending", "missing_rate"].includes(e.payroll_status)
+                                          ? "Transferir a otro operario"
+                                          : "Este trabajo ya está en una nómina cerrada. Requiere ajuste manual."
+                                      }
+                                      onClick={() => onTransfer(e)}
+                                    >
+                                      Transferir
+                                    </Button>
+                                  </TableCell>
+                                )}
                               </TableRow>
                             ))}
+
                           </TableBody>
                         </Table>
                       </div>
