@@ -1218,81 +1218,103 @@ export default function CoreProductionOrders() {
 
 
 
-                <div>
+                <div className="min-w-0">
                   <h4 className="text-sm font-semibold mb-2">Procesos requeridos</h4>
                   {detailProcesses.length === 0 ? (
                     <div className="text-xs text-muted-foreground">
                       Sin procesos asociados a la estructura de costos.
                     </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>#</TableHead>
-                          <TableHead>Proceso</TableHead>
-                          <TableHead>Rol</TableHead>
-                          <TableHead>Nómina</TableHead>
-                          <TableHead>Estado</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+                    <>
+                      {/* Móvil: cards */}
+                      <div className="grid gap-2 sm:hidden">
                         {detailProcesses.map((p) => (
-                          <TableRow key={p.id}>
-                            <TableCell>{p.process_order}</TableCell>
-                            <TableCell>{p.process_name}</TableCell>
-                            <TableCell className="text-xs">{p.suggested_role ?? "—"}</TableCell>
-                            <TableCell>{p.adds_to_payroll ? "Sí" : "No"}</TableCell>
-                            <TableCell><Badge variant="outline">{p.status}</Badge></TableCell>
-                          </TableRow>
+                          <div key={p.id} className="rounded-lg border p-3 text-sm min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="font-medium break-words">
+                                {p.process_order}. {p.process_name}
+                              </span>
+                              <Badge variant="outline" className="shrink-0">{p.status}</Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1 break-words">
+                              Rol: {p.suggested_role ?? "—"} · Nómina: {p.adds_to_payroll ? "Sí" : "No"}
+                            </div>
+                          </div>
                         ))}
-                      </TableBody>
-                    </Table>
+                      </div>
+                      {/* Desktop: tabla */}
+                      <div className="hidden sm:block w-full overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>#</TableHead>
+                              <TableHead>Proceso</TableHead>
+                              <TableHead>Rol</TableHead>
+                              <TableHead>Nómina</TableHead>
+                              <TableHead>Estado</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {detailProcesses.map((p) => (
+                              <TableRow key={p.id}>
+                                <TableCell>{p.process_order}</TableCell>
+                                <TableCell>{p.process_name}</TableCell>
+                                <TableCell className="text-xs">{p.suggested_role ?? "—"}</TableCell>
+                                <TableCell>{p.adds_to_payroll ? "Sí" : "No"}</TableCell>
+                                <TableCell><Badge variant="outline">{p.status}</Badge></TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </>
                   )}
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <h4 className="text-sm font-semibold mb-2">Necesidades origen</h4>
                   {detailLinks.length === 0 ? (
                     <div className="text-xs text-muted-foreground">Sin necesidades vinculadas (orden manual).</div>
                   ) : (
                     <ul className="text-sm space-y-1">
                       {detailLinks.map((l: any) => (
-                        <li key={l.id} className="flex justify-between border rounded p-2">
-                          <span className="font-mono text-xs">
+                        <li key={l.id} className="flex flex-col sm:flex-row sm:justify-between gap-1 border rounded p-2 min-w-0">
+                          <span className="font-mono text-xs break-all">
                             {l.core_production_needs?.variant_sku ?? l.production_need_id}
                           </span>
-                          <span>cant. tomada: <b>{l.quantity_taken}</b></span>
+                          <span className="text-xs sm:text-sm">cant. tomada: <b>{l.quantity_taken}</b></span>
                         </li>
                       ))}
                     </ul>
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-2 pt-2 border-t">
+                <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2 pt-2 border-t">
                   {detailOrder.status === "open" && (
-                    <Button size="sm" onClick={() => changeStatus(detailOrder, "in_production")}>
+                    <Button size="sm" className="w-full sm:w-auto" onClick={() => changeStatus(detailOrder, "in_production")}>
                       Marcar en producción
                     </Button>
                   )}
                   {detailOrder.status === "in_production" && (
-                    <Button size="sm" variant="outline" onClick={() => changeStatus(detailOrder, "open")}>
+                    <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => changeStatus(detailOrder, "open")}>
                       Volver a abierta
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" disabled title="Se construye en el siguiente bloque">
+                  <Button size="sm" variant="outline" className="w-full sm:w-auto" disabled title="Se construye en el siguiente bloque">
                     <QrCode className="h-3 w-3 mr-1" /> Generar QR / Ficha Viajera
                   </Button>
                   {!["closed", "cancelled", "manually_closed"].includes(detailOrder.status) && (
                     <>
-                      <Button size="sm" variant="outline" onClick={() => setCloseOpen(detailOrder)}>
+                      <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setCloseOpen(detailOrder)}>
                         <Lock className="h-3 w-3 mr-1" /> Cerrar manualmente
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => setCancelOpen(detailOrder)}>
+                      <Button size="sm" variant="destructive" className="w-full sm:w-auto" onClick={() => setCancelOpen(detailOrder)}>
                         <Ban className="h-3 w-3 mr-1" /> Cancelar
                       </Button>
                     </>
                   )}
                 </div>
+
                 <div className="text-xs text-muted-foreground italic pt-2">
                   QR / ficha viajera / escaneo / nómina / inventario se construirán en bloques posteriores.
                 </div>
