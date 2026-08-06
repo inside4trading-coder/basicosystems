@@ -14,6 +14,8 @@ import { toast } from "@/hooks/use-toast";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { Wallet, Plus, CheckCircle2, AlertTriangle, FileText, Printer, RefreshCw, DollarSign, Users, ListChecks } from "lucide-react";
 import { formatDMY } from "@/lib/dateUtils";
+import { TransferWorkEntryDialog } from "@/components/core/payroll/TransferWorkEntryDialog";
+
 
 type WorkEntry = {
   id: string;
@@ -132,6 +134,8 @@ export default function CorePayroll() {
   const [periodEnd, setPeriodEnd] = useState(week.end);
   const [paymentDate, setPaymentDate] = useState(week.payment);
   const [openRunId, setOpenRunId] = useState<string | null>(null);
+  const [transferEntry, setTransferEntry] = useState<WorkEntry | null>(null);
+
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -344,8 +348,13 @@ export default function CorePayroll() {
         </TabsList>
 
         <TabsContent value="operators">
-          <OperatorsPendingPanel summaries={operatorSummaries} totalAll={kpis.totalPendingAll} />
+          <OperatorsPendingPanel
+            summaries={operatorSummaries}
+            totalAll={kpis.totalPendingAll}
+            onTransfer={setTransferEntry}
+          />
         </TabsContent>
+
 
         <TabsContent value="runs">
           <Card>
@@ -390,12 +399,13 @@ export default function CorePayroll() {
         </TabsContent>
 
         <TabsContent value="pending">
-          <WorkEntryTable entries={pendingEntries} />
+          <WorkEntryTable entries={pendingEntries} onTransfer={setTransferEntry} />
         </TabsContent>
 
         <TabsContent value="missing">
-          <WorkEntryTable entries={missingRateEntries} showRateActions />
+          <WorkEntryTable entries={missingRateEntries} showRateActions onTransfer={setTransferEntry} />
         </TabsContent>
+
       </Tabs>
 
       {/* Generate dialog */}
@@ -429,6 +439,13 @@ export default function CorePayroll() {
       {openRunId && (
         <RunDetailDialog runId={openRunId} onClose={() => setOpenRunId(null)} onChange={loadAll} />
       )}
+
+      <TransferWorkEntryDialog
+        entry={transferEntry}
+        onClose={() => setTransferEntry(null)}
+        onTransferred={loadAll}
+      />
+
     </div>
   );
 }
@@ -447,7 +464,7 @@ function KpiCard({ icon: Icon, label, value, tone }: { icon: any; label: string;
   );
 }
 
-function WorkEntryTable({ entries, showRateActions }: { entries: WorkEntry[]; showRateActions?: boolean }) {
+function WorkEntryTable({ entries, showRateActions, onTransfer }: { entries: WorkEntry[]; showRateActions?: boolean; onTransfer?: (e: WorkEntry) => void }) {
   if (entries.length === 0) return <Card><CardContent className="p-6 text-sm text-muted-foreground">Sin trabajos.</CardContent></Card>;
   return (
     <Card>
@@ -462,6 +479,7 @@ function WorkEntryTable({ entries, showRateActions }: { entries: WorkEntry[]; sh
               <TableHead>Tarifa</TableHead>
               <TableHead>Monto</TableHead>
               <TableHead>Estado</TableHead>
+              {onTransfer && <TableHead className="text-right">Acciones</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -474,6 +492,23 @@ function WorkEntryTable({ entries, showRateActions }: { entries: WorkEntry[]; sh
                 <TableCell>{fmt(e.rate_snapshot, e.currency ?? "USD")}</TableCell>
                 <TableCell>{fmt(e.payroll_amount, e.currency ?? "USD")}</TableCell>
                 <TableCell><StatusBadge s={e.payroll_status} /></TableCell>
+                {onTransfer && (
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!["pending", "missing_rate"].includes(e.payroll_status)}
+                      title={
+                        ["pending", "missing_rate"].includes(e.payroll_status)
+                          ? "Transferir a otro operario"
+                          : "Este trabajo ya está en una nómina cerrada. Requiere ajuste manual."
+                      }
+                      onClick={() => onTransfer(e)}
+                    >
+                      Transferir
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -483,9 +518,11 @@ function WorkEntryTable({ entries, showRateActions }: { entries: WorkEntry[]; sh
   );
 }
 
+
 function OperatorsPendingPanel({
   summaries,
   totalAll,
+  onTransfer,
 }: {
   summaries: Array<{
     operatorId: string;
@@ -496,7 +533,9 @@ function OperatorsPendingPanel({
     byUnit: Set<string>;
   }>;
   totalAll: number;
+  onTransfer?: (e: WorkEntry) => void;
 }) {
+
   const [openId, setOpenId] = useState<string | null>(null);
   if (summaries.length === 0) {
     return <Card><CardContent className="p-6 text-sm text-muted-foreground">Sin trabajos pendientes por operario.</CardContent></Card>;
@@ -558,6 +597,7 @@ function OperatorsPendingPanel({
                               <TableHead>Proceso</TableHead>
                               <TableHead className="text-right">Tarifa</TableHead>
                               <TableHead className="text-right">Monto</TableHead>
+                              {onTransfer && <TableHead className="text-right">Acciones</TableHead>}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -568,8 +608,26 @@ function OperatorsPendingPanel({
                                 <TableCell className="text-sm">{e.process_name}</TableCell>
                                 <TableCell className="text-right">{fmt(e.rate_snapshot, e.currency ?? "USD")}</TableCell>
                                 <TableCell className="text-right">{fmt(e.payroll_amount, e.currency ?? "USD")}</TableCell>
+                                {onTransfer && (
+                                  <TableCell className="text-right">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={!["pending", "missing_rate"].includes(e.payroll_status)}
+                                      title={
+                                        ["pending", "missing_rate"].includes(e.payroll_status)
+                                          ? "Transferir a otro operario"
+                                          : "Este trabajo ya está en una nómina cerrada. Requiere ajuste manual."
+                                      }
+                                      onClick={() => onTransfer(e)}
+                                    >
+                                      Transferir
+                                    </Button>
+                                  </TableCell>
+                                )}
                               </TableRow>
                             ))}
+
                           </TableBody>
                         </Table>
                       </div>
