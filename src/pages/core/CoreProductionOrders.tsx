@@ -1088,32 +1088,32 @@ export default function CoreProductionOrders() {
 
       {/* Detalle */}
       <Sheet open={!!detailOrder} onOpenChange={(o) => !o && setDetailOrder(null)}>
-        <SheetContent className="w-[640px] sm:max-w-[640px] overflow-y-auto">
+        <SheetContent className="w-full max-w-full sm:w-[640px] sm:max-w-[640px] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
           {detailOrder && (
             <>
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <span className="font-mono">{detailOrder.order_code}</span>
+              <SheetHeader className="text-left">
+                <SheetTitle className="flex flex-wrap items-center gap-2 pr-8">
+                  <span className="font-mono break-all">{detailOrder.order_code}</span>
                   <Badge variant="outline" className={STATUS_BADGE[detailOrder.status]}>
                     {STATUS_LABEL[detailOrder.status] ?? detailOrder.status}
                   </Badge>
                 </SheetTitle>
               </SheetHeader>
-              <div className="mt-3">
-                <Button size="sm" variant="outline" onClick={() => handleBackupPdf(detailOrder)}>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => handleBackupPdf(detailOrder)}>
                   <FileDown className="h-3 w-3 mr-1" /> PDF respaldo
                 </Button>
               </div>
-              <div className="space-y-4 mt-4">
-                <Card className="p-3">
-                  <div className="font-medium">{detailOrder.product_name}</div>
-                  <div className="text-xs text-muted-foreground font-mono">{detailOrder.sku}</div>
-                  <div className="grid grid-cols-3 gap-2 mt-3 text-sm">
+              <div className="space-y-4 mt-4 min-w-0">
+                <Card className="p-3 min-w-0">
+                  <div className="font-medium break-words">{detailOrder.product_name}</div>
+                  <div className="text-xs text-muted-foreground font-mono break-all">{detailOrder.sku}</div>
+                  <div className="grid grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 gap-2 mt-3 text-sm">
                     <div><div className="text-xs text-muted-foreground">Total</div>{detailOrder.total_quantity}</div>
                     <div><div className="text-xs text-muted-foreground">Pendientes prod.</div>{detailOrder.pending_quantity}</div>
                     <div><div className="text-xs text-muted-foreground">Completadas prod.</div>{detailOrder.completed_quantity}</div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
+                  <div className="grid grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 gap-2 mt-2 text-sm">
                     <div>
                       <div className="text-xs text-muted-foreground">Ingresadas inventario</div>
                       <span className="text-emerald-700 font-semibold">{invByOrder[detailOrder.id]?.entered ?? 0}</span>
@@ -1129,6 +1129,7 @@ export default function CoreProductionOrders() {
                       {renderInventoryBadge(invByOrder[detailOrder.id])}
                     </div>
                   </div>
+
                   {detailOrder.is_overproduction && (
                     <Badge variant="outline" className="mt-2 bg-orange-100 text-orange-800 border-orange-300">
                       Sobreproducción autorizada
