@@ -5233,6 +5233,7 @@ export type Database = {
           name: string
           normalized_size: string | null
           notes: string | null
+          replenishment_priority: string
           size: string | null
           sku: string | null
           status: string
@@ -5251,6 +5252,7 @@ export type Database = {
           name: string
           normalized_size?: string | null
           notes?: string | null
+          replenishment_priority?: string
           size?: string | null
           sku?: string | null
           status?: string
@@ -5269,6 +5271,7 @@ export type Database = {
           name?: string
           normalized_size?: string | null
           notes?: string | null
+          replenishment_priority?: string
           size?: string | null
           sku?: string | null
           status?: string

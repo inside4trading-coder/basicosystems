@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Shirt, Plus, Edit, Archive, Loader2, ArrowDownToLine, ArrowUpFromLine, Settings2, FlaskConical, Layers, Package, AlertTriangle, ChevronRight, ChevronDown, ChevronsUpDown, Check, ArrowRight } from "lucide-react";
+import { Shirt, Plus, Edit, Archive, Loader2, ArrowDownToLine, ArrowUpFromLine, Settings2, FlaskConical, Layers, Package, AlertTriangle, ChevronRight, ChevronDown, ChevronUp, ChevronsUpDown, Check, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { formatDMY } from "@/lib/dateUtils";
 import { normalizeSize, MATERIAL_TYPE_LABEL, MATERIAL_UNIT_LABEL, MOVEMENT_TYPE_LABEL } from "@/lib/espMaterials";
@@ -31,6 +31,7 @@ interface MaterialItem {
   status: string;
   low_stock_threshold: number;
   notes: string | null;
+  replenishment_priority?: string | null;
 }
 interface StockRow {
   material_id: string;
@@ -87,7 +88,10 @@ export default function EspanaBlanksDTF() {
   const [groupDlg, setGroupDlg] = useState<{ open: boolean; items?: MaterialItem[]; title?: string }>({ open: false });
   const [groupStockDlg, setGroupStockDlg] = useState<{ open: boolean; items?: MaterialItem[]; title?: string }>({ open: false });
   const [stockSearch, setStockSearch] = useState("");
+  const [repoPriorityFilter, setRepoPriorityFilter] = useState<"all" | "normal" | "low">("all");
+  const [savingPriority, setSavingPriority] = useState<string | null>(null);
   const toggleGroup = (k: string) => setExpandedGroups(p => ({ ...p, [k]: !p[k] }));
+
 
   const load = async () => {
     setLoading(true);
@@ -154,6 +158,41 @@ export default function EspanaBlanksDTF() {
   const lowStockMaterials = useMemo(() =>
     materials.filter(m => m.status === "active" && (stockByMat.get(m.id) || 0) <= Number(m.low_stock_threshold || 0))
   , [materials, stockByMat]);
+
+  /** Clave del "material padre" (tipo + nombre + color); las tallas comparten prioridad */
+  const materialGroupKey = (m: MaterialItem) => `${m.material_type}::${m.name}::${m.color || ""}`;
+  const priorityOf = (m: MaterialItem) => (m.replenishment_priority === "low" ? "low" : "normal");
+
+  /** Filas de reposición ordenadas: prioridad normal primero, luego prioridad baja */
+  const repoRows = useMemo(() => {
+    const rows = lowStockMaterials.map((m, i) => ({ m, i, prio: priorityOf(m) }));
+    const sorted = rows.sort((a, b) =>
+      (a.prio === b.prio ? a.i - b.i : a.prio === "low" ? 1 : -1)
+    );
+    return repoPriorityFilter === "all" ? sorted : sorted.filter(r => r.prio === repoPriorityFilter);
+  }, [lowStockMaterials, repoPriorityFilter]);
+
+  const repoCounts = useMemo(() => ({
+    total: lowStockMaterials.length,
+    normal: lowStockMaterials.filter(m => priorityOf(m) === "normal").length,
+    low: lowStockMaterials.filter(m => priorityOf(m) === "low").length,
+  }), [lowStockMaterials]);
+
+  /** Cambia la prioridad de TODAS las tallas del material (grupo tipo+nombre+color) */
+  const setGroupPriority = async (sample: MaterialItem, priority: "normal" | "low") => {
+    const key = materialGroupKey(sample);
+    const ids = materials.filter(m => materialGroupKey(m) === key).map(m => m.id);
+    setSavingPriority(key);
+    const { error } = await supabase
+      .from("esp_material_items")
+      .update({ replenishment_priority: priority } as any)
+      .in("id", ids);
+    setSavingPriority(null);
+    if (error) { toast.error("No se pudo cambiar la prioridad: " + error.message); return; }
+    setMaterials(prev => prev.map(m => (ids.includes(m.id) ? { ...m, replenishment_priority: priority } : m)));
+    toast.success(priority === "low" ? "Material movido a prioridad baja" : "Material devuelto a prioridad normal");
+  };
+
 
   /** Materiales agrupados por (tipo + nombre + color) para la pestaña Stock */
   const stockGroups = useMemo(() => {
@@ -353,11 +392,39 @@ export default function EspanaBlanksDTF() {
         {/* ============== REPOSICIÓN (BAJO STOCK) ============== */}
         <TabsContent value="reposicion" className="space-y-3">
           <Card className="p-4">
-            <h3 className="font-bold mb-3 flex items-center gap-2 text-sm">
-              <AlertTriangle className="h-4 w-4 text-amber-500" /> Materiales bajo stock ({lowStockMaterials.length})
-            </h3>
-            {lowStockMaterials.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Todo el material está por encima de su umbral.</p>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div>
+                <h3 className="font-bold flex items-center gap-2 text-sm">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" /> Materiales bajo stock ({repoCounts.total})
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {repoCounts.normal} prioritarios · {repoCounts.low} prioridad baja
+                </p>
+              </div>
+              <div className="flex gap-1">
+                {([
+                  { v: "normal", label: "Prioritarios" },
+                  { v: "all", label: "Todos" },
+                  { v: "low", label: "Prioridad baja" },
+                ] as const).map(o => (
+                  <Button
+                    key={o.v}
+                    size="sm"
+                    variant={repoPriorityFilter === o.v ? "default" : "outline"}
+                    className="h-7 text-xs"
+                    onClick={() => setRepoPriorityFilter(o.v)}
+                  >
+                    {o.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            {repoRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {lowStockMaterials.length === 0
+                  ? "Todo el material está por encima de su umbral."
+                  : "No hay materiales en este filtro."}
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -368,19 +435,40 @@ export default function EspanaBlanksDTF() {
                     <TableHead className="text-xs text-right">Stock</TableHead>
                     <TableHead className="text-xs text-right">Umbral</TableHead>
                     <TableHead className="text-xs text-right">Faltan</TableHead>
+                    <TableHead className="text-xs text-right">Prioridad</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
-                    {lowStockMaterials.map(m => {
+                    {repoRows.map(({ m, prio }) => {
                       const st = Number(stockByMat.get(m.id) || 0);
                       const th = Number(m.low_stock_threshold || 0);
+                      const isLow = prio === "low";
+                      const gk = materialGroupKey(m);
                       return (
-                        <TableRow key={m.id}>
+                        <TableRow key={m.id} className={isLow ? "opacity-60" : undefined}>
                           <TableCell><Badge variant="outline" className="text-[10px]">{MATERIAL_TYPE_LABEL[m.material_type]}</Badge></TableCell>
-                          <TableCell className="text-xs">{m.name}{m.color ? ` · ${m.color}` : ""}</TableCell>
+                          <TableCell className="text-xs">
+                            {m.name}{m.color ? ` · ${m.color}` : ""}
+                            {isLow && <Badge variant="secondary" className="ml-2 text-[9px] font-normal">Prioridad baja</Badge>}
+                          </TableCell>
                           <TableCell className="text-xs font-semibold">{m.size || "—"}</TableCell>
-                          <TableCell className="text-right text-xs font-mono text-amber-600 font-bold">{st}</TableCell>
+                          <TableCell className={`text-right text-xs font-mono font-bold ${isLow ? "text-muted-foreground" : "text-amber-600"}`}>{st}</TableCell>
                           <TableCell className="text-right text-xs font-mono">{th}</TableCell>
                           <TableCell className="text-right text-xs font-mono font-bold">{Math.max(0, th - st)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground"
+                              disabled={savingPriority === gk}
+                              title={isLow ? "Devolver a prioridad normal (todas las tallas)" : "Bajar prioridad (todas las tallas)"}
+                              onClick={() => setGroupPriority(m, isLow ? "normal" : "low")}
+                            >
+                              {savingPriority === gk
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : isLow ? <><ChevronUp className="h-3 w-3 mr-1" />Subir prioridad</>
+                                        : <><ChevronDown className="h-3 w-3 mr-1" />Bajar prioridad</>}
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
