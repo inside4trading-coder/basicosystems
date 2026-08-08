@@ -45,7 +45,7 @@ interface MovementRow {
   reference_type: string | null; created_at: string; created_by: string | null;
 }
 interface ProfileRow { id: string; full_name: string | null; email: string | null; }
-interface LocationRow { id: string; name: string; }
+interface LocationRow { id: string; name: string; code?: string | null; }
 interface RecipeRow { id: string; product_id: string; variant_id: string | null; name: string | null; status: string; }
 interface RecipeItemRow { id: string; recipe_id: string; material_id: string; quantity_per_unit: number; size_strategy: string; required: boolean; }
 interface ProductRow { id: string; name: string; sku: string | null; category: string | null; product_type: string | null; color: string | null; fulfillment_mode?: string | null; }
