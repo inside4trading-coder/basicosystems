@@ -93,7 +93,7 @@ export default function EspanaBlanksDTF() {
       supabase.from("esp_material_items").select("*").order("material_type").order("name"),
       supabase.from("esp_material_stock").select("*"),
       supabase.from("esp_material_movements").select("*").order("created_at", { ascending: false }).limit(500),
-      supabase.from("esp_locations").select("id,name").eq("is_active", true).order("name"),
+      supabase.from("esp_locations").select("id,name,code").eq("is_active", true).order("name"),
       supabase.from("esp_product_material_recipes").select("*").order("created_at", { ascending: false }),
       supabase.from("esp_product_material_recipe_items").select("*"),
       supabase.from("esp_products").select("id,name,sku,category,product_type,color,fulfillment_mode").order("name"),
