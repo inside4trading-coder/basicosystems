@@ -1282,8 +1282,8 @@ function GroupSizesDialog({ state, onClose, onSaved, locations, stockByMatLoc, s
     <Dialog open={state.open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Editar tallas · {state.title}</DialogTitle>
-          <p className="text-xs text-muted-foreground">Cambia tallas, SKU, costo, umbral y stock por sede. Los ajustes de stock quedan registrados como movimientos.</p>
+          <DialogTitle>{stockOnly ? "Editar stock" : "Editar tallas"} · {state.title}</DialogTitle>
+          <p className="text-xs text-muted-foreground">Stock operativo en Arturo Soria / Taller. Cada cambio de stock se registra como movimiento de ajuste.</p>
         </DialogHeader>
         <div className="overflow-x-auto">
           <Table>
