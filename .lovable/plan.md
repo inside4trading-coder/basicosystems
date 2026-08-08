@@ -1,44 +1,46 @@
-# Restock POS en Listado de fabricación
+# Restock POS en Listado de fabricación ES
 
-Cuando una venta POS (sede física, ej. Pop Up Ibiza) descuenta inventario comercial, se crea un **candidato de restock** que aparece en `/espana/listado-fabricacion` claramente diferenciado de los pedidos WooCommerce, en estado **Pendiente de aprobación**, con acciones **Aprobar restock** / **Rechazar**.
+Cuando una venta POS descuenta inventario comercial, se crea una solicitud de **RESTOCK** en `/espana/listado-fabricacion` en estado **Pendiente de aprobación**, para que el usuario decida si repone la prenda.
 
-No se fabrica nada automáticamente, no se consumen Blanks/DTF, no se toca WooCommerce ni Core Venezuela.
+No se fabrica automáticamente, no se consumen Blanks/DTF, no se toca WooCommerce, ni Core Venezuela, ni el inventario de materiales, y no se duplican solicitudes.
 
 ## Comportamiento
 
-1. La venta POS sigue funcionando igual (descuenta stock comercial).
-2. Por cada línea vendida se genera automáticamente una solicitud de tipo RESTOCK con:
-   - Badge **RESTOCK** + Origen **POS**
-   - Sede / canal: nombre de la sede (Pop Up Ibiza, Arturo Soria, etc.)
-   - Venta: número `ES-POS-xxxxxx`
-   - Producto, SKU, talla, cantidad sugerida (= unidades vendidas)
-   - Estado: Pendiente de aprobación
-3. En el listado el usuario decide:
-   - **Aprobar restock** → pasa a Pendiente (flujo normal: Fabricar → consume materiales → Listo → Entregar).
-   - **Rechazar** → queda descartado, sin consumir materiales.
-4. Nunca se duplica: una misma línea de venta genera como máximo un candidato.
+Al confirmar una venta POS, por cada línea vendida se crea un candidato con tipo `pos_restock` y estado `pending_approval`, guardando: venta, línea de venta, número `ES-POS-xxxxxx`, sede (id y nombre), producto, variante, SKU, talla/color, cantidad vendida y fecha.
 
-Aplica tanto a ventas del POS interno como del POS público. Solo para sedes con stock propio/vinculado (no Web/WooCommerce).
+Aplica a POS interno y POS público, solo en sedes físicas con stock propio o vinculado (Pop Up Ibiza, Arturo Soria, etc.). No aplica a Web / WooCommerce España ni a ventas WooCommerce.
 
-## Filtros
+## Listado de fabricación
 
-Chips de origen sobre la tabla: **Todos · WooCommerce · POS · RESTOCK · Manual**.
-El nuevo estado "Pendiente de aprobación" se muestra dentro de la pestaña de activos reales.
+Cada candidato POS se muestra con:
+- Badge **RESTOCK** + Origen **POS**
+- Canal/Sede: Pop Up Ibiza / Arturo Soria / la sede correspondiente
+- Venta: `ES-POS-xxxxxx`
+- Producto, SKU, talla, cantidad sugerida
+- Estado: Pendiente de aprobación
+- Acciones: **Aprobar restock** / **Rechazar**
+
+Aprobar cambia el estado a Pendiente y entra al flujo normal (Fabricar → validar receta → consumir materiales → listo/enviado). Rechazar lo marca como rechazado, con motivo opcional, sin consumir materiales ni afectar la venta o el inventario.
+
+## Métricas y filtros
+
+- Chips sobre la tabla: **Todos · WooCommerce · POS · RESTOCK · Manual**.
+- `pending_approval` aparece en Activos reales pero no cuenta como "pendiente de fabricar"; se muestra como KPI aparte **"Restock pendiente de aprobación"**.
 
 ## Detalle técnico
 
-Base de datos (una migración):
-- Añadir a `esp_fabrication_requests`: `pos_sale_id`, `pos_sale_item_id` (único), `pos_sale_number`, `pos_location_id`, `pos_location_name`, `restock_status` implícito vía `status`.
-- Permitir `source_type = 'pos_restock'` y nuevo `status = 'pending_approval'` (y `rejected`), actualizando labels/constraints existentes.
-- Índice único parcial sobre `pos_sale_item_id` para idempotencia.
-- Trigger `AFTER INSERT` en `esp_sale_items` que inserta el candidato: resuelve producto/variante/SKU/talla desde los snapshots de la línea y sede desde `esp_sales.location_id`; se omite si la sede es la de WooCommerce o si ya existe candidato para esa línea. El trigger no toca stock ni materiales.
-- GRANT/RLS: se reutilizan las políticas actuales de `esp_fabrication_requests`.
+Migración:
+- `esp_fabrication_requests`: nuevas columnas `pos_sale_id`, `pos_sale_item_id`, `pos_sale_number`, `pos_location_id`, `pos_location_name`.
+- Índice único parcial sobre `pos_sale_item_id` cuando `source_type = 'pos_restock'` (idempotencia).
+- `source_type` y `status` son texto libre en esta tabla, así que `pos_restock`, `pending_approval` y `rejected` no requieren cambios de constraint.
+
+Trigger:
+- `AFTER INSERT` en `esp_sale_items` → función `esp_create_pos_restock_candidate()` (SECURITY DEFINER): lee la venta padre, descarta ventas canceladas, líneas provenientes de WooCommerce y sedes que no sean `own_stock`/`linked_stock`; inserta el candidato usando los snapshots de la línea con `ON CONFLICT DO NOTHING`. Envuelto en manejo de excepciones para no romper nunca la venta POS. No toca stock ni materiales.
 
 Frontend (`src/pages/espana/EspanaFabricacion.tsx`):
 - Extender `FabRow` y el `select` con los campos POS.
-- Nuevo badge morado/teal **RESTOCK** + chip **POS** y columna Sede/Venta reutilizando la columna "Pedido" (muestra `ES-POS-xxxxxx · Pop Up Ibiza`) y "Cliente / destinatario" (muestra la sede).
-- Estado `pending_approval` con badge propio y acciones **Aprobar restock** (pasa a `pending`) y **Rechazar** (pasa a `rejected` con motivo opcional).
-- Sustituir el selector "Origen" por chips: Todos / WooCommerce / POS / RESTOCK / Manual.
-- Las filas en `pending_approval` no muestran el botón Fabricar.
+- Nuevo estado y badges (RESTOCK / POS / sede / número de venta), acciones Aprobar y Rechazar.
+- Chips de origen y KPI separado de restock pendiente.
+- Sin botón Fabricar mientras esté en `pending_approval`.
 
-Sin cambios en POS, WooCommerce, Core ni en la lógica de consumo de materiales.
+Typecheck con `tsgo` al finalizar.
