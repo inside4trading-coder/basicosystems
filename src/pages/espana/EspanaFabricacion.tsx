@@ -301,11 +301,17 @@ export default function EspanaFabricacion() {
               const raw = r.variant_label || "";
               const norm = normalizeSize(raw);
               const isManual = r.source_type === "manual";
+              const isRestock = r.source_type === "pos_restock";
               return (
                 <TableRow key={r.id} className={r.is_legacy ? "opacity-60" : ""}>
                   <TableCell className="text-xs">{formatDMY(r.created_at)}</TableCell>
                   <TableCell className="text-xs font-mono">
-                    {isManual ? <span className="text-muted-foreground">Manual</span> : `#${r.esp_woo_orders?.order_number || r.woo_order_id || "—"}`}
+                    {isRestock ? (
+                      <div>
+                        <span className="font-semibold">{r.pos_sale_number || "—"}</span>
+                        <div className="text-[11px] font-sans text-muted-foreground">{r.pos_location_name || "—"}</div>
+                      </div>
+                    ) : isManual ? <span className="text-muted-foreground">Manual</span> : `#${r.esp_woo_orders?.order_number || r.woo_order_id || "—"}`}
                   </TableCell>
                   <TableCell className="text-sm font-medium">
                     {r.product_name || "—"}
@@ -316,6 +322,7 @@ export default function EspanaFabricacion() {
                         {r.manual_reason === "otro" && r.manual_reason_detail ? ` · ${r.manual_reason_detail}` : ""}
                       </div>
                     )}
+                    {isRestock && <div className="text-[11px] text-muted-foreground">Reposición sugerida por venta POS</div>}
                   </TableCell>
                   <TableCell className="text-xs">
                     {raw ? (
@@ -326,7 +333,12 @@ export default function EspanaFabricacion() {
                     ) : "—"}
                   </TableCell>
                   <TableCell className="text-xs">
-                    {isManual ? (
+                    {isRestock ? (
+                      <div>
+                        <span className="font-medium">{r.pos_location_name || "—"}</span>
+                        <div className="text-[11px] text-muted-foreground">Sede POS</div>
+                      </div>
+                    ) : isManual ? (
                       r.requires_shipping ? (
                         <div>
                           <span className="font-medium">{r.ship_to_name || "—"}</span>
@@ -347,16 +359,32 @@ export default function EspanaFabricacion() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1 items-start">
+                      {isRestock && (
+                        <>
+                          <Badge className="bg-teal-600"><Store className="h-3 w-3 mr-1" />RESTOCK</Badge>
+                          <Badge variant="outline" className="text-[10px]">Origen: POS</Badge>
+                        </>
+                      )}
                       {isManual && <Badge className="bg-purple-600"><Wrench className="h-3 w-3 mr-1" />MANUAL</Badge>}
                       {r.is_test && <Badge className="bg-blue-600" title={r.test_reason || ""}><FlaskConical className="h-3 w-3 mr-1" />Prueba</Badge>}
                       {r.is_legacy && <Badge variant="secondary" title={r.legacy_reason || ""}><Archive className="h-3 w-3 mr-1" />Legacy</Badge>}
-                      {!isManual && !r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">Real</span>}
+                      {!isManual && !isRestock && !r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">WooCommerce</span>}
                     </div>
                   </TableCell>
 
                   <TableCell>
                     <div className="flex items-center gap-1 flex-wrap">
                       {busyId === r.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {r.status === "pending_approval" && !r.is_legacy && (
+                        <>
+                          <Button size="sm" onClick={() => approveRestock(r.id)}>
+                            <ThumbsUp className="h-3 w-3 mr-1" />Aprobar restock
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => rejectRestock(r.id)}>
+                            <Ban className="h-3 w-3 mr-1" />Rechazar
+                          </Button>
+                        </>
+                      )}
                       {r.status === "pending" && !r.is_legacy && (
                         <Button size="sm" variant="outline" onClick={() => openPreflight(r)}>
                           <Play className="h-3 w-3 mr-1" />Fabricar
@@ -372,11 +400,15 @@ export default function EspanaFabricacion() {
                           <Check className="h-3 w-3 mr-1" />Entregar
                         </Button>
                       )}
-                      {!["cancelled","delivered_to_shipping"].includes(r.status) && !r.is_legacy && (
+                      {!["cancelled","rejected","delivered_to_shipping","pending_approval"].includes(r.status) && !r.is_legacy && (
                         <Button size="sm" variant="ghost" onClick={() => setStatus(r.id, "cancelled")}><X className="h-3 w-3" /></Button>
                       )}
                     </div>
                   </TableCell>
+                </TableRow>
+              );
+            })}
+
                 </TableRow>
               );
             })}
