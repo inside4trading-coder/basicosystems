@@ -1233,6 +1233,8 @@ function GroupSizesDialog({ state, onClose, onSaved, locations, stockByMatLoc, s
   };
 
   const save = async () => {
+    const stockChanged = rows.some(r => Object.keys(r.stocks).some(l => Number(r.stocks[l] || 0) !== Number(r._origStocks[l] || 0)));
+    if (stockChanged && !reason.trim()) { toast.error("Motivo obligatorio para ajustar stock"); return; }
     setBusy(true);
     let metaUpdates = 0, stockUpdates = 0, errors = 0;
     for (const r of rows) {
