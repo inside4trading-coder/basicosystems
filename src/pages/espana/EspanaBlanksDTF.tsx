@@ -48,7 +48,7 @@ interface ProfileRow { id: string; full_name: string | null; email: string | nul
 interface LocationRow { id: string; name: string; }
 interface RecipeRow { id: string; product_id: string; variant_id: string | null; name: string | null; status: string; }
 interface RecipeItemRow { id: string; recipe_id: string; material_id: string; quantity_per_unit: number; size_strategy: string; required: boolean; }
-interface ProductRow { id: string; name: string; fulfillment_mode?: string | null; }
+interface ProductRow { id: string; name: string; sku: string | null; category: string | null; product_type: string | null; color: string | null; fulfillment_mode?: string | null; }
 
 const MOVEMENT_TYPES_UI = [
   { value: "manual_in", label: "Entrada", icon: ArrowDownToLine },
