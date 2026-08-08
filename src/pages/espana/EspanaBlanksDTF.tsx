@@ -242,6 +242,7 @@ export default function EspanaBlanksDTF() {
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="materiales">Materiales ({materials.length})</TabsTrigger>
           <TabsTrigger value="stock">Stock</TabsTrigger>
+          <TabsTrigger value="reposicion" className="data-[state=active]:text-amber-600">Reposición ({kpis.low})</TabsTrigger>
           <TabsTrigger value="movimientos">Movimientos ({movements.length})</TabsTrigger>
           <TabsTrigger value="recetas">Recetas ({recipes.length})</TabsTrigger>
         </TabsList>
