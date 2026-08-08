@@ -159,6 +159,41 @@ export default function EspanaBlanksDTF() {
     materials.filter(m => m.status === "active" && (stockByMat.get(m.id) || 0) <= Number(m.low_stock_threshold || 0))
   , [materials, stockByMat]);
 
+  /** Clave del "material padre" (tipo + nombre + color); las tallas comparten prioridad */
+  const materialGroupKey = (m: MaterialItem) => `${m.material_type}::${m.name}::${m.color || ""}`;
+  const priorityOf = (m: MaterialItem) => (m.replenishment_priority === "low" ? "low" : "normal");
+
+  /** Filas de reposición ordenadas: prioridad normal primero, luego prioridad baja */
+  const repoRows = useMemo(() => {
+    const rows = lowStockMaterials.map((m, i) => ({ m, i, prio: priorityOf(m) }));
+    const sorted = rows.sort((a, b) =>
+      (a.prio === b.prio ? a.i - b.i : a.prio === "low" ? 1 : -1)
+    );
+    return repoPriorityFilter === "all" ? sorted : sorted.filter(r => r.prio === repoPriorityFilter);
+  }, [lowStockMaterials, repoPriorityFilter]);
+
+  const repoCounts = useMemo(() => ({
+    total: lowStockMaterials.length,
+    normal: lowStockMaterials.filter(m => priorityOf(m) === "normal").length,
+    low: lowStockMaterials.filter(m => priorityOf(m) === "low").length,
+  }), [lowStockMaterials]);
+
+  /** Cambia la prioridad de TODAS las tallas del material (grupo tipo+nombre+color) */
+  const setGroupPriority = async (sample: MaterialItem, priority: "normal" | "low") => {
+    const key = materialGroupKey(sample);
+    const ids = materials.filter(m => materialGroupKey(m) === key).map(m => m.id);
+    setSavingPriority(key);
+    const { error } = await supabase
+      .from("esp_material_items")
+      .update({ replenishment_priority: priority } as any)
+      .in("id", ids);
+    setSavingPriority(null);
+    if (error) { toast.error("No se pudo cambiar la prioridad: " + error.message); return; }
+    setMaterials(prev => prev.map(m => (ids.includes(m.id) ? { ...m, replenishment_priority: priority } : m)));
+    toast.success(priority === "low" ? "Material movido a prioridad baja" : "Material devuelto a prioridad normal");
+  };
+
+
   /** Materiales agrupados por (tipo + nombre + color) para la pestaña Stock */
   const stockGroups = useMemo(() => {
     const terms = stockSearch.toLowerCase().split(/\s+/).filter(Boolean);
