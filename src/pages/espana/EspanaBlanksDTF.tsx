@@ -735,10 +735,11 @@ export default function EspanaBlanksDTF() {
 
       {/* Dialogs */}
       <MaterialDialog state={matDlg} onClose={() => setMatDlg({ open: false })} onSaved={load} />
-      <MovementDialog state={movDlg} onClose={() => setMovDlg({ open: false })} onSaved={load} materials={materials} locations={locations} />
-      <RecipeDialog state={recipeDlg} onClose={() => setRecipeDlg({ open: false })} onSaved={load} products={products} materials={materials} recipeItems={recipeItems} stockByMatLoc={stockByMatLoc} locations={locations} />
-      <RecipeTestDialog state={testDlg} onClose={() => setTestDlg({ open: false })} recipes={recipes} recipeItems={recipeItems} materials={materials} stockByMatLoc={stockByMatLoc} locations={locations} />
-      <GroupSizesDialog state={groupDlg} onClose={() => setGroupDlg({ open: false })} onSaved={load} locations={locations} stockByMatLoc={stockByMatLoc} />
+      <MovementDialog state={movDlg} onClose={() => setMovDlg({ open: false })} onSaved={load} materials={materials} locations={arturoLocs} />
+      <RecipeDialog state={recipeDlg} onClose={() => setRecipeDlg({ open: false })} onSaved={load} products={products} materials={materials} recipeItems={recipeItems} stockByMatLoc={stockByMatLoc} locations={arturoLocs} />
+      <RecipeTestDialog state={testDlg} onClose={() => setTestDlg({ open: false })} recipes={recipes} recipeItems={recipeItems} materials={materials} stockByMatLoc={stockByMatLoc} locations={arturoLocs} />
+      <GroupSizesDialog state={groupDlg} onClose={() => setGroupDlg({ open: false })} onSaved={load} locations={arturoLocs} stockByMatLoc={stockByMatLoc} />
+      <GroupSizesDialog state={groupStockDlg} stockOnly onClose={() => setGroupStockDlg({ open: false })} onSaved={load} locations={arturoLocs} stockByMatLoc={stockByMatLoc} />
     </div>
   );
 }
