@@ -155,6 +155,35 @@ export default function EspanaBlanksDTF() {
     materials.filter(m => m.status === "active" && (stockByMat.get(m.id) || 0) <= Number(m.low_stock_threshold || 0))
   , [materials, stockByMat]);
 
+  /** Materiales agrupados por (tipo + nombre + color) para la pestaña Stock */
+  const stockGroups = useMemo(() => {
+    const terms = stockSearch.toLowerCase().split(/\s+/).filter(Boolean);
+    const groups = new Map<string, { key: string; type: string; name: string; color: string | null; baseSku: string; sizes: string[]; items: MaterialItem[] }>();
+    materials.filter(m => m.status === "active").forEach(m => {
+      const color = m.color || null;
+      const key = `${m.material_type}::${m.name}::${color || ""}`;
+      const size = m.normalized_size || m.size || "";
+      const baseSku = (m.sku || "").replace(new RegExp(`-${size}$`, "i"), "");
+      const g = groups.get(key) || { key, type: m.material_type, name: m.name, color, baseSku, sizes: [], items: [] };
+      if (!g.baseSku && baseSku) g.baseSku = baseSku;
+      if (size && !g.sizes.includes(size)) g.sizes.push(size);
+      g.items.push(m);
+      groups.set(key, g);
+    });
+    let list = Array.from(groups.values());
+    list.forEach(g => {
+      g.sizes.sort();
+      g.items.sort((a, b) => (a.normalized_size || a.size || "").localeCompare(b.normalized_size || b.size || ""));
+    });
+    if (terms.length) {
+      list = list.filter(g => {
+        const hay = [g.name, g.color, g.baseSku, MATERIAL_TYPE_LABEL[g.type], g.sizes.join(" "), g.items.map(i => i.sku).join(" ")].join(" ").toLowerCase();
+        return terms.every(t => hay.includes(t));
+      });
+    }
+    return list.sort((a, b) => (a.type + a.name).localeCompare(b.type + b.name));
+  }, [materials, stockSearch]);
+
   const matsById = useMemo(() => new Map(materials.map(m => [m.id, m])), [materials]);
   const locById = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations]);
   const prodById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
