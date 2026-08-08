@@ -156,6 +156,28 @@ export default function EspanaFabricacion() {
     else { toast.success("Solicitud lista"); load(); }
   };
 
+  const approveRestock = async (id: string) => {
+    setBusyId(id);
+    const { error } = await supabase.from("esp_fabrication_requests").update({ status: "pending" }).eq("id", id);
+    setBusyId(null);
+    if (error) toast.error(error.message);
+    else { toast.success("Restock aprobado · pasa a pendiente de fabricar"); load(); }
+  };
+
+  const rejectRestock = async (id: string) => {
+    const reason = window.prompt("Motivo del rechazo (opcional):") ?? "";
+    setBusyId(id);
+    const { error } = await supabase.from("esp_fabrication_requests").update({
+      status: "rejected",
+      cancel_reason: reason || "Restock rechazado",
+      cancelled_at: new Date().toISOString(),
+    }).eq("id", id);
+    setBusyId(null);
+    if (error) toast.error(error.message);
+    else { toast.success("Restock rechazado"); load(); }
+  };
+
+
 
   // KPIs separados
   const kpis = useMemo(() => {
