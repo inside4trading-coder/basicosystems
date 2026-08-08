@@ -70,23 +70,30 @@ export function normalizeSize(label: string | null | undefined): string {
 }
 
 type ViewFilter = "real" | "delivered" | "test" | "legacy" | "cancelled" | "all";
+type OriginFilter = "all" | "auto" | "manual";
+
+const PRIORITY_LABEL: Record<string, string> = { normal: "Normal", alta: "Alta", urgente: "Urgente", high: "Alta", urgent: "Urgente", low: "Baja" };
+const PRIORITY_CLASS: Record<string, string> = { alta: "bg-amber-600", high: "bg-amber-600", urgente: "bg-red-600", urgent: "bg-red-600" };
 
 export default function EspanaFabricacion() {
   const [rows, setRows] = useState<FabRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<ViewFilter>("real");
+  const [origin, setOrigin] = useState<OriginFilter>("all");
+  const [manualOpen, setManualOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [preflight, setPreflight] = useState<{ open: boolean; request?: FabRow; data?: any; loading?: boolean }>({ open: false });
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase.from("esp_fabrication_requests")
-      .select("id,woo_order_id,product_name,variant_label,sku,quantity,status,priority,due_date,created_at,source_order_id,is_legacy,is_test,legacy_reason,test_reason,esp_woo_orders:source_order_id(order_number,customer_name)")
+      .select("id,woo_order_id,product_name,variant_label,sku,quantity,status,priority,due_date,created_at,source_order_id,source_type,is_legacy,is_test,legacy_reason,test_reason,notes,manual_reason,manual_reason_detail,requires_shipping,ship_to_name,ship_to_phone,ship_to_address,ship_to_city,ship_to_province,ship_to_postal_code,ship_to_country,esp_woo_orders:source_order_id(order_number,customer_name)")
       .order("created_at", { ascending: false }).limit(1000);
     if (error) toast.error(error.message);
     setRows((data || []) as any);
     setLoading(false);
   };
+
 
   useEffect(() => { load(); }, []);
 
