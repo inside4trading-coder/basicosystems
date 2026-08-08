@@ -3,12 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2, Plus, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDMY } from "@/lib/dateUtils";
+import ManualFabricationDialog, { MANUAL_REASON_LABEL } from "@/components/espana/ManualFabricationDialog";
 
 interface FabRow {
   id: string;
@@ -22,12 +24,25 @@ interface FabRow {
   due_date: string | null;
   created_at: string;
   source_order_id: string | null;
+  source_type: string;
   is_legacy: boolean;
   is_test: boolean;
   legacy_reason: string | null;
   test_reason: string | null;
+  notes: string | null;
+  manual_reason: string | null;
+  manual_reason_detail: string | null;
+  requires_shipping: boolean | null;
+  ship_to_name: string | null;
+  ship_to_phone: string | null;
+  ship_to_address: string | null;
+  ship_to_city: string | null;
+  ship_to_province: string | null;
+  ship_to_postal_code: string | null;
+  ship_to_country: string | null;
   esp_woo_orders?: { order_number: string | null; customer_name: string | null } | null;
 }
+
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pendiente",
@@ -55,23 +70,30 @@ export function normalizeSize(label: string | null | undefined): string {
 }
 
 type ViewFilter = "real" | "delivered" | "test" | "legacy" | "cancelled" | "all";
+type OriginFilter = "all" | "auto" | "manual";
+
+const PRIORITY_LABEL: Record<string, string> = { normal: "Normal", alta: "Alta", urgente: "Urgente", high: "Alta", urgent: "Urgente", low: "Baja" };
+const PRIORITY_CLASS: Record<string, string> = { alta: "bg-amber-600", high: "bg-amber-600", urgente: "bg-red-600", urgent: "bg-red-600" };
 
 export default function EspanaFabricacion() {
   const [rows, setRows] = useState<FabRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<ViewFilter>("real");
+  const [origin, setOrigin] = useState<OriginFilter>("all");
+  const [manualOpen, setManualOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [preflight, setPreflight] = useState<{ open: boolean; request?: FabRow; data?: any; loading?: boolean }>({ open: false });
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase.from("esp_fabrication_requests")
-      .select("id,woo_order_id,product_name,variant_label,sku,quantity,status,priority,due_date,created_at,source_order_id,is_legacy,is_test,legacy_reason,test_reason,esp_woo_orders:source_order_id(order_number,customer_name)")
+      .select("id,woo_order_id,product_name,variant_label,sku,quantity,status,priority,due_date,created_at,source_order_id,source_type,is_legacy,is_test,legacy_reason,test_reason,notes,manual_reason,manual_reason_detail,requires_shipping,ship_to_name,ship_to_phone,ship_to_address,ship_to_city,ship_to_province,ship_to_postal_code,ship_to_country,esp_woo_orders:source_order_id(order_number,customer_name)")
       .order("created_at", { ascending: false }).limit(1000);
     if (error) toast.error(error.message);
     setRows((data || []) as any);
     setLoading(false);
   };
+
 
   useEffect(() => { load(); }, []);
 
@@ -136,22 +158,26 @@ export default function EspanaFabricacion() {
   }, [rows]);
 
   const filtered = useMemo(() => {
+    let base: FabRow[];
     switch (view) {
       case "real":
-        return rows.filter(r => !r.is_legacy && !r.is_test && ["pending", "in_progress", "ready"].includes(r.status));
+        base = rows.filter(r => !r.is_legacy && !r.is_test && ["pending", "in_progress", "ready"].includes(r.status)); break;
       case "delivered":
-        return rows.filter(r => !r.is_legacy && r.status === "delivered_to_shipping");
+        base = rows.filter(r => !r.is_legacy && r.status === "delivered_to_shipping"); break;
       case "test":
-        return rows.filter(r => r.is_test && !r.is_legacy);
+        base = rows.filter(r => r.is_test && !r.is_legacy); break;
       case "legacy":
-        return rows.filter(r => r.is_legacy);
+        base = rows.filter(r => r.is_legacy); break;
       case "cancelled":
-        return rows.filter(r => r.status === "cancelled" && !r.is_legacy);
+        base = rows.filter(r => r.status === "cancelled" && !r.is_legacy); break;
       case "all":
       default:
-        return rows;
+        base = rows;
     }
-  }, [rows, view]);
+    if (origin === "manual") return base.filter(r => r.source_type === "manual");
+    if (origin === "auto") return base.filter(r => r.source_type !== "manual");
+    return base;
+  }, [rows, view, origin]);
 
   return (
     <div className="space-y-5">
@@ -162,8 +188,12 @@ export default function EspanaFabricacion() {
           </h2>
           <p className="text-sm text-muted-foreground">Cola generada desde pedidos WooCommerce España cuando el producto requiere fabricación.</p>
         </div>
-        <a href="/espana/blanks-dtf" className="text-sm text-primary font-semibold underline-offset-2 hover:underline">Blanks / DTF →</a>
+        <div className="flex items-center gap-3">
+          <Button size="sm" onClick={() => setManualOpen(true)}><Plus className="h-4 w-4 mr-1" />Nueva orden manual</Button>
+          <a href="/espana/blanks-dtf" className="text-sm text-primary font-semibold underline-offset-2 hover:underline">Blanks / DTF →</a>
+        </div>
       </div>
+
       <Card className="p-3 border-l-4 border-l-emerald-500 text-xs">
         <span className="font-semibold">BLOQUE 5B activo:</span> al pulsar <span className="font-semibold">Fabricar</span> se valida la receta, se calcula el stock requerido y se consumen los materiales atómicamente. No se toca WooCommerce, ni inventario físico, ni POS.
       </Card>
@@ -205,6 +235,18 @@ export default function EspanaFabricacion() {
         </TabsList>
       </Tabs>
 
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-semibold uppercase text-muted-foreground">Origen</span>
+        <Select value={origin} onValueChange={(v) => setOrigin(v as OriginFilter)}>
+          <SelectTrigger className="h-8 w-[240px] text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="auto">Automático / WooCommerce</SelectItem>
+            <SelectItem value="manual">Manual</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <Card className="p-0 overflow-hidden">
         <Table>
           <TableHeader>
@@ -213,26 +255,36 @@ export default function EspanaFabricacion() {
               <TableHead>Pedido</TableHead>
               <TableHead>Producto</TableHead>
               <TableHead>Talla (raw → normalizada)</TableHead>
-              <TableHead>Cliente</TableHead>
+              <TableHead>Cliente / destinatario</TableHead>
               <TableHead className="text-right">Cant.</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Prioridad</TableHead>
               <TableHead>Marca</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading && <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">Cargando…</TableCell></TableRow>}
-            {!loading && filtered.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">Sin items en este filtro.</TableCell></TableRow>}
+            {loading && <TableRow><TableCell colSpan={10} className="text-center text-sm text-muted-foreground py-6">Cargando…</TableCell></TableRow>}
+            {!loading && filtered.length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-sm text-muted-foreground py-6">Sin items en este filtro.</TableCell></TableRow>}
             {filtered.map(r => {
               const raw = r.variant_label || "";
               const norm = normalizeSize(raw);
+              const isManual = r.source_type === "manual";
               return (
                 <TableRow key={r.id} className={r.is_legacy ? "opacity-60" : ""}>
                   <TableCell className="text-xs">{formatDMY(r.created_at)}</TableCell>
-                  <TableCell className="text-xs font-mono">#{r.esp_woo_orders?.order_number || r.woo_order_id || "—"}</TableCell>
+                  <TableCell className="text-xs font-mono">
+                    {isManual ? <span className="text-muted-foreground">Manual</span> : `#${r.esp_woo_orders?.order_number || r.woo_order_id || "—"}`}
+                  </TableCell>
                   <TableCell className="text-sm font-medium">
                     {r.product_name || "—"}
                     {r.sku && <span className="text-muted-foreground text-xs font-mono"> · {r.sku}</span>}
+                    {isManual && r.manual_reason && (
+                      <div className="text-[11px] text-muted-foreground">
+                        Motivo: {MANUAL_REASON_LABEL[r.manual_reason] || r.manual_reason}
+                        {r.manual_reason === "otro" && r.manual_reason_detail ? ` · ${r.manual_reason_detail}` : ""}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-xs">
                     {raw ? (
@@ -242,14 +294,35 @@ export default function EspanaFabricacion() {
                       </span>
                     ) : "—"}
                   </TableCell>
-                  <TableCell className="text-xs">{r.esp_woo_orders?.customer_name || "—"}</TableCell>
+                  <TableCell className="text-xs">
+                    {isManual ? (
+                      r.requires_shipping ? (
+                        <div>
+                          <span className="font-medium">{r.ship_to_name || "—"}</span>
+                          <div className="text-[11px] text-muted-foreground">
+                            {[r.ship_to_address, r.ship_to_postal_code, r.ship_to_city, r.ship_to_province, r.ship_to_country].filter(Boolean).join(", ")}
+                          </div>
+                          {r.ship_to_phone && <div className="text-[11px] text-muted-foreground">{r.ship_to_phone}</div>}
+                        </div>
+                      ) : <span className="text-muted-foreground">Recogida interna</span>
+                    ) : (r.esp_woo_orders?.customer_name || "—")}
+                  </TableCell>
                   <TableCell className="text-right font-semibold">{r.quantity}</TableCell>
                   <TableCell><Badge className={STATUS_COLORS[r.status]}>{STATUS_LABEL[r.status] || r.status}</Badge></TableCell>
                   <TableCell>
-                    {r.is_test && <Badge className="bg-blue-600" title={r.test_reason || ""}><FlaskConical className="h-3 w-3 mr-1" />Prueba</Badge>}
-                    {r.is_legacy && <Badge variant="secondary" title={r.legacy_reason || ""}><Archive className="h-3 w-3 mr-1" />Legacy</Badge>}
-                    {!r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">Real</span>}
+                    {PRIORITY_CLASS[r.priority]
+                      ? <Badge className={PRIORITY_CLASS[r.priority]}>{PRIORITY_LABEL[r.priority] || r.priority}</Badge>
+                      : <span className="text-xs text-muted-foreground">{PRIORITY_LABEL[r.priority] || r.priority}</span>}
                   </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1 items-start">
+                      {isManual && <Badge className="bg-purple-600"><Wrench className="h-3 w-3 mr-1" />MANUAL</Badge>}
+                      {r.is_test && <Badge className="bg-blue-600" title={r.test_reason || ""}><FlaskConical className="h-3 w-3 mr-1" />Prueba</Badge>}
+                      {r.is_legacy && <Badge variant="secondary" title={r.legacy_reason || ""}><Archive className="h-3 w-3 mr-1" />Legacy</Badge>}
+                      {!isManual && !r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">Real</span>}
+                    </div>
+                  </TableCell>
+
                   <TableCell>
                     <div className="flex items-center gap-1 flex-wrap">
                       {busyId === r.id && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -366,6 +439,8 @@ export default function EspanaFabricacion() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ManualFabricationDialog open={manualOpen} onOpenChange={setManualOpen} onCreated={() => { setOrigin("manual"); setView("real"); load(); }} />
     </div>
   );
 }
