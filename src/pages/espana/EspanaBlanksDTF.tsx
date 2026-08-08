@@ -1194,7 +1194,7 @@ function RecipeTestDialog({ state, onClose, recipes, recipeItems, materials, sto
 }
 
 /* ===================== GROUP SIZES DIALOG ===================== */
-function GroupSizesDialog({ state, onClose, onSaved, locations, stockByMatLoc }: any) {
+function GroupSizesDialog({ state, onClose, onSaved, locations, stockByMatLoc, stockOnly }: any) {
   const items: MaterialItem[] = state.items || [];
   const [rows, setRows] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
