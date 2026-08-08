@@ -248,7 +248,7 @@ export default function EspanaBlanksDTF() {
               <Card className="p-0 overflow-hidden">
                 <div className="p-4 pb-2">
                   <h3 className="font-bold text-sm flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> Inventario por blank y talla</h3>
-                  <p className="text-xs text-muted-foreground">Stock total sumado de todas las sedes. Click en una fila abre el editor de tallas.</p>
+                  <p className="text-xs text-muted-foreground">Stock operativo en Arturo Soria / Taller. Click en una fila abre el editor de tallas.</p>
                 </div>
                 <div className="overflow-x-auto">
                   <Table>
