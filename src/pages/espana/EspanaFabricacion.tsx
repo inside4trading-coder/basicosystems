@@ -408,10 +408,6 @@ export default function EspanaFabricacion() {
                 </TableRow>
               );
             })}
-
-                </TableRow>
-              );
-            })}
           </TableBody>
         </Table>
       </Card>
