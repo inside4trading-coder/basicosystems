@@ -45,7 +45,7 @@ interface MovementRow {
   reference_type: string | null; created_at: string; created_by: string | null;
 }
 interface ProfileRow { id: string; full_name: string | null; email: string | null; }
-interface LocationRow { id: string; name: string; }
+interface LocationRow { id: string; name: string; code?: string | null; }
 interface RecipeRow { id: string; product_id: string; variant_id: string | null; name: string | null; status: string; }
 interface RecipeItemRow { id: string; recipe_id: string; material_id: string; quantity_per_unit: number; size_strategy: string; required: boolean; }
 interface ProductRow { id: string; name: string; sku: string | null; category: string | null; product_type: string | null; color: string | null; fulfillment_mode?: string | null; }
@@ -85,6 +85,8 @@ export default function EspanaBlanksDTF() {
   const [testDlg, setTestDlg] = useState<{ open: boolean; recipeId?: string }>({ open: false });
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [groupDlg, setGroupDlg] = useState<{ open: boolean; items?: MaterialItem[]; title?: string }>({ open: false });
+  const [groupStockDlg, setGroupStockDlg] = useState<{ open: boolean; items?: MaterialItem[]; title?: string }>({ open: false });
+  const [stockSearch, setStockSearch] = useState("");
   const toggleGroup = (k: string) => setExpandedGroups(p => ({ ...p, [k]: !p[k] }));
 
   const load = async () => {
@@ -93,7 +95,7 @@ export default function EspanaBlanksDTF() {
       supabase.from("esp_material_items").select("*").order("material_type").order("name"),
       supabase.from("esp_material_stock").select("*"),
       supabase.from("esp_material_movements").select("*").order("created_at", { ascending: false }).limit(500),
-      supabase.from("esp_locations").select("id,name").eq("is_active", true).order("name"),
+      supabase.from("esp_locations").select("id,name,code").eq("is_active", true).order("name"),
       supabase.from("esp_product_material_recipes").select("*").order("created_at", { ascending: false }),
       supabase.from("esp_product_material_recipe_items").select("*"),
       supabase.from("esp_products").select("id,name,sku,category,product_type,color,fulfillment_mode").order("name"),
@@ -122,11 +124,26 @@ export default function EspanaBlanksDTF() {
   useEffect(() => { load(); }, []);
 
   // helpers
+  // Blanks/DTF se gestionan SOLO en Arturo Soria / Taller.
+  const arturoLoc = useMemo(
+    () => locations.find(l => (l.code || "").toUpperCase() === "ARTURO_SORIA") || null,
+    [locations]
+  );
+  const arturoLocs = useMemo(() => (arturoLoc ? [arturoLoc] : []), [arturoLoc]);
+
+  /** Stock operativo = SOLO Arturo Soria */
   const stockByMat = useMemo(() => {
     const map = new Map<string, number>();
-    stock.forEach(s => map.set(s.material_id, (map.get(s.material_id) || 0) + Number(s.quantity_on_hand || 0)));
+    stock.filter(s => s.location_id === arturoLoc?.id)
+      .forEach(s => map.set(s.material_id, (map.get(s.material_id) || 0) + Number(s.quantity_on_hand || 0)));
     return map;
-  }, [stock]);
+  }, [stock, arturoLoc]);
+
+  /** Stock histórico fuera de Arturo Soria (informativo, no operativo) */
+  const legacyOutside = useMemo(() => {
+    const rows = stock.filter(s => s.location_id !== arturoLoc?.id && Number(s.quantity_on_hand || 0) > 0);
+    return { count: rows.length, qty: rows.reduce((a, s) => a + Number(s.quantity_on_hand || 0), 0) };
+  }, [stock, arturoLoc]);
 
   const stockByMatLoc = useMemo(() => {
     const map = new Map<string, number>();
@@ -137,6 +154,35 @@ export default function EspanaBlanksDTF() {
   const lowStockMaterials = useMemo(() =>
     materials.filter(m => m.status === "active" && (stockByMat.get(m.id) || 0) <= Number(m.low_stock_threshold || 0))
   , [materials, stockByMat]);
+
+  /** Materiales agrupados por (tipo + nombre + color) para la pestaña Stock */
+  const stockGroups = useMemo(() => {
+    const terms = stockSearch.toLowerCase().split(/\s+/).filter(Boolean);
+    const groups = new Map<string, { key: string; type: string; name: string; color: string | null; baseSku: string; sizes: string[]; items: MaterialItem[] }>();
+    materials.filter(m => m.status === "active").forEach(m => {
+      const color = m.color || null;
+      const key = `${m.material_type}::${m.name}::${color || ""}`;
+      const size = m.normalized_size || m.size || "";
+      const baseSku = (m.sku || "").replace(new RegExp(`-${size}$`, "i"), "");
+      const g = groups.get(key) || { key, type: m.material_type, name: m.name, color, baseSku, sizes: [], items: [] };
+      if (!g.baseSku && baseSku) g.baseSku = baseSku;
+      if (size && !g.sizes.includes(size)) g.sizes.push(size);
+      g.items.push(m);
+      groups.set(key, g);
+    });
+    let list = Array.from(groups.values());
+    list.forEach(g => {
+      g.sizes.sort();
+      g.items.sort((a, b) => (a.normalized_size || a.size || "").localeCompare(b.normalized_size || b.size || ""));
+    });
+    if (terms.length) {
+      list = list.filter(g => {
+        const hay = [g.name, g.color, g.baseSku, MATERIAL_TYPE_LABEL[g.type], g.sizes.join(" "), g.items.map(i => i.sku).join(" ")].join(" ").toLowerCase();
+        return terms.every(t => hay.includes(t));
+      });
+    }
+    return list.sort((a, b) => (a.type + a.name).localeCompare(b.type + b.name));
+  }, [materials, stockSearch]);
 
   const matsById = useMemo(() => new Map(materials.map(m => [m.id, m])), [materials]);
   const locById = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations]);
@@ -233,7 +279,7 @@ export default function EspanaBlanksDTF() {
               <Card className="p-0 overflow-hidden">
                 <div className="p-4 pb-2">
                   <h3 className="font-bold text-sm flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> Inventario por blank y talla</h3>
-                  <p className="text-xs text-muted-foreground">Stock total sumado de todas las sedes. Click en una fila abre el editor de tallas.</p>
+                  <p className="text-xs text-muted-foreground">Stock operativo en Arturo Soria / Taller. Click en una fila abre el editor de tallas.</p>
                 </div>
                 <div className="overflow-x-auto">
                   <Table>
@@ -518,47 +564,92 @@ export default function EspanaBlanksDTF() {
           </Card>
         </TabsContent>
 
-        {/* ============== STOCK MATRIX ============== */}
+        {/* ============== STOCK (solo Arturo Soria, agrupado) ============== */}
         <TabsContent value="stock" className="space-y-3">
+          {legacyOutside.qty > 0 && (
+            <Card className="p-3 border-l-4 border-l-amber-500 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-xs">
+                Hay stock histórico de materiales fuera de Arturo Soria ({legacyOutside.qty} unidades en {legacyOutside.count} registro(s)). No se usa para fabricación ligera.
+              </p>
+            </Card>
+          )}
+
+          <div className="flex flex-wrap gap-2 items-center">
+            <Input className="w-72" placeholder="Buscar material, SKU, color, talla, tipo..." value={stockSearch} onChange={e => setStockSearch(e.target.value)} />
+            <Badge variant="outline" className="text-[10px]">Sede única: Arturo Soria / Taller</Badge>
+          </div>
+
           <Card className="p-0 overflow-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Material</TableHead><TableHead>Tipo</TableHead><TableHead>Talla</TableHead>
-                {locations.map(l => <TableHead key={l.id} className="text-right">{l.name}</TableHead>)}
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="w-8"></TableHead>
+                <TableHead>Material</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Color</TableHead>
+                <TableHead>SKU base</TableHead>
+                <TableHead>Tallas</TableHead>
+                <TableHead className="text-right">Arturo Soria</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {materials.filter(m => m.status === "active").map(m => {
-                  const total = stockByMat.get(m.id) || 0;
-                  const low = total <= Number(m.low_stock_threshold || 0);
+                {stockGroups.length === 0 && (
+                  <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">Sin materiales.</TableCell></TableRow>
+                )}
+                {stockGroups.map(g => {
+                  const open = !!expandedGroups[g.key];
+                  const total = g.items.reduce((s, i) => s + (stockByMat.get(i.id) || 0), 0);
+                  const low = g.items.some(i => (stockByMat.get(i.id) || 0) <= Number(i.low_stock_threshold || 0));
                   return (
-                    <TableRow key={m.id}>
-                      <TableCell className="text-sm font-medium">{m.name}<div className="text-[10px] text-muted-foreground font-mono">{m.sku}</div></TableCell>
-                      <TableCell><Badge variant="outline">{MATERIAL_TYPE_LABEL[m.material_type]}</Badge></TableCell>
-                      <TableCell className="text-xs">{m.normalized_size || "—"}</TableCell>
-                      {locations.map(l => {
-                        const v = stockByMatLoc.get(`${m.id}::${l.id}`) || 0;
-                        return <TableCell key={l.id} className="text-right text-xs font-mono">{v}</TableCell>;
+                    <>
+                      <TableRow key={g.key} className="cursor-pointer hover:bg-muted/40" onClick={() => toggleGroup(g.key)}>
+                        <TableCell>{open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</TableCell>
+                        <TableCell className="text-sm font-medium">{g.name}</TableCell>
+                        <TableCell><Badge variant="outline" className="text-[10px]">{MATERIAL_TYPE_LABEL[g.type]}</Badge></TableCell>
+                        <TableCell className="text-xs">{g.color || "—"}</TableCell>
+                        <TableCell className="text-xs font-mono">{g.baseSku || "—"}</TableCell>
+                        <TableCell className="text-xs">{g.sizes.join(", ") || "—"}</TableCell>
+                        <TableCell className={"text-right font-bold " + (low ? "text-amber-600" : "")}>{total}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="outline" onClick={() => setGroupStockDlg({ open: true, items: g.items, title: `${g.name}${g.color ? ` · ${g.color}` : ""}` })}>
+                            <Settings2 className="h-3 w-3 mr-1" />Editar stock
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      {open && g.items.map(m => {
+                        const qty = stockByMat.get(m.id) || 0;
+                        const mLow = qty <= Number(m.low_stock_threshold || 0);
+                        return (
+                          <TableRow key={m.id} className="bg-muted/20">
+                            <TableCell></TableCell>
+                            <TableCell className="text-xs pl-6">Talla <span className="font-semibold">{m.normalized_size || m.size || "—"}</span></TableCell>
+                            <TableCell className="text-xs font-mono" colSpan={2}>{m.sku || "—"}</TableCell>
+                            <TableCell className="text-xs">Umbral {m.low_stock_threshold}</TableCell>
+                            <TableCell className="text-xs">
+                              <Badge variant={m.status === "active" ? "outline" : "secondary"} className="text-[10px]">{m.status === "active" ? "Activo" : m.status}</Badge>
+                            </TableCell>
+                            <TableCell className={"text-right text-xs font-mono " + (mLow ? "text-amber-600 font-bold" : "")}>{qty}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                {MOVEMENT_TYPES_UI.map(t => (
+                                  <Button key={t.value} size="sm" variant="outline" title={t.label}
+                                    onClick={() => setMovDlg({ open: true, type: t.value, materialId: m.id, locationId: arturoLoc?.id })}>
+                                    <t.icon className="h-3 w-3" />
+                                  </Button>
+                                ))}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
                       })}
-                      <TableCell className={"text-right font-bold " + (low ? "text-amber-600" : "")}>{total}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {MOVEMENT_TYPES_UI.map(t => (
-                            <Button key={t.value} size="sm" variant="outline" title={t.label}
-                              onClick={() => setMovDlg({ open: true, type: t.value, materialId: m.id, locationId: locations[0]?.id })}>
-                              <t.icon className="h-3 w-3" />
-                            </Button>
-                          ))}
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    </>
                   );
                 })}
               </TableBody>
             </Table>
           </Card>
         </TabsContent>
+
 
         {/* ============== MOVIMIENTOS ============== */}
         <TabsContent value="movimientos" className="space-y-3">
@@ -644,10 +735,11 @@ export default function EspanaBlanksDTF() {
 
       {/* Dialogs */}
       <MaterialDialog state={matDlg} onClose={() => setMatDlg({ open: false })} onSaved={load} />
-      <MovementDialog state={movDlg} onClose={() => setMovDlg({ open: false })} onSaved={load} materials={materials} locations={locations} />
-      <RecipeDialog state={recipeDlg} onClose={() => setRecipeDlg({ open: false })} onSaved={load} products={products} materials={materials} recipeItems={recipeItems} stockByMatLoc={stockByMatLoc} locations={locations} />
-      <RecipeTestDialog state={testDlg} onClose={() => setTestDlg({ open: false })} recipes={recipes} recipeItems={recipeItems} materials={materials} stockByMatLoc={stockByMatLoc} locations={locations} />
-      <GroupSizesDialog state={groupDlg} onClose={() => setGroupDlg({ open: false })} onSaved={load} locations={locations} stockByMatLoc={stockByMatLoc} />
+      <MovementDialog state={movDlg} onClose={() => setMovDlg({ open: false })} onSaved={load} materials={materials} locations={arturoLocs} />
+      <RecipeDialog state={recipeDlg} onClose={() => setRecipeDlg({ open: false })} onSaved={load} products={products} materials={materials} recipeItems={recipeItems} stockByMatLoc={stockByMatLoc} locations={arturoLocs} />
+      <RecipeTestDialog state={testDlg} onClose={() => setTestDlg({ open: false })} recipes={recipes} recipeItems={recipeItems} materials={materials} stockByMatLoc={stockByMatLoc} locations={arturoLocs} />
+      <GroupSizesDialog state={groupDlg} onClose={() => setGroupDlg({ open: false })} onSaved={load} locations={arturoLocs} stockByMatLoc={stockByMatLoc} />
+      <GroupSizesDialog state={groupStockDlg} stockOnly onClose={() => setGroupStockDlg({ open: false })} onSaved={load} locations={arturoLocs} stockByMatLoc={stockByMatLoc} />
     </div>
   );
 }
@@ -808,7 +900,7 @@ function MovementDialog({ state, onClose, onSaved, materials, locations }: any) 
         <DialogHeader><DialogTitle>{labelMap[form.movement_type] || "Movimiento"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div><Label>Material</Label><Select value={form.material_id} onValueChange={v => setForm({ ...form, material_id: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{materials.filter((m: any) => m.status === "active").map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></div>
-          <div><Label>Ubicación</Label><Select value={form.location_id} onValueChange={v => setForm({ ...form, location_id: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{locations.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select></div>
+          <div><Label>Ubicación</Label><Select value={form.location_id} disabled><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{locations.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select><p className="text-[11px] text-muted-foreground mt-1">Blanks/DTF solo se gestionan en Arturo Soria / Taller.</p></div>
           <div><Label>{form.movement_type === "adjustment" ? "Nueva cantidad total" : "Cantidad"}</Label><Input type="number" step="0.01" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} /></div>
           <div><Label>Motivo {isOut && <span className="text-destructive">*</span>}</Label><Input value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} /></div>
           <div><Label>Notas</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
@@ -1103,7 +1195,7 @@ function RecipeTestDialog({ state, onClose, recipes, recipeItems, materials, sto
 }
 
 /* ===================== GROUP SIZES DIALOG ===================== */
-function GroupSizesDialog({ state, onClose, onSaved, locations, stockByMatLoc }: any) {
+function GroupSizesDialog({ state, onClose, onSaved, locations, stockByMatLoc, stockOnly }: any) {
   const items: MaterialItem[] = state.items || [];
   const [rows, setRows] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
@@ -1142,6 +1234,8 @@ function GroupSizesDialog({ state, onClose, onSaved, locations, stockByMatLoc }:
   };
 
   const save = async () => {
+    const stockChanged = rows.some(r => Object.keys(r.stocks).some(l => Number(r.stocks[l] || 0) !== Number(r._origStocks[l] || 0)));
+    if (stockChanged && !reason.trim()) { toast.error("Motivo obligatorio para ajustar stock"); return; }
     setBusy(true);
     let metaUpdates = 0, stockUpdates = 0, errors = 0;
     for (const r of rows) {
@@ -1189,8 +1283,8 @@ function GroupSizesDialog({ state, onClose, onSaved, locations, stockByMatLoc }:
     <Dialog open={state.open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Editar tallas · {state.title}</DialogTitle>
-          <p className="text-xs text-muted-foreground">Cambia tallas, SKU, costo, umbral y stock por sede. Los ajustes de stock quedan registrados como movimientos.</p>
+          <DialogTitle>{stockOnly ? "Editar stock" : "Editar tallas"} · {state.title}</DialogTitle>
+          <p className="text-xs text-muted-foreground">Stock operativo en Arturo Soria / Taller. Cada cambio de stock se registra como movimiento de ajuste.</p>
         </DialogHeader>
         <div className="overflow-x-auto">
           <Table>
@@ -1238,7 +1332,7 @@ function GroupSizesDialog({ state, onClose, onSaved, locations, stockByMatLoc }:
           </Table>
         </div>
         <div className="mt-3">
-          <Label className="text-xs">Motivo del ajuste (queda en el historial)</Label>
+          <Label className="text-xs">Motivo del ajuste <span className="text-destructive">*</span> (queda en el historial)</Label>
           <Input value={reason} onChange={e => setReason(e.target.value)} placeholder="Ej: Conteo físico semanal, llegada de mercancía..." />
         </div>
         <DialogFooter>
