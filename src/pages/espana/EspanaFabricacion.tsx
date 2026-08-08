@@ -40,22 +40,31 @@ interface FabRow {
   ship_to_province: string | null;
   ship_to_postal_code: string | null;
   ship_to_country: string | null;
+  pos_sale_id: string | null;
+  pos_sale_item_id: string | null;
+  pos_sale_number: string | null;
+  pos_location_id: string | null;
+  pos_location_name: string | null;
   esp_woo_orders?: { order_number: string | null; customer_name: string | null } | null;
 }
 
 
 const STATUS_LABEL: Record<string, string> = {
+  pending_approval: "Pendiente de aprobación",
   pending: "Pendiente",
   in_progress: "Fabricando",
   ready: "Listo",
   delivered_to_shipping: "Entregado a envío",
+  rejected: "Rechazado",
   cancelled: "Cancelado",
 };
 const STATUS_COLORS: Record<string, string> = {
+  pending_approval: "bg-teal-600",
   pending: "bg-amber-600",
   in_progress: "bg-blue-600",
   ready: "bg-emerald-600",
   delivered_to_shipping: "bg-emerald-700",
+  rejected: "bg-zinc-600",
   cancelled: "bg-zinc-500",
 };
 
@@ -70,7 +79,15 @@ export function normalizeSize(label: string | null | undefined): string {
 }
 
 type ViewFilter = "real" | "delivered" | "test" | "legacy" | "cancelled" | "all";
-type OriginFilter = "all" | "auto" | "manual";
+type OriginFilter = "all" | "woo" | "pos" | "restock" | "manual";
+
+const ORIGIN_CHIPS: { key: OriginFilter; label: string }[] = [
+  { key: "all", label: "Todos" },
+  { key: "woo", label: "WooCommerce" },
+  { key: "pos", label: "POS" },
+  { key: "restock", label: "RESTOCK" },
+  { key: "manual", label: "Manual" },
+];
 
 const PRIORITY_LABEL: Record<string, string> = { normal: "Normal", alta: "Alta", urgente: "Urgente", high: "Alta", urgent: "Urgente", low: "Baja" };
 const PRIORITY_CLASS: Record<string, string> = { alta: "bg-amber-600", high: "bg-amber-600", urgente: "bg-red-600", urgent: "bg-red-600" };
