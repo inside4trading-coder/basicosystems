@@ -234,8 +234,18 @@ function MovementDialog({ mode, prefillVariantId, onClose, locs, variants, produ
 
   const variantOptions = variants.filter(v => v.status === "active").map(v => {
     const p = products.find(pp => pp.id === v.product_id);
-    return { id: v.id, label: `${p?.name || "?"} · ${v.variant_sku}${v.size ? ` · ${v.size}` : ""}` };
+    const total = Object.values(stockMap[v.id] || {}).reduce((a, b) => a + b, 0);
+    return {
+      id: v.id,
+      name: p?.name || "?",
+      sku: v.variant_sku,
+      size: v.size || "",
+      color: v.color || "",
+      total,
+      search: `${p?.name || ""} ${p?.sku || ""} ${v.variant_sku} ${v.size ?? ""} ${v.color ?? ""}`.replace(/\s+/g, " ").toLowerCase(),
+    };
   });
+  const selected = variantOptions.find(v => v.id === variantId);
 
   return (
     <Dialog open={!!mode} onOpenChange={(o) => !o && onClose()}>
@@ -244,13 +254,9 @@ function MovementDialog({ mode, prefillVariantId, onClose, locs, variants, produ
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label>Variante</Label>
-            <Select value={variantId} onValueChange={setVariantId}>
-              <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {variantOptions.map(v => <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <VariantCombobox options={variantOptions} value={variantId} onChange={setVariantId} selected={selected} />
           </div>
+
 
           {mode !== "transfer" && (
             <div className="space-y-1.5">
