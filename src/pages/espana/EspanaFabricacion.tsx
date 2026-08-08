@@ -167,6 +167,8 @@ export default function EspanaFabricacion() {
       realPending: real.filter(r => r.status === "pending").length,
       realInProgress: real.filter(r => r.status === "in_progress").length,
       realReady: real.filter(r => r.status === "ready").length,
+      restockPending: real.filter(r => r.status === "pending_approval").length,
+      restockUnits: sum(real.filter(r => r.status === "pending_approval")),
       testCount: tests.length,
       testUnits: sum(tests),
       legacyCount: legacy.length,
@@ -178,7 +180,7 @@ export default function EspanaFabricacion() {
     let base: FabRow[];
     switch (view) {
       case "real":
-        base = rows.filter(r => !r.is_legacy && !r.is_test && ["pending", "in_progress", "ready"].includes(r.status)); break;
+        base = rows.filter(r => !r.is_legacy && !r.is_test && ["pending_approval", "pending", "in_progress", "ready"].includes(r.status)); break;
       case "delivered":
         base = rows.filter(r => !r.is_legacy && r.status === "delivered_to_shipping"); break;
       case "test":
@@ -186,15 +188,17 @@ export default function EspanaFabricacion() {
       case "legacy":
         base = rows.filter(r => r.is_legacy); break;
       case "cancelled":
-        base = rows.filter(r => r.status === "cancelled" && !r.is_legacy); break;
+        base = rows.filter(r => ["cancelled", "rejected"].includes(r.status) && !r.is_legacy); break;
       case "all":
       default:
         base = rows;
     }
     if (origin === "manual") return base.filter(r => r.source_type === "manual");
-    if (origin === "auto") return base.filter(r => r.source_type !== "manual");
+    if (origin === "pos" || origin === "restock") return base.filter(r => r.source_type === "pos_restock");
+    if (origin === "woo") return base.filter(r => r.source_type !== "manual" && r.source_type !== "pos_restock");
     return base;
   }, [rows, view, origin]);
+
 
   return (
     <div className="space-y-5">
