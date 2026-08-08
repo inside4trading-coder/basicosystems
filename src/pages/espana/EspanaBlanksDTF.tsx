@@ -759,7 +759,70 @@ function MovementDialog({ state, onClose, onSaved, materials, locations }: any) 
   );
 }
 
-function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItems }: any) {
+function MaterialCombobox({ materials, value, onChange, stockByMatLoc, locations }: any) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const active = useMemo(() => (materials as MaterialItem[]).filter((m) => m.status === "active"), [materials]);
+  const selected = useMemo(() => (materials as MaterialItem[]).find((m) => m.id === value), [materials, value]);
+
+  const stockOf = (id: string) => {
+    if (!stockByMatLoc || !locations) return null;
+    return (locations as LocationRow[]).reduce((s: number, l: LocationRow) => s + (Number(stockByMatLoc.get(`${id}::${l.id}`)) || 0), 0);
+  };
+
+  const contextOf = (m: MaterialItem) => {
+    const parts: string[] = [];
+    if (m.sku) parts.push(`SKU ${m.sku}`);
+    if (m.color) parts.push(m.color);
+    if (m.size) parts.push(`Talla ${m.size}`);
+    if (m.material_type) parts.push(MATERIAL_TYPE_LABEL[m.material_type] || m.material_type);
+    const st = stockOf(m.id);
+    if (st !== null) parts.push(`Stock ${st}`);
+    return parts.join(" · ");
+  };
+
+  const filtered = useMemo(() => {
+    const q = normalizeColor(search.trim().replace(/\s+/g, " "));
+    if (!q) return active;
+    return active.filter((m) => {
+      const hay = normalizeColor([m.name, m.sku, m.color, m.size, m.normalized_size, m.material_type, MATERIAL_TYPE_LABEL[m.material_type]].filter(Boolean).join(" "));
+      return hay.includes(q);
+    });
+  }, [active, search]);
+
+  return (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between font-normal h-9">
+          <span className="truncate text-left">{selected ? selected.name : "Seleccionar material…"}</span>
+          <ChevronsUpDown className="h-3.5 w-3.5 opacity-50 shrink-0 ml-2" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[280px] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput placeholder="Buscar material (nombre, SKU, color, talla)…" value={search} onValueChange={setSearch} />
+          <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
+            <CommandEmpty>Sin coincidencias.</CommandEmpty>
+            <CommandGroup>
+              {filtered.slice(0, 300).map((m) => (
+                <CommandItem key={m.id} value={m.id} onSelect={() => { onChange(m.id); setOpen(false); setSearch(""); }}>
+                  <Check className={`mr-2 h-3.5 w-3.5 shrink-0 ${value === m.id ? "opacity-100" : "opacity-0"}`} />
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate text-sm">{m.name}</span>
+                    <span className="text-[10px] text-muted-foreground truncate">{contextOf(m) || "Sin datos adicionales"}</span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItems, stockByMatLoc, locations }: any) {
   const recipe = state.recipe as RecipeRow | null;
   const [form, setForm] = useState<any>({});
   const [items, setItems] = useState<any[]>([]);
