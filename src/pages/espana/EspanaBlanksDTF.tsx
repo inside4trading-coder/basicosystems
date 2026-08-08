@@ -533,47 +533,92 @@ export default function EspanaBlanksDTF() {
           </Card>
         </TabsContent>
 
-        {/* ============== STOCK MATRIX ============== */}
+        {/* ============== STOCK (solo Arturo Soria, agrupado) ============== */}
         <TabsContent value="stock" className="space-y-3">
+          {legacyOutside.qty > 0 && (
+            <Card className="p-3 border-l-4 border-l-amber-500 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-xs">
+                Hay stock histórico de materiales fuera de Arturo Soria ({legacyOutside.qty} unidades en {legacyOutside.count} registro(s)). No se usa para fabricación ligera.
+              </p>
+            </Card>
+          )}
+
+          <div className="flex flex-wrap gap-2 items-center">
+            <Input className="w-72" placeholder="Buscar material, SKU, color, talla, tipo..." value={stockSearch} onChange={e => setStockSearch(e.target.value)} />
+            <Badge variant="outline" className="text-[10px]">Sede única: Arturo Soria / Taller</Badge>
+          </div>
+
           <Card className="p-0 overflow-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Material</TableHead><TableHead>Tipo</TableHead><TableHead>Talla</TableHead>
-                {locations.map(l => <TableHead key={l.id} className="text-right">{l.name}</TableHead>)}
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="w-8"></TableHead>
+                <TableHead>Material</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Color</TableHead>
+                <TableHead>SKU base</TableHead>
+                <TableHead>Tallas</TableHead>
+                <TableHead className="text-right">Arturo Soria</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {materials.filter(m => m.status === "active").map(m => {
-                  const total = stockByMat.get(m.id) || 0;
-                  const low = total <= Number(m.low_stock_threshold || 0);
+                {stockGroups.length === 0 && (
+                  <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">Sin materiales.</TableCell></TableRow>
+                )}
+                {stockGroups.map(g => {
+                  const open = !!expandedGroups[g.key];
+                  const total = g.items.reduce((s, i) => s + (stockByMat.get(i.id) || 0), 0);
+                  const low = g.items.some(i => (stockByMat.get(i.id) || 0) <= Number(i.low_stock_threshold || 0));
                   return (
-                    <TableRow key={m.id}>
-                      <TableCell className="text-sm font-medium">{m.name}<div className="text-[10px] text-muted-foreground font-mono">{m.sku}</div></TableCell>
-                      <TableCell><Badge variant="outline">{MATERIAL_TYPE_LABEL[m.material_type]}</Badge></TableCell>
-                      <TableCell className="text-xs">{m.normalized_size || "—"}</TableCell>
-                      {locations.map(l => {
-                        const v = stockByMatLoc.get(`${m.id}::${l.id}`) || 0;
-                        return <TableCell key={l.id} className="text-right text-xs font-mono">{v}</TableCell>;
+                    <>
+                      <TableRow key={g.key} className="cursor-pointer hover:bg-muted/40" onClick={() => toggleGroup(g.key)}>
+                        <TableCell>{open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</TableCell>
+                        <TableCell className="text-sm font-medium">{g.name}</TableCell>
+                        <TableCell><Badge variant="outline" className="text-[10px]">{MATERIAL_TYPE_LABEL[g.type]}</Badge></TableCell>
+                        <TableCell className="text-xs">{g.color || "—"}</TableCell>
+                        <TableCell className="text-xs font-mono">{g.baseSku || "—"}</TableCell>
+                        <TableCell className="text-xs">{g.sizes.join(", ") || "—"}</TableCell>
+                        <TableCell className={"text-right font-bold " + (low ? "text-amber-600" : "")}>{total}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="outline" onClick={() => setGroupStockDlg({ open: true, items: g.items, title: `${g.name}${g.color ? ` · ${g.color}` : ""}` })}>
+                            <Settings2 className="h-3 w-3 mr-1" />Editar stock
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      {open && g.items.map(m => {
+                        const qty = stockByMat.get(m.id) || 0;
+                        const mLow = qty <= Number(m.low_stock_threshold || 0);
+                        return (
+                          <TableRow key={m.id} className="bg-muted/20">
+                            <TableCell></TableCell>
+                            <TableCell className="text-xs pl-6">Talla <span className="font-semibold">{m.normalized_size || m.size || "—"}</span></TableCell>
+                            <TableCell className="text-xs font-mono" colSpan={2}>{m.sku || "—"}</TableCell>
+                            <TableCell className="text-xs">Umbral {m.low_stock_threshold}</TableCell>
+                            <TableCell className="text-xs">
+                              <Badge variant={m.status === "active" ? "outline" : "secondary"} className="text-[10px]">{m.status === "active" ? "Activo" : m.status}</Badge>
+                            </TableCell>
+                            <TableCell className={"text-right text-xs font-mono " + (mLow ? "text-amber-600 font-bold" : "")}>{qty}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                {MOVEMENT_TYPES_UI.map(t => (
+                                  <Button key={t.value} size="sm" variant="outline" title={t.label}
+                                    onClick={() => setMovDlg({ open: true, type: t.value, materialId: m.id, locationId: arturoLoc?.id })}>
+                                    <t.icon className="h-3 w-3" />
+                                  </Button>
+                                ))}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
                       })}
-                      <TableCell className={"text-right font-bold " + (low ? "text-amber-600" : "")}>{total}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {MOVEMENT_TYPES_UI.map(t => (
-                            <Button key={t.value} size="sm" variant="outline" title={t.label}
-                              onClick={() => setMovDlg({ open: true, type: t.value, materialId: m.id, locationId: locations[0]?.id })}>
-                              <t.icon className="h-3 w-3" />
-                            </Button>
-                          ))}
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    </>
                   );
                 })}
               </TableBody>
             </Table>
           </Card>
         </TabsContent>
+
 
         {/* ============== MOVIMIENTOS ============== */}
         <TabsContent value="movimientos" className="space-y-3">
