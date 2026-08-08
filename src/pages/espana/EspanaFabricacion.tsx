@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2, Plus, Wrench } from "lucide-react";
+import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2, Plus, Wrench, Store, ThumbsUp, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
