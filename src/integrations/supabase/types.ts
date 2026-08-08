@@ -4887,11 +4887,21 @@ export type Database = {
           is_legacy: boolean
           is_test: boolean
           legacy_reason: string | null
+          manual_reason: string | null
+          manual_reason_detail: string | null
           notes: string | null
           priority: string
           product_id: string | null
           product_name: string | null
           quantity: number
+          requires_shipping: boolean
+          ship_to_address: string | null
+          ship_to_city: string | null
+          ship_to_country: string | null
+          ship_to_name: string | null
+          ship_to_phone: string | null
+          ship_to_postal_code: string | null
+          ship_to_province: string | null
           sku: string | null
           source_order_id: string | null
           source_order_item_id: string | null
@@ -4916,11 +4926,21 @@ export type Database = {
           is_legacy?: boolean
           is_test?: boolean
           legacy_reason?: string | null
+          manual_reason?: string | null
+          manual_reason_detail?: string | null
           notes?: string | null
           priority?: string
           product_id?: string | null
           product_name?: string | null
           quantity?: number
+          requires_shipping?: boolean
+          ship_to_address?: string | null
+          ship_to_city?: string | null
+          ship_to_country?: string | null
+          ship_to_name?: string | null
+          ship_to_phone?: string | null
+          ship_to_postal_code?: string | null
+          ship_to_province?: string | null
           sku?: string | null
           source_order_id?: string | null
           source_order_item_id?: string | null
@@ -4945,11 +4965,21 @@ export type Database = {
           is_legacy?: boolean
           is_test?: boolean
           legacy_reason?: string | null
+          manual_reason?: string | null
+          manual_reason_detail?: string | null
           notes?: string | null
           priority?: string
           product_id?: string | null
           product_name?: string | null
           quantity?: number
+          requires_shipping?: boolean
+          ship_to_address?: string | null
+          ship_to_city?: string | null
+          ship_to_country?: string | null
+          ship_to_name?: string | null
+          ship_to_phone?: string | null
+          ship_to_postal_code?: string | null
+          ship_to_province?: string | null
           sku?: string | null
           source_order_id?: string | null
           source_order_item_id?: string | null
