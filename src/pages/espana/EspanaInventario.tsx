@@ -24,7 +24,7 @@ import { toast } from "sonner";
 
 interface Loc { id: string; name: string; code: string; inventory_mode: string }
 interface Variant {
-  id: string; product_id: string; variant_sku: string; size: string | null; status: string;
+  id: string; product_id: string; variant_sku: string; size: string | null; color: string | null; status: string;
   scan_code: string | null;
 }
 interface Product { id: string; sku: string; name: string }
