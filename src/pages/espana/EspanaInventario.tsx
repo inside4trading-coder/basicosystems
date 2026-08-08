@@ -15,7 +15,10 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowDownToLine, ArrowUpFromLine, Sliders, ArrowLeftRight, History, Download, QrCode } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { ArrowDownToLine, ArrowUpFromLine, Sliders, ArrowLeftRight, History, Download, QrCode, Check, ChevronsUpDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
