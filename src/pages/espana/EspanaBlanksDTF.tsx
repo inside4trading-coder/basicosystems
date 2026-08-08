@@ -662,19 +662,82 @@ function MaterialDialog({ state, onClose, onSaved }: any) {
     setForm(item ? { ...item } : { material_type: "blank", unit: "unit", status: "active", low_stock_threshold: 0 });
   }, [item, state.open]);
 
+  const parsedSizes: string[] = (() => {
+    const raw = String(form.size || "");
+    const parts = raw.split(/[,/|;]+/).map(s => normalizeSize(s)).filter(Boolean);
+    return Array.from(new Set(parts));
+  })();
+  const multiSize = parsedSizes.length > 1;
+
   const save = async () => {
     if (!form.name) { toast.error("Nombre requerido"); return; }
     setBusy(true);
-    const payload: any = { ...form };
-    if (payload.size) payload.normalized_size = normalizeSize(payload.size);
-    delete payload.id; delete payload.created_at; delete payload.updated_at;
-    const { error } = item
-      ? await supabase.from("esp_material_items").update(payload).eq("id", item.id)
-      : await supabase.from("esp_material_items").insert(payload);
+    const base: any = { ...form };
+    delete base.id; delete base.created_at; delete base.updated_at;
+
+    if (!multiSize) {
+      const payload = { ...base };
+      if (payload.size) payload.normalized_size = normalizeSize(payload.size);
+      const { error } = item
+        ? await supabase.from("esp_material_items").update(payload).eq("id", item.id)
+        : await supabase.from("esp_material_items").insert(payload);
+      setBusy(false);
+      if (error) toast.error(error.message);
+      else { toast.success(item ? "Actualizado" : "Material creado"); onClose(); onSaved(); }
+      return;
+    }
+
+    // Multi-talla: crear/actualizar una fila real por talla (misma estructura que "Editar tallas")
+    const rawSku = String(form.sku || "").trim();
+    const suffixes = [...parsedSizes, normalizeSize(item?.size || "")].filter(Boolean);
+    let baseSku = rawSku;
+    for (const s of suffixes) {
+      const re = new RegExp(`-${s}$`, "i");
+      if (re.test(baseSku)) { baseSku = baseSku.replace(re, ""); break; }
+    }
+
+    // Hermanos existentes del mismo blank (tipo + nombre + color)
+    let q = supabase.from("esp_material_items")
+      .select("id, size, normalized_size")
+      .eq("material_type", base.material_type)
+      .eq("name", base.name);
+    q = base.color ? q.eq("color", base.color) : q.is("color", null);
+    const { data: siblings, error: sErr } = await q;
+    if (sErr) { setBusy(false); toast.error(sErr.message); return; }
+    const existing = new Map<string, string>();
+    (siblings ?? []).forEach((s: any) => {
+      const key = normalizeSize(s.normalized_size || s.size || "");
+      if (key && !existing.has(key)) existing.set(key, s.id);
+    });
+    if (item) existing.set(normalizeSize(item.size || ""), item.id);
+
+    let created = 0, updated = 0, errors = 0;
+    for (const size of parsedSizes) {
+      const row: any = {
+        ...base,
+        size,
+        normalized_size: size,
+        sku: baseSku ? `${baseSku}-${size}` : null,
+      };
+      const existingId = existing.get(size) || (item && normalizeSize(item.size || "") === size ? item.id : null);
+      if (existingId) {
+        const { error } = await supabase.from("esp_material_items").update(row).eq("id", existingId);
+        if (error) { errors++; toast.error(`${size}: ${error.message}`); } else updated++;
+      } else {
+        const { error } = await supabase.from("esp_material_items").insert(row);
+        if (error) { errors++; toast.error(`${size}: ${error.message}`); } else created++;
+      }
+    }
+    // Si se editaba una fila cuya talla ya no está en la lista, se conserva (no se borra stock ni movimientos)
+    const origSize = normalizeSize(item?.size || "");
+    if (item && origSize && !parsedSizes.includes(origSize)) {
+      toast.info(`La talla ${origSize} se conservó (tiene stock/movimientos). Elimínala manualmente si ya no aplica.`);
+    }
     setBusy(false);
-    if (error) toast.error(error.message);
-    else { toast.success(item ? "Actualizado" : "Material creado"); onClose(); onSaved(); }
+    if (!errors) toast.success(`${created} talla(s) creada(s), ${updated} actualizada(s)`);
+    onClose(); onSaved();
   };
+
 
   return (
     <Dialog open={state.open} onOpenChange={(o) => !o && onClose()}>
@@ -685,7 +748,7 @@ function MaterialDialog({ state, onClose, onSaved }: any) {
           <div><Label>SKU</Label><Input value={form.sku || ""} onChange={e => setForm({ ...form, sku: e.target.value })} /></div>
           <div className="col-span-2"><Label>Nombre *</Label><Input value={form.name || ""} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
           <div><Label>Color</Label><Input value={form.color || ""} onChange={e => setForm({ ...form, color: e.target.value })} /></div>
-          <div><Label>Talla</Label><Input value={form.size || ""} onChange={e => setForm({ ...form, size: e.target.value })} placeholder="S, M, L, XL, 32..." /></div>
+          <div><Label>Tallas disponibles</Label><Input value={form.size || ""} onChange={e => setForm({ ...form, size: e.target.value })} placeholder="S, M, L, XL, XXL" /><p className="text-[11px] text-muted-foreground mt-1">Separa las tallas por coma. Se crearán como variantes del material{multiSize ? ` (${parsedSizes.length}: ${parsedSizes.join(", ")})` : ""}.</p></div>
           <div><Label>Unidad</Label><Select value={form.unit} onValueChange={v => setForm({ ...form, unit: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(MATERIAL_UNIT_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
           <div><Label>Costo €</Label><Input type="number" step="0.01" value={form.unit_cost_eur || ""} onChange={e => setForm({ ...form, unit_cost_eur: e.target.value === "" ? null : Number(e.target.value) })} /></div>
           <div><Label>Umbral bajo stock</Label><Input type="number" step="0.01" value={form.low_stock_threshold || 0} onChange={e => setForm({ ...form, low_stock_threshold: Number(e.target.value) })} /></div>
