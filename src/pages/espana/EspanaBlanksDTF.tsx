@@ -349,6 +349,48 @@ export default function EspanaBlanksDTF() {
           )}
         </TabsContent>
 
+        {/* ============== REPOSICIÓN (BAJO STOCK) ============== */}
+        <TabsContent value="reposicion" className="space-y-3">
+          <Card className="p-4">
+            <h3 className="font-bold mb-3 flex items-center gap-2 text-sm">
+              <AlertTriangle className="h-4 w-4 text-amber-500" /> Materiales bajo stock ({lowStockMaterials.length})
+            </h3>
+            {lowStockMaterials.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Todo el material está por encima de su umbral.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead className="text-xs">Tipo</TableHead>
+                    <TableHead className="text-xs">Material</TableHead>
+                    <TableHead className="text-xs">Talla</TableHead>
+                    <TableHead className="text-xs text-right">Stock</TableHead>
+                    <TableHead className="text-xs text-right">Umbral</TableHead>
+                    <TableHead className="text-xs text-right">Faltan</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {lowStockMaterials.map(m => {
+                      const st = Number(stockByMat.get(m.id) || 0);
+                      const th = Number(m.low_stock_threshold || 0);
+                      return (
+                        <TableRow key={m.id}>
+                          <TableCell><Badge variant="outline" className="text-[10px]">{MATERIAL_TYPE_LABEL[m.material_type]}</Badge></TableCell>
+                          <TableCell className="text-xs">{m.name}{m.color ? ` · ${m.color}` : ""}</TableCell>
+                          <TableCell className="text-xs font-semibold">{m.size || "—"}</TableCell>
+                          <TableCell className="text-right text-xs font-mono text-amber-600 font-bold">{st}</TableCell>
+                          <TableCell className="text-right text-xs font-mono">{th}</TableCell>
+                          <TableCell className="text-right text-xs font-mono font-bold">{Math.max(0, th - st)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+
         {/* ============== MATERIALES ============== */}
         <TabsContent value="materiales" className="space-y-3">
           <div className="flex flex-wrap gap-2 items-center">
