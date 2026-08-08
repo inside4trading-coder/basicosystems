@@ -912,7 +912,7 @@ function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItem
                       value={productSearch}
                       onValueChange={setProductSearch}
                     />
-                    <CommandList>
+                    <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
                       <CommandEmpty>Sin coincidencias.</CommandEmpty>
                       <CommandGroup>
                         {productSearchable.slice(0, 200).map((p: ProductRow) => (
