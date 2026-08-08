@@ -235,6 +235,18 @@ export default function EspanaFabricacion() {
         </TabsList>
       </Tabs>
 
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-semibold uppercase text-muted-foreground">Origen</span>
+        <Select value={origin} onValueChange={(v) => setOrigin(v as OriginFilter)}>
+          <SelectTrigger className="h-8 w-[240px] text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="auto">Automático / WooCommerce</SelectItem>
+            <SelectItem value="manual">Manual</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <Card className="p-0 overflow-hidden">
         <Table>
           <TableHeader>
@@ -243,26 +255,36 @@ export default function EspanaFabricacion() {
               <TableHead>Pedido</TableHead>
               <TableHead>Producto</TableHead>
               <TableHead>Talla (raw → normalizada)</TableHead>
-              <TableHead>Cliente</TableHead>
+              <TableHead>Cliente / destinatario</TableHead>
               <TableHead className="text-right">Cant.</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Prioridad</TableHead>
               <TableHead>Marca</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading && <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">Cargando…</TableCell></TableRow>}
-            {!loading && filtered.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">Sin items en este filtro.</TableCell></TableRow>}
+            {loading && <TableRow><TableCell colSpan={10} className="text-center text-sm text-muted-foreground py-6">Cargando…</TableCell></TableRow>}
+            {!loading && filtered.length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-sm text-muted-foreground py-6">Sin items en este filtro.</TableCell></TableRow>}
             {filtered.map(r => {
               const raw = r.variant_label || "";
               const norm = normalizeSize(raw);
+              const isManual = r.source_type === "manual";
               return (
                 <TableRow key={r.id} className={r.is_legacy ? "opacity-60" : ""}>
                   <TableCell className="text-xs">{formatDMY(r.created_at)}</TableCell>
-                  <TableCell className="text-xs font-mono">#{r.esp_woo_orders?.order_number || r.woo_order_id || "—"}</TableCell>
+                  <TableCell className="text-xs font-mono">
+                    {isManual ? <span className="text-muted-foreground">Manual</span> : `#${r.esp_woo_orders?.order_number || r.woo_order_id || "—"}`}
+                  </TableCell>
                   <TableCell className="text-sm font-medium">
                     {r.product_name || "—"}
                     {r.sku && <span className="text-muted-foreground text-xs font-mono"> · {r.sku}</span>}
+                    {isManual && r.manual_reason && (
+                      <div className="text-[11px] text-muted-foreground">
+                        Motivo: {MANUAL_REASON_LABEL[r.manual_reason] || r.manual_reason}
+                        {r.manual_reason === "otro" && r.manual_reason_detail ? ` · ${r.manual_reason_detail}` : ""}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-xs">
                     {raw ? (
@@ -272,14 +294,35 @@ export default function EspanaFabricacion() {
                       </span>
                     ) : "—"}
                   </TableCell>
-                  <TableCell className="text-xs">{r.esp_woo_orders?.customer_name || "—"}</TableCell>
+                  <TableCell className="text-xs">
+                    {isManual ? (
+                      r.requires_shipping ? (
+                        <div>
+                          <span className="font-medium">{r.ship_to_name || "—"}</span>
+                          <div className="text-[11px] text-muted-foreground">
+                            {[r.ship_to_address, r.ship_to_postal_code, r.ship_to_city, r.ship_to_province, r.ship_to_country].filter(Boolean).join(", ")}
+                          </div>
+                          {r.ship_to_phone && <div className="text-[11px] text-muted-foreground">{r.ship_to_phone}</div>}
+                        </div>
+                      ) : <span className="text-muted-foreground">Recogida interna</span>
+                    ) : (r.esp_woo_orders?.customer_name || "—")}
+                  </TableCell>
                   <TableCell className="text-right font-semibold">{r.quantity}</TableCell>
                   <TableCell><Badge className={STATUS_COLORS[r.status]}>{STATUS_LABEL[r.status] || r.status}</Badge></TableCell>
                   <TableCell>
-                    {r.is_test && <Badge className="bg-blue-600" title={r.test_reason || ""}><FlaskConical className="h-3 w-3 mr-1" />Prueba</Badge>}
-                    {r.is_legacy && <Badge variant="secondary" title={r.legacy_reason || ""}><Archive className="h-3 w-3 mr-1" />Legacy</Badge>}
-                    {!r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">Real</span>}
+                    {PRIORITY_CLASS[r.priority]
+                      ? <Badge className={PRIORITY_CLASS[r.priority]}>{PRIORITY_LABEL[r.priority] || r.priority}</Badge>
+                      : <span className="text-xs text-muted-foreground">{PRIORITY_LABEL[r.priority] || r.priority}</span>}
                   </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1 items-start">
+                      {isManual && <Badge className="bg-purple-600"><Wrench className="h-3 w-3 mr-1" />MANUAL</Badge>}
+                      {r.is_test && <Badge className="bg-blue-600" title={r.test_reason || ""}><FlaskConical className="h-3 w-3 mr-1" />Prueba</Badge>}
+                      {r.is_legacy && <Badge variant="secondary" title={r.legacy_reason || ""}><Archive className="h-3 w-3 mr-1" />Legacy</Badge>}
+                      {!isManual && !r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">Real</span>}
+                    </div>
+                  </TableCell>
+
                   <TableCell>
                     <div className="flex items-center gap-1 flex-wrap">
                       {busyId === r.id && <Loader2 className="h-4 w-4 animate-spin" />}
