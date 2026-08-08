@@ -54,7 +54,7 @@ export function normalizeSize(label: string | null | undefined): string {
     .toUpperCase();
 }
 
-type ViewFilter = "real" | "test" | "legacy" | "cancelled" | "all";
+type ViewFilter = "real" | "delivered" | "test" | "legacy" | "cancelled" | "all";
 
 export default function EspanaFabricacion() {
   const [rows, setRows] = useState<FabRow[]>([]);
@@ -139,6 +139,8 @@ export default function EspanaFabricacion() {
     switch (view) {
       case "real":
         return rows.filter(r => !r.is_legacy && !r.is_test && ["pending", "in_progress", "ready"].includes(r.status));
+      case "delivered":
+        return rows.filter(r => !r.is_legacy && r.status === "delivered_to_shipping");
       case "test":
         return rows.filter(r => r.is_test && !r.is_legacy);
       case "legacy":
@@ -195,6 +197,7 @@ export default function EspanaFabricacion() {
       <Tabs value={view} onValueChange={(v) => setView(v as ViewFilter)}>
         <TabsList>
           <TabsTrigger value="real">Activos reales ({rows.filter(r => !r.is_legacy && !r.is_test && ["pending","in_progress","ready"].includes(r.status)).length})</TabsTrigger>
+          <TabsTrigger value="delivered">Entregados / Enviados ({rows.filter(r => !r.is_legacy && r.status === "delivered_to_shipping").length})</TabsTrigger>
           <TabsTrigger value="test">Pruebas ({kpis.testCount})</TabsTrigger>
           <TabsTrigger value="legacy">Legacy ({kpis.legacyCount})</TabsTrigger>
           <TabsTrigger value="cancelled">Cancelados</TabsTrigger>
@@ -261,7 +264,7 @@ export default function EspanaFabricacion() {
                         </Button>
                       )}
                       {r.status === "ready" && !r.is_legacy && (
-                        <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "delivered_to_shipping")}>
+                        <Button size="sm" variant="outline" onClick={async () => { await setStatus(r.id, "delivered_to_shipping"); setView("delivered"); }}>
                           <Check className="h-3 w-3 mr-1" />Entregar
                         </Button>
                       )}
