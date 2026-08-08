@@ -104,7 +104,7 @@ export default function EspanaFabricacion() {
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase.from("esp_fabrication_requests")
-      .select("id,woo_order_id,product_name,variant_label,sku,quantity,status,priority,due_date,created_at,source_order_id,source_type,is_legacy,is_test,legacy_reason,test_reason,notes,manual_reason,manual_reason_detail,requires_shipping,ship_to_name,ship_to_phone,ship_to_address,ship_to_city,ship_to_province,ship_to_postal_code,ship_to_country,esp_woo_orders:source_order_id(order_number,customer_name)")
+      .select("id,woo_order_id,product_name,variant_label,sku,quantity,status,priority,due_date,created_at,source_order_id,source_type,is_legacy,is_test,legacy_reason,test_reason,notes,manual_reason,manual_reason_detail,requires_shipping,ship_to_name,ship_to_phone,ship_to_address,ship_to_city,ship_to_province,ship_to_postal_code,ship_to_country,pos_sale_id,pos_sale_item_id,pos_sale_number,pos_location_id,pos_location_name,esp_woo_orders:source_order_id(order_number,customer_name)")
       .order("created_at", { ascending: false }).limit(1000);
     if (error) toast.error(error.message);
     setRows((data || []) as any);
