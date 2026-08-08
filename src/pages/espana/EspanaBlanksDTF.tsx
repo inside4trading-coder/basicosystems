@@ -645,7 +645,7 @@ export default function EspanaBlanksDTF() {
       {/* Dialogs */}
       <MaterialDialog state={matDlg} onClose={() => setMatDlg({ open: false })} onSaved={load} />
       <MovementDialog state={movDlg} onClose={() => setMovDlg({ open: false })} onSaved={load} materials={materials} locations={locations} />
-      <RecipeDialog state={recipeDlg} onClose={() => setRecipeDlg({ open: false })} onSaved={load} products={products} materials={materials} recipeItems={recipeItems} />
+      <RecipeDialog state={recipeDlg} onClose={() => setRecipeDlg({ open: false })} onSaved={load} products={products} materials={materials} recipeItems={recipeItems} stockByMatLoc={stockByMatLoc} locations={locations} />
       <RecipeTestDialog state={testDlg} onClose={() => setTestDlg({ open: false })} recipes={recipes} recipeItems={recipeItems} materials={materials} stockByMatLoc={stockByMatLoc} locations={locations} />
       <GroupSizesDialog state={groupDlg} onClose={() => setGroupDlg({ open: false })} onSaved={load} locations={locations} stockByMatLoc={stockByMatLoc} />
     </div>
@@ -759,7 +759,70 @@ function MovementDialog({ state, onClose, onSaved, materials, locations }: any) 
   );
 }
 
-function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItems }: any) {
+function MaterialCombobox({ materials, value, onChange, stockByMatLoc, locations }: any) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const active = useMemo(() => (materials as MaterialItem[]).filter((m) => m.status === "active"), [materials]);
+  const selected = useMemo(() => (materials as MaterialItem[]).find((m) => m.id === value), [materials, value]);
+
+  const stockOf = (id: string) => {
+    if (!stockByMatLoc || !locations) return null;
+    return (locations as LocationRow[]).reduce((s: number, l: LocationRow) => s + (Number(stockByMatLoc.get(`${id}::${l.id}`)) || 0), 0);
+  };
+
+  const contextOf = (m: MaterialItem) => {
+    const parts: string[] = [];
+    if (m.sku) parts.push(`SKU ${m.sku}`);
+    if (m.color) parts.push(m.color);
+    if (m.size) parts.push(`Talla ${m.size}`);
+    if (m.material_type) parts.push(MATERIAL_TYPE_LABEL[m.material_type] || m.material_type);
+    const st = stockOf(m.id);
+    if (st !== null) parts.push(`Stock ${st}`);
+    return parts.join(" · ");
+  };
+
+  const filtered = useMemo(() => {
+    const q = normalizeColor(search.trim().replace(/\s+/g, " "));
+    if (!q) return active;
+    return active.filter((m) => {
+      const hay = normalizeColor([m.name, m.sku, m.color, m.size, m.normalized_size, m.material_type, MATERIAL_TYPE_LABEL[m.material_type]].filter(Boolean).join(" "));
+      return hay.includes(q);
+    });
+  }, [active, search]);
+
+  return (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between font-normal h-9">
+          <span className="truncate text-left">{selected ? selected.name : "Seleccionar material…"}</span>
+          <ChevronsUpDown className="h-3.5 w-3.5 opacity-50 shrink-0 ml-2" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[280px] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput placeholder="Buscar material (nombre, SKU, color, talla)…" value={search} onValueChange={setSearch} />
+          <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
+            <CommandEmpty>Sin coincidencias.</CommandEmpty>
+            <CommandGroup>
+              {filtered.slice(0, 300).map((m) => (
+                <CommandItem key={m.id} value={m.id} onSelect={() => { onChange(m.id); setOpen(false); setSearch(""); }}>
+                  <Check className={`mr-2 h-3.5 w-3.5 shrink-0 ${value === m.id ? "opacity-100" : "opacity-0"}`} />
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate text-sm">{m.name}</span>
+                    <span className="text-[10px] text-muted-foreground truncate">{contextOf(m) || "Sin datos adicionales"}</span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItems, stockByMatLoc, locations }: any) {
   const recipe = state.recipe as RecipeRow | null;
   const [form, setForm] = useState<any>({});
   const [items, setItems] = useState<any[]>([]);
@@ -849,7 +912,7 @@ function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItem
                       value={productSearch}
                       onValueChange={setProductSearch}
                     />
-                    <CommandList>
+                    <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
                       <CommandEmpty>Sin coincidencias.</CommandEmpty>
                       <CommandGroup>
                         {productSearchable.slice(0, 200).map((p: ProductRow) => (
@@ -897,7 +960,7 @@ function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItem
             <div className="space-y-2">
               {items.map((it, idx) => (
                 <div key={idx} className="grid grid-cols-12 gap-2 items-end border p-2 rounded">
-                  <div className="col-span-5"><Label className="text-xs">Material</Label><Select value={it.material_id} onValueChange={v => { const c = [...items]; c[idx] = { ...it, material_id: v }; setItems(c); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{materials.filter((m: any) => m.status === "active").map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="col-span-5 min-w-0"><Label className="text-xs">Material</Label><MaterialCombobox materials={materials} value={it.material_id} onChange={(v: string) => { const c = [...items]; c[idx] = { ...c[idx], material_id: v }; setItems(c); }} stockByMatLoc={stockByMatLoc} locations={locations} /></div>
                   <div className="col-span-2"><Label className="text-xs">Cant.</Label><Input type="number" step="0.01" value={it.quantity_per_unit} onChange={e => { const c = [...items]; c[idx] = { ...it, quantity_per_unit: Number(e.target.value) }; setItems(c); }} /></div>
                   <div className="col-span-4"><Label className="text-xs">Estrategia talla</Label><Select value={it.size_strategy} onValueChange={v => { const c = [...items]; c[idx] = { ...it, size_strategy: v }; setItems(c); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="fixed">Fijo</SelectItem><SelectItem value="match_variant_size">Match talla variante</SelectItem><SelectItem value="manual_select">Manual</SelectItem></SelectContent></Select></div>
                   <div className="col-span-1"><Button size="sm" variant="ghost" onClick={() => removeItem(idx)}>×</Button></div>
