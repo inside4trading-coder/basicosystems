@@ -893,7 +893,7 @@ function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItem
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Producto *</Label>
-              <Popover open={productOpen} onOpenChange={setProductOpen}>
+              <Popover modal open={productOpen} onOpenChange={setProductOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -906,14 +906,15 @@ function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItem
                     <ChevronsUpDown className="h-3.5 w-3.5 opacity-50 shrink-0 ml-2" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" onWheel={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
                   <Command shouldFilter={false}>
                     <CommandInput
                       placeholder="Buscar por nombre, SKU o categoría…"
                       value={productSearch}
                       onValueChange={setProductSearch}
                     />
-                    <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
+                    <CommandList className="max-h-[280px] overflow-y-auto overscroll-contain">
+
                       <CommandEmpty>Sin coincidencias.</CommandEmpty>
                       <CommandGroup>
                         {productSearchable.slice(0, 200).map((p: ProductRow) => (
