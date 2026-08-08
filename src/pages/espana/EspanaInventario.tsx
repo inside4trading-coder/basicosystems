@@ -359,3 +359,55 @@ function HistoryDialog({ variantId, variants, products, locs, onClose }: {
     </Dialog>
   );
 }
+
+type VariantOption = { id: string; name: string; sku: string; size: string; color: string; total: number; search: string };
+
+function VariantCombobox({ options, value, onChange, selected }: {
+  options: VariantOption[]; value: string; onChange: (v: string) => void; selected?: VariantOption;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen} modal>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between font-normal">
+          <span className="truncate text-left">
+            {selected ? `${selected.name} · ${selected.sku}${selected.size ? ` · ${selected.size}` : ""}` : "Selecciona..."}
+          </span>
+          <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] p-0"
+        align="start"
+        onWheel={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+      >
+        <Command filter={(val, search) => {
+          const opt = options.find(o => o.id === val);
+          if (!opt) return 0;
+          const q = search.trim().toLowerCase();
+          if (!q) return 1;
+          return q.split(/\s+/).every(t => opt.search.includes(t)) ? 1 : 0;
+        }}>
+          <CommandInput placeholder="Buscar producto, SKU, talla, color..." />
+          <CommandList className="max-h-[280px] overflow-y-auto">
+            <CommandEmpty>Sin resultados.</CommandEmpty>
+            <CommandGroup>
+              {options.map((o) => (
+                <CommandItem key={o.id} value={o.id} onSelect={() => { onChange(o.id); setOpen(false); }}>
+                  <Check className={cn("mr-2 h-4 w-4 shrink-0", value === o.id ? "opacity-100" : "opacity-0")} />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm">{o.name}</div>
+                    <div className="truncate text-[11px] text-muted-foreground">
+                      {[o.sku, o.size ? `Talla ${o.size}` : null, o.color || null, `Stock ${o.total}`].filter(Boolean).join(" · ")}
+                    </div>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
