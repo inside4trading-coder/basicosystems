@@ -4890,6 +4890,11 @@ export type Database = {
           manual_reason: string | null
           manual_reason_detail: string | null
           notes: string | null
+          pos_location_id: string | null
+          pos_location_name: string | null
+          pos_sale_id: string | null
+          pos_sale_item_id: string | null
+          pos_sale_number: string | null
           priority: string
           product_id: string | null
           product_name: string | null
@@ -4929,6 +4934,11 @@ export type Database = {
           manual_reason?: string | null
           manual_reason_detail?: string | null
           notes?: string | null
+          pos_location_id?: string | null
+          pos_location_name?: string | null
+          pos_sale_id?: string | null
+          pos_sale_item_id?: string | null
+          pos_sale_number?: string | null
           priority?: string
           product_id?: string | null
           product_name?: string | null
@@ -4968,6 +4978,11 @@ export type Database = {
           manual_reason?: string | null
           manual_reason_detail?: string | null
           notes?: string | null
+          pos_location_id?: string | null
+          pos_location_name?: string | null
+          pos_sale_id?: string | null
+          pos_sale_item_id?: string | null
+          pos_sale_number?: string | null
           priority?: string
           product_id?: string | null
           product_name?: string | null
