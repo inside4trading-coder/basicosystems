@@ -792,17 +792,18 @@ function MaterialCombobox({ materials, value, onChange, stockByMatLoc, locations
   }, [active, search]);
 
   return (
-    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
+    <Popover modal open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
       <PopoverTrigger asChild>
         <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between font-normal h-9">
           <span className="truncate text-left">{selected ? selected.name : "Seleccionar material…"}</span>
           <ChevronsUpDown className="h-3.5 w-3.5 opacity-50 shrink-0 ml-2" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[280px] p-0" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[280px] p-0" align="start" onWheel={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
         <Command shouldFilter={false}>
           <CommandInput placeholder="Buscar material (nombre, SKU, color, talla)…" value={search} onValueChange={setSearch} />
-          <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
+          <CommandList className="max-h-[280px] overflow-y-auto overscroll-contain">
+
             <CommandEmpty>Sin coincidencias.</CommandEmpty>
             <CommandGroup>
               {filtered.slice(0, 300).map((m) => (
@@ -892,7 +893,7 @@ function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItem
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Producto *</Label>
-              <Popover open={productOpen} onOpenChange={setProductOpen}>
+              <Popover modal open={productOpen} onOpenChange={setProductOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -905,14 +906,15 @@ function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItem
                     <ChevronsUpDown className="h-3.5 w-3.5 opacity-50 shrink-0 ml-2" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" onWheel={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
                   <Command shouldFilter={false}>
                     <CommandInput
                       placeholder="Buscar por nombre, SKU o categoría…"
                       value={productSearch}
                       onValueChange={setProductSearch}
                     />
-                    <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
+                    <CommandList className="max-h-[280px] overflow-y-auto overscroll-contain">
+
                       <CommandEmpty>Sin coincidencias.</CommandEmpty>
                       <CommandGroup>
                         {productSearchable.slice(0, 200).map((p: ProductRow) => (
