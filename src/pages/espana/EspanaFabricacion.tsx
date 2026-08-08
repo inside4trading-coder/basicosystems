@@ -3,12 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2, Plus, Wrench } from "lucide-react";
+import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2, Plus, Wrench, Store, ThumbsUp, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { formatDMY } from "@/lib/dateUtils";
 import ManualFabricationDialog, { MANUAL_REASON_LABEL } from "@/components/espana/ManualFabricationDialog";
 
@@ -40,22 +40,31 @@ interface FabRow {
   ship_to_province: string | null;
   ship_to_postal_code: string | null;
   ship_to_country: string | null;
+  pos_sale_id: string | null;
+  pos_sale_item_id: string | null;
+  pos_sale_number: string | null;
+  pos_location_id: string | null;
+  pos_location_name: string | null;
   esp_woo_orders?: { order_number: string | null; customer_name: string | null } | null;
 }
 
 
 const STATUS_LABEL: Record<string, string> = {
+  pending_approval: "Pendiente de aprobación",
   pending: "Pendiente",
   in_progress: "Fabricando",
   ready: "Listo",
   delivered_to_shipping: "Entregado a envío",
+  rejected: "Rechazado",
   cancelled: "Cancelado",
 };
 const STATUS_COLORS: Record<string, string> = {
+  pending_approval: "bg-teal-600",
   pending: "bg-amber-600",
   in_progress: "bg-blue-600",
   ready: "bg-emerald-600",
   delivered_to_shipping: "bg-emerald-700",
+  rejected: "bg-zinc-600",
   cancelled: "bg-zinc-500",
 };
 
@@ -70,7 +79,15 @@ export function normalizeSize(label: string | null | undefined): string {
 }
 
 type ViewFilter = "real" | "delivered" | "test" | "legacy" | "cancelled" | "all";
-type OriginFilter = "all" | "auto" | "manual";
+type OriginFilter = "all" | "woo" | "pos" | "restock" | "manual";
+
+const ORIGIN_CHIPS: { key: OriginFilter; label: string }[] = [
+  { key: "all", label: "Todos" },
+  { key: "woo", label: "WooCommerce" },
+  { key: "pos", label: "POS" },
+  { key: "restock", label: "RESTOCK" },
+  { key: "manual", label: "Manual" },
+];
 
 const PRIORITY_LABEL: Record<string, string> = { normal: "Normal", alta: "Alta", urgente: "Urgente", high: "Alta", urgent: "Urgente", low: "Baja" };
 const PRIORITY_CLASS: Record<string, string> = { alta: "bg-amber-600", high: "bg-amber-600", urgente: "bg-red-600", urgent: "bg-red-600" };
@@ -87,7 +104,7 @@ export default function EspanaFabricacion() {
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase.from("esp_fabrication_requests")
-      .select("id,woo_order_id,product_name,variant_label,sku,quantity,status,priority,due_date,created_at,source_order_id,source_type,is_legacy,is_test,legacy_reason,test_reason,notes,manual_reason,manual_reason_detail,requires_shipping,ship_to_name,ship_to_phone,ship_to_address,ship_to_city,ship_to_province,ship_to_postal_code,ship_to_country,esp_woo_orders:source_order_id(order_number,customer_name)")
+      .select("id,woo_order_id,product_name,variant_label,sku,quantity,status,priority,due_date,created_at,source_order_id,source_type,is_legacy,is_test,legacy_reason,test_reason,notes,manual_reason,manual_reason_detail,requires_shipping,ship_to_name,ship_to_phone,ship_to_address,ship_to_city,ship_to_province,ship_to_postal_code,ship_to_country,pos_sale_id,pos_sale_item_id,pos_sale_number,pos_location_id,pos_location_name,esp_woo_orders:source_order_id(order_number,customer_name)")
       .order("created_at", { ascending: false }).limit(1000);
     if (error) toast.error(error.message);
     setRows((data || []) as any);
@@ -139,6 +156,28 @@ export default function EspanaFabricacion() {
     else { toast.success("Solicitud lista"); load(); }
   };
 
+  const approveRestock = async (id: string) => {
+    setBusyId(id);
+    const { error } = await supabase.from("esp_fabrication_requests").update({ status: "pending" }).eq("id", id);
+    setBusyId(null);
+    if (error) toast.error(error.message);
+    else { toast.success("Restock aprobado · pasa a pendiente de fabricar"); load(); }
+  };
+
+  const rejectRestock = async (id: string) => {
+    const reason = window.prompt("Motivo del rechazo (opcional):") ?? "";
+    setBusyId(id);
+    const { error } = await supabase.from("esp_fabrication_requests").update({
+      status: "rejected",
+      cancel_reason: reason || "Restock rechazado",
+      cancelled_at: new Date().toISOString(),
+    }).eq("id", id);
+    setBusyId(null);
+    if (error) toast.error(error.message);
+    else { toast.success("Restock rechazado"); load(); }
+  };
+
+
 
   // KPIs separados
   const kpis = useMemo(() => {
@@ -150,6 +189,8 @@ export default function EspanaFabricacion() {
       realPending: real.filter(r => r.status === "pending").length,
       realInProgress: real.filter(r => r.status === "in_progress").length,
       realReady: real.filter(r => r.status === "ready").length,
+      restockPending: real.filter(r => r.status === "pending_approval").length,
+      restockUnits: sum(real.filter(r => r.status === "pending_approval")),
       testCount: tests.length,
       testUnits: sum(tests),
       legacyCount: legacy.length,
@@ -161,7 +202,7 @@ export default function EspanaFabricacion() {
     let base: FabRow[];
     switch (view) {
       case "real":
-        base = rows.filter(r => !r.is_legacy && !r.is_test && ["pending", "in_progress", "ready"].includes(r.status)); break;
+        base = rows.filter(r => !r.is_legacy && !r.is_test && ["pending_approval", "pending", "in_progress", "ready"].includes(r.status)); break;
       case "delivered":
         base = rows.filter(r => !r.is_legacy && r.status === "delivered_to_shipping"); break;
       case "test":
@@ -169,15 +210,17 @@ export default function EspanaFabricacion() {
       case "legacy":
         base = rows.filter(r => r.is_legacy); break;
       case "cancelled":
-        base = rows.filter(r => r.status === "cancelled" && !r.is_legacy); break;
+        base = rows.filter(r => ["cancelled", "rejected"].includes(r.status) && !r.is_legacy); break;
       case "all":
       default:
         base = rows;
     }
     if (origin === "manual") return base.filter(r => r.source_type === "manual");
-    if (origin === "auto") return base.filter(r => r.source_type !== "manual");
+    if (origin === "pos" || origin === "restock") return base.filter(r => r.source_type === "pos_restock");
+    if (origin === "woo") return base.filter(r => r.source_type !== "manual" && r.source_type !== "pos_restock");
     return base;
   }, [rows, view, origin]);
+
 
   return (
     <div className="space-y-5">
@@ -198,14 +241,21 @@ export default function EspanaFabricacion() {
         <span className="font-semibold">BLOQUE 5B activo:</span> al pulsar <span className="font-semibold">Fabricar</span> se valida la receta, se calcula el stock requerido y se consumen los materiales atómicamente. No se toca WooCommerce, ni inventario físico, ni POS.
       </Card>
 
-      {/* KPIs separados: real / pruebas / legacy */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* KPIs separados: real / restock / pruebas / legacy */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <Card className="p-4 border-l-4 border-l-primary">
           <p className="text-[10px] uppercase text-muted-foreground font-bold">Producción real</p>
           <div className="flex gap-4 mt-2">
             <div><p className="text-2xl font-black">{kpis.realPending}</p><p className="text-[10px] text-muted-foreground">pendientes</p></div>
             <div><p className="text-2xl font-black">{kpis.realInProgress}</p><p className="text-[10px] text-muted-foreground">fabricando</p></div>
             <div><p className="text-2xl font-black">{kpis.realReady}</p><p className="text-[10px] text-muted-foreground">listas</p></div>
+          </div>
+        </Card>
+        <Card className="p-4 border-l-4 border-l-teal-500">
+          <p className="text-[10px] uppercase text-muted-foreground font-bold flex items-center gap-1"><Store className="h-3 w-3" /> Restock pendiente de aprobación</p>
+          <div className="flex gap-4 mt-2">
+            <div><p className="text-2xl font-black">{kpis.restockPending}</p><p className="text-[10px] text-muted-foreground">solicitudes</p></div>
+            <div><p className="text-2xl font-black">{kpis.restockUnits}</p><p className="text-[10px] text-muted-foreground">unidades</p></div>
           </div>
         </Card>
         <Card className="p-4 border-l-4 border-l-blue-500">
@@ -226,26 +276,29 @@ export default function EspanaFabricacion() {
 
       <Tabs value={view} onValueChange={(v) => setView(v as ViewFilter)}>
         <TabsList>
-          <TabsTrigger value="real">Activos reales ({rows.filter(r => !r.is_legacy && !r.is_test && ["pending","in_progress","ready"].includes(r.status)).length})</TabsTrigger>
+          <TabsTrigger value="real">Activos reales ({rows.filter(r => !r.is_legacy && !r.is_test && ["pending_approval","pending","in_progress","ready"].includes(r.status)).length})</TabsTrigger>
           <TabsTrigger value="delivered">Entregados / Enviados ({rows.filter(r => !r.is_legacy && r.status === "delivered_to_shipping").length})</TabsTrigger>
           <TabsTrigger value="test">Pruebas ({kpis.testCount})</TabsTrigger>
           <TabsTrigger value="legacy">Legacy ({kpis.legacyCount})</TabsTrigger>
-          <TabsTrigger value="cancelled">Cancelados</TabsTrigger>
+          <TabsTrigger value="cancelled">Cancelados / Rechazados</TabsTrigger>
           <TabsTrigger value="all">Todos ({rows.length})</TabsTrigger>
         </TabsList>
       </Tabs>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs font-semibold uppercase text-muted-foreground">Origen</span>
-        <Select value={origin} onValueChange={(v) => setOrigin(v as OriginFilter)}>
-          <SelectTrigger className="h-8 w-[240px] text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="auto">Automático / WooCommerce</SelectItem>
-            <SelectItem value="manual">Manual</SelectItem>
-          </SelectContent>
-        </Select>
+        {ORIGIN_CHIPS.map(c => (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => setOrigin(c.key)}
+            className={`h-7 px-3 rounded-full border text-xs font-semibold transition-colors ${origin === c.key ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary/50"}`}
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
+
 
       <Card className="p-0 overflow-hidden">
         <Table>
@@ -270,11 +323,17 @@ export default function EspanaFabricacion() {
               const raw = r.variant_label || "";
               const norm = normalizeSize(raw);
               const isManual = r.source_type === "manual";
+              const isRestock = r.source_type === "pos_restock";
               return (
                 <TableRow key={r.id} className={r.is_legacy ? "opacity-60" : ""}>
                   <TableCell className="text-xs">{formatDMY(r.created_at)}</TableCell>
                   <TableCell className="text-xs font-mono">
-                    {isManual ? <span className="text-muted-foreground">Manual</span> : `#${r.esp_woo_orders?.order_number || r.woo_order_id || "—"}`}
+                    {isRestock ? (
+                      <div>
+                        <span className="font-semibold">{r.pos_sale_number || "—"}</span>
+                        <div className="text-[11px] font-sans text-muted-foreground">{r.pos_location_name || "—"}</div>
+                      </div>
+                    ) : isManual ? <span className="text-muted-foreground">Manual</span> : `#${r.esp_woo_orders?.order_number || r.woo_order_id || "—"}`}
                   </TableCell>
                   <TableCell className="text-sm font-medium">
                     {r.product_name || "—"}
@@ -285,6 +344,7 @@ export default function EspanaFabricacion() {
                         {r.manual_reason === "otro" && r.manual_reason_detail ? ` · ${r.manual_reason_detail}` : ""}
                       </div>
                     )}
+                    {isRestock && <div className="text-[11px] text-muted-foreground">Reposición sugerida por venta POS</div>}
                   </TableCell>
                   <TableCell className="text-xs">
                     {raw ? (
@@ -295,7 +355,12 @@ export default function EspanaFabricacion() {
                     ) : "—"}
                   </TableCell>
                   <TableCell className="text-xs">
-                    {isManual ? (
+                    {isRestock ? (
+                      <div>
+                        <span className="font-medium">{r.pos_location_name || "—"}</span>
+                        <div className="text-[11px] text-muted-foreground">Sede POS</div>
+                      </div>
+                    ) : isManual ? (
                       r.requires_shipping ? (
                         <div>
                           <span className="font-medium">{r.ship_to_name || "—"}</span>
@@ -316,16 +381,32 @@ export default function EspanaFabricacion() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1 items-start">
+                      {isRestock && (
+                        <>
+                          <Badge className="bg-teal-600"><Store className="h-3 w-3 mr-1" />RESTOCK</Badge>
+                          <Badge variant="outline" className="text-[10px]">Origen: POS</Badge>
+                        </>
+                      )}
                       {isManual && <Badge className="bg-purple-600"><Wrench className="h-3 w-3 mr-1" />MANUAL</Badge>}
                       {r.is_test && <Badge className="bg-blue-600" title={r.test_reason || ""}><FlaskConical className="h-3 w-3 mr-1" />Prueba</Badge>}
                       {r.is_legacy && <Badge variant="secondary" title={r.legacy_reason || ""}><Archive className="h-3 w-3 mr-1" />Legacy</Badge>}
-                      {!isManual && !r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">Real</span>}
+                      {!isManual && !isRestock && !r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">WooCommerce</span>}
                     </div>
                   </TableCell>
 
                   <TableCell>
                     <div className="flex items-center gap-1 flex-wrap">
                       {busyId === r.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {r.status === "pending_approval" && !r.is_legacy && (
+                        <>
+                          <Button size="sm" onClick={() => approveRestock(r.id)}>
+                            <ThumbsUp className="h-3 w-3 mr-1" />Aprobar restock
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => rejectRestock(r.id)}>
+                            <Ban className="h-3 w-3 mr-1" />Rechazar
+                          </Button>
+                        </>
+                      )}
                       {r.status === "pending" && !r.is_legacy && (
                         <Button size="sm" variant="outline" onClick={() => openPreflight(r)}>
                           <Play className="h-3 w-3 mr-1" />Fabricar
@@ -341,7 +422,7 @@ export default function EspanaFabricacion() {
                           <Check className="h-3 w-3 mr-1" />Entregar
                         </Button>
                       )}
-                      {!["cancelled","delivered_to_shipping"].includes(r.status) && !r.is_legacy && (
+                      {!["cancelled","rejected","delivered_to_shipping","pending_approval"].includes(r.status) && !r.is_legacy && (
                         <Button size="sm" variant="ghost" onClick={() => setStatus(r.id, "cancelled")}><X className="h-3 w-3" /></Button>
                       )}
                     </div>
