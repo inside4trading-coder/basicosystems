@@ -748,7 +748,7 @@ function MaterialDialog({ state, onClose, onSaved }: any) {
           <div><Label>SKU</Label><Input value={form.sku || ""} onChange={e => setForm({ ...form, sku: e.target.value })} /></div>
           <div className="col-span-2"><Label>Nombre *</Label><Input value={form.name || ""} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
           <div><Label>Color</Label><Input value={form.color || ""} onChange={e => setForm({ ...form, color: e.target.value })} /></div>
-          <div><Label>Talla</Label><Input value={form.size || ""} onChange={e => setForm({ ...form, size: e.target.value })} placeholder="S, M, L, XL, 32..." /></div>
+          <div><Label>Tallas disponibles</Label><Input value={form.size || ""} onChange={e => setForm({ ...form, size: e.target.value })} placeholder="S, M, L, XL, XXL" /><p className="text-[11px] text-muted-foreground mt-1">Separa las tallas por coma. Se crearán como variantes del material{multiSize ? ` (${parsedSizes.length}: ${parsedSizes.join(", ")})` : ""}.</p></div>
           <div><Label>Unidad</Label><Select value={form.unit} onValueChange={v => setForm({ ...form, unit: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(MATERIAL_UNIT_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
           <div><Label>Costo €</Label><Input type="number" step="0.01" value={form.unit_cost_eur || ""} onChange={e => setForm({ ...form, unit_cost_eur: e.target.value === "" ? null : Number(e.target.value) })} /></div>
           <div><Label>Umbral bajo stock</Label><Input type="number" step="0.01" value={form.low_stock_threshold || 0} onChange={e => setForm({ ...form, low_stock_threshold: Number(e.target.value) })} /></div>
