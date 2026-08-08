@@ -31,6 +31,7 @@ interface MaterialItem {
   status: string;
   low_stock_threshold: number;
   notes: string | null;
+  replenishment_priority?: string | null;
 }
 interface StockRow {
   material_id: string;
