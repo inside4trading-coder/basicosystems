@@ -15,7 +15,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Shirt, Plus, Edit, Archive, Loader2, ArrowDownToLine, ArrowUpFromLine, Settings2, FlaskConical, Layers, Package, AlertTriangle, ChevronRight, ChevronDown, ChevronsUpDown, Check, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { formatDMY } from "@/lib/dateUtils";
-import { normalizeSize, normalizeColor, MATERIAL_TYPE_LABEL, MATERIAL_UNIT_LABEL, MOVEMENT_TYPE_LABEL } from "@/lib/espMaterials";
+import { normalizeSize, MATERIAL_TYPE_LABEL, MATERIAL_UNIT_LABEL, MOVEMENT_TYPE_LABEL } from "@/lib/espMaterials";
+import { normalizeColor } from "@/lib/coreNormalize";
 
 interface MaterialItem {
   id: string;
