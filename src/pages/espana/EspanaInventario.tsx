@@ -53,7 +53,7 @@ export default function EspanaInventario() {
     const [l, p, v, s] = await Promise.all([
       supabase.from("esp_locations").select("id,name,code,inventory_mode").eq("is_active", true).order("name"),
       supabase.from("esp_products").select("id,sku,name").order("name"),
-      supabase.from("esp_product_variants").select("id,product_id,variant_sku,size,status,scan_code").order("sort_order"),
+      supabase.from("esp_product_variants").select("id,product_id,variant_sku,size,color,status,scan_code").order("sort_order"),
       supabase.from("esp_inventory_stock").select("location_id,variant_id,quantity_on_hand,low_stock_threshold"),
     ]);
     if (l.data) setLocs(l.data as Loc[]);
