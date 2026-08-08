@@ -15,13 +15,16 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowDownToLine, ArrowUpFromLine, Sliders, ArrowLeftRight, History, Download, QrCode } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { ArrowDownToLine, ArrowUpFromLine, Sliders, ArrowLeftRight, History, Download, QrCode, Check, ChevronsUpDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 interface Loc { id: string; name: string; code: string; inventory_mode: string }
 interface Variant {
-  id: string; product_id: string; variant_sku: string; size: string | null; status: string;
+  id: string; product_id: string; variant_sku: string; size: string | null; color: string | null; status: string;
   scan_code: string | null;
 }
 interface Product { id: string; sku: string; name: string }
@@ -50,7 +53,7 @@ export default function EspanaInventario() {
     const [l, p, v, s] = await Promise.all([
       supabase.from("esp_locations").select("id,name,code,inventory_mode").eq("is_active", true).order("name"),
       supabase.from("esp_products").select("id,sku,name").order("name"),
-      supabase.from("esp_product_variants").select("id,product_id,variant_sku,size,status,scan_code").order("sort_order"),
+      supabase.from("esp_product_variants").select("id,product_id,variant_sku,size,color,status,scan_code").order("sort_order"),
       supabase.from("esp_inventory_stock").select("location_id,variant_id,quantity_on_hand,low_stock_threshold"),
     ]);
     if (l.data) setLocs(l.data as Loc[]);
@@ -231,8 +234,18 @@ function MovementDialog({ mode, prefillVariantId, onClose, locs, variants, produ
 
   const variantOptions = variants.filter(v => v.status === "active").map(v => {
     const p = products.find(pp => pp.id === v.product_id);
-    return { id: v.id, label: `${p?.name || "?"} · ${v.variant_sku}${v.size ? ` · ${v.size}` : ""}` };
+    const total = Object.values(stockMap[v.id] || {}).reduce((a, b) => a + b, 0);
+    return {
+      id: v.id,
+      name: p?.name || "?",
+      sku: v.variant_sku,
+      size: v.size || "",
+      color: v.color || "",
+      total,
+      search: `${p?.name || ""} ${p?.sku || ""} ${v.variant_sku} ${v.size ?? ""} ${v.color ?? ""}`.replace(/\s+/g, " ").toLowerCase(),
+    };
   });
+  const selected = variantOptions.find(v => v.id === variantId);
 
   return (
     <Dialog open={!!mode} onOpenChange={(o) => !o && onClose()}>
@@ -241,13 +254,9 @@ function MovementDialog({ mode, prefillVariantId, onClose, locs, variants, produ
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label>Variante</Label>
-            <Select value={variantId} onValueChange={setVariantId}>
-              <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {variantOptions.map(v => <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <VariantCombobox options={variantOptions} value={variantId} onChange={setVariantId} selected={selected} />
           </div>
+
 
           {mode !== "transfer" && (
             <div className="space-y-1.5">
@@ -348,5 +357,57 @@ function HistoryDialog({ variantId, variants, products, locs, onClose }: {
         <DialogFooter><Button variant="outline" onClick={onClose}>Cerrar</Button></DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+type VariantOption = { id: string; name: string; sku: string; size: string; color: string; total: number; search: string };
+
+function VariantCombobox({ options, value, onChange, selected }: {
+  options: VariantOption[]; value: string; onChange: (v: string) => void; selected?: VariantOption;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen} modal>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between font-normal">
+          <span className="truncate text-left">
+            {selected ? `${selected.name} · ${selected.sku}${selected.size ? ` · ${selected.size}` : ""}` : "Selecciona..."}
+          </span>
+          <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] p-0"
+        align="start"
+        onWheel={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+      >
+        <Command filter={(val, search) => {
+          const opt = options.find(o => o.id === val);
+          if (!opt) return 0;
+          const q = search.trim().toLowerCase();
+          if (!q) return 1;
+          return q.split(/\s+/).every(t => opt.search.includes(t)) ? 1 : 0;
+        }}>
+          <CommandInput placeholder="Buscar producto, SKU, talla, color..." />
+          <CommandList className="max-h-[280px] overflow-y-auto">
+            <CommandEmpty>Sin resultados.</CommandEmpty>
+            <CommandGroup>
+              {options.map((o) => (
+                <CommandItem key={o.id} value={o.id} onSelect={() => { onChange(o.id); setOpen(false); }}>
+                  <Check className={cn("mr-2 h-4 w-4 shrink-0", value === o.id ? "opacity-100" : "opacity-0")} />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm">{o.name}</div>
+                    <div className="truncate text-[11px] text-muted-foreground">
+                      {[o.sku, o.size ? `Talla ${o.size}` : null, o.color || null, `Stock ${o.total}`].filter(Boolean).join(" · ")}
+                    </div>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
