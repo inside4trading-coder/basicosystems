@@ -264,7 +264,7 @@ export default function EspanaFabricacion() {
                         </Button>
                       )}
                       {r.status === "ready" && !r.is_legacy && (
-                        <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "delivered_to_shipping")}>
+                        <Button size="sm" variant="outline" onClick={async () => { await setStatus(r.id, "delivered_to_shipping"); setView("delivered"); }}>
                           <Check className="h-3 w-3 mr-1" />Entregar
                         </Button>
                       )}
