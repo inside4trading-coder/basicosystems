@@ -219,14 +219,21 @@ export default function EspanaFabricacion() {
         <span className="font-semibold">BLOQUE 5B activo:</span> al pulsar <span className="font-semibold">Fabricar</span> se valida la receta, se calcula el stock requerido y se consumen los materiales atómicamente. No se toca WooCommerce, ni inventario físico, ni POS.
       </Card>
 
-      {/* KPIs separados: real / pruebas / legacy */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* KPIs separados: real / restock / pruebas / legacy */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <Card className="p-4 border-l-4 border-l-primary">
           <p className="text-[10px] uppercase text-muted-foreground font-bold">Producción real</p>
           <div className="flex gap-4 mt-2">
             <div><p className="text-2xl font-black">{kpis.realPending}</p><p className="text-[10px] text-muted-foreground">pendientes</p></div>
             <div><p className="text-2xl font-black">{kpis.realInProgress}</p><p className="text-[10px] text-muted-foreground">fabricando</p></div>
             <div><p className="text-2xl font-black">{kpis.realReady}</p><p className="text-[10px] text-muted-foreground">listas</p></div>
+          </div>
+        </Card>
+        <Card className="p-4 border-l-4 border-l-teal-500">
+          <p className="text-[10px] uppercase text-muted-foreground font-bold flex items-center gap-1"><Store className="h-3 w-3" /> Restock pendiente de aprobación</p>
+          <div className="flex gap-4 mt-2">
+            <div><p className="text-2xl font-black">{kpis.restockPending}</p><p className="text-[10px] text-muted-foreground">solicitudes</p></div>
+            <div><p className="text-2xl font-black">{kpis.restockUnits}</p><p className="text-[10px] text-muted-foreground">unidades</p></div>
           </div>
         </Card>
         <Card className="p-4 border-l-4 border-l-blue-500">
@@ -247,26 +254,29 @@ export default function EspanaFabricacion() {
 
       <Tabs value={view} onValueChange={(v) => setView(v as ViewFilter)}>
         <TabsList>
-          <TabsTrigger value="real">Activos reales ({rows.filter(r => !r.is_legacy && !r.is_test && ["pending","in_progress","ready"].includes(r.status)).length})</TabsTrigger>
+          <TabsTrigger value="real">Activos reales ({rows.filter(r => !r.is_legacy && !r.is_test && ["pending_approval","pending","in_progress","ready"].includes(r.status)).length})</TabsTrigger>
           <TabsTrigger value="delivered">Entregados / Enviados ({rows.filter(r => !r.is_legacy && r.status === "delivered_to_shipping").length})</TabsTrigger>
           <TabsTrigger value="test">Pruebas ({kpis.testCount})</TabsTrigger>
           <TabsTrigger value="legacy">Legacy ({kpis.legacyCount})</TabsTrigger>
-          <TabsTrigger value="cancelled">Cancelados</TabsTrigger>
+          <TabsTrigger value="cancelled">Cancelados / Rechazados</TabsTrigger>
           <TabsTrigger value="all">Todos ({rows.length})</TabsTrigger>
         </TabsList>
       </Tabs>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs font-semibold uppercase text-muted-foreground">Origen</span>
-        <Select value={origin} onValueChange={(v) => setOrigin(v as OriginFilter)}>
-          <SelectTrigger className="h-8 w-[240px] text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="auto">Automático / WooCommerce</SelectItem>
-            <SelectItem value="manual">Manual</SelectItem>
-          </SelectContent>
-        </Select>
+        {ORIGIN_CHIPS.map(c => (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => setOrigin(c.key)}
+            className={`h-7 px-3 rounded-full border text-xs font-semibold transition-colors ${origin === c.key ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary/50"}`}
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
+
 
       <Card className="p-0 overflow-hidden">
         <Table>
