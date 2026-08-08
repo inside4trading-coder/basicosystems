@@ -764,11 +764,31 @@ function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItem
   const [form, setForm] = useState<any>({});
   const [items, setItems] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
+  const [productOpen, setProductOpen] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
 
   useEffect(() => {
     setForm(recipe ? { ...recipe } : { status: "active", quantity_per_unit: 1 });
     setItems(recipe ? recipeItems.filter((i: any) => i.recipe_id === recipe.id) : []);
+    setProductSearch("");
+    setProductOpen(false);
   }, [recipe, state.open]);
+
+  const selectedProduct = useMemo(() => products.find((p: ProductRow) => p.id === form.product_id), [products, form.product_id]);
+
+  const productSearchable = useMemo(() => {
+    const q = normalizeColor(productSearch.trim());
+    return products.filter((p: ProductRow) => {
+      if (!q) return true;
+      const haystack = normalizeColor([p.name, p.sku, p.category, p.product_type].filter(Boolean).join(" "));
+      return haystack.includes(q);
+    });
+  }, [products, productSearch]);
+
+  const useProductName = () => {
+    if (!selectedProduct) return;
+    setForm({ ...form, name: selectedProduct.name });
+  };
 
   const addItem = () => setItems([...items, { _new: true, material_id: materials[0]?.id, quantity_per_unit: 1, size_strategy: "fixed", required: true }]);
   const removeItem = async (idx: number) => {
@@ -807,8 +827,70 @@ function RecipeDialog({ state, onClose, onSaved, products, materials, recipeItem
         <DialogHeader><DialogTitle>{recipe ? "Editar receta" : "Nueva receta"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Producto *</Label><Select value={form.product_id} onValueChange={v => setForm({ ...form, product_id: v })} disabled={!!recipe}><SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></div>
-            <div><Label>Nombre receta</Label><Input value={form.name || ""} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+            <div>
+              <Label>Producto *</Label>
+              <Popover open={productOpen} onOpenChange={setProductOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={productOpen}
+                    className="w-full justify-between font-normal"
+                    disabled={!!recipe}
+                  >
+                    <span className="truncate">{selectedProduct ? `${selectedProduct.name} ${selectedProduct.sku ? `· ${selectedProduct.sku}` : ""}` : "Seleccionar producto…"}</span>
+                    <ChevronsUpDown className="h-3.5 w-3.5 opacity-50 shrink-0 ml-2" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Buscar por nombre, SKU o categoría…"
+                      value={productSearch}
+                      onValueChange={setProductSearch}
+                    />
+                    <CommandList>
+                      <CommandEmpty>Sin coincidencias.</CommandEmpty>
+                      <CommandGroup>
+                        {productSearchable.slice(0, 200).map((p: ProductRow) => (
+                          <CommandItem
+                            key={p.id}
+                            value={p.id}
+                            onSelect={() => { setForm({ ...form, product_id: p.id }); setProductOpen(false); setProductSearch(""); }}
+                          >
+                            <Check className={`mr-2 h-3.5 w-3.5 ${form.product_id === p.id ? "opacity-100" : "opacity-0"}`} />
+                            <div className="flex flex-col min-w-0">
+                              <span className="truncate text-sm">{p.name}</span>
+                              <span className="text-[10px] text-muted-foreground truncate">
+                                {p.sku ? `SKU ${p.sku}` : "Sin SKU"}{p.category ? ` · ${p.category}` : ""}{p.product_type ? ` · ${p.product_type}` : ""}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <div className="flex items-center justify-between">
+                <Label>Nombre receta</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[10px] gap-1"
+                  onClick={useProductName}
+                  disabled={!selectedProduct}
+                  title="Usar nombre del producto seleccionado"
+                >
+                  <ArrowRight className="h-3 w-3" />
+                  Usar nombre del producto
+                </Button>
+              </div>
+              <Input value={form.name || ""} onChange={e => setForm({ ...form, name: e.target.value })} />
+            </div>
           </div>
           <div>
             <div className="flex justify-between items-center mb-1"><Label>Materiales</Label><Button size="sm" variant="outline" onClick={addItem}><Plus className="h-3 w-3 mr-1" />Agregar</Button></div>
