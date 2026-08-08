@@ -1331,7 +1331,7 @@ function GroupSizesDialog({ state, onClose, onSaved, locations, stockByMatLoc, s
           </Table>
         </div>
         <div className="mt-3">
-          <Label className="text-xs">Motivo del ajuste (queda en el historial)</Label>
+          <Label className="text-xs">Motivo del ajuste <span className="text-destructive">*</span> (queda en el historial)</Label>
           <Input value={reason} onChange={e => setReason(e.target.value)} placeholder="Ej: Conteo físico semanal, llegada de mercancía..." />
         </div>
         <DialogFooter>
