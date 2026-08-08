@@ -88,7 +88,10 @@ export default function EspanaBlanksDTF() {
   const [groupDlg, setGroupDlg] = useState<{ open: boolean; items?: MaterialItem[]; title?: string }>({ open: false });
   const [groupStockDlg, setGroupStockDlg] = useState<{ open: boolean; items?: MaterialItem[]; title?: string }>({ open: false });
   const [stockSearch, setStockSearch] = useState("");
+  const [repoPriorityFilter, setRepoPriorityFilter] = useState<"all" | "normal" | "low">("all");
+  const [savingPriority, setSavingPriority] = useState<string | null>(null);
   const toggleGroup = (k: string) => setExpandedGroups(p => ({ ...p, [k]: !p[k] }));
+
 
   const load = async () => {
     setLoading(true);
