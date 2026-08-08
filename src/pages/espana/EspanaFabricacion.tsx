@@ -139,6 +139,8 @@ export default function EspanaFabricacion() {
     switch (view) {
       case "real":
         return rows.filter(r => !r.is_legacy && !r.is_test && ["pending", "in_progress", "ready"].includes(r.status));
+      case "delivered":
+        return rows.filter(r => !r.is_legacy && r.status === "delivered_to_shipping");
       case "test":
         return rows.filter(r => r.is_test && !r.is_legacy);
       case "legacy":
