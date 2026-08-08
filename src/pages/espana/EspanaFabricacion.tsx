@@ -158,22 +158,26 @@ export default function EspanaFabricacion() {
   }, [rows]);
 
   const filtered = useMemo(() => {
+    let base: FabRow[];
     switch (view) {
       case "real":
-        return rows.filter(r => !r.is_legacy && !r.is_test && ["pending", "in_progress", "ready"].includes(r.status));
+        base = rows.filter(r => !r.is_legacy && !r.is_test && ["pending", "in_progress", "ready"].includes(r.status)); break;
       case "delivered":
-        return rows.filter(r => !r.is_legacy && r.status === "delivered_to_shipping");
+        base = rows.filter(r => !r.is_legacy && r.status === "delivered_to_shipping"); break;
       case "test":
-        return rows.filter(r => r.is_test && !r.is_legacy);
+        base = rows.filter(r => r.is_test && !r.is_legacy); break;
       case "legacy":
-        return rows.filter(r => r.is_legacy);
+        base = rows.filter(r => r.is_legacy); break;
       case "cancelled":
-        return rows.filter(r => r.status === "cancelled" && !r.is_legacy);
+        base = rows.filter(r => r.status === "cancelled" && !r.is_legacy); break;
       case "all":
       default:
-        return rows;
+        base = rows;
     }
-  }, [rows, view]);
+    if (origin === "manual") return base.filter(r => r.source_type === "manual");
+    if (origin === "auto") return base.filter(r => r.source_type !== "manual");
+    return base;
+  }, [rows, view, origin]);
 
   return (
     <div className="space-y-5">
@@ -184,8 +188,12 @@ export default function EspanaFabricacion() {
           </h2>
           <p className="text-sm text-muted-foreground">Cola generada desde pedidos WooCommerce España cuando el producto requiere fabricación.</p>
         </div>
-        <a href="/espana/blanks-dtf" className="text-sm text-primary font-semibold underline-offset-2 hover:underline">Blanks / DTF →</a>
+        <div className="flex items-center gap-3">
+          <Button size="sm" onClick={() => setManualOpen(true)}><Plus className="h-4 w-4 mr-1" />Nueva orden manual</Button>
+          <a href="/espana/blanks-dtf" className="text-sm text-primary font-semibold underline-offset-2 hover:underline">Blanks / DTF →</a>
+        </div>
       </div>
+
       <Card className="p-3 border-l-4 border-l-emerald-500 text-xs">
         <span className="font-semibold">BLOQUE 5B activo:</span> al pulsar <span className="font-semibold">Fabricar</span> se valida la receta, se calcula el stock requerido y se consumen los materiales atómicamente. No se toca WooCommerce, ni inventario físico, ni POS.
       </Card>
