@@ -439,6 +439,8 @@ export default function EspanaFabricacion() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ManualFabricationDialog open={manualOpen} onOpenChange={setManualOpen} onCreated={() => { setOrigin("manual"); setView("real"); load(); }} />
     </div>
   );
 }
