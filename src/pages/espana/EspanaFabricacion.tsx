@@ -3,12 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2, Plus, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDMY } from "@/lib/dateUtils";
+import ManualFabricationDialog, { MANUAL_REASON_LABEL } from "@/components/espana/ManualFabricationDialog";
 
 interface FabRow {
   id: string;
@@ -22,12 +24,25 @@ interface FabRow {
   due_date: string | null;
   created_at: string;
   source_order_id: string | null;
+  source_type: string;
   is_legacy: boolean;
   is_test: boolean;
   legacy_reason: string | null;
   test_reason: string | null;
+  notes: string | null;
+  manual_reason: string | null;
+  manual_reason_detail: string | null;
+  requires_shipping: boolean | null;
+  ship_to_name: string | null;
+  ship_to_phone: string | null;
+  ship_to_address: string | null;
+  ship_to_city: string | null;
+  ship_to_province: string | null;
+  ship_to_postal_code: string | null;
+  ship_to_country: string | null;
   esp_woo_orders?: { order_number: string | null; customer_name: string | null } | null;
 }
+
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pendiente",
