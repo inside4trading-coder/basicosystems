@@ -122,11 +122,26 @@ export default function EspanaBlanksDTF() {
   useEffect(() => { load(); }, []);
 
   // helpers
+  // Blanks/DTF se gestionan SOLO en Arturo Soria / Taller.
+  const arturoLoc = useMemo(
+    () => locations.find(l => (l.code || "").toUpperCase() === "ARTURO_SORIA") || null,
+    [locations]
+  );
+  const arturoLocs = useMemo(() => (arturoLoc ? [arturoLoc] : []), [arturoLoc]);
+
+  /** Stock operativo = SOLO Arturo Soria */
   const stockByMat = useMemo(() => {
     const map = new Map<string, number>();
-    stock.forEach(s => map.set(s.material_id, (map.get(s.material_id) || 0) + Number(s.quantity_on_hand || 0)));
+    stock.filter(s => s.location_id === arturoLoc?.id)
+      .forEach(s => map.set(s.material_id, (map.get(s.material_id) || 0) + Number(s.quantity_on_hand || 0)));
     return map;
-  }, [stock]);
+  }, [stock, arturoLoc]);
+
+  /** Stock histórico fuera de Arturo Soria (informativo, no operativo) */
+  const legacyOutside = useMemo(() => {
+    const rows = stock.filter(s => s.location_id !== arturoLoc?.id && Number(s.quantity_on_hand || 0) > 0);
+    return { count: rows.length, qty: rows.reduce((a, s) => a + Number(s.quantity_on_hand || 0), 0) };
+  }, [stock, arturoLoc]);
 
   const stockByMatLoc = useMemo(() => {
     const map = new Map<string, number>();
