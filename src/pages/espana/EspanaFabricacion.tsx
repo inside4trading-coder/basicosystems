@@ -54,7 +54,7 @@ export function normalizeSize(label: string | null | undefined): string {
     .toUpperCase();
 }
 
-type ViewFilter = "real" | "test" | "legacy" | "cancelled" | "all";
+type ViewFilter = "real" | "delivered" | "test" | "legacy" | "cancelled" | "all";
 
 export default function EspanaFabricacion() {
   const [rows, setRows] = useState<FabRow[]>([]);
