@@ -154,6 +154,20 @@ export default function EspanaWooOrders() {
     setExpanded(n);
   };
 
+  const getFabricationSummary = (items: ItemRow[]) => {
+    const fabItems = items.filter(i => i.needs_fabrication && i.fabrication_request_id);
+    if (fabItems.length === 0) return null;
+    const statuses = fabItems.map(i => i.fabrication_status || "pending");
+    const allDelivered = statuses.every(s => s === "delivered_to_shipping");
+    const allDone = statuses.every(s => s === "delivered_to_shipping" || s === "cancelled" || s === "rejected");
+    const anyInProgress = statuses.some(s => s === "in_progress");
+    const anyReady = statuses.some(s => s === "ready");
+    const anyPending = statuses.some(s => s === "pending" || s === "pending_approval");
+    const anyCancelled = statuses.some(s => s === "cancelled" || s === "rejected");
+    return { allDelivered, allDone, anyInProgress, anyReady, anyPending, anyCancelled, count: fabItems.length };
+  };
+
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
