@@ -20,8 +20,9 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  ClipboardList, Plus, Layers, QrCode, X, Ban, Lock, Eye, ShieldAlert, PackageCheck, PackageOpen, FileDown,
+  ClipboardList, Plus, Layers, QrCode, X, Ban, Lock, Eye, ShieldAlert, PackageCheck, PackageOpen, FileDown, Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { logCoreAudit } from "@/lib/coreAudit";
