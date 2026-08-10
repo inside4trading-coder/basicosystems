@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Globe, RefreshCw, Loader2, ExternalLink, Hammer, Receipt } from "lucide-react";
+import { Globe, RefreshCw, Loader2, Hammer, Receipt, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -32,8 +32,33 @@ interface ItemRow {
   variant_id: string | null;
   needs_fabrication: boolean;
   fabrication_request_id: string | null;
+  fabrication_status: string | null;
+  fabrication_source_type: string | null;
   total_eur: number;
 }
+
+type FabStatus = "pending" | "pending_approval" | "in_progress" | "ready" | "delivered_to_shipping" | "cancelled" | "rejected";
+
+const FAB_STATUS_LABEL: Record<string, string> = {
+  pending: "Pendiente",
+  pending_approval: "Pendiente de aprobación",
+  in_progress: "En fabricación",
+  ready: "Listo",
+  delivered_to_shipping: "Entregado",
+  cancelled: "Cancelado",
+  rejected: "Rechazado",
+};
+
+const FAB_STATUS_COLORS: Record<string, string> = {
+  pending: "bg-amber-500",
+  pending_approval: "bg-amber-400",
+  in_progress: "bg-blue-500",
+  ready: "bg-violet-500",
+  delivered_to_shipping: "bg-emerald-600",
+  cancelled: "bg-zinc-400",
+  rejected: "bg-zinc-400",
+};
+
 
 const STATUS_COLORS: Record<string, string> = {
   completed: "bg-emerald-600",
@@ -68,9 +93,27 @@ export default function EspanaWooOrders() {
       const { data: it } = await supabase.from("esp_woo_order_items")
         .select("esp_woo_order_id,name,quantity,sku,product_id,variant_id,needs_fabrication,fabrication_request_id,total_eur")
         .in("esp_woo_order_id", ids);
+
+      // Fabrication request statuses
+      const fabIds = (it || []).map((r: any) => r.fabrication_request_id).filter(Boolean);
+      const fabStatuses: Record<string, { status: string; source_type: string }> = {};
+      if (fabIds.length > 0) {
+        const { data: fabData } = await supabase.from("esp_fabrication_requests")
+          .select("id,status,source_type")
+          .in("id", fabIds);
+        (fabData || []).forEach((f: any) => {
+          fabStatuses[f.id] = { status: f.status, source_type: f.source_type };
+        });
+      }
+
       const map: Record<string, ItemRow[]> = {};
       (it || []).forEach((r: any) => {
-        (map[r.esp_woo_order_id] ||= []).push(r);
+        const fab = r.fabrication_request_id ? fabStatuses[r.fabrication_request_id] : null;
+        (map[r.esp_woo_order_id] ||= []).push({
+          ...r,
+          fabrication_status: fab?.status || null,
+          fabrication_source_type: fab?.source_type || null,
+        });
       });
       setItemsByOrder(map);
     } else {
@@ -110,6 +153,20 @@ export default function EspanaWooOrders() {
     n.has(id) ? n.delete(id) : n.add(id);
     setExpanded(n);
   };
+
+  const getFabricationSummary = (items: ItemRow[]) => {
+    const fabItems = items.filter(i => i.needs_fabrication && i.fabrication_request_id);
+    if (fabItems.length === 0) return null;
+    const statuses = fabItems.map(i => i.fabrication_status || "pending");
+    const allDelivered = statuses.every(s => s === "delivered_to_shipping");
+    const allDone = statuses.every(s => s === "delivered_to_shipping" || s === "cancelled" || s === "rejected");
+    const anyInProgress = statuses.some(s => s === "in_progress");
+    const anyReady = statuses.some(s => s === "ready");
+    const anyPending = statuses.some(s => s === "pending" || s === "pending_approval");
+    const anyCancelled = statuses.some(s => s === "cancelled" || s === "rejected");
+    return { allDelivered, allDone, anyInProgress, anyReady, anyPending, anyCancelled, count: fabItems.length };
+  };
+
 
   return (
     <div className="space-y-5">
@@ -161,7 +218,7 @@ export default function EspanaWooOrders() {
             {!loading && filtered.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">Sin pedidos. Pulsa “Sincronizar pedidos”.</TableCell></TableRow>}
             {filtered.map(o => {
               const items = itemsByOrder[o.id] || [];
-              const fab = items.filter(i => i.needs_fabrication).length;
+              const fabSummary = getFabricationSummary(items);
               const unmapped = items.filter(i => !i.variant_id).length;
               const isExp = expanded.has(o.id);
               return (
@@ -179,8 +236,24 @@ export default function EspanaWooOrders() {
                     <TableCell className="text-xs">
                       <div className="flex flex-wrap gap-1">
                         {o.esp_sale_id && <Badge variant="outline" className="gap-1"><Receipt className="h-3 w-3" /> Venta</Badge>}
-                        {fab > 0 && <Badge variant="outline" className="gap-1"><Hammer className="h-3 w-3" /> Fab ×{fab}</Badge>}
                         {unmapped > 0 && <Badge variant="destructive" className="text-[10px]">{unmapped} sin mapear</Badge>}
+                        {fabSummary && (
+                          <>
+                            {fabSummary.allDelivered ? (
+                              <Badge className="bg-emerald-600 gap-1 text-[10px]"><CheckCircle2 className="h-3 w-3" /> Fabricado</Badge>
+                            ) : fabSummary.anyInProgress ? (
+                              <Badge className="bg-blue-500 gap-1 text-[10px]"><Loader2 className="h-3 w-3 animate-spin" /> En fabricación</Badge>
+                            ) : fabSummary.anyReady ? (
+                              <Badge className="bg-violet-500 gap-1 text-[10px]"><CheckCircle2 className="h-3 w-3" /> Listo</Badge>
+                            ) : fabSummary.anyPending ? (
+                              <Badge className="bg-amber-500 gap-1 text-[10px]"><AlertCircle className="h-3 w-3" /> Fab pendiente</Badge>
+                            ) : fabSummary.anyCancelled ? (
+                              <Badge variant="secondary" className="gap-1 text-[10px]"><XCircle className="h-3 w-3" /> Fab cancelada</Badge>
+                            ) : (
+                              <Badge variant="outline" className="gap-1 text-[10px]"><Hammer className="h-3 w-3" /> Fab ×{fabSummary.count}</Badge>
+                            )}
+                          </>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{isExp ? "▴" : "▾"}</TableCell>
@@ -198,7 +271,18 @@ export default function EspanaWooOrders() {
                               </div>
                               <div className="flex items-center gap-1">
                                 {!it.variant_id && <Badge variant="destructive" className="text-[10px]">No mapeado</Badge>}
-                                {it.needs_fabrication && <Badge variant="outline" className="text-[10px] gap-1"><Hammer className="h-3 w-3" />Fabricación</Badge>}
+                                {it.needs_fabrication && (
+                                  <Badge className={it.fabrication_status ? FAB_STATUS_COLORS[it.fabrication_status] || "bg-zinc-500" : "bg-amber-500"}>
+                                    {it.fabrication_status ? (
+                                      <span className="flex items-center gap-1">
+                                        {it.fabrication_status === "delivered_to_shipping" ? <CheckCircle2 className="h-3 w-3" /> : <Hammer className="h-3 w-3" />}
+                                        {FAB_STATUS_LABEL[it.fabrication_status] || it.fabrication_status}
+                                      </span>
+                                    ) : (
+                                      <span className="flex items-center gap-1"><Hammer className="h-3 w-3" />Fabricación</span>
+                                    )}
+                                  </Badge>
+                                )}
                                 <span className="ml-2 font-semibold">€{Number(it.total_eur).toFixed(2)}</span>
                               </div>
                             </div>
