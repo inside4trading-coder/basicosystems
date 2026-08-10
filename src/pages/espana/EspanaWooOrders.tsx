@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Globe, RefreshCw, Loader2, Hammer, Receipt, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Globe, RefreshCw, Loader2, Hammer, Receipt, CheckCircle2, XCircle, AlertCircle, PackageCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -237,10 +237,13 @@ export default function EspanaWooOrders() {
                       <div className="flex flex-wrap gap-1">
                         {o.esp_sale_id && <Badge variant="outline" className="gap-1"><Receipt className="h-3 w-3" /> Venta</Badge>}
                         {unmapped > 0 && <Badge variant="destructive" className="text-[10px]">{unmapped} sin mapear</Badge>}
+                        {o.status === "completed" && (
+                          <Badge className="bg-emerald-700 gap-1 text-[10px]"><PackageCheck className="h-3 w-3" /> Finalizado/Entregado</Badge>
+                        )}
                         {fabSummary && (
                           <>
                             {fabSummary.allDelivered ? (
-                              <Badge className="bg-emerald-600 gap-1 text-[10px]"><CheckCircle2 className="h-3 w-3" /> Fabricado</Badge>
+                              <Badge className="bg-emerald-600 gap-1 text-[10px]"><CheckCircle2 className="h-3 w-3" /> {o.status === "completed" ? "Fabricado y enviado" : "Fabricado · falta enviar"}</Badge>
                             ) : fabSummary.anyInProgress ? (
                               <Badge className="bg-blue-500 gap-1 text-[10px]"><Loader2 className="h-3 w-3 animate-spin" /> En fabricación</Badge>
                             ) : fabSummary.anyReady ? (
