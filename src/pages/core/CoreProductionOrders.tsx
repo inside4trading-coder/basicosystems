@@ -418,6 +418,9 @@ export default function CoreProductionOrders() {
     setManualProductId("");
     setManualVariants([]);
     setManualQuantities({});
+    setManualItemNotes("");
+    setManualItems([]);
+    setProductSearch("");
     setManualReason("");
     setManualPriority("media");
     setManualNotes("");
@@ -435,13 +438,86 @@ export default function CoreProductionOrders() {
       .then(({ data }) => setManualVariants(data ?? []));
   }, [manualProductId]);
 
-  const submitManual = async () => {
+  const filteredManualProducts = useMemo(() => {
+    const terms = productSearch.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/\s+/).filter(Boolean);
+    if (!terms.length) return products;
+    return products.filter((p) => {
+      const hay = `${p.core_sku ?? ""} ${p.name ?? ""}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return terms.every((t) => hay.includes(t));
+    });
+  }, [products, productSearch]);
+
+  const manualTotalUnits = useMemo(
+    () => manualItems.reduce((a, it) => a + it.lines.reduce((s, l) => s + l.quantity, 0), 0),
+    [manualItems],
+  );
+
+  const addManualItem = () => {
     if (!manualProductId) { toast.error("Selecciona producto"); return; }
-    if (!manualReason) { toast.error("Motivo obligatorio"); return; }
-    const lines = Object.entries(manualQuantities)
-      .filter(([_, q]) => Number(q) > 0)
-      .map(([core_variant_id, quantity]) => ({ core_variant_id, quantity: Number(quantity) }));
+    const lines = manualVariants
+      .filter((v) => Number(manualQuantities[v.id] ?? 0) > 0)
+      .map((v) => ({
+        core_variant_id: v.id as string,
+        quantity: Number(manualQuantities[v.id]),
+        size: (v.size ?? null) as string | null,
+        variant_sku: (v.variant_sku ?? null) as string | null,
+      }));
     if (!lines.length) { toast.error("Agrega al menos una talla con cantidad"); return; }
+    const prod = products.find((p) => p.id === manualProductId);
+    setManualItems((prev) => {
+      const idx = prev.findIndex((i) => i.core_product_id === manualProductId);
+      if (idx === -1) {
+        return [...prev, {
+          core_product_id: manualProductId,
+          core_sku: prod?.core_sku ?? null,
+          product_name: prod?.name ?? null,
+          notes: manualItemNotes || null,
+          lines,
+        }];
+      }
+      const merged = [...prev];
+      const existing = merged[idx];
+      const byVariant = new Map(existing.lines.map((l) => [l.core_variant_id, { ...l }]));
+      for (const l of lines) {
+        const prevLine = byVariant.get(l.core_variant_id);
+        if (prevLine) prevLine.quantity += l.quantity;
+        else byVariant.set(l.core_variant_id, { ...l });
+      }
+      merged[idx] = {
+        ...existing,
+        notes: manualItemNotes || existing.notes,
+        lines: Array.from(byVariant.values()),
+      };
+      toast.info("Se sumaron cantidades a un producto ya agregado");
+      return merged;
+    });
+    setManualProductId("");
+    setManualVariants([]);
+    setManualQuantities({});
+    setManualItemNotes("");
+    setProductSearch("");
+  };
+
+  const editManualItem = (item: ManualItem) => {
+    setManualItems((prev) => prev.filter((i) => i.core_product_id !== item.core_product_id));
+    setManualProductId(item.core_product_id);
+    setManualQuantities(Object.fromEntries(item.lines.map((l) => [l.core_variant_id, l.quantity])));
+    setManualItemNotes(item.notes ?? "");
+  };
+
+  const removeManualItem = (id: string) =>
+    setManualItems((prev) => prev.filter((i) => i.core_product_id !== id));
+
+  const closeManual = (open: boolean) => {
+    if (!open && (manualItems.length > 0 || Object.values(manualQuantities).some((q) => Number(q) > 0))) {
+      if (!window.confirm("Tienes productos cargados sin crear la orden. ¿Descartar cambios?")) return;
+    }
+    setManualOpen(open);
+  };
+
+  const submitManual = async () => {
+    if (!manualReason) { toast.error("Motivo obligatorio"); return; }
+    if (!manualItems.length) { toast.error("Agrega al menos un producto"); return; }
     setCreating(true);
     try {
       const { data, error } = await supabase.functions.invoke(
@@ -449,8 +525,11 @@ export default function CoreProductionOrders() {
         {
           body: {
             mode: "manual",
-            core_product_id: manualProductId,
-            lines,
+            items: manualItems.map((i) => ({
+              core_product_id: i.core_product_id,
+              notes: i.notes,
+              lines: i.lines.map((l) => ({ core_variant_id: l.core_variant_id, quantity: l.quantity })),
+            })),
             reason: manualReason,
             priority: manualPriority,
             notes: manualNotes || null,
@@ -467,6 +546,7 @@ export default function CoreProductionOrders() {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success(`Orden manual creada: ${(data as any).created?.[0]?.order_code}`);
+      setManualItems([]);
       setManualOpen(false);
       await load();
     } catch (e: any) {
@@ -475,6 +555,7 @@ export default function CoreProductionOrders() {
       setCreating(false);
     }
   };
+
 
   const handleBackupPdf = async (o: Order) => {
     try {
