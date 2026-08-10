@@ -174,10 +174,15 @@ export default function CoreProductionOrders() {
   const [manualProductId, setManualProductId] = useState("");
   const [manualVariants, setManualVariants] = useState<any[]>([]);
   const [manualQuantities, setManualQuantities] = useState<Record<string, number>>({});
+  const [manualItemNotes, setManualItemNotes] = useState("");
+  const [manualItems, setManualItems] = useState<ManualItem[]>([]);
+  const [productSearch, setProductSearch] = useState("");
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [manualReason, setManualReason] = useState("");
   const [manualPriority, setManualPriority] = useState("media");
   const [manualNotes, setManualNotes] = useState("");
   const [manualExpected, setManualExpected] = useState("");
+
 
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [detailLines, setDetailLines] = useState<Line[]>([]);
