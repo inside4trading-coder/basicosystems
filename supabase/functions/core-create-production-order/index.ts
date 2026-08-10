@@ -25,16 +25,26 @@ interface ManualLine {
   quantity: number;
 }
 
-interface ManualBody {
-  mode: "manual";
+interface ManualItem {
   core_product_id: string;
   lines: ManualLine[];
+  notes?: string | null;
+}
+
+interface ManualBody {
+  mode: "manual";
+  // Legacy (un solo producto)
+  core_product_id?: string;
+  lines?: ManualLine[];
+  // Nuevo: multiproducto
+  items?: ManualItem[];
   reason: string;
   priority?: string;
   expected_date?: string | null;
   notes?: string;
   responsible_user_id?: string | null;
 }
+
 
 type Body = FromNeedsBody | ManualBody;
 
