@@ -240,14 +240,14 @@ export default function EspanaWooOrders() {
                         {o.status === "completed" && (
                           <Badge className="bg-emerald-700 gap-1 text-[10px]"><PackageCheck className="h-3 w-3" /> Finalizado/Entregado</Badge>
                         )}
-                        {fabSummary && (
+                        {fabSummary && o.status !== "completed" && (
                           <>
                             {fabSummary.allDelivered ? (
-                              <Badge className="bg-emerald-600 gap-1 text-[10px]"><CheckCircle2 className="h-3 w-3" /> {o.status === "completed" ? "Fabricado y enviado" : "Fabricado · falta enviar"}</Badge>
+                              <Badge className="bg-emerald-600 gap-1 text-[10px]"><CheckCircle2 className="h-3 w-3" /> Fabricado y enviado</Badge>
                             ) : fabSummary.anyInProgress ? (
                               <Badge className="bg-blue-500 gap-1 text-[10px]"><Loader2 className="h-3 w-3 animate-spin" /> En fabricación</Badge>
                             ) : fabSummary.anyReady ? (
-                              <Badge className="bg-violet-500 gap-1 text-[10px]"><CheckCircle2 className="h-3 w-3" /> Listo</Badge>
+                              <Badge className="bg-violet-500 gap-1 text-[10px]"><CheckCircle2 className="h-3 w-3" /> Fabricado</Badge>
                             ) : fabSummary.anyPending ? (
                               <Badge className="bg-amber-500 gap-1 text-[10px]"><AlertCircle className="h-3 w-3" /> Fab pendiente</Badge>
                             ) : fabSummary.anyCancelled ? (
