@@ -1093,53 +1093,156 @@ export default function CoreProductionOrders() {
       </Dialog>
 
       {/* Manual */}
-      <Dialog open={manualOpen} onOpenChange={setManualOpen}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={manualOpen} onOpenChange={closeManual}>
+        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nueva orden manual</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Producto de fabricación *</Label>
-              <Select value={manualProductId} onValueChange={setManualProductId}>
-                <SelectTrigger><SelectValue placeholder="Selecciona producto" /></SelectTrigger>
-                <SelectContent>
-                  {products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.core_sku} — {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {manualVariants.length > 0 && (
+          <div className="space-y-4">
+            {/* A. Formulario de agregado */}
+            <div className="rounded-md border p-3 space-y-3">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">Agregar producto</div>
               <div>
-                <Label>Tallas / Variaciones</Label>
-                <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-auto">
-                  {manualVariants.map((v) => (
-                    <div key={v.id} className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Badge className="bg-primary text-primary-foreground font-bold text-sm px-2.5 py-0.5 min-w-[2.5rem] justify-center">
-                          {v.size ?? "—"}
-                        </Badge>
-                        <span className="font-mono text-xs text-muted-foreground">{v.variant_sku}</span>
-                      </div>
+                <Label>Producto de fabricación *</Label>
+                <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between font-normal"
+                    >
+                      <span className="truncate">
+                        {manualProductId
+                          ? `${products.find((p) => p.id === manualProductId)?.core_sku ?? ""} — ${products.find((p) => p.id === manualProductId)?.name ?? ""}`
+                          : "Selecciona producto"}
+                      </span>
+                      <Search className="h-4 w-4 opacity-50 shrink-0" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[95vw]" align="start">
+                    <div className="p-2 border-b">
                       <Input
-                        type="number"
-                        min={0}
-                        placeholder="0"
-                        value={manualQuantities[v.id] ?? ""}
-                        onChange={(e) => setManualQuantities((p) => ({
-                          ...p, [v.id]: Number(e.target.value),
-                        }))}
-                        className="h-8 w-24"
+                        autoFocus
+                        placeholder="Buscar producto por nombre o SKU…"
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        className="h-9"
                       />
                     </div>
-                  ))}
+                    <div className="max-h-64 overflow-y-auto">
+                      {filteredManualProducts.length === 0 ? (
+                        <div className="p-4 text-sm text-muted-foreground text-center">
+                          No se encontraron productos
+                        </div>
+                      ) : (
+                        filteredManualProducts.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+                            onClick={() => {
+                              setManualProductId(p.id);
+                              setManualQuantities({});
+                              setProductPickerOpen(false);
+                            }}
+                          >
+                            <span className="font-mono text-xs text-muted-foreground mr-2">{p.core_sku}</span>
+                            {p.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              {manualVariants.length > 0 && (
+                <div>
+                  <Label>Tallas / Variaciones</Label>
+                  <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-auto">
+                    {manualVariants.map((v) => (
+                      <div key={v.id} className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 text-sm min-w-0">
+                          <Badge className="bg-primary text-primary-foreground font-bold text-sm px-2.5 py-0.5 min-w-[2.5rem] justify-center">
+                            {v.size ?? "—"}
+                          </Badge>
+                          <span className="font-mono text-xs text-muted-foreground truncate">{v.variant_sku}</span>
+                        </div>
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="0"
+                          value={manualQuantities[v.id] ?? ""}
+                          onChange={(e) => setManualQuantities((p) => ({
+                            ...p, [v.id]: Number(e.target.value),
+                          }))}
+                          className="h-8 w-24"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div>
+                <Label>Observaciones del ítem</Label>
+                <Input
+                  value={manualItemNotes}
+                  onChange={(e) => setManualItemNotes(e.target.value)}
+                  placeholder="Opcional"
+                />
+              </div>
+              <Button type="button" variant="secondary" className="w-full" onClick={addManualItem}>
+                <Plus className="h-4 w-4 mr-1" /> Agregar producto
+              </Button>
+            </div>
+
+            {/* B. Lista de productos agregados */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold uppercase text-muted-foreground">
+                  Productos agregados
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {manualItems.length} producto(s) · {manualTotalUnits} unidad(es)
                 </div>
               </div>
-            )}
-            <div className="grid grid-cols-2 gap-3">
+              {manualItems.length === 0 ? (
+                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground text-center">
+                  Aún no has agregado productos a esta orden.
+                </div>
+              ) : (
+                manualItems.map((it) => (
+                  <div key={it.core_product_id} className="rounded-md border p-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium break-words">
+                          <span className="font-mono text-xs text-muted-foreground mr-2">{it.core_sku}</span>
+                          {it.product_name}
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {it.lines.map((l) => (
+                            <Badge key={l.core_variant_id} variant="outline" className="text-xs">
+                              {l.size ?? l.variant_sku ?? "—"}: {l.quantity}
+                            </Badge>
+                          ))}
+                        </div>
+                        {it.notes && (
+                          <div className="mt-1 text-xs text-muted-foreground break-words">{it.notes}</div>
+                        )}
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button size="sm" variant="outline" onClick={() => editManualItem(it)}>Editar</Button>
+                        <Button size="sm" variant="ghost" onClick={() => removeManualItem(it.core_product_id)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Datos de la orden */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Motivo *</Label>
                 <Select value={manualReason} onValueChange={setManualReason}>
@@ -1166,8 +1269,6 @@ export default function CoreProductionOrders() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Fecha esperada</Label>
                 <Input type="date" value={manualExpected} onChange={(e) => setManualExpected(e.target.value)} />
@@ -1179,13 +1280,14 @@ export default function CoreProductionOrders() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setManualOpen(false)}>Cancelar</Button>
-            <Button onClick={submitManual} disabled={creating}>
+            <Button variant="ghost" onClick={() => closeManual(false)}>Cancelar</Button>
+            <Button onClick={submitManual} disabled={creating || !manualItems.length}>
               {creating ? "Creando..." : "Crear orden"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* Detalle */}
       <Sheet open={!!detailOrder} onOpenChange={(o) => !o && setDetailOrder(null)}>
