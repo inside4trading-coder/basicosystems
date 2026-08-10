@@ -25,16 +25,26 @@ interface ManualLine {
   quantity: number;
 }
 
-interface ManualBody {
-  mode: "manual";
+interface ManualItem {
   core_product_id: string;
   lines: ManualLine[];
+  notes?: string | null;
+}
+
+interface ManualBody {
+  mode: "manual";
+  // Legacy (un solo producto)
+  core_product_id?: string;
+  lines?: ManualLine[];
+  // Nuevo: multiproducto
+  items?: ManualItem[];
   reason: string;
   priority?: string;
   expected_date?: string | null;
   notes?: string;
   responsible_user_id?: string | null;
 }
+
 
 type Body = FromNeedsBody | ManualBody;
 
@@ -521,44 +531,73 @@ async function createManual(
   body: ManualBody,
   userId: string | null,
 ) {
-  if (!body.core_product_id) return json({ error: "core_product_id requerido" }, 400);
-  if (!body.lines?.length) return json({ error: "lines requerido" }, 400);
   if (!body.reason) return json({ error: "reason obligatorio" }, 400);
-  if (body.lines.some((l) => !l.core_variant_id || Number(l.quantity) <= 0)) {
-    return json({ error: "Cada línea requiere core_variant_id y quantity > 0" }, 400);
+
+  // Normalizar payload legacy → items
+  const items: ManualItem[] = body.items?.length
+    ? body.items
+    : (body.core_product_id && body.lines?.length
+      ? [{ core_product_id: body.core_product_id, lines: body.lines }]
+      : []);
+
+  if (!items.length) return json({ error: "Debes enviar al menos un producto" }, 400);
+  for (const it of items) {
+    if (!it.core_product_id) return json({ error: "core_product_id requerido en cada ítem" }, 400);
+    if (!it.lines?.length) return json({ error: "Cada producto requiere al menos una línea" }, 400);
+    if (it.lines.some((l) => !l.core_variant_id || Number(l.quantity) <= 0)) {
+      return json({ error: "Cada línea requiere core_variant_id y quantity > 0" }, 400);
+    }
   }
 
-  const { data: prod } = await supabase
+  const productIds = Array.from(new Set(items.map((i) => i.core_product_id)));
+  const { data: prods } = await supabase
     .from("core_products")
-    .select("id,core_sku,name")
-    .eq("id", body.core_product_id)
-    .maybeSingle();
-  if (!prod) return json({ error: "Producto no encontrado" }, 404);
+    .select("id,core_sku,name,unit_cost,woo_product_id")
+    .in("id", productIds);
+  const prodMap = new Map((prods ?? []).map((p: any) => [p.id, p]));
+  const missing = productIds.filter((id) => !prodMap.has(id));
+  if (missing.length) return json({ error: "Producto no encontrado", product_ids: missing }, 404);
 
-  const variantIds = body.lines.map((l) => l.core_variant_id);
-  const [{ data: variants }, { data: prodInfo }] = await Promise.all([
-    supabase
-      .from("core_product_variants")
-      .select("id,variant_sku,variant_label,size,woo_variation_id,cost_override_enabled,cost_structure_id")
-      .in("id", variantIds),
-    supabase.from("core_products").select("id, unit_cost, woo_product_id").eq("id", body.core_product_id).maybeSingle(),
-  ]);
+  const variantIds = Array.from(new Set(items.flatMap((i) => i.lines.map((l) => l.core_variant_id))));
+  const { data: variants } = await supabase
+    .from("core_product_variants")
+    .select("id,variant_sku,variant_label,size,woo_variation_id,cost_override_enabled,cost_structure_id")
+    .in("id", variantIds);
   const vmap = new Map((variants ?? []).map((v: any) => [v.id, v]));
 
-  const totalQty = body.lines.reduce((a, l) => a + Number(l.quantity), 0);
+  // Aplanar líneas (fusionando duplicados por variante)
+  type FlatLine = { core_product_id: string; core_variant_id: string; quantity: number };
+  const flatMap = new Map<string, FlatLine>();
+  for (const it of items) {
+    for (const l of it.lines) {
+      const key = `${it.core_product_id}|${l.core_variant_id}`;
+      const prev = flatMap.get(key);
+      if (prev) prev.quantity += Number(l.quantity);
+      else {
+        flatMap.set(key, {
+          core_product_id: it.core_product_id,
+          core_variant_id: l.core_variant_id,
+          quantity: Number(l.quantity),
+        });
+      }
+    }
+  }
+  const flatLines = Array.from(flatMap.values());
+  const totalQty = flatLines.reduce((a, l) => a + l.quantity, 0);
 
   // Fase 2B-1: verificar política antes de crear la OP.
   const blockedManual: any[] = [];
-  for (const l of body.lines) {
+  for (const l of flatLines) {
     const v: any = vmap.get(l.core_variant_id);
-    const pol = await resolvePolicy(supabase, body.core_product_id, l.core_variant_id, (prodInfo as any)?.woo_product_id ?? null, v?.woo_variation_id ?? null);
+    const p: any = prodMap.get(l.core_product_id);
+    const pol = await resolvePolicy(supabase, l.core_product_id, l.core_variant_id, p?.woo_product_id ?? null, v?.woo_variation_id ?? null);
     if (pol.action !== "allow_internal_factory") {
-      blockedManual.push({ core_variant_id: l.core_variant_id, action: pol.action, message: pol.message, replacement_product_id: pol.replacement_product_id, replacement_woo_product_id: pol.replacement_woo_product_id });
+      blockedManual.push({ core_variant_id: l.core_variant_id, sku: p?.core_sku, variant_sku: v?.variant_sku, action: pol.action, message: pol.message, replacement_product_id: pol.replacement_product_id, replacement_woo_product_id: pol.replacement_woo_product_id });
       await logPolicyEvent(supabase, {
-        source_type: "production_order", core_product_id: body.core_product_id, core_variant_id: l.core_variant_id,
-        woo_product_id: (prodInfo as any)?.woo_product_id ?? null, woo_variation_id: v?.woo_variation_id ?? null,
+        source_type: "production_order", core_product_id: l.core_product_id, core_variant_id: l.core_variant_id,
+        woo_product_id: p?.woo_product_id ?? null, woo_variation_id: v?.woo_variation_id ?? null,
         policy_id: pol.policy_id ?? null, action: pol.action, severity: pol.severity ?? "block",
-        message: pol.message, warning: pol.warning, quantity: Number(l.quantity),
+        message: pol.message, warning: pol.warning, quantity: l.quantity,
         replacement_product_id: pol.replacement_product_id ?? null, replacement_woo_product_id: pol.replacement_woo_product_id ?? null,
         replacement_behavior: pol.replacement_behavior ?? null,
         external_supplier_name: pol.external_supplier_name ?? null, external_supplier_unit_cost_usd: pol.external_supplier_unit_cost_usd ?? null,
@@ -570,7 +609,13 @@ async function createManual(
     return json({ error: "policy_blocked", blocked_lines: blockedManual, message: "Una o más variantes están bloqueadas por política de reposición." }, 409);
   }
 
-
+  const isMultiProduct = productIds.length > 1;
+  const firstProd: any = prodMap.get(productIds[0]);
+  const headerProductId = isMultiProduct ? null : productIds[0];
+  const headerSku = isMultiProduct ? `MULTI (${productIds.length})` : firstProd?.core_sku ?? null;
+  const headerName = isMultiProduct
+    ? `Lote multiproducto · ${productIds.length} productos · ${flatLines.length} líneas`
+    : firstProd?.name ?? null;
 
   const { data: orderRow, error: orderErr } = await supabase
     .from("core_production_orders")
@@ -578,9 +623,9 @@ async function createManual(
       status: "open",
       order_type: "manual",
       priority: body.priority ?? "media",
-      core_product_id: body.core_product_id,
-      sku: prod.core_sku,
-      product_name: prod.name,
+      core_product_id: headerProductId,
+      sku: headerSku,
+      product_name: headerName,
       total_quantity: totalQty,
       completed_quantity: 0,
       pending_quantity: totalQty,
@@ -598,12 +643,13 @@ async function createManual(
 
   const linesToInsert: any[] = [];
   const costWarnings: any[] = [];
-  for (const l of body.lines) {
+  for (const l of flatLines) {
     const v: any = vmap.get(l.core_variant_id);
+    const p: any = prodMap.get(l.core_product_id);
     const { data: costData } = await supabase.rpc("resolve_core_operational_unit_cost", {
-      p_core_product_id: body.core_product_id,
+      p_core_product_id: l.core_product_id,
       p_core_variant_id: l.core_variant_id,
-      p_woo_product_id: (prodInfo as any)?.woo_product_id ?? null,
+      p_woo_product_id: p?.woo_product_id ?? null,
       p_woo_variation_id: v?.woo_variation_id ?? null,
     });
     const row = Array.isArray(costData) ? costData[0] : costData;
@@ -614,15 +660,15 @@ async function createManual(
     }
     linesToInsert.push({
       production_order_id: orderRow.id,
-      core_product_id: body.core_product_id,
+      core_product_id: l.core_product_id,
       core_variant_id: l.core_variant_id,
-      sku: prod.core_sku,
+      sku: p?.core_sku ?? null,
       variant_sku: v?.variant_sku ?? null,
       variant_label: v?.variant_label ?? null,
       size: v?.size ?? null,
-      quantity_ordered: Number(l.quantity),
+      quantity_ordered: l.quantity,
       quantity_completed: 0,
-      quantity_pending: Number(l.quantity),
+      quantity_pending: l.quantity,
       status: "pending",
       estimated_unit_cost: unitCost || null,
       cost_source,
@@ -634,11 +680,11 @@ async function createManual(
     .insert(linesToInsert);
   if (linesErr) throw linesErr;
 
-  const processCount = await insertProcessesForOrder(
-    supabase,
-    orderRow.id,
-    body.core_product_id,
-  );
+  // Procesos: solo cuando la orden tiene un único producto.
+  let processCount = 0;
+  if (!isMultiProduct && headerProductId) {
+    processCount = await insertProcessesForOrder(supabase, orderRow.id, headerProductId);
+  }
 
   await audit(
     supabase,
@@ -659,10 +705,12 @@ async function createManual(
         total_quantity: totalQty,
         lines: linesToInsert.length,
         processes: processCount,
+        multi_product: isMultiProduct,
+        distinct_products: productIds.length,
         cost_warnings: costWarnings,
       },
-
     ],
     count: 1,
   });
 }
+
