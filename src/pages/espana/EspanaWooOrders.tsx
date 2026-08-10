@@ -93,9 +93,27 @@ export default function EspanaWooOrders() {
       const { data: it } = await supabase.from("esp_woo_order_items")
         .select("esp_woo_order_id,name,quantity,sku,product_id,variant_id,needs_fabrication,fabrication_request_id,total_eur")
         .in("esp_woo_order_id", ids);
+
+      // Fabrication request statuses
+      const fabIds = (it || []).map((r: any) => r.fabrication_request_id).filter(Boolean);
+      const fabStatuses: Record<string, { status: string; source_type: string }> = {};
+      if (fabIds.length > 0) {
+        const { data: fabData } = await supabase.from("esp_fabrication_requests")
+          .select("id,status,source_type")
+          .in("id", fabIds);
+        (fabData || []).forEach((f: any) => {
+          fabStatuses[f.id] = { status: f.status, source_type: f.source_type };
+        });
+      }
+
       const map: Record<string, ItemRow[]> = {};
       (it || []).forEach((r: any) => {
-        (map[r.esp_woo_order_id] ||= []).push(r);
+        const fab = r.fabrication_request_id ? fabStatuses[r.fabrication_request_id] : null;
+        (map[r.esp_woo_order_id] ||= []).push({
+          ...r,
+          fabrication_status: fab?.status || null,
+          fabrication_source_type: fab?.source_type || null,
+        });
       });
       setItemsByOrder(map);
     } else {
