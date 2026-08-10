@@ -43,8 +43,8 @@ const FAB_STATUS_LABEL: Record<string, string> = {
   pending: "Pendiente",
   pending_approval: "Pendiente de aprobación",
   in_progress: "En fabricación",
-  ready: "Listo",
-  delivered_to_shipping: "Entregado a envíos",
+  ready: "Fabricado",
+  delivered_to_shipping: "Fabricado y enviado",
   cancelled: "Cancelado",
   rejected: "Rechazado",
 };
