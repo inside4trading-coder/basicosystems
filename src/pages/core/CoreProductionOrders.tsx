@@ -153,6 +153,21 @@ const PROD_STATUSES = ["in_production", "partially_completed"];
 const DONE_STATUSES = ["completed"];
 const CLOSED_STATUSES = ["closed", "manually_closed"];
 
+type ManualItemLine = {
+  core_variant_id: string;
+  quantity: number;
+  size: string | null;
+  variant_sku: string | null;
+};
+
+type ManualItem = {
+  core_product_id: string;
+  core_sku: string | null;
+  product_name: string | null;
+  notes: string | null;
+  lines: ManualItemLine[];
+};
+
 export default function CoreProductionOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [allLines, setAllLines] = useState<Line[]>([]);
