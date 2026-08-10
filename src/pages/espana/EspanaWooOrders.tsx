@@ -218,7 +218,7 @@ export default function EspanaWooOrders() {
             {!loading && filtered.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">Sin pedidos. Pulsa “Sincronizar pedidos”.</TableCell></TableRow>}
             {filtered.map(o => {
               const items = itemsByOrder[o.id] || [];
-              const fab = items.filter(i => i.needs_fabrication).length;
+              const fabSummary = getFabricationSummary(items);
               const unmapped = items.filter(i => !i.variant_id).length;
               const isExp = expanded.has(o.id);
               return (
@@ -236,8 +236,24 @@ export default function EspanaWooOrders() {
                     <TableCell className="text-xs">
                       <div className="flex flex-wrap gap-1">
                         {o.esp_sale_id && <Badge variant="outline" className="gap-1"><Receipt className="h-3 w-3" /> Venta</Badge>}
-                        {fab > 0 && <Badge variant="outline" className="gap-1"><Hammer className="h-3 w-3" /> Fab ×{fab}</Badge>}
                         {unmapped > 0 && <Badge variant="destructive" className="text-[10px]">{unmapped} sin mapear</Badge>}
+                        {fabSummary && (
+                          <>
+                            {fabSummary.allDelivered ? (
+                              <Badge className="bg-emerald-600 gap-1 text-[10px]"><CheckCircle2 className="h-3 w-3" /> Fabricado</Badge>
+                            ) : fabSummary.anyInProgress ? (
+                              <Badge className="bg-blue-500 gap-1 text-[10px]"><Loader2 className="h-3 w-3 animate-spin" /> En fabricación</Badge>
+                            ) : fabSummary.anyReady ? (
+                              <Badge className="bg-violet-500 gap-1 text-[10px]"><CheckCircle2 className="h-3 w-3" /> Listo</Badge>
+                            ) : fabSummary.anyPending ? (
+                              <Badge className="bg-amber-500 gap-1 text-[10px]"><AlertCircle className="h-3 w-3" /> Fab pendiente</Badge>
+                            ) : fabSummary.anyCancelled ? (
+                              <Badge variant="secondary" className="gap-1 text-[10px]"><XCircle className="h-3 w-3" /> Fab cancelada</Badge>
+                            ) : (
+                              <Badge variant="outline" className="gap-1 text-[10px]"><Hammer className="h-3 w-3" /> Fab ×{fabSummary.count}</Badge>
+                            )}
+                          </>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{isExp ? "▴" : "▾"}</TableCell>
@@ -255,7 +271,18 @@ export default function EspanaWooOrders() {
                               </div>
                               <div className="flex items-center gap-1">
                                 {!it.variant_id && <Badge variant="destructive" className="text-[10px]">No mapeado</Badge>}
-                                {it.needs_fabrication && <Badge variant="outline" className="text-[10px] gap-1"><Hammer className="h-3 w-3" />Fabricación</Badge>}
+                                {it.needs_fabrication && (
+                                  <Badge className={it.fabrication_status ? FAB_STATUS_COLORS[it.fabrication_status] || "bg-zinc-500" : "bg-amber-500"}>
+                                    {it.fabrication_status ? (
+                                      <span className="flex items-center gap-1">
+                                        {it.fabrication_status === "delivered_to_shipping" ? <CheckCircle2 className="h-3 w-3" /> : <Hammer className="h-3 w-3" />}
+                                        {FAB_STATUS_LABEL[it.fabrication_status] || it.fabrication_status}
+                                      </span>
+                                    ) : (
+                                      <span className="flex items-center gap-1"><Hammer className="h-3 w-3" />Fabricación</span>
+                                    )}
+                                  </Badge>
+                                )}
                                 <span className="ml-2 font-semibold">€{Number(it.total_eur).toFixed(2)}</span>
                               </div>
                             </div>
