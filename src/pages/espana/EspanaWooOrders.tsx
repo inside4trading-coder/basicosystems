@@ -32,8 +32,33 @@ interface ItemRow {
   variant_id: string | null;
   needs_fabrication: boolean;
   fabrication_request_id: string | null;
+  fabrication_status: string | null;
+  fabrication_source_type: string | null;
   total_eur: number;
 }
+
+type FabStatus = "pending" | "pending_approval" | "in_progress" | "ready" | "delivered_to_shipping" | "cancelled" | "rejected";
+
+const FAB_STATUS_LABEL: Record<string, string> = {
+  pending: "Pendiente",
+  pending_approval: "Pendiente de aprobación",
+  in_progress: "En fabricación",
+  ready: "Listo",
+  delivered_to_shipping: "Entregado",
+  cancelled: "Cancelado",
+  rejected: "Rechazado",
+};
+
+const FAB_STATUS_COLORS: Record<string, string> = {
+  pending: "bg-amber-500",
+  pending_approval: "bg-amber-400",
+  in_progress: "bg-blue-500",
+  ready: "bg-violet-500",
+  delivered_to_shipping: "bg-emerald-600",
+  cancelled: "bg-zinc-400",
+  rejected: "bg-zinc-400",
+};
+
 
 const STATUS_COLORS: Record<string, string> = {
   completed: "bg-emerald-600",
