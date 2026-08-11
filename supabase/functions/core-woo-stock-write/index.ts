@@ -665,7 +665,10 @@ Deno.serve(async (req) => {
           method: "PUT",
           body: simulatedPayload,
           preview_generated_at: new Date().toISOString(),
+          woo_stock_checked_before_at: wooCheckedBeforeAt,
+          preview_source: body.preview_source ?? "manual_preview",
         },
+
         status: "preview",
         idempotency_key,
         created_by: userId,
