@@ -608,6 +608,7 @@ Deno.serve(async (req) => {
             : `products/${(product as any)?.woo_product_id}`,
           method: "PUT",
           body: simulatedPayload,
+          preview_generated_at: new Date().toISOString(),
         },
         status: "preview",
         idempotency_key,
