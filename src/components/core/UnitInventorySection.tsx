@@ -108,14 +108,53 @@ export function UnitInventorySection({ unit, processes }: Props) {
 
   const canEnter = blockers.length === 0 && !enteredInventory;
 
+  const activePreview = latestLog && latestLog.status === "preview" ? latestLog : null;
+  const previewStale = activePreview ? isPreviewStale(activePreview) : false;
+
+  async function parseEdgeError(error: any): Promise<any | null> {
+    try {
+      const ctx = error?.context;
+      if (ctx && typeof ctx.text === "function") {
+        const t = await ctx.clone().text();
+        try { return JSON.parse(t); } catch { return { message: t }; }
+      }
+    } catch { /* ignore */ }
+    return null;
+  }
+
+  async function handleRegenerate() {
+    if (!activePreview) return;
+    setWorking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("core-woo-stock-write", {
+        body: { action: "regenerate", preview_log_id: activePreview.id },
+      });
+      if (error) {
+        const b = await parseEdgeError(error);
+        throw new Error(b?.message ?? b?.error ?? error.message);
+      }
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const p = (data as any)?.preview;
+      toast({
+        title: "Stock esperado actualizado",
+        description: `Stock Woo actual: ${p?.stock_before ?? "?"} → esperado ${p?.stock_after_expected ?? "?"}`,
+      });
+      await reload();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setWorking(false);
+    }
+  }
+
   async function handleAddToInventory() {
     setWorking(true);
     try {
       // 1) Reutilizar entrada preparada si existe; si no, crearla.
-      let previewId: string | null =
-        latestLog && latestLog.status === "preview" ? latestLog.id : null;
+      let previewId: string | null = activePreview && !previewStale ? activePreview.id : null;
 
       if (!previewId) {
+
         const { data, error } = await supabase.functions.invoke("core-woo-stock-write", {
           body: {
             production_unit_id: unit.id,
