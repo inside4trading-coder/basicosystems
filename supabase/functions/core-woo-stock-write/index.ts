@@ -426,14 +426,25 @@ Deno.serve(async (req) => {
       }
       if (verifiedStock !== null && Number.isNaN(verifiedStock)) verifiedStock = null;
 
+      const wooCheckedAfterAt = new Date().toISOString();
       const stockReal = verifiedStock ?? confirmedStock;
       const verified = verifyError === null && stockReal === newStock;
 
-      if (verifiedStock !== null && verifiedStock !== confirmedStock) {
-        await admin.from("core_woo_write_logs").update({
-          stock_after_confirmed: verifiedStock,
-        }).eq("id", preview.id);
-      }
+      await admin.from("core_woo_write_logs").update({
+        ...(verifiedStock !== null && verifiedStock !== confirmedStock
+          ? { stock_after_confirmed: verifiedStock }
+          : {}),
+        request_payload: {
+          ...((preview.request_payload as any) ?? {}),
+          target: endpoint,
+          method: "PUT",
+          body: writeBody,
+          preview_source: previewSource,
+          woo_stock_checked_before_at: wooCheckedBeforeAt,
+          woo_stock_checked_after_at: wooCheckedAfterAt,
+          confirmed_at: confirmedAt,
+        },
+      }).eq("id", preview.id);
 
       return json({
         ok: true,
@@ -443,8 +454,13 @@ Deno.serve(async (req) => {
         verification: {
           verified,
           verify_error: verifyError,
+          preview_source: previewSource,
+          woo_stock_checked_before_at: wooCheckedBeforeAt,
+          woo_stock_checked_after_at: wooCheckedAfterAt,
+          confirmed_at: confirmedAt,
           unit_code: preview.unit_code ?? null,
           sku: preview.variant_sku ?? preview.sku ?? null,
+
           size: preview.size ?? null,
           woo_product_id: preview.woo_product_id ?? null,
           woo_variation_id: preview.woo_variation_id ?? null,
