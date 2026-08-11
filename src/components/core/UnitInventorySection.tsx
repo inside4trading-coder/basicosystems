@@ -15,6 +15,8 @@ import { Package, AlertTriangle, CheckCircle2, ExternalLink, Loader2, ShieldChec
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { isPreviewStale, previewAgeLabel, INVENTORY_PREVIEW_TTL_MINUTES } from "@/lib/coreInventoryPreview";
+import { InventoryWriteResult, type InventoryVerification } from "@/components/core/InventoryWriteResult";
+
 
 const PREVIEW_STALE_TEXT_SCAN =
   `Esta entrada fue preparada hace más de ${INVENTORY_PREVIEW_TTL_MINUTES} minutos. ` +
