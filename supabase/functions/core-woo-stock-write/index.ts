@@ -476,6 +476,7 @@ Deno.serve(async (req) => {
     );
     let usedLiveWoo = false;
     let liveFetchError: string | null = null;
+    let wooCheckedBeforeAt: string | null = null;
 
     if (consumerKey && consumerSecret && wooProductId) {
       const endpoint = wooVariationId
@@ -490,6 +491,7 @@ Deno.serve(async (req) => {
         if (r.ok) {
           stock_before = Number(j?.stock_quantity ?? 0);
           usedLiveWoo = true;
+          wooCheckedBeforeAt = new Date().toISOString();
           // Sincronizar caché local para que la UI no muestre valores viejos
           if (wooVariationId && (unit as any).core_variant_id) {
             await admin
@@ -508,7 +510,23 @@ Deno.serve(async (req) => {
       } catch (e: any) {
         liveFetchError = e?.message ?? String(e);
       }
+    } else {
+      liveFetchError = !wooProductId
+        ? "Falta woo_product_id"
+        : "Faltan credenciales WooCommerce";
     }
+
+    // BLINDAJE: nunca preparar una entrada con stock cacheado.
+    // Sin lectura real de Woo no se puede ingresar la prenda.
+    if (!usedLiveWoo) {
+      return json({
+        error: "No se pudo consultar el stock actual de WooCommerce. No se ingresó la prenda.",
+        woo_unavailable: true,
+        details: liveFetchError,
+      }, 502);
+    }
+
+
 
     let stock_after_expected = stock_before;
     if (action_type === "stock_increase") stock_after_expected = stock_before + quantity;
