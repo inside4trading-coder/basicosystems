@@ -14,7 +14,11 @@ import {
 import { Package, AlertTriangle, CheckCircle2, ExternalLink, Loader2, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { isPreviewStale, previewAgeLabel } from "@/lib/coreInventoryPreview";
+import { isPreviewStale, previewAgeLabel, INVENTORY_PREVIEW_TTL_MINUTES } from "@/lib/coreInventoryPreview";
+
+const PREVIEW_STALE_TEXT_SCAN =
+  `Esta entrada fue preparada hace más de ${INVENTORY_PREVIEW_TTL_MINUTES} minutos. ` +
+  `Actualiza el stock esperado antes de ingresar a inventario.`;
 
 const UNIT_STATE_LABEL: Record<string, string> = {
   pending: "Pendiente",
@@ -149,6 +153,14 @@ export function UnitInventorySection({ unit, processes }: Props) {
   }
 
   async function handleAddToInventory() {
+    if (activePreview && previewStale) {
+      toast({
+        title: "Entrada desactualizada",
+        description: PREVIEW_STALE_TEXT_SCAN,
+        variant: "destructive",
+      });
+      return;
+    }
     setWorking(true);
     try {
       // 1) Reutilizar entrada preparada si existe; si no, crearla.
@@ -268,7 +280,13 @@ export function UnitInventorySection({ unit, processes }: Props) {
             <Card className="p-3 text-xs space-y-1 bg-background">
               <div className="flex items-center justify-between">
                 <span className="font-medium">Entrada preparada</span>
-                <Badge variant="secondary" className="text-[10px]">{latestLog.status}</Badge>
+                {activePreview ? (
+                  <Badge variant={previewStale ? "destructive" : "secondary"} className="text-[10px]">
+                    {previewStale ? "Desactualizada" : "Vigente"}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px]">{latestLog.status}</Badge>
+                )}
               </div>
               <div className="text-muted-foreground">
                 stock {latestLog.stock_before} → {latestLog.stock_after_expected}
@@ -288,8 +306,7 @@ export function UnitInventorySection({ unit, processes }: Props) {
                 <p className={`text-[11px] ${previewStale ? "text-amber-700" : "text-muted-foreground"}`}>
                   Entrada preparada {previewAgeLabel(activePreview)} ·{" "}
                   {previewStale ? "Desactualizada" : "Vigente"}
-                  {previewStale &&
-                    " — Antes de ingresar a inventario, actualiza el preview para usar el stock Woo actual."}
+                  {previewStale && ` — ${PREVIEW_STALE_TEXT_SCAN}`}
                 </p>
               )}
               <div className="flex gap-2 flex-wrap items-center">
