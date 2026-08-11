@@ -704,6 +704,18 @@ export default function CoreInventory() {
                       <TableCell className="text-xs">{l.mode}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={tone(l.status)}>{l.status}</Badge>
+                        {l.status === "success" && l.stock_after_confirmed != null && (
+                          l.stock_after_confirmed === l.stock_after_expected ? (
+                            <Badge variant="outline" className="ml-1 text-[10px] border-green-600/40 text-green-700">
+                              Verificada
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive" className="ml-1 text-[10px]">
+                              Discrepancia
+                            </Badge>
+                          )
+                        )}
+
                       </TableCell>
                       <TableCell className="text-right">{l.quantity_delta ?? "—"}</TableCell>
                       <TableCell className="font-mono text-[10px] text-muted-foreground">
