@@ -19,7 +19,29 @@ export type InventoryVerification = {
   difference?: number | null;
   checked_at?: string | null;
   user_email?: string | null;
+  preview_source?: string | null;
+  woo_stock_checked_before_at?: string | null;
+  woo_stock_checked_after_at?: string | null;
+  confirmed_at?: string | null;
 };
+
+const PREVIEW_SOURCE_LABEL: Record<string, string> = {
+  generated_on_confirm: "generada ahora",
+  regenerated: "actualizada antes de confirmar",
+  reused_valid_preview: "reutilizada vigente",
+  manual_preview: "preparada manualmente",
+};
+
+export function previewSourceLabel(v: InventoryVerification) {
+  if (!v.preview_source) return "reutilizada vigente";
+  return PREVIEW_SOURCE_LABEL[v.preview_source] ?? v.preview_source;
+}
+
+function dt(value?: string | null) {
+  if (!value) return "—";
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? "—" : d.toLocaleString();
+}
 
 function skuLabel(v: InventoryVerification) {
   return [v.sku ?? "—", v.size ?? ""].filter(Boolean).join(" ");
@@ -30,17 +52,21 @@ export function buildInventoryReport(v: InventoryVerification) {
     "ALERTA INVENTARIO BASICO CORE",
     `Unidad: ${v.unit_code ?? "—"}`,
     `SKU: ${skuLabel(v)}`,
+    `Entrada preparada: ${previewSourceLabel(v)}`,
+    `Stock Woo consultado: ${dt(v.woo_stock_checked_before_at)}`,
     `Woo product: ${v.woo_product_id ?? "—"}`,
     `Woo variation: ${v.woo_variation_id ?? "—"}`,
     `Stock antes: ${v.stock_before ?? "—"}`,
     `Delta: ${v.delta != null ? (v.delta > 0 ? `+${v.delta}` : v.delta) : "—"}`,
     `Stock esperado: ${v.stock_expected ?? "—"}`,
     `Stock real: ${v.stock_real ?? "—"}`,
+    `Verificación final Woo: ${dt(v.woo_stock_checked_after_at)}`,
     `Diferencia: ${v.difference ?? "—"}`,
     `Fecha: ${v.checked_at ? new Date(v.checked_at).toLocaleString() : new Date().toLocaleString()}`,
     `Usuario: ${v.user_email ?? "—"}`,
   ].join("\n");
 }
+
 
 export function InventoryWriteResult({
   verification,
