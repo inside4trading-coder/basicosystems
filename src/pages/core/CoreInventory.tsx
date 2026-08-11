@@ -413,6 +413,10 @@ export default function CoreInventory() {
           difference: v?.difference ?? 0,
           checked_at: v?.checked_at ?? new Date().toISOString(),
           user_email: userData?.user?.email ?? null,
+          preview_source: v?.preview_source ?? "reused_valid_preview",
+          woo_stock_checked_before_at: v?.woo_stock_checked_before_at ?? null,
+          woo_stock_checked_after_at: v?.woo_stock_checked_after_at ?? null,
+          confirmed_at: v?.confirmed_at ?? null,
         };
         setLastResult(verification);
         toast({

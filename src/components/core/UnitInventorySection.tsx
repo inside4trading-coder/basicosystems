@@ -167,19 +167,29 @@ export function UnitInventorySection({ unit, processes }: Props) {
     }
     setWorking(true);
     try {
-      // 1) Reutilizar entrada preparada si existe; si no, crearla.
+      // 1) Reutilizar entrada preparada si existe; si no, crearla con stock Woo fresco.
       let previewId: string | null = activePreview && !previewStale ? activePreview.id : null;
+      let previewSourceHint: string = "reused_valid_preview";
 
       if (!previewId) {
+        previewSourceHint = "generated_on_confirm";
 
         const { data, error } = await supabase.functions.invoke("core-woo-stock-write", {
           body: {
             production_unit_id: unit.id,
             action_type: "stock_increase",
             quantity: 1,
+            preview_source: "generated_on_confirm",
           },
         });
-        if (error) throw error;
+        if (error) {
+          const b = await parseEdgeError(error);
+          throw new Error(
+            b?.error ??
+              b?.message ??
+              "No se pudo consultar el stock actual de WooCommerce. No se ingresó la prenda.",
+          );
+        }
         const resp: any = data;
         if (resp?.skipped) {
           toast({ title: "Bloqueado", description: resp.message || "Esta unidad ya fue ingresada.", variant: "destructive" });
@@ -199,7 +209,10 @@ export function UnitInventorySection({ unit, processes }: Props) {
         const { data, error } = await supabase.functions.invoke("core-woo-stock-write", {
           body: { action: "confirm", preview_log_id: previewId },
         });
-        if (error) throw error;
+        if (error) {
+          const b = await parseEdgeError(error);
+          throw new Error(b?.error ?? b?.message ?? error.message);
+        }
         const resp: any = data;
         if (resp?.ok) {
           const v = resp.verification as InventoryVerification | undefined;
@@ -219,7 +232,12 @@ export function UnitInventorySection({ unit, processes }: Props) {
             difference: v?.difference ?? 0,
             checked_at: v?.checked_at ?? new Date().toISOString(),
             user_email: userData?.user?.email ?? null,
+            preview_source: v?.preview_source ?? previewSourceHint,
+            woo_stock_checked_before_at: v?.woo_stock_checked_before_at ?? null,
+            woo_stock_checked_after_at: v?.woo_stock_checked_after_at ?? null,
+            confirmed_at: v?.confirmed_at ?? null,
           };
+
           setLastResult(verification);
           toast({
             title: verification.verified

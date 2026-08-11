@@ -43,6 +43,8 @@ interface Body {
   quantity?: number;
   action?: "preview" | "confirm" | "regenerate";
   preview_log_id?: string; // requerido en confirm / regenerate
+  preview_source?: string; // generated_on_confirm | regenerated | manual_preview
+
 }
 
 
@@ -141,7 +143,10 @@ Deno.serve(async (req) => {
             method: "PUT",
             body: { stock_quantity: newExpected, manage_stock: true },
             preview_generated_at: new Date().toISOString(),
+            woo_stock_checked_before_at: new Date().toISOString(),
+            preview_source: "regenerated",
             regenerated_by: userId,
+
           },
         })
         .eq("id", preview.id)
@@ -273,6 +278,7 @@ Deno.serve(async (req) => {
       // 1) Re-leer stock real
       let realStockBefore: number;
       let getRespBody: any = null;
+      let wooCheckedBeforeAt: string | null = null;
       try {
         const getResp = await fetch(endpoint, {
           headers: { Authorization: auth, "Content-Type": "application/json" },
@@ -284,15 +290,25 @@ Deno.serve(async (req) => {
             error_message: `GET Woo falló: ${getResp.status}`,
             response_payload: getRespBody,
           }).eq("id", preview.id);
-          return json({ error: `GET Woo falló: ${getResp.status}`, details: getRespBody }, 502);
+          return json({
+            error: "No se pudo consultar el stock actual de WooCommerce. No se ingresó la prenda.",
+            woo_unavailable: true,
+            details: getRespBody,
+          }, 502);
         }
         realStockBefore = Number(getRespBody?.stock_quantity ?? 0);
+        wooCheckedBeforeAt = new Date().toISOString();
+
       } catch (e: any) {
         await admin.from("core_woo_write_logs").update({
           status: "failed",
           error_message: `Error consultando Woo: ${e?.message ?? String(e)}`,
         }).eq("id", preview.id);
-        return json({ error: `Error consultando Woo: ${e?.message ?? String(e)}` }, 502);
+        return json({
+          error: "No se pudo consultar el stock actual de WooCommerce. No se ingresó la prenda.",
+          woo_unavailable: true,
+          details: e?.message ?? String(e),
+        }, 502);
       }
 
       // 2) Validar que el stock no cambió desde preview
@@ -322,12 +338,24 @@ Deno.serve(async (req) => {
         if (!ALLOWED_WOO_FIELDS.has(k)) delete writeBody[k];
       }
 
+      const confirmedAt = new Date().toISOString();
+      const previewSource =
+        (preview.request_payload as any)?.preview_source ?? "reused_valid_preview";
       await admin.from("core_woo_write_logs").update({
         status: "confirmed",
         confirmed_by: userId,
-        confirmed_at: new Date().toISOString(),
-        request_payload: { target: endpoint, method: "PUT", body: writeBody },
+        confirmed_at: confirmedAt,
+        request_payload: {
+          ...((preview.request_payload as any) ?? {}),
+          target: endpoint,
+          method: "PUT",
+          body: writeBody,
+          preview_source: previewSource,
+          woo_stock_checked_before_at: wooCheckedBeforeAt,
+          confirmed_at: confirmedAt,
+        },
       }).eq("id", preview.id);
+
 
       // 4) PUT a Woo
       let putRespBody: any = null;
@@ -398,14 +426,25 @@ Deno.serve(async (req) => {
       }
       if (verifiedStock !== null && Number.isNaN(verifiedStock)) verifiedStock = null;
 
+      const wooCheckedAfterAt = new Date().toISOString();
       const stockReal = verifiedStock ?? confirmedStock;
       const verified = verifyError === null && stockReal === newStock;
 
-      if (verifiedStock !== null && verifiedStock !== confirmedStock) {
-        await admin.from("core_woo_write_logs").update({
-          stock_after_confirmed: verifiedStock,
-        }).eq("id", preview.id);
-      }
+      await admin.from("core_woo_write_logs").update({
+        ...(verifiedStock !== null && verifiedStock !== confirmedStock
+          ? { stock_after_confirmed: verifiedStock }
+          : {}),
+        request_payload: {
+          ...((preview.request_payload as any) ?? {}),
+          target: endpoint,
+          method: "PUT",
+          body: writeBody,
+          preview_source: previewSource,
+          woo_stock_checked_before_at: wooCheckedBeforeAt,
+          woo_stock_checked_after_at: wooCheckedAfterAt,
+          confirmed_at: confirmedAt,
+        },
+      }).eq("id", preview.id);
 
       return json({
         ok: true,
@@ -415,8 +454,13 @@ Deno.serve(async (req) => {
         verification: {
           verified,
           verify_error: verifyError,
+          preview_source: previewSource,
+          woo_stock_checked_before_at: wooCheckedBeforeAt,
+          woo_stock_checked_after_at: wooCheckedAfterAt,
+          confirmed_at: confirmedAt,
           unit_code: preview.unit_code ?? null,
           sku: preview.variant_sku ?? preview.sku ?? null,
+
           size: preview.size ?? null,
           woo_product_id: preview.woo_product_id ?? null,
           woo_variation_id: preview.woo_variation_id ?? null,
@@ -476,6 +520,7 @@ Deno.serve(async (req) => {
     );
     let usedLiveWoo = false;
     let liveFetchError: string | null = null;
+    let wooCheckedBeforeAt: string | null = null;
 
     if (consumerKey && consumerSecret && wooProductId) {
       const endpoint = wooVariationId
@@ -490,6 +535,7 @@ Deno.serve(async (req) => {
         if (r.ok) {
           stock_before = Number(j?.stock_quantity ?? 0);
           usedLiveWoo = true;
+          wooCheckedBeforeAt = new Date().toISOString();
           // Sincronizar caché local para que la UI no muestre valores viejos
           if (wooVariationId && (unit as any).core_variant_id) {
             await admin
@@ -508,7 +554,23 @@ Deno.serve(async (req) => {
       } catch (e: any) {
         liveFetchError = e?.message ?? String(e);
       }
+    } else {
+      liveFetchError = !wooProductId
+        ? "Falta woo_product_id"
+        : "Faltan credenciales WooCommerce";
     }
+
+    // BLINDAJE: nunca preparar una entrada con stock cacheado.
+    // Sin lectura real de Woo no se puede ingresar la prenda.
+    if (!usedLiveWoo) {
+      return json({
+        error: "No se pudo consultar el stock actual de WooCommerce. No se ingresó la prenda.",
+        woo_unavailable: true,
+        details: liveFetchError,
+      }, 502);
+    }
+
+
 
     let stock_after_expected = stock_before;
     if (action_type === "stock_increase") stock_after_expected = stock_before + quantity;
@@ -589,11 +651,11 @@ Deno.serve(async (req) => {
             target: targetPath,
             method: "PUT",
             body: { stock_quantity: stock_after_expected, manage_stock: true },
-            preview_generated_at: usedLiveWoo
-              ? new Date().toISOString()
-              : (existingPreview as any).request_payload?.preview_generated_at ??
-                (existingPreview as any).created_at,
+            preview_generated_at: new Date().toISOString(),
+            woo_stock_checked_before_at: wooCheckedBeforeAt,
+            preview_source: body.preview_source ?? "regenerated",
           },
+
         })
         .eq("id", (existingPreview as any).id)
         .eq("status", "preview")
@@ -647,7 +709,10 @@ Deno.serve(async (req) => {
           method: "PUT",
           body: simulatedPayload,
           preview_generated_at: new Date().toISOString(),
+          woo_stock_checked_before_at: wooCheckedBeforeAt,
+          preview_source: body.preview_source ?? "manual_preview",
         },
+
         status: "preview",
         idempotency_key,
         created_by: userId,
