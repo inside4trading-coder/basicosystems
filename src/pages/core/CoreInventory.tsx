@@ -77,6 +77,8 @@ type WooLog = {
   stock_before: number | null;
   quantity_delta: number | null;
   stock_after_expected: number | null;
+  stock_after_confirmed?: number | null;
+
   request_payload: any;
   idempotency_key: string | null;
   error_message: string | null;
