@@ -280,7 +280,13 @@ export function UnitInventorySection({ unit, processes }: Props) {
             <Card className="p-3 text-xs space-y-1 bg-background">
               <div className="flex items-center justify-between">
                 <span className="font-medium">Entrada preparada</span>
-                <Badge variant="secondary" className="text-[10px]">{latestLog.status}</Badge>
+                {activePreview ? (
+                  <Badge variant={previewStale ? "destructive" : "secondary"} className="text-[10px]">
+                    {previewStale ? "Desactualizada" : "Vigente"}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px]">{latestLog.status}</Badge>
+                )}
               </div>
               <div className="text-muted-foreground">
                 stock {latestLog.stock_before} → {latestLog.stock_after_expected}
@@ -300,8 +306,7 @@ export function UnitInventorySection({ unit, processes }: Props) {
                 <p className={`text-[11px] ${previewStale ? "text-amber-700" : "text-muted-foreground"}`}>
                   Entrada preparada {previewAgeLabel(activePreview)} ·{" "}
                   {previewStale ? "Desactualizada" : "Vigente"}
-                  {previewStale &&
-                    " — Antes de ingresar a inventario, actualiza el preview para usar el stock Woo actual."}
+                  {previewStale && ` — ${PREVIEW_STALE_TEXT_SCAN}`}
                 </p>
               )}
               <div className="flex gap-2 flex-wrap items-center">
