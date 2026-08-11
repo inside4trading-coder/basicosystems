@@ -15,6 +15,16 @@ import { Package, AlertTriangle, CheckCircle2, ExternalLink, Loader2, ShieldChec
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
+const UNIT_STATE_LABEL: Record<string, string> = {
+  pending: "Pendiente",
+  in_production: "En producción",
+  completed: "Lista para inventario",
+  in_dispatch: "En despacho",
+  sent_to_store: "Enviada a tienda",
+  received_in_store: "Recibida en tienda",
+  entered_inventory: "Ingresada a inventario",
+};
+
 type Unit = {
   id: string;
   unit_code: string;
