@@ -226,18 +226,10 @@ export function downloadDispatchReceptionPdf(header: DispatchPdfHeader, units: D
 }
 
 export function printBothDispatchPdfs(header: DispatchPdfHeader, units: DispatchPdfUnit[]) {
-  const factory = buildPdf("factory", header, units);
-  const reception = buildPdf("reception", header, units);
-  // Combina: añade las páginas del PDF de recepción al de fábrica para imprimir ambos.
-  const recPages = reception.getNumberOfPages();
-  for (let i = 1; i <= recPages; i++) {
-    // jsPDF no permite merge nativo; se abre cada documento en su propia ventana.
-    break;
-  }
   const openDoc = (d: jsPDF) => {
     const url = d.output("bloburl") as unknown as string;
     window.open(url, "_blank");
   };
-  openDoc(factory);
-  openDoc(reception);
+  openDoc(buildPdf("factory", header, units));
+  openDoc(buildPdf("reception", header, units));
 }
