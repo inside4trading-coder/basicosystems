@@ -189,6 +189,18 @@ Deno.serve(async (req) => {
       if (Number(preview.quantity_delta) !== 1) {
         return json({ error: "Solo +1 por unidad está permitido." }, 400);
       }
+      // Vencimiento: nunca escribir con un snapshot viejo.
+      if (isPreviewExpired(preview)) {
+        return json({
+          ok: false,
+          expired_preview: true,
+          message:
+            `Esta entrada fue preparada hace más de ${INVENTORY_PREVIEW_TTL_MINUTES} minutos. ` +
+            `Actualiza el stock esperado para usar el stock Woo actual antes de confirmar.`,
+        }, 409);
+      }
+
+
 
       // Idempotencia fuerte
       const { data: active } = await admin
