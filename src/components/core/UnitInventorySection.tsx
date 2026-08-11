@@ -57,6 +57,8 @@ export function UnitInventorySection({ unit, processes }: Props) {
   const [activeLog, setActiveLog] = useState<any | null>(null); // confirmed/success
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [lastResult, setLastResult] = useState<InventoryVerification | null>(null);
+
 
   async function reload() {
     setLoading(true);
