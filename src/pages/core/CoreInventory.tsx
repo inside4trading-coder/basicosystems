@@ -25,6 +25,11 @@ import {
   PREVIEW_STALE_TEXT,
 } from "@/lib/coreInventoryPreview";
 import {
+  InventoryWriteResult,
+  type InventoryVerification,
+} from "@/components/core/InventoryWriteResult";
+
+import {
   Warehouse,
   PlayCircle,
   RefreshCw,
