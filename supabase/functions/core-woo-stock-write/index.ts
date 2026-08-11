@@ -338,12 +338,24 @@ Deno.serve(async (req) => {
         if (!ALLOWED_WOO_FIELDS.has(k)) delete writeBody[k];
       }
 
+      const confirmedAt = new Date().toISOString();
+      const previewSource =
+        (preview.request_payload as any)?.preview_source ?? "reused_valid_preview";
       await admin.from("core_woo_write_logs").update({
         status: "confirmed",
         confirmed_by: userId,
-        confirmed_at: new Date().toISOString(),
-        request_payload: { target: endpoint, method: "PUT", body: writeBody },
+        confirmed_at: confirmedAt,
+        request_payload: {
+          ...((preview.request_payload as any) ?? {}),
+          target: endpoint,
+          method: "PUT",
+          body: writeBody,
+          preview_source: previewSource,
+          woo_stock_checked_before_at: wooCheckedBeforeAt,
+          confirmed_at: confirmedAt,
+        },
       }).eq("id", preview.id);
+
 
       // 4) PUT a Woo
       let putRespBody: any = null;
