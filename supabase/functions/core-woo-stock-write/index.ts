@@ -43,6 +43,8 @@ interface Body {
   quantity?: number;
   action?: "preview" | "confirm" | "regenerate";
   preview_log_id?: string; // requerido en confirm / regenerate
+  preview_source?: string; // generated_on_confirm | regenerated | manual_preview
+
 }
 
 
