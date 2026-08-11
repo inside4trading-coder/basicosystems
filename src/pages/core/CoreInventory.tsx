@@ -519,6 +519,7 @@ export default function CoreInventory() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Fecha</TableHead>
+                    <TableHead>Edad</TableHead>
                     <TableHead>Unidad</TableHead>
                     <TableHead>SKU variante</TableHead>
                     <TableHead>Talla</TableHead>
@@ -534,14 +535,19 @@ export default function CoreInventory() {
                 <TableBody>
                   {previewLogs.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                         No hay entradas preparadas activas.
                       </TableCell>
                     </TableRow>
                   )}
-                  {previewLogs.map((l) => (
+                  {previewLogs.map((l) => {
+                    const stale = isPreviewStale(l);
+                    return (
                     <TableRow key={l.id}>
-                      <TableCell className="text-xs">{new Date(l.created_at).toLocaleString()}</TableCell>
+                      <TableCell className="text-xs">
+                        {(previewGeneratedAt(l) ?? new Date(l.created_at)).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{previewAgeLabel(l)}</TableCell>
                       <TableCell className="font-mono text-xs">{l.unit_code ?? "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{l.variant_sku ?? l.sku ?? "—"}</TableCell>
                       <TableCell>{l.size ?? "—"}</TableCell>
@@ -555,15 +561,21 @@ export default function CoreInventory() {
                       </TableCell>
                       <TableCell className="text-right font-medium">{l.stock_after_expected ?? 0}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={tone(l.status)}>
-                          {l.status === "preview" ? "entrada preparada" : l.status}
-                        </Badge>
+                        {stale ? (
+                          <Badge variant="outline" className="bg-amber-500/15 text-amber-700 border-amber-300">
+                            Desactualizada
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className={tone(l.status)}>
+                            Vigente
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button size="sm" variant="ghost" onClick={() => setDetail(l)}>
                           <Eye className="h-4 w-4" /> Ver entrada preparada
                         </Button>
-                        {writeMode === "manual_confirm" && l.status === "preview" && (
+                        {writeMode === "manual_confirm" && l.status === "preview" && !stale && (
                           <Button
                             size="sm"
                             variant="default"
@@ -574,14 +586,14 @@ export default function CoreInventory() {
                         )}
                         <Button
                           size="sm"
-                          variant="ghost"
-                          onClick={async () => {
-                            const u = units.find((x) => x.id === l.production_unit_id);
-                            if (u) await generatePreview(u);
-                          }}
+                          variant={stale ? "default" : "ghost"}
+                          disabled={busyUnit === l.id}
+                          title="Consulta WooCommerce ahora y recalcula el stock esperado antes de confirmar."
+                          onClick={() => regeneratePreview(l)}
                         >
-                          <RefreshCw className="h-4 w-4" /> Regenerar
+                          <RefreshCw className={`h-4 w-4 ${busyUnit === l.id ? "animate-spin" : ""}`} /> Actualizar stock esperado
                         </Button>
+
                         <Button size="sm" variant="ghost" onClick={() => setDiscarding(l)}>
                           <XCircle className="h-4 w-4" /> Descartar
                         </Button>
