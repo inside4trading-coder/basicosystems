@@ -368,6 +368,14 @@ export default function CoreInventory() {
           const msg = body?.message ?? body?.error ?? (error as any)?.message ?? "Error en la escritura";
           toast({ title: "No se pudo confirmar", description: msg, variant: "destructive" });
         }
+      } else if ((data as any)?.expired_preview) {
+        toast({
+          title: "Entrada preparada desactualizada",
+          description: (data as any)?.message ?? PREVIEW_STALE_TEXT,
+          variant: "destructive",
+        });
+        setConfirming(null);
+        setConfirmChecked(false);
       } else if ((data as any)?.stale_preview) {
         toast({
           title: "Stock cambió en WooCommerce",
