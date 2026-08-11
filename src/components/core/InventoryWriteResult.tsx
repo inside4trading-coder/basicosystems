@@ -96,9 +96,14 @@ export function InventoryWriteResult({
         <div className="text-sm text-foreground/90 space-y-0.5">
           <div>Unidad: <span className="font-mono">{v.unit_code ?? "—"}</span></div>
           <div>SKU: <span className="font-mono">{skuLabel(v)}</span></div>
+          <div>Entrada preparada: <strong>{previewSourceLabel(v)}</strong></div>
+          <div>Stock Woo consultado: {dt(v.woo_stock_checked_before_at)}</div>
           <div>Stock anterior: {v.stock_before ?? "—"}</div>
           <div>Agregado: {v.delta != null && v.delta > 0 ? `+${v.delta}` : v.delta ?? "—"}</div>
-          <div>Stock final: <strong>{v.stock_real ?? v.stock_expected ?? "—"}</strong></div>
+          <div>Stock esperado: {v.stock_expected ?? "—"}</div>
+          <div>Stock final real: <strong>{v.stock_real ?? v.stock_expected ?? "—"}</strong></div>
+          <div>Verificación: correcta {v.woo_stock_checked_after_at ? `· ${dt(v.woo_stock_checked_after_at)}` : ""}</div>
+
         </div>
         <p className="text-xs text-green-700 font-medium">Stock verificado correctamente.</p>
         {onDismiss && (
