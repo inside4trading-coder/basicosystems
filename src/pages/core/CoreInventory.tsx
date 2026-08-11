@@ -599,7 +599,7 @@ export default function CoreInventory() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  );})}
                 </TableBody>
               </Table>
             </CardContent>
