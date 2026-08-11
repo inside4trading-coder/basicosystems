@@ -16,14 +16,35 @@ const corsHeaders = {
 
 const ALLOWED_WOO_FIELDS = new Set(["stock_quantity", "manage_stock", "stock_status"]);
 const WC_BASE = "https://basicoclothes.com/wp-json/wc/v3";
+const INVENTORY_PREVIEW_TTL_MINUTES = 15;
+
+function previewGeneratedAt(log: any): number | null {
+  const raw = log?.request_payload?.preview_generated_at ?? log?.created_at ?? null;
+  if (!raw) return null;
+  const t = new Date(raw).getTime();
+  return isNaN(t) ? null : t;
+}
+
+function isPreviewExpired(log: any): boolean {
+  const t = previewGeneratedAt(log);
+  if (t === null) return true;
+  return Date.now() - t >= INVENTORY_PREVIEW_TTL_MINUTES * 60000;
+}
+
+async function fetchWooStock(endpoint: string, auth: string): Promise<{ ok: boolean; stock: number; body: any; status: number }> {
+  const r = await fetch(endpoint, { headers: { Authorization: auth, "Content-Type": "application/json" } });
+  const body = await r.json();
+  return { ok: r.ok, stock: Number(body?.stock_quantity ?? 0), body, status: r.status };
+}
 
 interface Body {
   production_unit_id?: string;
   action_type?: "stock_increase" | "stock_decrease" | "stock_set";
   quantity?: number;
-  action?: "preview" | "confirm";
-  preview_log_id?: string; // requerido en confirm
+  action?: "preview" | "confirm" | "regenerate";
+  preview_log_id?: string; // requerido en confirm / regenerate
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
