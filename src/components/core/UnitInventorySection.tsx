@@ -283,16 +283,46 @@ export function UnitInventorySection({ unit, processes }: Props) {
           )}
 
           {canEnter && mode !== "off" && (
-            <div className="flex gap-2 flex-wrap items-center">
-              <Button onClick={handleAddToInventory} disabled={working}>
-                {working ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
-                Agregar a inventario
-              </Button>
-              <Button variant="link" size="sm" className="text-xs px-1" onClick={() => navigate("/core/inventario")}>
-                <ExternalLink className="h-3 w-3 mr-1" /> Ver entrada preparada
-              </Button>
+            <div className="space-y-2">
+              {activePreview && (
+                <p className={`text-[11px] ${previewStale ? "text-amber-700" : "text-muted-foreground"}`}>
+                  Entrada preparada {previewAgeLabel(activePreview)} ·{" "}
+                  {previewStale ? "Desactualizada" : "Vigente"}
+                  {previewStale &&
+                    " — Antes de ingresar a inventario, actualiza el preview para usar el stock Woo actual."}
+                </p>
+              )}
+              <div className="flex gap-2 flex-wrap items-center">
+                {!activePreview && (
+                  <Button onClick={handleAddToInventory} disabled={working}>
+                    {working ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
+                    Agregar a inventario
+                  </Button>
+                )}
+                {activePreview && !previewStale && (
+                  <Button onClick={handleAddToInventory} disabled={working}>
+                    {working ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                    Confirmar entrada a inventario
+                  </Button>
+                )}
+                {activePreview && (
+                  <Button
+                    variant={previewStale ? "default" : "outline"}
+                    onClick={handleRegenerate}
+                    disabled={working}
+                    title="Consulta WooCommerce ahora y recalcula el stock esperado antes de confirmar."
+                  >
+                    {working ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Actualizar stock esperado
+                  </Button>
+                )}
+                <Button variant="link" size="sm" className="text-xs px-1" onClick={() => navigate("/core/inventario")}>
+                  <ExternalLink className="h-3 w-3 mr-1" /> Ver entrada preparada
+                </Button>
+              </div>
             </div>
           )}
+
 
           {mode === "off" && (
             <p className="text-xs text-destructive">
