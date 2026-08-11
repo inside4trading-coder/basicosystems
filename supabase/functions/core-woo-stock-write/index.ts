@@ -278,6 +278,7 @@ Deno.serve(async (req) => {
       // 1) Re-leer stock real
       let realStockBefore: number;
       let getRespBody: any = null;
+      let wooCheckedBeforeAt: string | null = null;
       try {
         const getResp = await fetch(endpoint, {
           headers: { Authorization: auth, "Content-Type": "application/json" },
@@ -289,9 +290,15 @@ Deno.serve(async (req) => {
             error_message: `GET Woo falló: ${getResp.status}`,
             response_payload: getRespBody,
           }).eq("id", preview.id);
-          return json({ error: `GET Woo falló: ${getResp.status}`, details: getRespBody }, 502);
+          return json({
+            error: "No se pudo consultar el stock actual de WooCommerce. No se ingresó la prenda.",
+            woo_unavailable: true,
+            details: getRespBody,
+          }, 502);
         }
         realStockBefore = Number(getRespBody?.stock_quantity ?? 0);
+        wooCheckedBeforeAt = new Date().toISOString();
+
       } catch (e: any) {
         await admin.from("core_woo_write_logs").update({
           status: "failed",
