@@ -607,11 +607,11 @@ Deno.serve(async (req) => {
             target: targetPath,
             method: "PUT",
             body: { stock_quantity: stock_after_expected, manage_stock: true },
-            preview_generated_at: usedLiveWoo
-              ? new Date().toISOString()
-              : (existingPreview as any).request_payload?.preview_generated_at ??
-                (existingPreview as any).created_at,
+            preview_generated_at: new Date().toISOString(),
+            woo_stock_checked_before_at: wooCheckedBeforeAt,
+            preview_source: body.preview_source ?? "regenerated",
           },
+
         })
         .eq("id", (existingPreview as any).id)
         .eq("status", "preview")
