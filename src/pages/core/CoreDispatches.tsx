@@ -356,7 +356,7 @@ function DispatchDetailDialog({
       toast({ title: "No se puede agregar", description: res.message, variant: "destructive" });
       return;
     }
-    const u = res.unit;
+    const u = res.unit as any;
     const { error } = await supabase.from("core_dispatch_units").insert({
       dispatch_id: dispatch.id,
       unit_id: u.id,

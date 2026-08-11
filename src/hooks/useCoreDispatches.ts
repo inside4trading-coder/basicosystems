@@ -118,7 +118,7 @@ export async function fetchDispatchUnits(dispatchId: string): Promise<DispatchUn
 
 export const READY_UNIT_STATUSES = ["completed", "entered_inventory"];
 
-export type ScanResult = { ok: true; unit: any } | { ok: false; message: string };
+export type ScanResult = { ok: boolean; unit?: any; message?: string };
 
 /** Busca una unidad por unit_code y valida que pueda despacharse. */
 export async function resolveUnitForDispatch(code: string): Promise<ScanResult> {
