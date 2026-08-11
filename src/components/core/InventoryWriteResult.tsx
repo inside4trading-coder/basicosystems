@@ -125,6 +125,9 @@ export function InventoryWriteResult({
       </p>
       <div className="text-sm space-y-0.5">
         <div>SKU: <span className="font-mono">{skuLabel(v)}</span></div>
+        <div>Entrada preparada: {previewSourceLabel(v)}</div>
+        <div>Stock Woo consultado: {dt(v.woo_stock_checked_before_at)}</div>
+        <div>Verificación final Woo: {dt(v.woo_stock_checked_after_at)}</div>
         <div>Woo product: <span className="font-mono">{v.woo_product_id ?? "—"}</span></div>
         <div>Woo variation: <span className="font-mono">{v.woo_variation_id ?? "—"}</span></div>
         <div>Había: {v.stock_before ?? "—"}</div>
