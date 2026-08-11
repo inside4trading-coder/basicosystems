@@ -275,7 +275,32 @@ export default function CoreInventory() {
     }
   };
 
+  const regeneratePreview = async (log: WooLog) => {
+    setBusyUnit(log.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("core-woo-stock-write", {
+        body: { action: "regenerate", preview_log_id: log.id },
+      });
+      if (error) {
+        const b = await parseEdgeError(error);
+        throw new Error(b?.message ?? b?.error ?? error.message);
+      }
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const p = (data as any)?.preview;
+      toast({
+        title: "Stock esperado actualizado",
+        description: `Stock Woo actual: ${p?.stock_before ?? "?"} → esperado ${p?.stock_after_expected ?? "?"}`,
+      });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setBusyUnit(null);
+    }
+  };
+
   const discardPreview = async (log: WooLog) => {
+
     try {
       const { error } = await supabase
         .from("core_woo_write_logs")
