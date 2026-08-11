@@ -14,7 +14,11 @@ import {
 import { Package, AlertTriangle, CheckCircle2, ExternalLink, Loader2, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { isPreviewStale, previewAgeLabel } from "@/lib/coreInventoryPreview";
+import { isPreviewStale, previewAgeLabel, INVENTORY_PREVIEW_TTL_MINUTES } from "@/lib/coreInventoryPreview";
+
+const PREVIEW_STALE_TEXT_SCAN =
+  `Esta entrada fue preparada hace más de ${INVENTORY_PREVIEW_TTL_MINUTES} minutos. ` +
+  `Actualiza el stock esperado antes de ingresar a inventario.`;
 
 const UNIT_STATE_LABEL: Record<string, string> = {
   pending: "Pendiente",
@@ -149,6 +153,14 @@ export function UnitInventorySection({ unit, processes }: Props) {
   }
 
   async function handleAddToInventory() {
+    if (activePreview && previewStale) {
+      toast({
+        title: "Entrada desactualizada",
+        description: PREVIEW_STALE_TEXT_SCAN,
+        variant: "destructive",
+      });
+      return;
+    }
     setWorking(true);
     try {
       // 1) Reutilizar entrada preparada si existe; si no, crearla.
