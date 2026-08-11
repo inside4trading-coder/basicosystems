@@ -192,12 +192,15 @@ export function UnitInventorySection({ unit, processes }: Props) {
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="text-sm">
-            <span className="font-medium">Estado: </span>
+          <div className="text-sm flex items-center gap-2 flex-wrap">
+            <span className="font-medium">Estado unidad: </span>
+            <Badge variant="outline" className="text-[10px]">
+              {UNIT_STATE_LABEL[unit.status] ?? unit.status}
+            </Badge>
             {canEnter ? (
-              <span className="text-green-700">Lista para inventario</span>
+              <span className="text-green-700 text-xs">Lista para inventario</span>
             ) : (
-              <span className="text-amber-700">No lista para inventario</span>
+              <span className="text-amber-700 text-xs">No lista para inventario</span>
             )}
           </div>
 
@@ -214,7 +217,7 @@ export function UnitInventorySection({ unit, processes }: Props) {
           {latestLog && (
             <Card className="p-3 text-xs space-y-1 bg-background">
               <div className="flex items-center justify-between">
-                <span className="font-medium">Preview existente</span>
+                <span className="font-medium">Entrada preparada</span>
                 <Badge variant="secondary" className="text-[10px]">{latestLog.status}</Badge>
               </div>
               <div className="text-muted-foreground">
@@ -230,15 +233,13 @@ export function UnitInventorySection({ unit, processes }: Props) {
           )}
 
           {canEnter && mode !== "off" && (
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-center">
               <Button onClick={handleAddToInventory} disabled={working}>
                 {working ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
-                {latestLog && latestLog.status === "preview"
-                  ? "Regenerar preview"
-                  : "Agregar a inventario"}
+                Agregar a inventario
               </Button>
-              <Button variant="outline" onClick={() => navigate("/core/inventario")}>
-                <ExternalLink className="h-4 w-4" /> Abrir Inventario
+              <Button variant="link" size="sm" className="text-xs px-1" onClick={() => navigate("/core/inventario")}>
+                <ExternalLink className="h-3 w-3 mr-1" /> Ver entrada preparada
               </Button>
             </div>
           )}
@@ -251,10 +252,11 @@ export function UnitInventorySection({ unit, processes }: Props) {
 
           {mode === "dry_run" && canEnter && (
             <p className="text-[11px] text-muted-foreground">
-              Modo dry_run: se generará un preview. No se escribirá en WooCommerce. La unidad seguirá en estado “{unit.status}”.
+              Modo dry_run: se prepara la entrada sin escribir en WooCommerce. La unidad seguirá en estado “{unit.status}”.
             </p>
           )}
         </div>
+
       )}
     </div>
   );
