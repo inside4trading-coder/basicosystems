@@ -394,12 +394,37 @@ export default function CoreInventory() {
       } else if ((data as any)?.error) {
         toast({ title: "Error", description: (data as any).error, variant: "destructive" });
       } else if ((data as any)?.ok) {
+        const v = (data as any).verification as InventoryVerification | undefined;
+        const { data: userData } = await supabase.auth.getUser();
+        const verification: InventoryVerification = {
+          verified: v?.verified ?? true,
+          verify_error: v?.verify_error ?? null,
+          unit_code: v?.unit_code ?? log.unit_code ?? null,
+          sku: v?.sku ?? log.variant_sku ?? log.sku ?? null,
+          size: v?.size ?? (log as any).size ?? null,
+          woo_product_id: v?.woo_product_id ?? log.woo_product_id ?? null,
+          woo_variation_id: v?.woo_variation_id ?? log.woo_variation_id ?? null,
+          stock_before: v?.stock_before ?? log.stock_before ?? null,
+          delta: v?.delta ?? log.quantity_delta ?? 1,
+          stock_expected: v?.stock_expected ?? log.stock_after_expected ?? null,
+          stock_real: v?.stock_real ?? (data as any).stock_after_confirmed ?? null,
+          difference: v?.difference ?? 0,
+          checked_at: v?.checked_at ?? new Date().toISOString(),
+          user_email: userData?.user?.email ?? null,
+        };
+        setLastResult(verification);
         toast({
-          title: "Stock actualizado en WooCommerce",
-          description: `Stock confirmado: ${(data as any).stock_after_confirmed}`,
+          title: verification.verified
+            ? "Prenda agregada exitosamente a inventario"
+            : "ALERTA: stock no coincidente",
+          description: verification.verified
+            ? `Unidad ${verification.unit_code ?? "—"} · Stock ${verification.stock_before} → ${verification.stock_real}. Stock verificado correctamente.`
+            : `Esperado ${verification.stock_expected} · Real ${verification.stock_real}. Revisa la alerta y envía el reporte a tu superior.`,
+          variant: verification.verified ? undefined : "destructive",
         });
         setConfirming(null);
         setConfirmChecked(false);
+
       }
       await load();
     } catch (e: any) {
