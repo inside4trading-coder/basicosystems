@@ -304,7 +304,11 @@ Deno.serve(async (req) => {
           status: "failed",
           error_message: `Error consultando Woo: ${e?.message ?? String(e)}`,
         }).eq("id", preview.id);
-        return json({ error: `Error consultando Woo: ${e?.message ?? String(e)}` }, 502);
+        return json({
+          error: "No se pudo consultar el stock actual de WooCommerce. No se ingresó la prenda.",
+          woo_unavailable: true,
+          details: e?.message ?? String(e),
+        }, 502);
       }
 
       // 2) Validar que el stock no cambió desde preview
