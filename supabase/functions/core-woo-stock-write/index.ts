@@ -87,8 +87,83 @@ Deno.serve(async (req) => {
     if (mode === "off") return json({ error: "woo_write_mode=off — escritura deshabilitada" }, 423);
 
     // ============================================================
+    // ACTION: REGENERATE (actualiza la MISMA entrada preparada con stock Woo actual)
+    // ============================================================
+    if (action === "regenerate") {
+      if (!body.preview_log_id) return json({ error: "preview_log_id required" }, 400);
+
+      const { data: preview, error: pErr } = await admin
+        .from("core_woo_write_logs")
+        .select("*")
+        .eq("id", body.preview_log_id)
+        .maybeSingle();
+      if (pErr || !preview) return json({ error: "Entrada preparada no encontrada" }, 404);
+      if (preview.status !== "preview") {
+        return json({
+          error:
+            preview.status === "confirmed" || preview.status === "success"
+              ? "Esta entrada ya fue confirmada. No se puede actualizar."
+              : `La entrada está en estado '${preview.status}' y no puede actualizarse.`,
+        }, 409);
+      }
+
+      const ck = Deno.env.get("WC_CONSUMER_KEY");
+      const cs = Deno.env.get("WC_CONSUMER_SECRET");
+      if (!ck || !cs) return json({ error: "Faltan credenciales WooCommerce." }, 500);
+      if (!preview.woo_product_id) return json({ error: "Falta woo_product_id" }, 400);
+
+      const endpoint = preview.woo_variation_id
+        ? `${WC_BASE}/products/${preview.woo_product_id}/variations/${preview.woo_variation_id}`
+        : `${WC_BASE}/products/${preview.woo_product_id}`;
+      const auth = "Basic " + btoa(`${ck}:${cs}`);
+
+      let live: { ok: boolean; stock: number; body: any; status: number };
+      try {
+        live = await fetchWooStock(endpoint, auth);
+      } catch (e: any) {
+        return json({ error: `Error consultando Woo: ${e?.message ?? String(e)}` }, 502);
+      }
+      if (!live.ok) return json({ error: `GET Woo falló: ${live.status}`, details: live.body }, 502);
+
+      const delta = Number(preview.quantity_delta ?? 1);
+      const newExpected =
+        preview.action_type === "stock_set" ? Number(preview.stock_after_expected ?? 0) : live.stock + delta;
+
+      const { data: updated, error: uErr } = await admin
+        .from("core_woo_write_logs")
+        .update({
+          stock_before: live.stock,
+          stock_after_expected: newExpected,
+          error_message: null,
+          request_payload: {
+            ...(preview.request_payload ?? {}),
+            target: endpoint,
+            method: "PUT",
+            body: { stock_quantity: newExpected, manage_stock: true },
+            preview_generated_at: new Date().toISOString(),
+            regenerated_by: userId,
+          },
+        })
+        .eq("id", preview.id)
+        .eq("status", "preview")
+        .select()
+        .single();
+      if (uErr) return json({ error: uErr.message }, 500);
+
+      // Sincronizar caché local
+      if (preview.core_variant_id) {
+        await admin.from("core_product_variants").update({ woo_stock_quantity: live.stock }).eq("id", preview.core_variant_id);
+      } else if (preview.core_product_id) {
+        await admin.from("core_products").update({ woo_stock_quantity: live.stock }).eq("id", preview.core_product_id);
+      }
+
+      return json({ ok: true, mode, regenerated: true, preview: updated });
+    }
+
+    // ============================================================
     // ACTION: CONFIRM (manual_confirm — escritura real con re-read)
     // ============================================================
+
     if (action === "confirm") {
       if (mode !== "manual_confirm") {
         return json({ error: `Modo ${mode} no permite confirmar escritura. Cambia a manual_confirm.` }, 423);
