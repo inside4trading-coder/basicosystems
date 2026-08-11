@@ -343,7 +343,15 @@ export default function CoreInventory() {
       });
       if (error) {
         const body = await parseEdgeError(error);
-        if (body?.stale_preview) {
+        if (body?.expired_preview) {
+          toast({
+            title: "Entrada preparada desactualizada",
+            description: body.message ?? PREVIEW_STALE_TEXT,
+            variant: "destructive",
+          });
+          setConfirming(null);
+          setConfirmChecked(false);
+        } else if (body?.stale_preview) {
           toast({
             title: "Stock cambió en WooCommerce",
             description:
