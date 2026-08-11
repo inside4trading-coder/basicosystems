@@ -15,6 +15,8 @@ import { Package, AlertTriangle, CheckCircle2, ExternalLink, Loader2, ShieldChec
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { isPreviewStale, previewAgeLabel, INVENTORY_PREVIEW_TTL_MINUTES } from "@/lib/coreInventoryPreview";
+import { InventoryWriteResult, type InventoryVerification } from "@/components/core/InventoryWriteResult";
+
 
 const PREVIEW_STALE_TEXT_SCAN =
   `Esta entrada fue preparada hace más de ${INVENTORY_PREVIEW_TTL_MINUTES} minutos. ` +
@@ -55,6 +57,8 @@ export function UnitInventorySection({ unit, processes }: Props) {
   const [activeLog, setActiveLog] = useState<any | null>(null); // confirmed/success
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [lastResult, setLastResult] = useState<InventoryVerification | null>(null);
+
 
   async function reload() {
     setLoading(true);
@@ -198,7 +202,35 @@ export function UnitInventorySection({ unit, processes }: Props) {
         if (error) throw error;
         const resp: any = data;
         if (resp?.ok) {
-          toast({ title: "Unidad agregada a inventario" });
+          const v = resp.verification as InventoryVerification | undefined;
+          const { data: userData } = await supabase.auth.getUser();
+          const verification: InventoryVerification = {
+            verified: v?.verified ?? true,
+            verify_error: v?.verify_error ?? null,
+            unit_code: v?.unit_code ?? unit.unit_code,
+            sku: v?.sku ?? latestLog?.variant_sku ?? latestLog?.sku ?? null,
+            size: v?.size ?? latestLog?.size ?? null,
+            woo_product_id: v?.woo_product_id ?? wooProductId,
+            woo_variation_id: v?.woo_variation_id ?? wooVariationId,
+            stock_before: v?.stock_before ?? latestLog?.stock_before ?? null,
+            delta: v?.delta ?? 1,
+            stock_expected: v?.stock_expected ?? latestLog?.stock_after_expected ?? null,
+            stock_real: v?.stock_real ?? resp?.stock_after_confirmed ?? null,
+            difference: v?.difference ?? 0,
+            checked_at: v?.checked_at ?? new Date().toISOString(),
+            user_email: userData?.user?.email ?? null,
+          };
+          setLastResult(verification);
+          toast({
+            title: verification.verified
+              ? "Prenda agregada exitosamente a inventario"
+              : "ALERTA: stock no coincidente",
+            description: verification.verified
+              ? `Unidad ${verification.unit_code} · Stock ${verification.stock_before} → ${verification.stock_real}. Stock verificado correctamente.`
+              : `Esperado ${verification.stock_expected} · Real ${verification.stock_real}. Envía el reporte a tu superior.`,
+            variant: verification.verified ? undefined : "destructive",
+          });
+
         } else {
           toast({
             title: "No se pudo ingresar",
@@ -235,6 +267,16 @@ export function UnitInventorySection({ unit, processes }: Props) {
           woo_write_mode: {mode}
         </Badge>
       </div>
+
+      {lastResult && (
+        <div className="mb-3">
+          <InventoryWriteResult
+            verification={lastResult}
+            onDismiss={lastResult.verified ? () => setLastResult(null) : undefined}
+          />
+        </div>
+      )}
+
 
       {loading ? (
         <p className="text-sm text-muted-foreground flex items-center gap-2">

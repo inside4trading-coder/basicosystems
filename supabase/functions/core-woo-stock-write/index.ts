@@ -385,13 +385,51 @@ Deno.serve(async (req) => {
         }).eq("id", preview.core_product_id);
       }
 
+      // 8) Verificación post-escritura: releer stock real en Woo y comparar con esperado.
+      let verifiedStock: number | null = null;
+      let verifyError: string | null = null;
+      try {
+        const vResp = await fetch(endpoint, { headers: { Authorization: auth } });
+        const vBody = await vResp.json();
+        if (vResp.ok) verifiedStock = Number(vBody?.stock_quantity ?? NaN);
+        else verifyError = `GET verificación falló: ${vResp.status}`;
+      } catch (e: any) {
+        verifyError = e?.message ?? String(e);
+      }
+      if (verifiedStock !== null && Number.isNaN(verifiedStock)) verifiedStock = null;
+
+      const stockReal = verifiedStock ?? confirmedStock;
+      const verified = verifyError === null && stockReal === newStock;
+
+      if (verifiedStock !== null && verifiedStock !== confirmedStock) {
+        await admin.from("core_woo_write_logs").update({
+          stock_after_confirmed: verifiedStock,
+        }).eq("id", preview.id);
+      }
+
       return json({
         ok: true,
         mode,
         confirmed: true,
         stock_after_confirmed: confirmedStock,
+        verification: {
+          verified,
+          verify_error: verifyError,
+          unit_code: preview.unit_code ?? null,
+          sku: preview.variant_sku ?? preview.sku ?? null,
+          size: preview.size ?? null,
+          woo_product_id: preview.woo_product_id ?? null,
+          woo_variation_id: preview.woo_variation_id ?? null,
+          stock_before: realStockBefore,
+          delta: newStock - realStockBefore,
+          stock_expected: newStock,
+          stock_real: stockReal,
+          difference: stockReal - newStock,
+          checked_at: new Date().toISOString(),
+        },
         response: putRespBody,
       });
+
     }
 
     // ============================================================
