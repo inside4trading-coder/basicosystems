@@ -19,6 +19,12 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  isPreviewStale,
+  previewAgeLabel,
+  previewGeneratedAt,
+  PREVIEW_STALE_TEXT,
+} from "@/lib/coreInventoryPreview";
+import {
   Warehouse,
   PlayCircle,
   RefreshCw,
