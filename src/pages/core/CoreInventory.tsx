@@ -468,7 +468,15 @@ export default function CoreInventory() {
         </Card>
       )}
 
+      {lastResult && (
+        <InventoryWriteResult
+          verification={lastResult}
+          onDismiss={lastResult.verified ? () => setLastResult(null) : undefined}
+        />
+      )}
+
       <Tabs value={tab} onValueChange={setTab}>
+
         <TabsList>
           <TabsTrigger value="ready">
             <Package className="h-4 w-4 mr-1" /> Unidades listas
