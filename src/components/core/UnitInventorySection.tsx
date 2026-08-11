@@ -268,6 +268,16 @@ export function UnitInventorySection({ unit, processes }: Props) {
         </Badge>
       </div>
 
+      {lastResult && (
+        <div className="mb-3">
+          <InventoryWriteResult
+            verification={lastResult}
+            onDismiss={lastResult.verified ? () => setLastResult(null) : undefined}
+          />
+        </div>
+      )}
+
+
       {loading ? (
         <p className="text-sm text-muted-foreground flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
