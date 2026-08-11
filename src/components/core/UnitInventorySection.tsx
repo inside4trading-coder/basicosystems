@@ -101,27 +101,59 @@ export function UnitInventorySection({ unit, processes }: Props) {
   async function handleAddToInventory() {
     setWorking(true);
     try {
-      const { data, error } = await supabase.functions.invoke("core-woo-stock-write", {
-        body: {
-          production_unit_id: unit.id,
-          action_type: "stock_increase",
-          quantity: 1,
-        },
-      });
-      if (error) throw error;
-      const resp: any = data;
-      if (resp?.skipped) {
-        toast({ title: "Bloqueado", description: resp.message || "Esta unidad ya fue ingresada.", variant: "destructive" });
-      } else if (resp?.reused_preview) {
-        toast({ title: "Preview reutilizado", description: "Se está usando un preview existente." });
-      } else if (resp?.ok) {
-        toast({
-          title: mode === "dry_run" ? "Preview dry_run generado" : "Acción ejecutada",
-          description: resp.warning || "Revisa el preview en Inventario.",
+      // 1) Reutilizar entrada preparada si existe; si no, crearla.
+      let previewId: string | null =
+        latestLog && latestLog.status === "preview" ? latestLog.id : null;
+
+      if (!previewId) {
+        const { data, error } = await supabase.functions.invoke("core-woo-stock-write", {
+          body: {
+            production_unit_id: unit.id,
+            action_type: "stock_increase",
+            quantity: 1,
+          },
         });
-      } else if (resp?.error) {
-        toast({ title: "Error", description: resp.error, variant: "destructive" });
+        if (error) throw error;
+        const resp: any = data;
+        if (resp?.skipped) {
+          toast({ title: "Bloqueado", description: resp.message || "Esta unidad ya fue ingresada.", variant: "destructive" });
+          await reload();
+          return;
+        }
+        if (resp?.error) {
+          toast({ title: "Error", description: resp.error, variant: "destructive" });
+          await reload();
+          return;
+        }
+        previewId = resp?.preview?.id ?? null;
       }
+
+      // 2) Ingresar la unidad al inventario cuando el modo lo permite.
+      if (mode === "manual_confirm" && previewId) {
+        const { data, error } = await supabase.functions.invoke("core-woo-stock-write", {
+          body: { action: "confirm", preview_log_id: previewId },
+        });
+        if (error) throw error;
+        const resp: any = data;
+        if (resp?.ok) {
+          toast({ title: "Unidad agregada a inventario" });
+        } else {
+          toast({
+            title: "No se pudo ingresar",
+            description: resp?.message || resp?.error || "Revisa la entrada preparada.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Entrada preparada lista",
+          description:
+            mode === "dry_run"
+              ? "Modo dry_run: la unidad no se ingresa todavía. Revisa la entrada en Inventario."
+              : "Revisa la entrada preparada en Inventario.",
+        });
+      }
+
       await reload();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message ?? String(e), variant: "destructive" });
@@ -129,6 +161,7 @@ export function UnitInventorySection({ unit, processes }: Props) {
       setWorking(false);
     }
   }
+
 
   return (
     <div className="border rounded-lg p-4 bg-muted/20">
