@@ -143,7 +143,10 @@ Deno.serve(async (req) => {
             method: "PUT",
             body: { stock_quantity: newExpected, manage_stock: true },
             preview_generated_at: new Date().toISOString(),
+            woo_stock_checked_before_at: new Date().toISOString(),
+            preview_source: "regenerated",
             regenerated_by: userId,
+
           },
         })
         .eq("id", preview.id)
