@@ -775,6 +775,122 @@ export type Database = {
         }
         Relationships: []
       }
+      core_dispatch_units: {
+        Row: {
+          created_at: string
+          difference_note: string | null
+          dispatch_id: string
+          id: string
+          product_name: string | null
+          production_order_id: string | null
+          received_at: string | null
+          size: string | null
+          sku: string | null
+          status: string
+          unit_code: string
+          unit_id: string
+        }
+        Insert: {
+          created_at?: string
+          difference_note?: string | null
+          dispatch_id: string
+          id?: string
+          product_name?: string | null
+          production_order_id?: string | null
+          received_at?: string | null
+          size?: string | null
+          sku?: string | null
+          status?: string
+          unit_code: string
+          unit_id: string
+        }
+        Update: {
+          created_at?: string
+          difference_note?: string | null
+          dispatch_id?: string
+          id?: string
+          product_name?: string | null
+          production_order_id?: string | null
+          received_at?: string | null
+          size?: string | null
+          sku?: string | null
+          status?: string
+          unit_code?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_dispatch_units_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "core_dispatches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_dispatches: {
+        Row: {
+          carrier_name: string | null
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          destination_location_id: string | null
+          destination_location_name: string | null
+          difference_note: string | null
+          dispatch_number: string | null
+          expected_departure_date: string | null
+          factory_responsible: string | null
+          id: string
+          notes: string | null
+          production_order_id: string | null
+          received_at: string | null
+          received_by_name: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          carrier_name?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_location_id?: string | null
+          destination_location_name?: string | null
+          difference_note?: string | null
+          dispatch_number?: string | null
+          expected_departure_date?: string | null
+          factory_responsible?: string | null
+          id?: string
+          notes?: string | null
+          production_order_id?: string | null
+          received_at?: string | null
+          received_by_name?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          carrier_name?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_location_id?: string | null
+          destination_location_name?: string | null
+          difference_note?: string | null
+          dispatch_number?: string | null
+          expected_departure_date?: string | null
+          factory_responsible?: string | null
+          id?: string
+          notes?: string | null
+          production_order_id?: string | null
+          received_at?: string | null
+          received_by_name?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       core_external_purchase_order_lines: {
         Row: {
           cancellation_notes: string | null
@@ -9073,6 +9189,10 @@ export type Database = {
         Args: { p_order_id: string; p_reason: string }
         Returns: Json
       }
+      core_close_dispatch: {
+        Args: { _dispatch_id: string; _factory_responsible?: string }
+        Returns: Json
+      }
       core_close_missing_sku_pending_item: {
         Args: { p_pending_item_id: string; p_replacement_event_id: string }
         Returns: Json
@@ -9103,6 +9223,15 @@ export type Database = {
       core_normalize_supplier_name: {
         Args: { p_name: string }
         Returns: string
+      }
+      core_receive_dispatch: {
+        Args: {
+          _dispatch_id: string
+          _note?: string
+          _received_by?: string
+          _received_unit_ids: string[]
+        }
+        Returns: Json
       }
       core_receive_external_purchase_order: {
         Args: { p_lines: Json; p_order_id: string }

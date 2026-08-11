@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Factory, LayoutDashboard, Settings, Package, FileSpreadsheet, Calculator, ClipboardList, Boxes, Layers, ListChecks, QrCode, ScanLine, Wallet, Warehouse, BarChart3, FileStack, Ban, HardHat, Network, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Factory, LayoutDashboard, Settings, Package, FileSpreadsheet, Calculator, ClipboardList, Boxes, Layers, ListChecks, QrCode, ScanLine, Wallet, Warehouse, BarChart3, FileStack, Ban, HardHat, Network, Truck, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ const groups: { label: string; items: Section[] }[] = [
     items: [
       { to: "/core/operarios", label: "Basico Crew (Operarios)", icon: HardHat },
       { to: "/core/nomina", label: "Nómina", icon: Wallet },
+      { to: "/core/despachos", label: "Despachos", icon: Truck },
       { to: "/core/inventario", label: "Inventario", icon: Warehouse },
       { to: "/core/reportes", label: "Reportes", icon: BarChart3 },
     ],
