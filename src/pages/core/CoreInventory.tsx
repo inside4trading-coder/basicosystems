@@ -119,6 +119,8 @@ export default function CoreInventory() {
   const [confirming, setConfirming] = useState<WooLog | null>(null);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [confirmBusy, setConfirmBusy] = useState(false);
+  const [lastResult, setLastResult] = useState<InventoryVerification | null>(null);
+
 
   const load = useCallback(async () => {
     setLoading(true);
