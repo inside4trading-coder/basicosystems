@@ -273,8 +273,30 @@ export default function CoreFabricationFunds() {
     }
     const availableUnassigned = Math.max(0, generatedTotal - executedTotal);
 
-    return { general, nonR, pendingHist, lastRunPend, rangeCount, rangeRevenue, sales, reversals, manuals, lastRun, generatedTotal, executedTotal, availableUnassigned };
-  }, [funds, pendings, movements, runs, periodStart, periodEnd, units]);
+    // === Asignación real a órdenes de producción ===
+    const ACTIVE_OP = new Set(["open", "in_production", "partially_completed"]);
+    const DONE_OP = new Set(["closed", "completed", "manually_closed"]);
+    const orderStatusById = new Map(prodOrders.map(o => [o.id, o.status]));
+    let allocatedActive = 0;
+    let allocatedDone = 0;
+    for (const m of movements) {
+      if (m.movement_type !== "production_allocated" || m.status !== "posted") continue;
+      const st = m.production_order_id ? orderStatusById.get(m.production_order_id) : undefined;
+      const amt = Math.abs(Number(m.amount) || 0);
+      if (st && ACTIVE_OP.has(st)) allocatedActive += amt;
+      else if (st && DONE_OP.has(st)) allocatedDone += amt;
+    }
+    const executedProduction = movements
+      .filter(m => m.movement_type === "production_executed" && m.status === "posted")
+      .reduce((s, m) => s + Math.abs(Number(m.metadata?.executed_amount ?? 0)), 0);
+    const availableReal = general - allocatedActive;
+
+    return {
+      general, nonR, pendingHist, lastRunPend, rangeCount, rangeRevenue, sales, reversals, manuals, lastRun,
+      generatedTotal, executedTotal, availableUnassigned,
+      allocatedActive, allocatedDone, executedProduction: executedProduction || allocatedDone, availableReal,
+    };
+  }, [funds, pendings, movements, runs, periodStart, periodEnd, units, prodOrders]);
 
   // === Partidas principales (cards) ===
   const partidaCards = useMemo(() => {
