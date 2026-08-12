@@ -38,6 +38,8 @@ type Movement = {
   woo_product_id: number | null;
   woo_variation_id: number | null;
   cost_snapshot_data: any;
+  production_order_id?: string | null;
+  metadata?: any;
 };
 type Pending = {
   id: string; source_order_id: number; source_order_item_id: number | null;
@@ -83,6 +85,9 @@ const MOV_LABEL: Record<string, string> = {
   replacement_reclassification_out: "Salida por reclasificación",
   replacement_reclassification_in: "Entrada por reclasificación",
   external_supplier_payment: "Pago a proveedor externo",
+  production_allocated: "Asignado a OP",
+  production_released: "Liberado de OP",
+  production_executed: "Producción ejecutada",
 };
 const MOV_BADGE: Record<string, string> = {
   sale_generated: "bg-emerald-100 text-emerald-800 border-emerald-300",
@@ -97,6 +102,9 @@ const MOV_BADGE: Record<string, string> = {
   replacement_reclassification_out: "bg-purple-100 text-purple-800 border-purple-300",
   replacement_reclassification_in: "bg-purple-100 text-purple-800 border-purple-300",
   external_supplier_payment: "bg-rose-100 text-rose-800 border-rose-300",
+  production_allocated: "bg-amber-100 text-amber-800 border-amber-300",
+  production_released: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  production_executed: "bg-slate-100 text-slate-800 border-slate-300",
 };
 const PENDING_REASON_LABEL: Record<string, string> = {
   product_not_in_core: "Producto no existe en Catálogo de Fabricación",
@@ -149,7 +157,8 @@ export default function CoreFabricationFunds() {
   const [pendings, setPendings] = useState<Pending[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [units, setUnits] = useState<ProdUnit[]>([]);
-  const [movFilter, setMovFilter] = useState<"all" | "pending_classification" | "external_supplier">("all");
+  const [prodOrders, setProdOrders] = useState<Array<{ id: string; order_code: string | null; status: string }>>([]);
+  const [movFilter, setMovFilter] = useState<"all" | "pending_classification" | "external_supplier" | "production">("all");
   const [reconEvents, setReconEvents] = useState<any[]>([]);
   const [reconFilter, setReconFilter] = useState<"all" | "positive" | "negative" | "reclass" | "pending">("all");
   const [reconSearch, setReconSearch] = useState("");
@@ -174,7 +183,7 @@ export default function CoreFabricationFunds() {
 
   async function load() {
     setLoading(true);
-    const [{ data: f }, { data: m }, { data: p }, { data: r }, { data: u }, { data: ev }] = await Promise.all([
+    const [{ data: f }, { data: m }, { data: p }, { data: r }, { data: u }, { data: ev }, { data: po }] = await Promise.all([
       supabase.from("core_fabrication_funds").select("*").order("fund_type"),
       supabase.from("core_fabrication_fund_movements").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("core_fabrication_fund_pending_items").select("*").order("created_at", { ascending: false }).limit(500),
@@ -186,6 +195,7 @@ export default function CoreFabricationFunds() {
         .in("status", ["resolved", "applied", "reviewed"])
         .order("created_at", { ascending: false })
         .limit(500),
+      supabase.from("core_production_orders").select("id, order_code, status").limit(2000),
     ]);
     setFunds((f as any) ?? []);
     setMovements((m as any) ?? []);
@@ -193,6 +203,7 @@ export default function CoreFabricationFunds() {
     setRuns((r as any) ?? []);
     setUnits((u as any) ?? []);
     setReconEvents((ev as any) ?? []);
+    setProdOrders((po as any) ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
@@ -262,8 +273,30 @@ export default function CoreFabricationFunds() {
     }
     const availableUnassigned = Math.max(0, generatedTotal - executedTotal);
 
-    return { general, nonR, pendingHist, lastRunPend, rangeCount, rangeRevenue, sales, reversals, manuals, lastRun, generatedTotal, executedTotal, availableUnassigned };
-  }, [funds, pendings, movements, runs, periodStart, periodEnd, units]);
+    // === Asignación real a órdenes de producción ===
+    const ACTIVE_OP = new Set(["open", "in_production", "partially_completed"]);
+    const DONE_OP = new Set(["closed", "completed", "manually_closed"]);
+    const orderStatusById = new Map(prodOrders.map(o => [o.id, o.status]));
+    let allocatedActive = 0;
+    let allocatedDone = 0;
+    for (const m of movements) {
+      if (m.movement_type !== "production_allocated" || m.status !== "posted") continue;
+      const st = m.production_order_id ? orderStatusById.get(m.production_order_id) : undefined;
+      const amt = Math.abs(Number(m.amount) || 0);
+      if (st && ACTIVE_OP.has(st)) allocatedActive += amt;
+      else if (st && DONE_OP.has(st)) allocatedDone += amt;
+    }
+    const executedProduction = movements
+      .filter(m => m.movement_type === "production_executed" && m.status === "posted")
+      .reduce((s, m) => s + Math.abs(Number(m.metadata?.executed_amount ?? 0)), 0);
+    const availableReal = general - allocatedActive;
+
+    return {
+      general, nonR, pendingHist, lastRunPend, rangeCount, rangeRevenue, sales, reversals, manuals, lastRun,
+      generatedTotal, executedTotal, availableUnassigned,
+      allocatedActive, allocatedDone, executedProduction: executedProduction || allocatedDone, availableReal,
+    };
+  }, [funds, pendings, movements, runs, periodStart, periodEnd, units, prodOrders]);
 
   // === Partidas principales (cards) ===
   const partidaCards = useMemo(() => {
@@ -648,12 +681,14 @@ export default function CoreFabricationFunds() {
 
           {/* Disponible interno total */}
           <Card className="p-4 border-emerald-200 bg-emerald-50/60 dark:bg-emerald-950/20">
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Disponible total para fabricar</p>
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Disponible real sin asignar</p>
             <p className="text-3xl font-black text-emerald-800 dark:text-emerald-300 mt-1">
-              {usd(Number(partidaCards.factory.fund?.available_amount ?? 0) + Number(partidaCards.nonRestock.fund?.available_amount ?? 0))}
+              {usd(totals.availableReal + Number(partidaCards.nonRestock.fund?.available_amount ?? 0))}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Producción habitual <strong className="font-mono">{usd(Number(partidaCards.factory.fund?.available_amount ?? 0))}</strong>
+              General de fabricación <strong className="font-mono">{usd(totals.general)}</strong>
+              {" − "}
+              Asignado a OP activas <strong className="font-mono">{usd(totals.allocatedActive)}</strong>
               {" + "}
               Liberado por no restock <strong className="font-mono">{usd(Number(partidaCards.nonRestock.fund?.available_amount ?? 0))}</strong>
             </p>
@@ -661,6 +696,7 @@ export default function CoreFabricationFunds() {
               Proveedor externo y pendiente por resolver se contabilizan aparte.
             </p>
           </Card>
+
 
           {/* Cards de las partidas principales */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -725,9 +761,12 @@ export default function CoreFabricationFunds() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="Partida generada" value={usd(totals.generatedTotal)} sub="Ventas confirmadas posted" tone="emerald" />
-            <KpiCard label="Ejecutado en inventario" value={usd(totals.executedTotal)} sub="Unidades ya ingresadas" tone="muted" />
-            <KpiCard label="Disponible sin asignar" value={usd(totals.availableUnassigned)} sub="Libre para fabricar" tone="emerald" />
+            <KpiCard label="Asignado a OP" value={usd(totals.allocatedActive)} sub="OP abiertas / en producción" tone="orange" />
+            <KpiCard label="Ejecutado" value={usd(totals.executedProduction)} sub="OP completadas o cerradas" tone="muted" />
+            <KpiCard label="Disponible real sin asignar" value={usd(totals.availableReal)} sub="General − asignado a OP" tone="emerald" />
             <KpiCard label="Liberado por no restock" value={usd(totals.nonR)} sub="Disponible para futuras fabricaciones" tone="emerald" />
+            <KpiCard label="Ejecutado en inventario" value={usd(totals.executedTotal)} sub="Unidades ya ingresadas" tone="muted" />
+
             <KpiCard label="Pendientes históricos" value={`${totals.pendingHist} ítems`} tone="yellow" />
             <KpiCard label="Pendientes último run" value={String(totals.lastRunPend)} tone="muted" />
             <KpiCard label="Pendientes del rango" value={`${totals.rangeCount} ítems`} sub={usd(totals.rangeRevenue) + " revenue"} tone="yellow" />
@@ -790,6 +829,7 @@ export default function CoreFabricationFunds() {
                   <SelectItem value="all">Todos los movimientos</SelectItem>
                   <SelectItem value="pending_classification">Pendiente de clasificación</SelectItem>
                   <SelectItem value="external_supplier">Proveedores externos</SelectItem>
+                  <SelectItem value="production">Producción (OP)</SelectItem>
                 </SelectContent>
               </Select>
               {movFilter !== "all" && (
@@ -801,6 +841,9 @@ export default function CoreFabricationFunds() {
               const externalFundId = partidaCards.external.fund?.id ?? null;
               const filtered = movements.filter(m => {
                 if (movFilter === "all") return true;
+                if (movFilter === "production") {
+                  return m.movement_type.startsWith("production_");
+                }
                 if (movFilter === "external_supplier") {
                   return m.fund_bucket === "external_supplier" || (externalFundId && m.fund_id === externalFundId);
                 }
@@ -819,6 +862,12 @@ export default function CoreFabricationFunds() {
                       Mostrando <strong>{filtered.length}</strong> movimiento{filtered.length === 1 ? "" : "s"} de proveedores externos · Total <strong className="font-mono">{usd(total)}</strong>
                     </div>
                   )}
+                  {movFilter === "production" && (
+                    <div className="text-xs bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded px-3 py-2">
+                      Mostrando <strong>{filtered.length}</strong> movimiento{filtered.length === 1 ? "" : "s"} de producción · Neto <strong className="font-mono">{usd(total)}</strong> · Asignado activo <strong className="font-mono">{usd(totals.allocatedActive)}</strong>
+                    </div>
+                  )}
+
                   <div className="rounded-lg border overflow-x-auto">
                     <Table>
                       <TableHeader>

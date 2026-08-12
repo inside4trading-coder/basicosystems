@@ -1090,9 +1090,11 @@ export type Database = {
           fund_bucket: string | null
           fund_id: string
           id: string
+          metadata: Json | null
           movement_type: string
           notes: string | null
           product_name: string | null
+          production_order_id: string | null
           quantity: number | null
           reason: string | null
           related_movement_id: string | null
@@ -1117,9 +1119,11 @@ export type Database = {
           fund_bucket?: string | null
           fund_id: string
           id?: string
+          metadata?: Json | null
           movement_type: string
           notes?: string | null
           product_name?: string | null
+          production_order_id?: string | null
           quantity?: number | null
           reason?: string | null
           related_movement_id?: string | null
@@ -1144,9 +1148,11 @@ export type Database = {
           fund_bucket?: string | null
           fund_id?: string
           id?: string
+          metadata?: Json | null
           movement_type?: string
           notes?: string | null
           product_name?: string | null
+          production_order_id?: string | null
           quantity?: number | null
           reason?: string | null
           related_movement_id?: string | null
@@ -1160,6 +1166,13 @@ export type Database = {
           woo_variation_id?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "cffm_production_order_fk"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "core_production_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "core_fabrication_fund_movements_fabrication_fund_run_id_fkey"
             columns: ["fabrication_fund_run_id"]
@@ -9259,6 +9272,10 @@ export type Database = {
           p_replacement_event_id?: string
         }
         Returns: Json
+      }
+      core_sync_production_order_allocation: {
+        Args: { p_order_id: string }
+        Returns: undefined
       }
       core_transfer_work_entry: {
         Args: {

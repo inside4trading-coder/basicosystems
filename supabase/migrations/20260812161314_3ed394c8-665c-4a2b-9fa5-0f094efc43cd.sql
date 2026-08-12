@@ -1,0 +1,2 @@
+REVOKE ALL ON FUNCTION public.core_sync_production_order_allocation(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.core_sync_production_order_allocation(uuid) TO service_role;
