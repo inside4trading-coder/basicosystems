@@ -761,9 +761,12 @@ export default function CoreFabricationFunds() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="Partida generada" value={usd(totals.generatedTotal)} sub="Ventas confirmadas posted" tone="emerald" />
-            <KpiCard label="Ejecutado en inventario" value={usd(totals.executedTotal)} sub="Unidades ya ingresadas" tone="muted" />
-            <KpiCard label="Disponible sin asignar" value={usd(totals.availableUnassigned)} sub="Libre para fabricar" tone="emerald" />
+            <KpiCard label="Asignado a OP" value={usd(totals.allocatedActive)} sub="OP abiertas / en producción" tone="orange" />
+            <KpiCard label="Ejecutado" value={usd(totals.executedProduction)} sub="OP completadas o cerradas" tone="muted" />
+            <KpiCard label="Disponible real sin asignar" value={usd(totals.availableReal)} sub="General − asignado a OP" tone="emerald" />
             <KpiCard label="Liberado por no restock" value={usd(totals.nonR)} sub="Disponible para futuras fabricaciones" tone="emerald" />
+            <KpiCard label="Ejecutado en inventario" value={usd(totals.executedTotal)} sub="Unidades ya ingresadas" tone="muted" />
+
             <KpiCard label="Pendientes históricos" value={`${totals.pendingHist} ítems`} tone="yellow" />
             <KpiCard label="Pendientes último run" value={String(totals.lastRunPend)} tone="muted" />
             <KpiCard label="Pendientes del rango" value={`${totals.rangeCount} ítems`} sub={usd(totals.rangeRevenue) + " revenue"} tone="yellow" />
