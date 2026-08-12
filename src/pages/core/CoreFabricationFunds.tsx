@@ -688,11 +688,12 @@ export default function CoreFabricationFunds() {
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               General de fabricación <strong className="font-mono">{usd(totals.general)}</strong>
-              {" − "}
-              Asignado a OP activas <strong className="font-mono">{usd(totals.allocatedActive)}</strong>
               {" + "}
               Liberado por no restock <strong className="font-mono">{usd(Number(partidaCards.nonRestock.fund?.available_amount ?? 0))}</strong>
+              {" · ya descontado "}
+              <strong className="font-mono">{usd(totals.allocatedActive)}</strong> asignado a OP activas
             </p>
+
             <p className="text-[11px] text-muted-foreground mt-1 italic">
               Proveedor externo y pendiente por resolver se contabilizan aparte.
             </p>
