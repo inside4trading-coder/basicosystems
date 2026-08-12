@@ -681,12 +681,14 @@ export default function CoreFabricationFunds() {
 
           {/* Disponible interno total */}
           <Card className="p-4 border-emerald-200 bg-emerald-50/60 dark:bg-emerald-950/20">
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Disponible total para fabricar</p>
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Disponible real sin asignar</p>
             <p className="text-3xl font-black text-emerald-800 dark:text-emerald-300 mt-1">
-              {usd(Number(partidaCards.factory.fund?.available_amount ?? 0) + Number(partidaCards.nonRestock.fund?.available_amount ?? 0))}
+              {usd(totals.availableReal + Number(partidaCards.nonRestock.fund?.available_amount ?? 0))}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Producción habitual <strong className="font-mono">{usd(Number(partidaCards.factory.fund?.available_amount ?? 0))}</strong>
+              General de fabricación <strong className="font-mono">{usd(totals.general)}</strong>
+              {" − "}
+              Asignado a OP activas <strong className="font-mono">{usd(totals.allocatedActive)}</strong>
               {" + "}
               Liberado por no restock <strong className="font-mono">{usd(Number(partidaCards.nonRestock.fund?.available_amount ?? 0))}</strong>
             </p>
@@ -694,6 +696,7 @@ export default function CoreFabricationFunds() {
               Proveedor externo y pendiente por resolver se contabilizan aparte.
             </p>
           </Card>
+
 
           {/* Cards de las partidas principales */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
