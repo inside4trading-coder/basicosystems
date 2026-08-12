@@ -244,7 +244,13 @@ export default function CoreInventory() {
         .filter((l) => ["confirmed", "success"].includes(l.status) && l.idempotency_key)
         .map((l) => l.idempotency_key as string),
     );
-    const ready: Unit[] = [];
+    const failedByUnit = new Map<string, WooLog>();
+    for (const l of logs) {
+      if (l.status === "failed" && l.production_unit_id && !failedByUnit.has(l.production_unit_id)) {
+        failedByUnit.set(l.production_unit_id, l);
+      }
+    }
+    const ready: ReadyRow[] = [];
     const blocked: Array<Unit & { reason: string }> = [];
     for (const u of units) {
       const reasons: string[] = [];
@@ -257,12 +263,24 @@ export default function CoreInventory() {
         blocked.push({ ...u, reason: reasons.join(" · ") });
         continue;
       }
-      // Si ya tiene entrada preparada activa, no aparece en "Unidades listas"
-      if (previewByUnit.has(u.id)) continue;
-      ready.push(u);
+      const preview = previewByUnit.get(u.id) ?? null;
+      const failed = !preview ? failedByUnit.get(u.id) ?? null : null;
+      const stale = preview ? isPreviewStale(preview) : false;
+      const entryState: EntryState = failed
+        ? "error"
+        : !preview
+          ? "none"
+          : stale
+            ? "stale"
+            : "valid";
+      ready.push({ unit: u, preview, failed, entryState });
     }
+    // Sin entrada primero, luego vigentes, luego desactualizadas / errores.
+    const order: Record<EntryState, number> = { none: 0, valid: 1, stale: 2, error: 3 };
+    ready.sort((a, b) => order[a.entryState] - order[b.entryState]);
     return { readyUnits: ready, blockedUnits: blocked };
   }, [units, logs, previewByUnit]);
+
 
   const generatePreview = async (u: Unit) => {
     setBusyUnit(u.id);
