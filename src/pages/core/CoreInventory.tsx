@@ -88,7 +88,17 @@ type WooLog = {
   size?: string | null;
 };
 
+type EntryState = "none" | "valid" | "stale" | "error";
+
+type ReadyRow = {
+  unit: Unit;
+  preview: WooLog | null;
+  failed: WooLog | null;
+  entryState: EntryState;
+};
+
 const tone = (status: string) => {
+
   switch (status) {
     case "preview":
       return "bg-blue-500/15 text-blue-700 border-blue-300";
