@@ -289,7 +289,8 @@ export default function CoreFabricationFunds() {
     const executedProduction = movements
       .filter(m => m.movement_type === "production_executed" && m.status === "posted")
       .reduce((s, m) => s + Math.abs(Number(m.metadata?.executed_amount ?? 0)), 0);
-    const availableReal = general - allocatedActive;
+    // El saldo del fondo general ya viene neto de las asignaciones a OP (trigger en BD)
+    const availableReal = general;
 
     return {
       general, nonR, pendingHist, lastRunPend, rangeCount, rangeRevenue, sales, reversals, manuals, lastRun,
