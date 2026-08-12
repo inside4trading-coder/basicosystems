@@ -88,7 +88,17 @@ type WooLog = {
   size?: string | null;
 };
 
+type EntryState = "none" | "valid" | "stale" | "error";
+
+type ReadyRow = {
+  unit: Unit;
+  preview: WooLog | null;
+  failed: WooLog | null;
+  entryState: EntryState;
+};
+
 const tone = (status: string) => {
+
   switch (status) {
     case "preview":
       return "bg-blue-500/15 text-blue-700 border-blue-300";
@@ -244,7 +254,13 @@ export default function CoreInventory() {
         .filter((l) => ["confirmed", "success"].includes(l.status) && l.idempotency_key)
         .map((l) => l.idempotency_key as string),
     );
-    const ready: Unit[] = [];
+    const failedByUnit = new Map<string, WooLog>();
+    for (const l of logs) {
+      if (l.status === "failed" && l.production_unit_id && !failedByUnit.has(l.production_unit_id)) {
+        failedByUnit.set(l.production_unit_id, l);
+      }
+    }
+    const ready: ReadyRow[] = [];
     const blocked: Array<Unit & { reason: string }> = [];
     for (const u of units) {
       const reasons: string[] = [];
@@ -257,38 +273,92 @@ export default function CoreInventory() {
         blocked.push({ ...u, reason: reasons.join(" · ") });
         continue;
       }
-      // Si ya tiene entrada preparada activa, no aparece en "Unidades listas"
-      if (previewByUnit.has(u.id)) continue;
-      ready.push(u);
+      const preview = previewByUnit.get(u.id) ?? null;
+      const failed = !preview ? failedByUnit.get(u.id) ?? null : null;
+      const stale = preview ? isPreviewStale(preview) : false;
+      const entryState: EntryState = failed
+        ? "error"
+        : !preview
+          ? "none"
+          : stale
+            ? "stale"
+            : "valid";
+      ready.push({ unit: u, preview, failed, entryState });
     }
+    // Sin entrada primero, luego vigentes, luego desactualizadas / errores.
+    const order: Record<EntryState, number> = { none: 0, valid: 1, stale: 2, error: 3 };
+    ready.sort((a, b) => order[a.entryState] - order[b.entryState]);
     return { readyUnits: ready, blockedUnits: blocked };
   }, [units, logs, previewByUnit]);
 
-  const generatePreview = async (u: Unit) => {
+
+  // Genera entrada preparada fresca (lectura Woo obligatoria) y, en manual_confirm,
+  // confirma + verifica en el mismo paso.
+  const addToInventory = async (u: Unit) => {
     setBusyUnit(u.id);
     try {
       const { data, error } = await supabase.functions.invoke("core-woo-stock-write", {
-        body: { production_unit_id: u.id, action_type: "stock_increase", quantity: 1 },
+        body: {
+          production_unit_id: u.id,
+          action_type: "stock_increase",
+          quantity: 1,
+          preview_source: "generated_on_confirm",
+        },
       });
-      if (error) throw error;
-      if ((data as any)?.skipped) {
-        toast({
-          title: "Bloqueada",
-          description: (data as any)?.message ?? "No se puede duplicar.",
-          variant: "destructive",
-        });
-      } else if ((data as any)?.reused_preview) {
-        toast({ title: "Entrada preparada ya existente", description: "Esta unidad ya tiene una entrada preparada activa." });
-      } else {
-        toast({ title: "Entrada preparada", description: "Aún NO se actualiza WooCommerce. Debe confirmarse manualmente." });
+      if (error) {
+        const b = await parseEdgeError(error);
+        throw new Error(
+          b?.error ??
+            b?.message ??
+            "No se pudo consultar el stock actual de WooCommerce. No se ingresó la prenda.",
+        );
       }
-      await load();
+      const resp: any = data;
+      if (resp?.skipped) {
+        toast({ title: "Bloqueada", description: resp?.message ?? "No se puede duplicar.", variant: "destructive" });
+        await load();
+        return;
+      }
+      if (resp?.error) {
+        toast({ title: "Error", description: resp.error, variant: "destructive" });
+        await load();
+        return;
+      }
+
+      const previewId: string | null = resp?.preview?.id ?? null;
+
+      if (writeMode !== "manual_confirm" || !previewId) {
+        toast({
+          title: "Entrada preparada",
+          description:
+            writeMode === "dry_run"
+              ? "Modo dry_run: no se actualiza WooCommerce."
+              : "Revisa la entrada preparada.",
+        });
+        await load();
+        return;
+      }
+
+      await confirmWrite({
+        id: previewId,
+        unit_code: u.unit_code,
+        variant_sku: u.variant_sku,
+        sku: u.sku,
+        size: u.size,
+        woo_product_id: u.woo_product_id ?? null,
+        woo_variation_id: u.woo_variation_id ?? null,
+        stock_before: resp?.preview?.stock_before ?? null,
+        quantity_delta: 1,
+        stock_after_expected: resp?.preview?.stock_after_expected ?? null,
+      } as unknown as WooLog);
     } catch (e: any) {
       toast({ title: "Error", description: e?.message ?? String(e), variant: "destructive" });
     } finally {
       setBusyUnit(null);
+      await load();
     }
   };
+
 
   const regeneratePreview = async (log: WooLog) => {
     setBusyUnit(log.id);
@@ -488,10 +558,6 @@ export default function CoreInventory() {
             <Package className="h-4 w-4 mr-1" /> Unidades listas
             <Badge variant="secondary" className="ml-2">{readyUnits.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="previews">
-            <Eye className="h-4 w-4 mr-1" /> Entradas preparadas
-            <Badge variant="secondary" className="ml-2">{previewLogs.length}</Badge>
-          </TabsTrigger>
           <TabsTrigger value="history">
             <History className="h-4 w-4 mr-1" /> Historial de entradas
             <Badge variant="secondary" className="ml-2">{logs.length}</Badge>
@@ -502,13 +568,16 @@ export default function CoreInventory() {
           </TabsTrigger>
         </TabsList>
 
-        {/* TAB: Unidades listas */}
+        {/* TAB: Unidades listas (incluye unidades con entrada preparada) */}
         <TabsContent value="ready" className="space-y-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Unidades completadas listas para inventario</CardTitle>
+              <CardTitle className="text-base">Unidades pendientes de ingreso a inventario</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Incluye unidades sin entrada preparada y unidades con entrada vigente o desactualizada.
+              </p>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -517,10 +586,10 @@ export default function CoreInventory() {
                     <TableHead>Producto</TableHead>
                     <TableHead>SKU variante</TableHead>
                     <TableHead>Talla</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Woo product</TableHead>
-                    <TableHead>Woo variation</TableHead>
                     <TableHead className="text-right">Stock Woo</TableHead>
+                    <TableHead>Estado entrada</TableHead>
+                    <TableHead>Edad entrada</TableHead>
+                    <TableHead className="text-right">Stock esperado</TableHead>
                     <TableHead className="text-right">Acción</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -528,11 +597,12 @@ export default function CoreInventory() {
                   {readyUnits.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
-                        No hay unidades listas. Las unidades deben estar en estado <code>completed</code>.
+                        No hay unidades pendientes de ingreso a inventario.
                       </TableCell>
                     </TableRow>
                   )}
-                  {readyUnits.map((u) => {
+                  {readyUnits.map(({ unit: u, preview, failed, entryState }) => {
+                    const busy = busyUnit === u.id || (preview ? busyUnit === preview.id : false);
                     return (
                       <TableRow key={u.id}>
                         <TableCell className="font-mono text-xs">{u.unit_code}</TableCell>
@@ -540,22 +610,98 @@ export default function CoreInventory() {
                         <TableCell>{u.product_name ?? "—"}</TableCell>
                         <TableCell className="font-mono text-xs">{u.variant_sku ?? u.sku ?? "—"}</TableCell>
                         <TableCell>{u.size ?? u.variant_label ?? "—"}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{u.status}</Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{u.woo_product_id ?? "—"}</TableCell>
-                        <TableCell className="font-mono text-xs">{u.woo_variation_id ?? "—"}</TableCell>
-                        <TableCell className="text-right">{u.woo_stock_quantity ?? 0}</TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            disabled={busyUnit === u.id}
-                            onClick={() => generatePreview(u)}
-                          >
-                            <PlayCircle className="h-4 w-4" />
-                            Preparar entrada
-                          </Button>
+                          {preview?.stock_before ?? u.woo_stock_quantity ?? 0}
+                        </TableCell>
+                        <TableCell>
+                          {entryState === "none" && (
+                            <Badge variant="outline" className="bg-muted text-muted-foreground">
+                              Sin entrada
+                            </Badge>
+                          )}
+                          {entryState === "valid" && (
+                            <Badge variant="outline" className="bg-emerald-500/15 text-emerald-700 border-emerald-300">
+                              Vigente
+                            </Badge>
+                          )}
+                          {entryState === "stale" && (
+                            <Badge variant="outline" className="bg-amber-500/15 text-amber-700 border-amber-300">
+                              Desactualizada
+                            </Badge>
+                          )}
+                          {entryState === "error" && (
+                            <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/40">
+                              Error
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {preview ? previewAgeLabel(preview) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {preview?.stock_after_expected ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-right space-x-1 whitespace-nowrap">
+                          {entryState === "error" && failed && (
+                            <>
+                              <Button size="sm" variant="ghost" onClick={() => setDetail(failed)}>
+                                <Eye className="h-4 w-4" /> Ver error
+                              </Button>
+                              <Button size="sm" variant="outline" disabled={busy} onClick={() => addToInventory(u)}>
+                                <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> Reintentar
+                              </Button>
+                            </>
+                          )}
+                          {entryState === "stale" && preview && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                disabled={busy}
+                                title="Consulta WooCommerce ahora y recalcula el stock esperado."
+                                onClick={() => regeneratePreview(preview)}
+                              >
+                                <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> Actualizar stock esperado
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setDetail(preview)}>
+                                <Eye className="h-4 w-4" /> Ver entrada
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setDiscarding(preview)}>
+                                <XCircle className="h-4 w-4" /> Descartar
+                              </Button>
+                            </>
+                          )}
+                          {(entryState === "none" || entryState === "valid") && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                disabled={busy}
+                                onClick={() =>
+                                  entryState === "valid" && preview && writeMode === "manual_confirm"
+                                    ? (setConfirming(preview), setConfirmChecked(false))
+                                    : addToInventory(u)
+                                }
+                              >
+                                {writeMode === "dry_run" ? (
+                                  <PlayCircle className="h-4 w-4" />
+                                ) : (
+                                  <ShieldCheck className="h-4 w-4" />
+                                )}
+                                {writeMode === "dry_run" ? "Preparar entrada" : "Agregar a inventario"}
+                              </Button>
+                              {preview && (
+                                <>
+                                  <Button size="sm" variant="ghost" onClick={() => setDetail(preview)}>
+                                    <Eye className="h-4 w-4" /> Ver entrada
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => setDiscarding(preview)}>
+                                    <XCircle className="h-4 w-4" /> Descartar
+                                  </Button>
+                                </>
+                              )}
+                            </>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -566,113 +712,6 @@ export default function CoreInventory() {
           </Card>
         </TabsContent>
 
-        {/* TAB: Previews */}
-        <TabsContent value="previews" className="space-y-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Entradas preparadas pendientes</CardTitle>
-              {writeMode === "dry_run" && (
-                <p className="text-xs text-muted-foreground">
-                  Modo dry_run: las entradas preparadas no pueden confirmarse en WooCommerce.
-                </p>
-              )}
-              {writeMode === "manual_confirm" && (
-                <p className="text-xs text-amber-700">
-                  Modo manual_confirm: confirmar una entrada actualiza el stock real en WooCommerce.
-                </p>
-              )}
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Edad</TableHead>
-                    <TableHead>Unidad</TableHead>
-                    <TableHead>SKU variante</TableHead>
-                    <TableHead>Talla</TableHead>
-                    <TableHead>Woo product</TableHead>
-                    <TableHead>Woo variation</TableHead>
-                    <TableHead className="text-right">Stock antes</TableHead>
-                    <TableHead className="text-right">Δ</TableHead>
-                    <TableHead className="text-right">Stock esperado</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acción</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {previewLogs.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
-                        No hay entradas preparadas activas.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {previewLogs.map((l) => {
-                    const stale = isPreviewStale(l);
-                    return (
-                    <TableRow key={l.id}>
-                      <TableCell className="text-xs">
-                        {(previewGeneratedAt(l) ?? new Date(l.created_at)).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{previewAgeLabel(l)}</TableCell>
-                      <TableCell className="font-mono text-xs">{l.unit_code ?? "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{l.variant_sku ?? l.sku ?? "—"}</TableCell>
-                      <TableCell>{l.size ?? "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{l.woo_product_id ?? "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{l.woo_variation_id ?? "—"}</TableCell>
-                      <TableCell className="text-right">{l.stock_before ?? 0}</TableCell>
-                      <TableCell className="text-right">
-                        {l.quantity_delta != null
-                          ? (l.quantity_delta > 0 ? `+${l.quantity_delta}` : `${l.quantity_delta}`)
-                          : "set"}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">{l.stock_after_expected ?? 0}</TableCell>
-                      <TableCell>
-                        {stale ? (
-                          <Badge variant="outline" className="bg-amber-500/15 text-amber-700 border-amber-300">
-                            Desactualizada
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className={tone(l.status)}>
-                            Vigente
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button size="sm" variant="ghost" onClick={() => setDetail(l)}>
-                          <Eye className="h-4 w-4" /> Ver entrada preparada
-                        </Button>
-                        {writeMode === "manual_confirm" && l.status === "preview" && !stale && (
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => { setConfirming(l); setConfirmChecked(false); }}
-                          >
-                            <ShieldCheck className="h-4 w-4" /> Confirmar y escribir en WooCommerce
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant={stale ? "default" : "ghost"}
-                          disabled={busyUnit === l.id}
-                          title="Consulta WooCommerce ahora y recalcula el stock esperado antes de confirmar."
-                          onClick={() => regeneratePreview(l)}
-                        >
-                          <RefreshCw className={`h-4 w-4 ${busyUnit === l.id ? "animate-spin" : ""}`} /> Actualizar stock esperado
-                        </Button>
-
-                        <Button size="sm" variant="ghost" onClick={() => setDiscarding(l)}>
-                          <XCircle className="h-4 w-4" /> Descartar
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );})}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* TAB: Historial */}
         <TabsContent value="history" className="space-y-2">
