@@ -1,214 +1,219 @@
+*[Versión en español](README.es.md)*
+
 # Basico System
 
-Sistema de gestión modular para marcas, y el estudio que lo construye a medida
-cuando el producto estándar se queda corto.
+A modular management system for brands — and the studio that builds it
+tailor-made when the standard product falls short.
 
-**Producción:** https://basicosystems.lovable.app
+**Production:** https://basicosystems.lovable.app
 
 ---
 
-## Qué es
+## What it is
 
-Basico System nace de operar una marca real —[Basico Clothes](https://basicoclothes.com)—
-y de comprobar que ningún SaaS genérico cubría la operación completa. La
-propuesta tiene dos caminos:
+Basico System was born from operating a real brand —[Basico Clothes](https://basicoclothes.com)—
+and discovering that no generic SaaS covered the full operation. The offering
+has two paths:
 
-- **Basico System**, el producto. Módulos en producción, personalizables en
-  branding, roles, flujos y campos. Arranca en días.
-- **Tailor-made**, el estudio. Discovery de la operación, módulos nuevos
-  diseñados desde cero e integraciones con lo que haga falta.
+- **Basico System**, the product. Modules in production, customizable in
+  branding, roles, flows, and fields. Up and running in days.
+- **Tailor-made**, the studio. Operation discovery, new modules designed from
+  scratch, and integrations with whatever is needed.
 
-### Módulos
+### Modules
 
-| Módulo | Ruta | Qué cubre |
+| Module | Route | What it covers |
 |---|---|---|
-| Dashboard | `/dashboard` | Resumen de ventas y métricas en vivo |
-| Pedidos | `/pedidos` | Sincronización con el e-commerce, estados, costos, márgenes, badges de estado y confirmaciones de inventario |
-| CRM | `/crm` | Clientes unificados, segmentación y comportamiento de compra |
-| Planning | `/planning` | Calendario editorial sincronizado con Notion |
-| Crew | `/crew` | RRHH: perfiles, incidencias y tareas recurrentes |
-| RRPP | `/rrpp` | Red de influencers, colaboraciones, cupones y métricas |
-| Campañas | `/campaigns` | Wizard de creación, detalle y resultados de email marketing (Brevo) |
-| Llamadas | `/llamadas` | Telefonía conectada (Zadarma), grabaciones y analítica por agente |
-| Administración | `/administracion` | Obligaciones, vencimientos y control financiero |
-| Basico Core | `/core` | Fabricación: costos por prenda, órdenes de producción y RESTOCK |
-| Basico España | `/espana` | Operación específica de España: ventas, reportes, fabricación, etiquetas, POS público |
-| Sublime | `/sublime` | Fichaje de asistencia — panel admin + kiosco público en `/sublime/fichaje` |
-| Estudio Visual | `/estudio-visual` | Generador de fotografía/video de producto por IA (OpenRouter) + variantes para Instagram feed/story |
-| Fondo Transparente | `/fondo-transparente` | Seguimiento público de aportes/donaciones: totales, confirmados y pendientes de verificar |
-| Fuerza Venezuela | — | Página hermana de transparencia de aportes, mismo patrón de datos que Fondo Transparente |
-| Configuración | `/configuracion` | Roles, permisos y ajustes generales del panel |
+| Dashboard | `/dashboard` | Sales overview and live metrics |
+| Orders | `/pedidos` | E-commerce sync, statuses, costs, margins, status badges, and inventory confirmations |
+| CRM | `/crm` | Unified customers, segmentation, and purchase behavior |
+| Planning | `/planning` | Editorial calendar synced with Notion |
+| Crew | `/crew` | HR: profiles, incidents, and recurring tasks |
+| RRPP | `/rrpp` | Influencer network, collaborations, coupons, and metrics |
+| Campaigns | `/campaigns` | Creation wizard, detail, and email marketing results (Brevo) |
+| Calls | `/llamadas` | Connected telephony (Zadarma), recordings, and per-agent analytics |
+| Administration | `/administracion` | Obligations, due dates, and financial control |
+| Basico Core | `/core` | Manufacturing: per-garment costs, production orders, and RESTOCK |
+| Basico España | `/espana` | Spain-specific operation: sales, reports, manufacturing, labels, public POS |
+| Sublime | `/sublime` | Time clock — admin panel + public kiosk at `/sublime/fichaje` |
+| Estudio Visual | `/estudio-visual` | AI product photo/video generator (OpenRouter) + Instagram feed/story variants |
+| Fondo Transparente | `/fondo-transparente` | Public donation tracker: totals, confirmed, and pending verification |
+| Fuerza Venezuela | — | Sister page for donation transparency, same data pattern as Fondo Transparente |
+| Configuration | `/configuracion` | Roles, permissions, and general panel settings |
 
-> El módulo de Retail/POS que documentaba versiones anteriores de este README
-> migró a **RESTOCK**: la reposición de stock ahora vive integrada en
-> Basico España → Fabricación, ya no es un TPV independiente con WooCommerce.
+> The Retail/POS module documented in earlier versions of this README was
+> migrated into **RESTOCK**: stock replenishment now lives integrated into
+> Basico España → Manufacturing, and is no longer a standalone POS with
+> WooCommerce.
 
 ---
 
-## Actualizaciones recientes
+## Recent updates
 
-- **Estudio Visual** (4 ago 2026) — nuevo módulo: sube una foto de la prenda y
-  genera la foto de estudio (fondo blanco, con modelo, o mockup lifestyle) vía
-  OpenRouter, más las variantes recortadas para Instagram feed (1080×1080) y
-  story (1080×1920), compuestas en Canvas con el logo y los colores de marca.
-  Prompts y plantilla configurables desde Configuración.
-- **RESTOCK** (8 ago 2026) — migración del listado de fabricación de Basico
-  España para absorber la lógica de reposición de stock.
-- **Pedidos** (10-11 ago 2026) — badges de estado diferenciando "Entregado" de
-  otros estados, modal de multi-producto, payloads y confirmaciones de
-  inventario más robustas.
+- **Estudio Visual** (Aug 4, 2026) — new module: upload a photo of the
+  garment and generate the studio photo (white background, with model, or
+  lifestyle mockup) via OpenRouter, plus the cropped variants for Instagram
+  feed (1080×1080) and story (1080×1920), composited on Canvas with the logo
+  and brand colors. Prompts and template configurable from Settings.
+- **RESTOCK** (Aug 8, 2026) — migration of the Basico España manufacturing
+  list to absorb the stock replenishment logic.
+- **Orders** (Aug 10-11, 2026) — status badges differentiating "Delivered"
+  from other statuses, multi-product modal, more robust inventory
+  confirmations and payloads.
 
 ---
 
 ## Stack
 
 React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · React Router ·
-TanStack Query · Supabase (Postgres, Auth, Storage y Edge Functions) ·
-OpenRouter (generación de imágenes/video, módulo Estudio Visual) ·
-Playwright y Vitest.
+TanStack Query · Supabase (Postgres, Auth, Storage, and Edge Functions) ·
+OpenRouter (image/video generation, Estudio Visual module) ·
+Playwright and Vitest.
 
-La animación del hero es WebGL2 escrito a mano, sin librerías de 3D.
+The hero animation is hand-written WebGL2, with no 3D libraries.
 
 ---
 
-## Arquitectura
+## Architecture
 
-### Integraciones externas
+### External integrations
 
-El sistema no es un ERP aislado: sincroniza en vivo con las herramientas que la
-operación real ya usa, vía 40 Supabase Edge Functions.
+The system isn't an isolated ERP: it syncs live with the tools the real
+operation already uses, via 40 Supabase Edge Functions.
 
-| Integración | Edge Functions | Para qué |
+| Integration | Edge Functions | What for |
 |---|---|---|
-| **WooCommerce** | `woo-sync`, `woo-orders`, `woo-customers`, `woo-customers-sync`, `woo-dashboard`, `woo-analytics-kpis`, `woo-explore`, `core-woo-sync`, `core-woo-import-variants`, `core-woo-map-import`, `core-woo-map-import-variants`, `core-woo-map-lookup`, `core-woo-stock-write`, `core-woo-test-read`, `esp-woo-sync-catalog`, `esp-woo-sync-orders`, `esp-woo-test` | Catálogo, pedidos, clientes y stock sincronizados en ambos sentidos entre Basico Core/España y las tiendas WooCommerce |
-| **OpenRouter** | `estudio-generate-image`, `estudio-generate-video`, `estudio-list-models`, `estudio-video-status` | Generación de fotografía y video de producto por IA (módulo Estudio Visual) |
-| **Zadarma** | `zadarma-sync` | Telefonía: sincronización de llamadas, grabaciones y analítica por agente (módulo Llamadas) |
-| **Brevo** | `brevo-campaigns`, `brevo-sync-contacts` | Email marketing: campañas y sincronización de contactos (módulo Campañas) |
-| **Notion** | `notion-planning` | Calendario editorial sincronizado (módulo Planning) |
-| **BCV** | `fetch-bcv-rate` | Tasa de cambio oficial del Banco Central de Venezuela para cálculos financieros |
-| **POS público (España)** | `esp-public-pos-admin`, `esp-public-pos-resolve`, `esp-public-pos-sale`, `esp-public-pos-search` | Punto de venta público sin autenticación de usuario, con token propio |
-| **Sublime (fichaje)** | `sublime-clock-event`, `sublime-pin-admin`, `sublime-pin-public` | Registro de entrada/salida del personal vía PIN, panel admin y kiosco público |
-| **Administración de usuarios** | `admin-list-users`, `admin-manage-users` | Gestión de cuentas y roles desde Configuración |
-| **Landing** | `send-landing-lead-notification` | Notificación de nuevos leads del formulario público |
-| **Core / producción** | `core-create-production-order`, `core-generate-production-needs`, `core-generate-production-units`, `core-process-fabrication-funds` | Órdenes de producción, cálculo de necesidades de tela/insumos y fondos de fabricación |
-| **Autenticación** | `crew-passcode` | Código de acceso alternativo para el personal de Crew |
+| **WooCommerce** | `woo-sync`, `woo-orders`, `woo-customers`, `woo-customers-sync`, `woo-dashboard`, `woo-analytics-kpis`, `woo-explore`, `core-woo-sync`, `core-woo-import-variants`, `core-woo-map-import`, `core-woo-map-import-variants`, `core-woo-map-lookup`, `core-woo-stock-write`, `core-woo-test-read`, `esp-woo-sync-catalog`, `esp-woo-sync-orders`, `esp-woo-test` | Catalog, orders, customers, and stock synced both ways between Basico Core/España and the WooCommerce stores |
+| **OpenRouter** | `estudio-generate-image`, `estudio-generate-video`, `estudio-list-models`, `estudio-video-status` | AI-generated product photography and video (Estudio Visual module) |
+| **Zadarma** | `zadarma-sync` | Telephony: syncing calls, recordings, and per-agent analytics (Calls module) |
+| **Brevo** | `brevo-campaigns`, `brevo-sync-contacts` | Email marketing: campaigns and contact sync (Campaigns module) |
+| **Notion** | `notion-planning` | Synced editorial calendar (Planning module) |
+| **BCV** | `fetch-bcv-rate` | Official Venezuelan Central Bank exchange rate for financial calculations |
+| **Public POS (Spain)** | `esp-public-pos-admin`, `esp-public-pos-resolve`, `esp-public-pos-sale`, `esp-public-pos-search` | Public point-of-sale with no user authentication, using its own token |
+| **Sublime (time clock)** | `sublime-clock-event`, `sublime-pin-admin`, `sublime-pin-public` | Staff clock-in/clock-out via PIN, admin panel, and public kiosk |
+| **User administration** | `admin-list-users`, `admin-manage-users` | Account and role management from Settings |
+| **Landing** | `send-landing-lead-notification` | Notification of new leads from the public form |
+| **Core / manufacturing** | `core-create-production-order`, `core-generate-production-needs`, `core-generate-production-units`, `core-process-fabrication-funds` | Production orders, fabric/supply needs calculation, and manufacturing funds |
+| **Authentication** | `crew-passcode` | Alternative access code for Crew staff |
 
-### Hooks de datos por módulo
+### Data hooks by module
 
-| Hook | Módulo | Qué trae |
+| Hook | Module | What it fetches |
 |---|---|---|
-| `useDashboardData.ts` | Dashboard | Métricas agregadas de ventas (18.9 KB — el más grande del panel) |
-| `useAdminData.ts` | Administración | Obligaciones, vencimientos y control financiero |
-| `useCrewData.ts` / `useCrewAudit.ts` | Crew | Perfiles, incidencias, auditoría de fichajes |
-| `useCoreDispatches.ts` / `useCoreLocations.ts` / `useCoreRoles.ts` / `useCoreSettings.ts` / `useCoreStatusRules.ts` | Basico Core | Despachos, ubicaciones, roles y reglas de estado de producción |
-| `useReplenishmentPolicyEvents.ts` | RESTOCK | Motor de reposición de stock (36.2 KB — el hook más grande de todo el repo) |
-| `useWooCoreMap.ts` | Basico Core / España | Mapeo de productos entre Supabase y WooCommerce |
-| `useExternalPurchaseOrders.ts` | Administración / Core | Órdenes de compra a proveedores externos |
-| `useCallsData.ts` | Llamadas | Datos sincronizados desde Zadarma |
-| `usePlanningData.ts` | Planning | Calendario editorial sincronizado con Notion |
-| `useRRPPData.ts` / `useRRPPBrand.ts` / `useRRPPGoals.ts` | RRPP | Influencers, colaboraciones, metas por marca |
-| `useSublimeClock.ts` | Sublime | Fichaje: lógica de entrada/salida |
-| `useSublimeMerch.ts` | Sublime | Mercancía de la tienda Sublime (23.7 KB) |
-| `useBirthdayPeople.ts` / `useBlurSales.ts` | Dashboard | Widgets auxiliares (cumpleaños del equipo, difuminado de cifras sensibles) |
-| `useAuth.tsx` | Global | Roles, rutas permitidas por rol (`ALL_ROUTES`, `DEFAULT_ROLE_ROUTES`) |
+| `useDashboardData.ts` | Dashboard | Aggregated sales metrics (18.9 KB — the largest in the panel) |
+| `useAdminData.ts` | Administration | Obligations, due dates, and financial control |
+| `useCrewData.ts` / `useCrewAudit.ts` | Crew | Profiles, incidents, clock-in audit |
+| `useCoreDispatches.ts` / `useCoreLocations.ts` / `useCoreRoles.ts` / `useCoreSettings.ts` / `useCoreStatusRules.ts` | Basico Core | Dispatches, locations, roles, and production status rules |
+| `useReplenishmentPolicyEvents.ts` | RESTOCK | Stock replenishment engine (36.2 KB — the largest hook in the whole repo) |
+| `useWooCoreMap.ts` | Basico Core / España | Product mapping between Supabase and WooCommerce |
+| `useExternalPurchaseOrders.ts` | Administration / Core | Purchase orders to external suppliers |
+| `useCallsData.ts` | Calls | Data synced from Zadarma |
+| `usePlanningData.ts` | Planning | Editorial calendar synced with Notion |
+| `useRRPPData.ts` / `useRRPPBrand.ts` / `useRRPPGoals.ts` | RRPP | Influencers, collaborations, per-brand goals |
+| `useSublimeClock.ts` | Sublime | Time clock: check-in/check-out logic |
+| `useSublimeMerch.ts` | Sublime | Sublime store merchandise (23.7 KB) |
+| `useBirthdayPeople.ts` / `useBlurSales.ts` | Dashboard | Auxiliary widgets (team birthdays, blurring sensitive figures) |
+| `useAuth.tsx` | Global | Roles, routes allowed per role (`ALL_ROUTES`, `DEFAULT_ROLE_ROUTES`) |
 
-### Estructura de carpetas
+### Folder structure
 
 ```
 src/
-  pages/                 una por ruta; Landing.tsx es la única pública
+  pages/                 one per route; Landing.tsx is the only public one
   components/
-    landing/             la landing: estilo encapsulado y animación WebGL
+    landing/             the landing page: encapsulated styles and WebGL animation
     ui/                  shadcn
-    admin/               gestión de usuarios y roles
-    campaigns/           wizard y detalle de campañas de email
-    configuracion/       RolePermissionsPanel y ajustes generales
-    core/                producción: costos, pipeline, inventario, woocore/, payroll/, needs/
-    crew/                RRHH
-    crm/                 clientes unificados
-    espana/              operación España (ventas, reportes, fabricación, etiquetas)
-    estudio/config/      tabs de configuración de Estudio Visual (prompts, marca)
+    admin/               user and role management
+    campaigns/           email campaign wizard and detail
+    configuracion/       RolePermissionsPanel and general settings
+    core/                manufacturing: costs, pipeline, inventory, woocore/, payroll/, needs/
+    crew/                HR
+    crm/                 unified customers
+    espana/              Spain operation (sales, reports, manufacturing, labels)
+    estudio/config/      Estudio Visual settings tabs (prompts, brand)
     fondo/               Fondo Transparente
-    pedidos/             pedidos, badges de estado, multi-producto
-    planning/            calendario editorial
-    rrpp/                influencers y colaboraciones
-    sublime/             fichaje + mercancia/ (tienda Sublime)
-    shared/              componentes compartidos entre módulos
-  hooks/                 lógica de datos — ver tabla arriba
+    pedidos/             orders, status badges, multi-product
+    planning/            editorial calendar
+    rrpp/                influencers and collaborations
+    sublime/             time clock + mercancia/ (Sublime store)
+    shared/              components shared across modules
+  hooks/                 data logic — see table above
   lib/  integrations/supabase/
-design/                  fuentes de los iconos y la tarjeta social (no se sirven)
-public/                  assets estáticos servidos tal cual
+design/                  icon and social card sources (not served)
+public/                  static assets served as-is
 supabase/
-  functions/             40 edge functions — ver tabla de integraciones
-  migrations/            174 migraciones versionadas (mar 2026 → ago 2026)
+  functions/             40 edge functions — see integrations table
+  migrations/            174 versioned migrations (Mar 2026 → Aug 2026)
 ```
 
-### La landing
+### The landing page
 
-Vive en `src/pages/Landing.tsx` con su estilo en
-`src/components/landing/landing-bsod.css`. **Todo cuelga de `.landing-bsod`** y
-no toca `:root`: los tokens HSL de `src/index.css` los consume el panel entero,
-así que declarar ahí el azul convertiría el ERP en una pantalla azul.
+Lives in `src/pages/Landing.tsx` with its styles in
+`src/components/landing/landing-bsod.css`. **Everything hangs off
+`.landing-bsod`** and never touches `:root`: the HSL tokens in
+`src/index.css` are consumed by the entire panel, so declaring blue there
+would turn the ERP into a blue screen.
 
 ---
 
-## Desarrollo local
+## Local development
 
 ```bash
 npm install
 npm run dev          # http://localhost:8080
 ```
 
-Otros comandos:
+Other commands:
 
 ```bash
-npm run build        # build de producción
-npx tsc --noEmit     # comprobación de tipos
+npm run build        # production build
+npx tsc --noEmit     # type checking
 npm run lint
-npx vitest           # tests unitarios
+npx vitest           # unit tests
 npx playwright test  # end to end
 ```
 
-Hace falta un `.env.local` con las credenciales de Supabase. Pídeselas a
-alguien del equipo; no están en el repositorio. El módulo Estudio Visual
-además requiere el secret `OPENROUTER_API_KEY` configurado en Supabase Edge
+You'll need a `.env.local` with Supabase credentials. Ask a teammate for
+them; they're not in the repository. The Estudio Visual module also
+requires the `OPENROUTER_API_KEY` secret configured in Supabase Edge
 Functions.
 
 ---
 
-## Regenerar iconos y tarjeta social
+## Regenerating icons and social card
 
-Los originales son HTML en `design/`, para que el icono use exactamente la misma
-tipografía que la landing.
+The originals are HTML files in `design/`, so the icon uses exactly the same
+typography as the landing page.
 
 ```bash
 node design/generate-assets.cjs
 ```
 
-Produce en `public/`: `favicon.ico` (16, 32 y 48 en un solo fichero),
-`icon-192.png`, `icon-512.png`, `icon-512-maskable.png`, `apple-touch-icon.png`
-y `og-basico-systems.png` (1200×630).
+Produces in `public/`: `favicon.ico` (16, 32, and 48 in a single file),
+`icon-192.png`, `icon-512.png`, `icon-512-maskable.png`,
+`apple-touch-icon.png`, and `og-basico-systems.png` (1200×630).
 
-Al tocar cualquiera de ellos, **sube la versión de la caché** en `public/sw.js`
-(`basico-static-vN`). El service worker es cache-first para imágenes y sólo
-purga las cachés cuyo nombre no coincide con el actual: sin ese cambio, quien ya
-visitó el sitio sigue viendo los iconos viejos.
+Whenever you touch any of them, **bump the cache version** in `public/sw.js`
+(`basico-static-vN`). The service worker is cache-first for images and only
+purges caches whose name doesn't match the current one: without that change,
+anyone who already visited the site keeps seeing the old icons.
 
 ---
 
-## Cambiar de dominio
+## Changing domains
 
-La URL canónica está en cuatro sitios. Hay que cambiarlos a la vez:
+The canonical URL lives in four places. They all need to be updated at the
+same time:
 
-| Fichero | Qué contiene |
+| File | What it contains |
 |---|---|
-| `index.html` | `canonical`, `og:url`, `og:image`, `twitter:image` y las tres URL del JSON-LD |
-| `public/sitemap.xml` | el `<loc>` |
-| `public/robots.txt` | la línea `Sitemap:` |
-| `design/og-card.html` | nada de URL, pero conviene regenerar la tarjeta si cambia el mensaje |
+| `index.html` | `canonical`, `og:url`, `og:image`, `twitter:image`, and the three JSON-LD URLs |
+| `public/sitemap.xml` | the `<loc>` |
+| `public/robots.txt` | the `Sitemap:` line |
+| `design/og-card.html` | no URL, but it's worth regenerating the card if the message changes |
 
-Después, revalidar la vista previa del enlace en los tres inspectores —cachean
-la versión anterior durante días:
+Afterwards, revalidate the link preview in the three inspectors — they cache
+the previous version for days:
 
 - [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
 - [LinkedIn Post Inspector](https://www.linkedin.com/post-inspector/)
@@ -218,12 +223,13 @@ la versión anterior durante días:
 
 ## SEO
 
-Las etiquetas viven **estáticas en `index.html`**, no inyectadas desde React.
-Es deliberado: los rastreadores sociales no ejecutan JavaScript y sólo leen el
-HTML servido. Inyectarlas en runtime alcanzaría a Google, que sí renderiza, pero
-no a la vista previa del enlace.
+Meta tags live **statically in `index.html`**, not injected from React. This
+is deliberate: social crawlers don't run JavaScript and only read the served
+HTML. Injecting them at runtime would reach Google, which does render, but
+not the link preview.
 
-`public/robots.txt` bloquea las rutas del panel. Conviene saber que **es una
-petición a rastreadores que se portan bien, no un control de acceso**: `/pos/`
-lleva un token en la URL y esto lo mantiene fuera del índice de Google, pero no
-protege la dirección. Eso se resuelve en servidor y caducando los tokens.
+`public/robots.txt` blocks the panel routes. Worth knowing: **this is a
+request to well-behaved crawlers, not an access control**: `/pos/` carries an
+access token in the URL itself, and this just keeps it out of Google's
+index — it doesn't protect the address. That's handled server-side and by
+expiring the tokens.
