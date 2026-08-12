@@ -38,6 +38,8 @@ type Movement = {
   woo_product_id: number | null;
   woo_variation_id: number | null;
   cost_snapshot_data: any;
+  production_order_id?: string | null;
+  metadata?: any;
 };
 type Pending = {
   id: string; source_order_id: number; source_order_item_id: number | null;
