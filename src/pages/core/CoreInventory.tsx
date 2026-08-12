@@ -292,31 +292,73 @@ export default function CoreInventory() {
   }, [units, logs, previewByUnit]);
 
 
-  const generatePreview = async (u: Unit) => {
+  // Genera entrada preparada fresca (lectura Woo obligatoria) y, en manual_confirm,
+  // confirma + verifica en el mismo paso.
+  const addToInventory = async (u: Unit) => {
     setBusyUnit(u.id);
     try {
       const { data, error } = await supabase.functions.invoke("core-woo-stock-write", {
-        body: { production_unit_id: u.id, action_type: "stock_increase", quantity: 1 },
+        body: {
+          production_unit_id: u.id,
+          action_type: "stock_increase",
+          quantity: 1,
+          preview_source: "generated_on_confirm",
+        },
       });
-      if (error) throw error;
-      if ((data as any)?.skipped) {
-        toast({
-          title: "Bloqueada",
-          description: (data as any)?.message ?? "No se puede duplicar.",
-          variant: "destructive",
-        });
-      } else if ((data as any)?.reused_preview) {
-        toast({ title: "Entrada preparada ya existente", description: "Esta unidad ya tiene una entrada preparada activa." });
-      } else {
-        toast({ title: "Entrada preparada", description: "Aún NO se actualiza WooCommerce. Debe confirmarse manualmente." });
+      if (error) {
+        const b = await parseEdgeError(error);
+        throw new Error(
+          b?.error ??
+            b?.message ??
+            "No se pudo consultar el stock actual de WooCommerce. No se ingresó la prenda.",
+        );
       }
-      await load();
+      const resp: any = data;
+      if (resp?.skipped) {
+        toast({ title: "Bloqueada", description: resp?.message ?? "No se puede duplicar.", variant: "destructive" });
+        await load();
+        return;
+      }
+      if (resp?.error) {
+        toast({ title: "Error", description: resp.error, variant: "destructive" });
+        await load();
+        return;
+      }
+
+      const previewId: string | null = resp?.preview?.id ?? null;
+
+      if (writeMode !== "manual_confirm" || !previewId) {
+        toast({
+          title: "Entrada preparada",
+          description:
+            writeMode === "dry_run"
+              ? "Modo dry_run: no se actualiza WooCommerce."
+              : "Revisa la entrada preparada.",
+        });
+        await load();
+        return;
+      }
+
+      await confirmWrite({
+        id: previewId,
+        unit_code: u.unit_code,
+        variant_sku: u.variant_sku,
+        sku: u.sku,
+        size: u.size,
+        woo_product_id: u.woo_product_id ?? null,
+        woo_variation_id: u.woo_variation_id ?? null,
+        stock_before: resp?.preview?.stock_before ?? null,
+        quantity_delta: 1,
+        stock_after_expected: resp?.preview?.stock_after_expected ?? null,
+      } as unknown as WooLog);
     } catch (e: any) {
       toast({ title: "Error", description: e?.message ?? String(e), variant: "destructive" });
     } finally {
       setBusyUnit(null);
+      await load();
     }
   };
+
 
   const regeneratePreview = async (log: WooLog) => {
     setBusyUnit(log.id);
