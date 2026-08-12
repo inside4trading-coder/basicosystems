@@ -183,7 +183,7 @@ export default function CoreFabricationFunds() {
 
   async function load() {
     setLoading(true);
-    const [{ data: f }, { data: m }, { data: p }, { data: r }, { data: u }, { data: ev }] = await Promise.all([
+    const [{ data: f }, { data: m }, { data: p }, { data: r }, { data: u }, { data: ev }, { data: po }] = await Promise.all([
       supabase.from("core_fabrication_funds").select("*").order("fund_type"),
       supabase.from("core_fabrication_fund_movements").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("core_fabrication_fund_pending_items").select("*").order("created_at", { ascending: false }).limit(500),
@@ -195,6 +195,7 @@ export default function CoreFabricationFunds() {
         .in("status", ["resolved", "applied", "reviewed"])
         .order("created_at", { ascending: false })
         .limit(500),
+      supabase.from("core_production_orders").select("id, order_code, status").limit(2000),
     ]);
     setFunds((f as any) ?? []);
     setMovements((m as any) ?? []);
@@ -202,6 +203,7 @@ export default function CoreFabricationFunds() {
     setRuns((r as any) ?? []);
     setUnits((u as any) ?? []);
     setReconEvents((ev as any) ?? []);
+    setProdOrders((po as any) ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
