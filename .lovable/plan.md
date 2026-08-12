@@ -1,52 +1,46 @@
-# Diagnóstico solo lectura — ¿Partidas baja al crear/producir OP?
+# Partidas: disponible real descontando OP asignadas
 
-## Respuestas directas
+Base confirmada en el diagnóstico: hoy solo suben movimientos por venta; crear OP o ingresar inventario no genera ningún movimiento financiero. Este cambio agrega el descuento por OP hacia adelante, sin backfill.
 
-1. ¿La partida baja hoy al crear una OP? **No.**
-2. ¿La partida baja hoy al ingresar prendas a inventario? **No** (no hay movimiento financiero; el ingreso solo afecta stock Woo y estado de la unidad).
-3. ¿Existe algún movement_type de consumo/descuento productivo? **No.**
-4. ¿El total actual es acumulado histórico o disponible real? **Acumulado histórico** de reservas por ventas (menos reversiones y ajustes manuales). No descuenta producción.
-5. ¿Dónde se calcula? En el frontend, `src/pages/core/CoreFabricationFunds.tsx` (memo `totals`, líneas ~210-266, y `partidaCards`, ~269-283). No hay RPC de cálculo.
+## 1. Migración (base de datos)
 
-## Evidencia verificada
+- Ampliar el CHECK de `core_fabrication_fund_movements.movement_type` con: `production_allocated`, `production_released`, `production_executed`.
+- Ampliar el CHECK de `source` con `production_order`.
+- Nuevas columnas en `core_fabrication_fund_movements`: `production_order_id uuid` (FK a `core_production_orders`, ON DELETE SET NULL) y `metadata jsonb`.
+- Índice único parcial: un solo `production_allocated` por `production_order_id` (idempotencia dura a nivel base de datos).
 
-**Tipos de movimiento permitidos** (CHECK de `core_fabrication_fund_movements`):
-`sale_generated`, `sale_generated_non_restockable`, `manual_increase`, `manual_decrease`, `transfer`, `reversal`, `close`, `correction`, `replacement_cost_adjustment`, `replacement_reclassification_out`, `replacement_reclassification_in`, `external_supplier_payment`.
+## 2. Dónde se inserta `production_allocated`
 
-No existe ninguno de: `production_order_created`, `production_allocated`, `production_consumed`, `inventory_entered`, `stock_increase`, `fabrication_consumption`, `reserve_consumed`, `order_converted`, `need_converted`. La constraint los rechazaría si se intentaran insertar.
+Se hace en la base de datos, no en el frontend, para cubrir todas las vías de creación (función `core-create-production-order`, órdenes manuales y órdenes por lote) sin tocar ninguna de ellas.
 
-**Datos reales hoy** (agrupado por tipo/bucket/estado):
+Función `public.core_sync_production_order_allocation(p_order_id uuid)`:
+- Calcula el monto = suma de `quantity_ordered * COALESCE(estimated_unit_cost, 0)` de `core_production_order_lines`. Si una línea no tiene costo estimado, resuelve con `resolve_core_variant_unit_cost` (misma fuente de costos que ya usa Core).
+- Si la OP está en estado `cancelled`: deja el asignado en 0 y registra la diferencia como `production_released` (positivo).
+- Si la OP está activa (`open`, `in_production`, `partially_completed`): mantiene un único movimiento `production_allocated` con `amount` negativo, `fund_bucket = internal_factory`, `status = posted`, `source = production_order`, `production_order_id`, y `metadata` con `order_code`, `quantity`, `total_cost` y las necesidades origen (`core_production_order_need_links`).
+- Ajusta `core_fabrication_funds.available_amount` del fondo general por la diferencia exacta aplicada (nunca por el total), así refrescar o reeditar líneas no duplica.
 
-```text
-replacement_cost_adjustment       internal_factory   posted        4      2.87
-replacement_reclassification_in   non_restockable    posted       14    115.04
-replacement_reclassification_out  internal_factory   posted       14   -115.04
-reversal                          external_supplier  posted        1     -3.40
-sale_generated                    external_supplier  posted        3     11.78
-sale_generated                    external_supplier  reversed      1      3.40
-sale_generated                    internal_factory   posted      120    952.70
-```
+Disparadores:
+- `AFTER INSERT OR UPDATE OR DELETE` en `core_production_order_lines` → recalcula la asignación de esa OP.
+- `AFTER UPDATE OF status` en `core_production_orders` → al pasar a `cancelled` libera; al pasar a `closed`/`completed` convierte el asignado en `production_executed` (registro informativo, sin volver a mover saldo).
 
-Saldos en `core_fabrication_funds`: general 840.52 · no restockeable 115.04 · pendiente 0 · proveedores externos 11.78.
-Todo lo que sube viene de ventas (`sale_generated`); lo único que baja son reversiones de ventas, reclasificaciones entre buckets, pagos a proveedor externo y ajustes manuales.
+## 3. Cómo evita duplicados
 
-**Relación OP ↔ fondos:** ninguna. `core_fabrication_fund_movements` no tiene `production_order_id` ni `production_need_id`. `core_production_orders`, `core_production_needs` y `core_production_units` no tienen ninguna columna de tipo `amount / cost / fund / reserved / allocated`. OP-000010, OP-000011 y OP-000012 no generaron movimiento financiero alguno: existen solo como producción.
+Tres capas: el índice único parcial por `production_order_id`, la función que actualiza el movimiento existente en vez de insertar otro, y el ajuste de saldo por diferencia (delta) en lugar de por monto total. Refrescar la pantalla no ejecuta nada: los movimientos los crea la base de datos, no la UI.
 
-**Ingreso a inventario:** `core-woo-stock-write` no toca `core_fabrication_fund*`; `core-create-production-order` tampoco.
+## 4. Resumen de Partidas (UI)
 
-**Fórmula del resumen (frontend):**
-- "Disponible total para fabricar" = `funds.general.available_amount + funds.non_restockable.available_amount` → saldo acumulado de los fondos, sin restar producción.
-- "Partida generada" = suma de movimientos `sale_generated*` posted.
-- "Ejecutado en inventario" = estimación **solo visual**: empareja por SKU los movimientos de venta más antiguos con unidades en estado `entered_inventory` (no lee ningún movimiento financiero).
-- "Disponible sin asignar" = `generado - ejecutado`, clamp a >= 0. También solo visual: no coincide con `available_amount` ni descuenta OP abiertas.
+En `src/pages/core/CoreFabricationFunds.tsx`, las cards pasan a:
+- **Partida generada**: histórico por ventas (sin cambios).
+- **Asignado a OP**: suma de `production_allocated` de OP activas (valor absoluto).
+- **Ejecutado**: OP completadas/cerradas (`production_executed`).
+- **Disponible real sin asignar**: general de fabricación − asignado a OP activas.
 
-Es decir, la respuesta a la pregunta 5 del pedido es **A**: `disponible_total = suma de reservas acumuladas`.
+Se mantienen separadas y sin tocar: Liberado por no restock, Proveedores externos, Pendiente por resolver. Se agrega en Movimientos el filtro "Producción" y etiquetas para los tres tipos nuevos.
 
-## Recomendación mínima (sin implementar)
+## 5. Alcance
 
-Opción de menor riesgo, en dos pasos separables:
+Sin backfill: las OP existentes no generan movimientos; solo aplica hacia adelante. No se tocan Woo, QR, nómina, procesos, inventario, ventas históricas, reemplazos, proveedor externo ni no restock.
 
-1. **Corto plazo (solo UI, cero backend):** renombrar la card a "Partida acumulada (reservas)" y mostrar debajo, como dato derivado, "Comprometido en producción" y "Disponible estimado" usando el mismo emparejamiento por SKU que ya existe, extendido a unidades en OP abiertas además de `entered_inventory`. Aclara la lectura sin cambiar dinero.
-2. **Mediano plazo (backend real):** agregar al CHECK dos tipos, `production_allocated` (al crear la OP, negativo, reservando) y `production_consumed` (al ingresar la unidad a inventario, convirtiendo la reserva en gasto), más columnas `production_order_id` y `production_unit_id` en `core_fabrication_fund_movements`, con clave de idempotencia por unidad. Recién ahí `available_amount` pasaría a ser disponible real y valdría la fórmula B.
+## Validación
 
-No conviene mezclar ambos pasos: el 2 requiere definir qué pasa con las OP y unidades ya existentes (backfill o baseline desde una fecha) antes de tocar saldos.
+OP nueva por $50 → Partida generada igual, Asignado a OP +$50, Disponible real −$50; refrescar no duplica; cancelar la OP libera los $50. Typecheck 0 errores.
