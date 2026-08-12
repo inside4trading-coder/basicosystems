@@ -765,7 +765,7 @@ export default function CoreFabricationFunds() {
             <KpiCard label="Partida generada" value={usd(totals.generatedTotal)} sub="Ventas confirmadas posted" tone="emerald" />
             <KpiCard label="Asignado a OP" value={usd(totals.allocatedActive)} sub="OP abiertas / en producción" tone="orange" />
             <KpiCard label="Ejecutado" value={usd(totals.executedProduction)} sub="OP completadas o cerradas" tone="muted" />
-            <KpiCard label="Disponible real sin asignar" value={usd(totals.availableReal)} sub="General − asignado a OP" tone="emerald" />
+            <KpiCard label="Disponible real sin asignar" value={usd(totals.availableReal)} sub="Saldo del fondo ya neto de OP" tone="emerald" />
             <KpiCard label="Liberado por no restock" value={usd(totals.nonR)} sub="Disponible para futuras fabricaciones" tone="emerald" />
             <KpiCard label="Ejecutado en inventario" value={usd(totals.executedTotal)} sub="Unidades ya ingresadas" tone="muted" />
 
