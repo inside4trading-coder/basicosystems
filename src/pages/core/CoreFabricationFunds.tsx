@@ -829,6 +829,7 @@ export default function CoreFabricationFunds() {
                   <SelectItem value="all">Todos los movimientos</SelectItem>
                   <SelectItem value="pending_classification">Pendiente de clasificación</SelectItem>
                   <SelectItem value="external_supplier">Proveedores externos</SelectItem>
+                  <SelectItem value="production">Producción (OP)</SelectItem>
                 </SelectContent>
               </Select>
               {movFilter !== "all" && (
@@ -840,6 +841,9 @@ export default function CoreFabricationFunds() {
               const externalFundId = partidaCards.external.fund?.id ?? null;
               const filtered = movements.filter(m => {
                 if (movFilter === "all") return true;
+                if (movFilter === "production") {
+                  return m.movement_type.startsWith("production_");
+                }
                 if (movFilter === "external_supplier") {
                   return m.fund_bucket === "external_supplier" || (externalFundId && m.fund_id === externalFundId);
                 }
@@ -858,6 +862,12 @@ export default function CoreFabricationFunds() {
                       Mostrando <strong>{filtered.length}</strong> movimiento{filtered.length === 1 ? "" : "s"} de proveedores externos · Total <strong className="font-mono">{usd(total)}</strong>
                     </div>
                   )}
+                  {movFilter === "production" && (
+                    <div className="text-xs bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded px-3 py-2">
+                      Mostrando <strong>{filtered.length}</strong> movimiento{filtered.length === 1 ? "" : "s"} de producción · Neto <strong className="font-mono">{usd(total)}</strong> · Asignado activo <strong className="font-mono">{usd(totals.allocatedActive)}</strong>
+                    </div>
+                  )}
+
                   <div className="rounded-lg border overflow-x-auto">
                     <Table>
                       <TableHeader>
