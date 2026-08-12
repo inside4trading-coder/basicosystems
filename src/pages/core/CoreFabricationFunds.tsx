@@ -83,6 +83,9 @@ const MOV_LABEL: Record<string, string> = {
   replacement_reclassification_out: "Salida por reclasificación",
   replacement_reclassification_in: "Entrada por reclasificación",
   external_supplier_payment: "Pago a proveedor externo",
+  production_allocated: "Asignado a OP",
+  production_released: "Liberado de OP",
+  production_executed: "Producción ejecutada",
 };
 const MOV_BADGE: Record<string, string> = {
   sale_generated: "bg-emerald-100 text-emerald-800 border-emerald-300",
@@ -97,6 +100,9 @@ const MOV_BADGE: Record<string, string> = {
   replacement_reclassification_out: "bg-purple-100 text-purple-800 border-purple-300",
   replacement_reclassification_in: "bg-purple-100 text-purple-800 border-purple-300",
   external_supplier_payment: "bg-rose-100 text-rose-800 border-rose-300",
+  production_allocated: "bg-amber-100 text-amber-800 border-amber-300",
+  production_released: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  production_executed: "bg-slate-100 text-slate-800 border-slate-300",
 };
 const PENDING_REASON_LABEL: Record<string, string> = {
   product_not_in_core: "Producto no existe en Catálogo de Fabricación",
