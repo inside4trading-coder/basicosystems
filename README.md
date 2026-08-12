@@ -13,25 +13,50 @@ Basico System nace de operar una marca real —[Basico Clothes](https://basicocl
 y de comprobar que ningún SaaS genérico cubría la operación completa. La
 propuesta tiene dos caminos:
 
-- **Basico System**, el producto. Diez módulos en producción, personalizables en
+- **Basico System**, el producto. Módulos en producción, personalizables en
   branding, roles, flujos y campos. Arranca en días.
 - **Tailor-made**, el estudio. Discovery de la operación, módulos nuevos
   diseñados desde cero e integraciones con lo que haga falta.
 
 ### Módulos
 
-| | Módulo | Qué cubre |
+| Módulo | Ruta | Qué cubre |
 |---|---|---|
-| 01 | Pedidos | Sincronización con el e-commerce, estados, costos y márgenes en vivo |
-| 02 | CRM | Clientes unificados, segmentación y comportamiento de compra |
-| 03 | Planning | Calendario editorial sincronizado con el equipo |
-| 04 | Crew | RRHH: nómina, documentos, incidencias y tareas |
-| 05 | RRPP | Red de influencers, colaboraciones, cupones y métricas |
-| 06 | Campañas | Email marketing, audiencias y resultados |
-| 07 | Llamadas | Telefonía conectada, grabaciones y analítica por agente |
-| 08 | Administración | Obligaciones, vencimientos y control financiero |
-| 09 | Core | Fabricación: costos por prenda, órdenes de producción, partidas y nómina de taller |
-| 10 | Retail | TPV de tienda, catálogo sincronizado con WooCommerce e inventario unificado |
+| Dashboard | `/dashboard` | Resumen de ventas y métricas en vivo |
+| Pedidos | `/pedidos` | Sincronización con el e-commerce, estados, costos, márgenes, badges de estado y confirmaciones de inventario |
+| CRM | `/crm` | Clientes unificados, segmentación y comportamiento de compra |
+| Planning | `/planning` | Calendario editorial sincronizado con el equipo |
+| Crew | `/crew` | RRHH: perfiles, incidencias y tareas recurrentes |
+| RRPP | `/rrpp` | Red de influencers, colaboraciones, cupones y métricas |
+| Campañas | `/campaigns` | Wizard de creación, detalle y resultados de email marketing |
+| Llamadas | `/llamadas` | Telefonía conectada, grabaciones y analítica por agente |
+| Administración | `/administracion` | Obligaciones, vencimientos y control financiero |
+| Basico Core | `/core` | Fabricación: costos por prenda, órdenes de producción y RESTOCK |
+| Basico España | `/espana` | Operación específica de España: ventas, reportes, fabricación, etiquetas |
+| Sublime | `/sublime` | Fichaje de asistencia — panel admin + kiosco público en `/sublime/fichaje` |
+| Estudio Visual | `/estudio-visual` | Generador de fotografía de producto por IA (OpenRouter) + variantes para Instagram feed/story |
+| Fondo Transparente | `/fondo-transparente` | Seguimiento público de aportes/donaciones: totales, confirmados y pendientes de verificar |
+| Fuerza Venezuela | — | Página hermana de transparencia de aportes, mismo patrón de datos que Fondo Transparente |
+| Configuración | `/configuracion` | Roles, permisos y ajustes generales del panel |
+
+> El módulo de Retail/POS que documentaba versiones anteriores de este README
+> migró a **RESTOCK**: la reposición de stock ahora vive integrada en
+> Basico España → Fabricación, ya no es un TPV independiente con WooCommerce.
+
+---
+
+## Actualizaciones recientes
+
+- **Estudio Visual** (4 ago 2026) — nuevo módulo: sube una foto de la prenda y
+  genera la foto de estudio (fondo blanco, con modelo, o mockup lifestyle) vía
+  OpenRouter, más las variantes recortadas para Instagram feed (1080×1080) y
+  story (1080×1920), compuestas en Canvas con el logo y los colores de marca.
+  Prompts y plantilla configurables desde Configuración.
+- **RESTOCK** (8 ago 2026) — migración del listado de fabricación de Basico
+  España para absorber la lógica de reposición de stock.
+- **Pedidos** (10-11 ago 2026) — badges de estado diferenciando "Entregado" de
+  otros estados, modal de multi-producto, payloads y confirmaciones de
+  inventario más robustas.
 
 ---
 
@@ -39,6 +64,7 @@ propuesta tiene dos caminos:
 
 React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · React Router ·
 TanStack Query · Supabase (Postgres, Auth, Storage y Edge Functions) ·
+OpenRouter (generación de imágenes, módulo Estudio Visual) ·
 Playwright y Vitest.
 
 La animación del hero es WebGL2 escrito a mano, sin librerías de 3D.
@@ -63,7 +89,9 @@ npx playwright test  # end to end
 ```
 
 Hace falta un `.env.local` con las credenciales de Supabase. Pídeselas a
-alguien del equipo; no están en el repositorio.
+alguien del equipo; no están en el repositorio. El módulo Estudio Visual
+además requiere el secret `OPENROUTER_API_KEY` configurado en Supabase Edge
+Functions.
 
 ---
 
@@ -75,11 +103,12 @@ src/
   components/
     landing/         la landing: estilo encapsulado y animación WebGL
     ui/              shadcn
+    estudio/config/  tabs de configuración de Estudio Visual (prompts, marca)
     <módulo>/        un directorio por módulo del panel
   hooks/  lib/  integrations/supabase/
 design/              fuentes de los iconos y la tarjeta social (no se sirven)
 public/              assets estáticos servidos tal cual
-supabase/            migraciones y edge functions
+supabase/            migraciones y edge functions (incluye estudio-generate-image)
 ```
 
 ### La landing
