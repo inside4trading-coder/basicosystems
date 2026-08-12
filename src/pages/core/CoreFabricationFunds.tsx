@@ -157,6 +157,7 @@ export default function CoreFabricationFunds() {
   const [pendings, setPendings] = useState<Pending[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [units, setUnits] = useState<ProdUnit[]>([]);
+  const [prodOrders, setProdOrders] = useState<Array<{ id: string; order_code: string | null; status: string }>>([]);
   const [movFilter, setMovFilter] = useState<"all" | "pending_classification" | "external_supplier">("all");
   const [reconEvents, setReconEvents] = useState<any[]>([]);
   const [reconFilter, setReconFilter] = useState<"all" | "positive" | "negative" | "reclass" | "pending">("all");
