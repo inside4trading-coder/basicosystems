@@ -321,6 +321,7 @@ export default function CoreRawMaterials() {
               <Row label="Estado" value={viewing.status === "active" ? "Activo" : "Inactivo"} />
               <Row label="Observaciones" value={viewing.notes || "—"} />
               <Row label="Actualizado" value={new Date(viewing.updated_at).toLocaleString()} />
+              <MaterialUsageRow materialId={viewing.id} />
             </div>
           )}
         </DialogContent>
