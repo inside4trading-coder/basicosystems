@@ -321,6 +321,7 @@ export default function CoreRawMaterials() {
               <Row label="Estado" value={viewing.status === "active" ? "Activo" : "Inactivo"} />
               <Row label="Observaciones" value={viewing.notes || "—"} />
               <Row label="Actualizado" value={new Date(viewing.updated_at).toLocaleString()} />
+              <MaterialUsageRow materialId={viewing.id} />
             </div>
           )}
         </DialogContent>
@@ -351,6 +352,38 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="font-medium text-right">{value}</span>
     </div>
   );
+}
+
+/** Cuenta estructuras activas y productos/variantes vinculados a una materia prima. */
+async function countMaterialUsage(materialId: string): Promise<{ structures: number; products: number }> {
+  const { data } = await supabase
+    .from("core_cost_structure_items")
+    .select("cost_structure_id, core_cost_structures!inner(id, status, woo_product_id, variant_id)")
+    .eq("raw_material_id", materialId)
+    .eq("core_cost_structures.status", "active");
+  const rows = (data ?? []) as any[];
+  const structures = new Set<string>();
+  const products = new Set<string>();
+  for (const r of rows) {
+    const s = r.core_cost_structures;
+    if (!s) continue;
+    structures.add(s.id);
+    if (s.variant_id) products.add(`v:${s.variant_id}`);
+    else if (s.woo_product_id) products.add(`p:${s.woo_product_id}`);
+  }
+  return { structures: structures.size, products: products.size };
+}
+
+function MaterialUsageRow({ materialId }: { materialId: string }) {
+  const [txt, setTxt] = useState("…");
+  useEffect(() => {
+    let alive = true;
+    countMaterialUsage(materialId).then(({ structures, products }) => {
+      if (alive) setTxt(`${structures} estructuras · ${products} productos`);
+    });
+    return () => { alive = false; };
+  }, [materialId]);
+  return <Row label="Usada en (activas)" value={txt} />;
 }
 
 function RawMaterialForm({
@@ -404,6 +437,7 @@ function RawMaterialForm({
     };
 
     if (editing) {
+      const costChanged = Number(editing.unit_cost) !== cost;
       const { error } = await supabase.from("core_raw_materials").update(payload).eq("id", editing.id);
       setSaving(false);
       if (error) return toast.error(error.message);
@@ -416,7 +450,12 @@ function RawMaterialForm({
           await logAudit("update", editing.id, f as string, oldVal, newVal);
         }
       }
-      toast.success("Materia prima actualizada");
+      if (costChanged) {
+        const { structures, products } = await countMaterialUsage(editing.id);
+        toast.success(`Costo actualizado. Se recalcularon ${structures} estructuras y ${products} productos vinculados.`);
+      } else {
+        toast.success("Materia prima actualizada");
+      }
     } else {
       const { data, error } = await supabase.from("core_raw_materials")
         .insert({ ...payload, created_by: user?.id ?? null })
