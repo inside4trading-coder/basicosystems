@@ -404,6 +404,7 @@ function RawMaterialForm({
     };
 
     if (editing) {
+      const costChanged = Number(editing.unit_cost) !== cost;
       const { error } = await supabase.from("core_raw_materials").update(payload).eq("id", editing.id);
       setSaving(false);
       if (error) return toast.error(error.message);
@@ -416,7 +417,12 @@ function RawMaterialForm({
           await logAudit("update", editing.id, f as string, oldVal, newVal);
         }
       }
-      toast.success("Materia prima actualizada");
+      if (costChanged) {
+        const { structures, products } = await countMaterialUsage(editing.id);
+        toast.success(`Costo actualizado. Se recalcularon ${structures} estructuras y ${products} productos vinculados.`);
+      } else {
+        toast.success("Materia prima actualizada");
+      }
     } else {
       const { data, error } = await supabase.from("core_raw_materials")
         .insert({ ...payload, created_by: user?.id ?? null })
