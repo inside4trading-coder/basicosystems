@@ -9237,6 +9237,13 @@ export type Database = {
         Args: { p_name: string }
         Returns: string
       }
+      core_propagate_raw_material_cost: {
+        Args: { p_material_id: string }
+        Returns: {
+          items_updated: number
+          structures_updated: number
+        }[]
+      }
       core_receive_dispatch: {
         Args: {
           _dispatch_id: string
