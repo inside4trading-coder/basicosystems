@@ -43,9 +43,9 @@ Selector visual de modo de salida dentro del wizard de esa card:
 
 ## 5. Resultados recientes
 
-Grid de cards en lugar de la lista actual. Cada card muestra: preview, estado (listo / procesando / fallido), tipo (Foto catálogo · Fondo transparente · Fondo dinámico), si es Individual o Carrusel · 4 imágenes, fecha, cantidad de imágenes y acciones: Descargar, Descargar todo (solo carrusel), Duplicar generación, Usar como referencia, Ver prompt.
+"Videos recientes" y "Generaciones recientes" se unifican en **Resultados recientes**, en galería de cards. Cada card muestra: preview, estado (listo / procesando / fallido), tipo (Foto catálogo · Fondo transparente · Fondo dinámico), Individual o Carrusel · 4 imágenes, fecha, costo y acciones: Descargar, Descargar todo (solo carrusel), Duplicar, Usar como referencia, Ver prompt.
 
-Los fallidos se muestran en card compacta con el motivo y botón Reintentar, sin hueco de imagen vacío.
+Los fallidos se muestran en card compacta con el motivo, botón Reintentar y botón Ver error, sin hueco de imagen vacío.
 
 El agrupado en sets se hace en el cliente por `session_id`/fecha de los trabajos ya guardados; no se agregan columnas.
 
