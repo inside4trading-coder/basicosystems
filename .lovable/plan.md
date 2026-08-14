@@ -19,33 +19,34 @@ Es decir: el listado no oculta datos por un filtro, simplemente no consulta las 
 
 En el `load()` del listado, además de `core_cost_structures`, traer:
 
-- `core_products` (id, nombre, woo_product_id) para resolver el padre.
-- `core_product_variants` (id, size, color, variant_sku, woo_variation_id, cost_structure_id, uses_parent_cost_structure, cost_override_enabled, variant_unit_cost_usd).
+- `core_products`: id, name, product_type, woo_product_id.
+- `core_product_variants`: id, core_product_id (así se llama la columna), size, color, variant_sku, woo_variation_id, cost_structure_id, uses_parent_cost_structure, cost_override_enabled, variant_unit_cost_usd.
 
-Agrupación en memoria por producto padre usando `woo_product_id` como clave principal; si una estructura no tiene `woo_product_id`, se agrupa por su propio `id` (grupo suelto, sin variantes).
+Agrupación en memoria por producto padre: clave `woo_product_id` si existe, si no el id del producto Core; si una estructura no es vinculable a producto, se muestra como estructura suelta.
 
 ### 2. Filas del listado
 
-- Una fila por producto padre: la estructura con `variant_id` nulo (o, si no existe, una fila sintética sólo de presentación derivada del producto Core). Muestra nombre, tipo, Woo ID, costo base, moneda, margen, estado, actualización y el contador `N variantes`.
-- Fila expandible con las variantes del producto: color, talla, SKU variante, Woo padre, Woo variation ID, modo de costo, costo unitario resuelto y estado.
+- Una fila padre por producto, con flecha para expandir/contraer: nombre, tipo, Woo product ID, costo base, moneda, margen, estado, actualización, contador "12 variantes" y las acciones actuales (ver, editar, duplicar, activar/desactivar, eliminar). Se usa la estructura con `variant_id` nulo; si no existe, una fila derivada del producto Core sólo para presentación.
+- Al expandir se muestran TODAS las variantes del producto, tengan o no estructura propia, con sangría y fondo suave. Columnas: nombre de variante (`Producto — Color / Talla`), color, talla, SKU variante, Woo variation ID, modo de costo, costo unitario, estado y acciones.
 
-Estados de variante calculados en el cliente:
+Las estructuras de variante ya no se pintan como filas de primer nivel: pasan a ser filas hijas de su producto, así que no quedan productos duplicados en el listado.
 
-- Personalizada: tiene `cost_structure_id` propio distinto de la base.
-- Override manual: `cost_override_enabled` con costo propio y sin estructura propia.
-- Hereda estructura base: `uses_parent_cost_structure` o sin costo propio, existiendo estructura base → muestra el costo de la base.
-- Sin estructura: no hay estructura base ni costo propio.
+Estados de variante (badges) calculados en el cliente:
 
-Las estructuras de variante ya no se pintan como filas de primer nivel: pasan a ser filas hijas de su producto.
+- Hereda base (gris): `uses_parent_cost_structure = true` o sin estructura propia habiendo base → costo = `total_unit_cost` de la estructura padre.
+- Personalizada (rojo suave): `cost_structure_id` propio distinto del padre → costo = `total_unit_cost` de esa estructura.
+- Override manual (ámbar): `cost_override_enabled = true` → costo = `variant_unit_cost_usd`.
+- Sin estructura (advertencia): sin estructura propia ni base usable → costo vacío con icono de alerta.
 
 ### 3. Buscador y filtros
 
-El buscador pasa a coincidir (grupo visible si el padre o cualquiera de sus variantes coincide) con: nombre de producto, SKU padre, SKU variante, talla, color, Woo product ID y Woo variation ID. Los filtros de estado, tipo, moneda y Woo siguen aplicándose sobre el padre.
+El buscador coincide con nombre de producto, nombre de variante, SKU padre, SKU variante, color, talla, Woo product ID y Woo variation ID. Si la coincidencia es de una variante, el grupo padre se muestra ya expandido. Los filtros de estado, tipo, moneda y Woo siguen aplicándose sobre el padre.
+
 
 ### 4. Acciones
 
 - Padre: Ver, Editar estructura base, Duplicar, Activar/Desactivar, Eliminar (se mantienen tal cual están hoy).
-- Variante: Editar costo variante / Personalizar → navega a `/core/estructuras-costos/nueva?variant=<id>` (el editor ya soporta modo variante), y Volver a heredar base → limpia `cost_structure_id`, `cost_override_enabled` y pone `uses_parent_cost_structure = true` en esa variante.
+- Variante: Editar / Personalizar → navega a `/core/estructuras-costos/nueva?variant=<id>` (el editor ya soporta modo variante); Ver estructura asociada si existe; Volver a heredar base → limpia `cost_structure_id` y `cost_override_enabled` y pone `uses_parent_cost_structure = true` en esa variante.
 
 ### 5. Exportación
 
