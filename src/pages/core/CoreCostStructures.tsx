@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -577,8 +577,8 @@ export default function CoreCostStructures() {
                 const wooConnected = !!g.wooProductId;
                 const open = isExpanded(g);
                 return (
-                  <>
-                    <TableRow key={g.key} className={!wooConnected ? "bg-destructive/5" : ""}>
+                  <Fragment key={g.key}>
+                    <TableRow className={!wooConnected ? "bg-destructive/5" : ""}>
                       <TableCell className="pr-0">
                         {g.variants.length > 0 ? (
                           <Button
@@ -709,7 +709,7 @@ export default function CoreCostStructures() {
                         </TableRow>
                       );
                     })}
-                  </>
+                  </Fragment>
                 );
               })}
             </TableBody>
