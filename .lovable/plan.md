@@ -46,7 +46,7 @@ El buscador coincide con nombre de producto, nombre de variante, SKU padre, SKU 
 ### 4. Acciones
 
 - Padre: Ver, Editar estructura base, Duplicar, Activar/Desactivar, Eliminar (se mantienen tal cual están hoy).
-- Variante: Editar costo variante / Personalizar → navega a `/core/estructuras-costos/nueva?variant=<id>` (el editor ya soporta modo variante), y Volver a heredar base → limpia `cost_structure_id`, `cost_override_enabled` y pone `uses_parent_cost_structure = true` en esa variante.
+- Variante: Editar / Personalizar → navega a `/core/estructuras-costos/nueva?variant=<id>` (el editor ya soporta modo variante); Ver estructura asociada si existe; Volver a heredar base → limpia `cost_structure_id` y `cost_override_enabled` y pone `uses_parent_cost_structure = true` en esa variante.
 
 ### 5. Exportación
 
