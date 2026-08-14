@@ -12,7 +12,10 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download, FileSpreadsheet, AlertTriangle } from "lucide-react";
+import {
+  Plus, Pencil, Trash2, Eye, Search, Power, PowerOff, Copy, Upload, Download,
+  FileSpreadsheet, AlertTriangle, ChevronRight, ChevronDown, Layers, Undo2,
+} from "lucide-react";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { formatDMY } from "@/lib/dateUtils";
 import * as XLSX from "xlsx";
@@ -20,6 +23,7 @@ import * as XLSX from "xlsx";
 type CostStructure = {
   id: string;
   name: string;
+  sku: string | null;
   description: string | null;
   product_type: string | null;
   base_currency: string;
@@ -34,6 +38,48 @@ type CostStructure = {
   woo_variation_id: number | null;
   woo_product_name: string | null;
   woo_permalink: string | null;
+  variant_id: string | null;
+};
+
+type CoreProduct = {
+  id: string;
+  name: string;
+  core_sku: string | null;
+  product_type: string | null;
+  woo_product_id: number | null;
+};
+
+type CoreVariant = {
+  id: string;
+  core_product_id: string;
+  size: string | null;
+  color: string | null;
+  variant_sku: string | null;
+  woo_variation_id: number | null;
+  cost_structure_id: string | null;
+  uses_parent_cost_structure: boolean | null;
+  cost_override_enabled: boolean | null;
+  variant_unit_cost_usd: number | null;
+};
+
+type VariantState = "inherit" | "custom" | "override" | "none";
+
+type VariantRow = {
+  variant: CoreVariant;
+  label: string;
+  state: VariantState;
+  unitCost: number | null;
+  structureId: string | null;
+};
+
+type Group = {
+  key: string;
+  base: CostStructure | null;
+  product: CoreProduct | null;
+  name: string;
+  productType: string | null;
+  wooProductId: number | null;
+  variants: VariantRow[];
 };
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
@@ -42,11 +88,27 @@ const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secon
   inactive: { label: "Inactiva", variant: "secondary" },
 };
 
+const VARIANT_STATE_META: Record<VariantState, { label: string; className: string }> = {
+  inherit: { label: "Hereda base", className: "bg-muted text-muted-foreground border-border" },
+  custom: { label: "Personalizada", className: "bg-destructive/10 text-destructive border-destructive/30" },
+  override: { label: "Override manual", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/40" },
+  none: { label: "Sin estructura", className: "bg-destructive/15 text-destructive border-destructive/50" },
+};
+
+const VARIANT_MODE_LABEL: Record<VariantState, string> = {
+  inherit: "Heredado",
+  custom: "Estructura propia",
+  override: "Manual",
+  none: "—",
+};
+
 const PRODUCT_TYPES = ["Franela", "Hoodie", "Jogger", "Cargo", "Short", "Gorra", "Accesorio", "Producto terminado", "Otro"];
 
 export default function CoreCostStructures() {
   const navigate = useNavigate();
-  const [items, setItems] = useState<CostStructure[]>([]);
+  const [structures, setStructures] = useState<CostStructure[]>([]);
+  const [products, setProducts] = useState<CoreProduct[]>([]);
+  const [variants, setVariants] = useState<CoreVariant[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
@@ -54,35 +116,176 @@ export default function CoreCostStructures() {
   const [fType, setFType] = useState("all");
   const [fCurrency, setFCurrency] = useState("all");
   const [fWoo, setFWoo] = useState<"all" | "connected" | "missing">("all");
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const [toDelete, setToDelete] = useState<CostStructure | null>(null);
   const [viewing, setViewing] = useState<CostStructure | null>(null);
 
   async function load() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("core_cost_structures")
-      .select("*")
-      .order("updated_at", { ascending: false });
-    if (error) toast.error("Error cargando estructuras");
-    setItems((data as any) ?? []);
+    const [sRes, pRes, vRes] = await Promise.all([
+      supabase.from("core_cost_structures").select("*").order("updated_at", { ascending: false }),
+      supabase.from("core_products").select("id, name, core_sku, product_type, woo_product_id"),
+      supabase.from("core_product_variants")
+        .select("id, core_product_id, size, color, variant_sku, woo_variation_id, cost_structure_id, uses_parent_cost_structure, cost_override_enabled, variant_unit_cost_usd"),
+    ]);
+    if (sRes.error || pRes.error || vRes.error) toast.error("Error cargando estructuras");
+    setStructures((sRes.data as any) ?? []);
+    setProducts((pRes.data as any) ?? []);
+    setVariants((vRes.data as any) ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
 
-  const filtered = useMemo(() => {
-    return items.filter(i => {
-      if (search && !i.name.toLowerCase().includes(search.toLowerCase())) return false;
-      if (fStatus !== "all" && i.status !== fStatus) return false;
-      if (fType !== "all" && i.product_type !== fType) return false;
-      if (fCurrency !== "all" && i.base_currency !== fCurrency) return false;
-      if (fWoo === "connected" && !i.woo_product_id) return false;
-      if (fWoo === "missing" && i.woo_product_id) return false;
-      return true;
-    });
-  }, [items, search, fStatus, fType, fCurrency, fWoo]);
+  const structureById = useMemo(() => {
+    const m = new Map<string, CostStructure>();
+    structures.forEach(s => m.set(s.id, s));
+    return m;
+  }, [structures]);
 
-  const missingWooCount = useMemo(() => items.filter(i => !i.woo_product_id).length, [items]);
+  const groups = useMemo<Group[]>(() => {
+    const productByWoo = new Map<number, CoreProduct>();
+    const productById = new Map<string, CoreProduct>();
+    products.forEach(p => {
+      productById.set(p.id, p);
+      if (p.woo_product_id != null) productByWoo.set(Number(p.woo_product_id), p);
+    });
+
+    const variantsByProduct = new Map<string, CoreVariant[]>();
+    variants.forEach(v => {
+      const arr = variantsByProduct.get(v.core_product_id) ?? [];
+      arr.push(v);
+      variantsByProduct.set(v.core_product_id, arr);
+    });
+
+    const keyForProduct = (p: CoreProduct) => p.woo_product_id != null ? `woo:${p.woo_product_id}` : `prod:${p.id}`;
+    const map = new Map<string, Group>();
+
+    const ensure = (key: string, base: CostStructure | null, product: CoreProduct | null): Group => {
+      let g = map.get(key);
+      if (!g) {
+        g = {
+          key,
+          base,
+          product,
+          name: base?.name ?? product?.name ?? "—",
+          productType: base?.product_type ?? product?.product_type ?? null,
+          wooProductId: base?.woo_product_id ?? product?.woo_product_id ?? null,
+          variants: [],
+        };
+        map.set(key, g);
+      }
+      if (!g.base && base) { g.base = base; g.name = base.name; }
+      if (!g.product && product) g.product = product;
+      return g;
+    };
+
+    // 1) Base structures (variant_id null) become parent rows
+    structures.filter(s => !s.variant_id).forEach(s => {
+      const product = s.woo_product_id != null ? productByWoo.get(Number(s.woo_product_id)) ?? null : null;
+      const key = product ? keyForProduct(product) : (s.woo_product_id != null ? `woo:${s.woo_product_id}` : `struct:${s.id}`);
+      ensure(key, s, product);
+    });
+
+    // 2) Products with variants that have no base structure row yet
+    products.forEach(p => {
+      const hasVariants = (variantsByProduct.get(p.id) ?? []).length > 0;
+      const key = keyForProduct(p);
+      if (map.has(key)) { ensure(key, null, p); return; }
+      if (!hasVariants) return;
+      ensure(key, null, p);
+    });
+
+    // 3) Attach variants
+    products.forEach(p => {
+      const key = keyForProduct(p);
+      const g = map.get(key);
+      if (!g) return;
+      const list = (variantsByProduct.get(p.id) ?? []).slice().sort((a, b) =>
+        (a.color ?? "").localeCompare(b.color ?? "") || (a.size ?? "").localeCompare(b.size ?? ""));
+      list.forEach(v => {
+        const ownStructure = v.cost_structure_id && v.cost_structure_id !== g.base?.id
+          ? structureById.get(v.cost_structure_id) ?? null
+          : null;
+        let state: VariantState;
+        let unitCost: number | null = null;
+        if (v.cost_override_enabled && v.variant_unit_cost_usd != null) {
+          state = "override";
+          unitCost = Number(v.variant_unit_cost_usd);
+        } else if (ownStructure && !v.uses_parent_cost_structure) {
+          state = "custom";
+          unitCost = Number(ownStructure.total_unit_cost);
+        } else if (g.base) {
+          state = "inherit";
+          unitCost = Number(g.base.total_unit_cost);
+        } else {
+          state = "none";
+          unitCost = null;
+        }
+        const parts = [v.color, v.size].filter(Boolean).join(" / ");
+        g.variants.push({
+          variant: v,
+          label: parts ? `${g.name} — ${parts}` : g.name,
+          state,
+          unitCost,
+          structureId: ownStructure?.id ?? g.base?.id ?? null,
+        });
+      });
+    });
+
+    // 4) Orphan variant structures (variant not resolvable) stay as standalone rows
+    const attachedStructureIds = new Set<string>();
+    map.forEach(g => {
+      if (g.base) attachedStructureIds.add(g.base.id);
+      g.variants.forEach(vr => { if (vr.structureId) attachedStructureIds.add(vr.structureId); });
+    });
+    structures.filter(s => s.variant_id && !attachedStructureIds.has(s.id)).forEach(s => {
+      ensure(`struct:${s.id}`, s, null);
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      const at = a.base?.updated_at ?? "";
+      const bt = b.base?.updated_at ?? "";
+      if (at && bt) return bt.localeCompare(at);
+      if (at) return -1;
+      if (bt) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [structures, products, variants, structureById]);
+
+  const matchedGroups = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return groups.filter(g => {
+      const base = g.base;
+      if (fStatus !== "all" && (base?.status ?? "") !== fStatus) return false;
+      if (fType !== "all" && (g.productType ?? "") !== fType) return false;
+      if (fCurrency !== "all" && (base?.base_currency ?? "") !== fCurrency) return false;
+      if (fWoo === "connected" && !g.wooProductId) return false;
+      if (fWoo === "missing" && g.wooProductId) return false;
+      if (!q) return true;
+      const parentHit = [
+        g.name, base?.sku, g.product?.core_sku, String(g.wooProductId ?? ""),
+      ].some(v => (v ?? "").toString().toLowerCase().includes(q));
+      const variantHit = g.variants.some(vr => [
+        vr.label, vr.variant.variant_sku, vr.variant.color, vr.variant.size,
+        String(vr.variant.woo_variation_id ?? ""),
+      ].some(v => (v ?? "").toString().toLowerCase().includes(q)));
+      return parentHit || variantHit;
+    });
+  }, [groups, search, fStatus, fType, fCurrency, fWoo]);
+
+  const searchActive = search.trim().length > 0;
+  const isExpanded = (g: Group) => {
+    if (expanded[g.key] !== undefined) return expanded[g.key];
+    if (!searchActive) return false;
+    const q = search.trim().toLowerCase();
+    return g.variants.some(vr => [
+      vr.label, vr.variant.variant_sku, vr.variant.color, vr.variant.size,
+      String(vr.variant.woo_variation_id ?? ""),
+    ].some(v => (v ?? "").toString().toLowerCase().includes(q)));
+  };
+
+  const missingWooCount = useMemo(() => groups.filter(g => !g.wooProductId).length, [groups]);
 
   async function toggleStatus(s: CostStructure) {
     const newStatus = s.status === "active" ? "inactive" : "active";
@@ -130,11 +333,28 @@ export default function CoreCostStructures() {
     load();
   }
 
+  async function revertToBase(vr: VariantRow) {
+    const { error } = await supabase.from("core_product_variants").update({
+      cost_structure_id: null,
+      cost_override_enabled: false,
+      uses_parent_cost_structure: true,
+    } as any).eq("id", vr.variant.id);
+    if (error) return toast.error(error.message);
+    await logCoreAudit({
+      table: "core_product_variants", recordId: vr.variant.id, action: "variant_cost_reset",
+      field: "uses_parent_cost_structure", oldValue: vr.state, newValue: "inherit",
+    });
+    toast.success("Variante vuelve a heredar la estructura base");
+    load();
+  }
+
   const placeholder = () => toast.info("La importación de estructuras de costos se conectará al sistema de Template de Carga materia prima en el siguiente ajuste.");
 
   const exportStructures = async () => {
-    const rows = filtered;
+    const rows = matchedGroups.map(g => g.base).filter(Boolean) as CostStructure[];
     if (rows.length === 0) return toast.info("No hay estructuras para exportar");
+    const variantCountByStructure = new Map<string, number>();
+    matchedGroups.forEach(g => { if (g.base) variantCountByStructure.set(g.base.id, g.variants.length); });
     const ids = rows.map(r => r.id);
     const { data: lines, error } = await supabase
       .from("core_cost_structure_items")
@@ -144,7 +364,7 @@ export default function CoreCostStructures() {
 
     const headers = [
       "structure_name","sku","description","product_type","base_currency","status","observations",
-      "woo_product_id","woo_variation_id","woo_product_name",
+      "woo_product_id","woo_variation_id","woo_product_name","variants_count",
       "estimated_sale_price","total_unit_cost","estimated_gross_margin","estimated_gross_margin_percent",
       "raw_material_cost","labor_cost","packaging_cost","logistics_cost","other_cost",
       "items_count","items_detail",
@@ -184,9 +404,10 @@ export default function CoreCostStructures() {
         return parts.join(" | ");
       }).join(" ;; ");
       return [
-        s.name, (s as any).sku ?? "", s.description ?? "", s.product_type ?? "", s.base_currency,
+        s.name, s.sku ?? "", s.description ?? "", s.product_type ?? "", s.base_currency,
         s.status, s.notes ?? "",
         s.woo_product_id ?? "", s.woo_variation_id ?? "", s.woo_product_name ?? "",
+        variantCountByStructure.get(s.id) ?? 0,
         round(s.estimated_sale_price), round(s.total_unit_cost),
         round(s.estimated_gross_margin), round(s.estimated_gross_margin_percent, 1),
         round(sectionTotal(sLines, "raw_material")),
@@ -258,7 +479,6 @@ export default function CoreCostStructures() {
             <Upload className="h-4 w-4 mr-1" />Importar
           </Button>
           <Button variant="outline" size="sm" onClick={exportStructures}>
-
             <Download className="h-4 w-4 mr-1" />Exportar
           </Button>
           <Button size="sm" onClick={() => navigate("/core/estructuras-costos/nueva")}>
@@ -273,7 +493,7 @@ export default function CoreCostStructures() {
             <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-destructive">
-                {missingWooCount} {missingWooCount === 1 ? "estructura sin conectar" : "estructuras sin conectar"} a WooCommerce
+                {missingWooCount} {missingWooCount === 1 ? "producto sin conectar" : "productos sin conectar"} a WooCommerce
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Las ventas de productos sin Woo Product ID caerán en "Pendientes" en Partidas de Fabricación y no generarán movimientos hasta resolverse.
@@ -288,7 +508,12 @@ export default function CoreCostStructures() {
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[220px] flex-1 max-w-sm">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar por nombre" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input
+              placeholder="Buscar producto, variante, SKU, talla, color, Woo ID"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
           </div>
           <Select value={fStatus} onValueChange={setFStatus}>
             <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
@@ -325,11 +550,11 @@ export default function CoreCostStructures() {
           </Select>
         </div>
 
-
         <div className="rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8" />
                 <TableHead>Nombre</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Woo</TableHead>
@@ -343,48 +568,148 @@ export default function CoreCostStructures() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Cargando…</TableCell></TableRow>
-              ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Sin estructuras de costos</TableCell></TableRow>
-              ) : filtered.map(s => {
-                const st = STATUS_LABELS[s.status] ?? { label: s.status, variant: "outline" as const };
-                const wooConnected = !!s.woo_product_id;
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Cargando…</TableCell></TableRow>
+              ) : matchedGroups.length === 0 ? (
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Sin estructuras de costos</TableCell></TableRow>
+              ) : matchedGroups.map(g => {
+                const s = g.base;
+                const st = s ? (STATUS_LABELS[s.status] ?? { label: s.status, variant: "outline" as const }) : null;
+                const wooConnected = !!g.wooProductId;
+                const open = isExpanded(g);
                 return (
-                  <TableRow key={s.id} className={!wooConnected ? "bg-destructive/5" : ""}>
-                    <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{s.product_type || "—"}</TableCell>
-                    <TableCell>
-                      {wooConnected ? (
-                        <Badge variant="outline" className="font-mono text-[11px]">
-                          #{s.woo_product_id}{s.woo_variation_id ? `·${s.woo_variation_id}` : ""}
-                        </Badge>
-                      ) : (
-                        <Badge variant="destructive" className="gap-1">
-                          <AlertTriangle className="h-3 w-3" />Sin conectar
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{Number(s.total_unit_cost).toFixed(2)}</TableCell>
-                    <TableCell>{s.base_currency}</TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">
-                      {s.estimated_gross_margin_percent != null
-                        ? `${Number(s.estimated_gross_margin_percent).toFixed(1)}%`
-                        : "—"}
-                    </TableCell>
-                    <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{formatDMY(s.updated_at)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => setViewing(s)} title="Ver"><Eye className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => navigate(`/core/estructuras-costos/${s.id}`)} title="Editar"><Pencil className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => duplicate(s)} title="Duplicar"><Copy className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => toggleStatus(s)} title={s.status === "active" ? "Desactivar" : "Activar"}>
-                          {s.status === "active" ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setToDelete(s)} title="Eliminar"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <>
+                    <TableRow key={g.key} className={!wooConnected ? "bg-destructive/5" : ""}>
+                      <TableCell className="pr-0">
+                        {g.variants.length > 0 ? (
+                          <Button
+                            variant="ghost" size="icon" className="h-7 w-7"
+                            onClick={() => setExpanded(prev => ({ ...prev, [g.key]: !open }))}
+                            title={open ? "Contraer variantes" : "Expandir variantes"}
+                          >
+                            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </Button>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        <div className="flex items-center gap-2">
+                          <span>{g.name}</span>
+                          {g.variants.length > 0 && (
+                            <Badge variant="secondary" className="gap-1 text-[11px] font-normal">
+                              <Layers className="h-3 w-3" />{g.variants.length} variantes
+                            </Badge>
+                          )}
+                          {!s && (
+                            <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                              Sin estructura base
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{g.productType || "—"}</TableCell>
+                      <TableCell>
+                        {wooConnected ? (
+                          <Badge variant="outline" className="font-mono text-[11px]">#{g.wooProductId}</Badge>
+                        ) : (
+                          <Badge variant="destructive" className="gap-1">
+                            <AlertTriangle className="h-3 w-3" />Sin conectar
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-medium">
+                        {s ? Number(s.total_unit_cost).toFixed(2) : "—"}
+                      </TableCell>
+                      <TableCell>{s?.base_currency ?? "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {s?.estimated_gross_margin_percent != null
+                          ? `${Number(s.estimated_gross_margin_percent).toFixed(1)}%`
+                          : "—"}
+                      </TableCell>
+                      <TableCell>{st ? <Badge variant={st.variant}>{st.label}</Badge> : <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{s ? formatDMY(s.updated_at) : "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          {s ? (
+                            <>
+                              <Button variant="ghost" size="icon" onClick={() => setViewing(s)} title="Ver"><Eye className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => navigate(`/core/estructuras-costos/${s.id}`)} title="Editar"><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => duplicate(s)} title="Duplicar"><Copy className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => toggleStatus(s)} title={s.status === "active" ? "Desactivar" : "Activar"}>
+                                {s.status === "active" ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => setToDelete(s)} title="Eliminar"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            </>
+                          ) : (
+                            <Button variant="outline" size="sm" onClick={() => navigate("/core/estructuras-costos/nueva")}>
+                              <Plus className="h-3.5 w-3.5 mr-1" />Crear base
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+
+                    {open && g.variants.map(vr => {
+                      const meta = VARIANT_STATE_META[vr.state];
+                      return (
+                        <TableRow key={vr.variant.id} className="bg-muted/30">
+                          <TableCell />
+                          <TableCell className="pl-8">
+                            <div className="text-sm">{vr.label}</div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {[vr.variant.color, vr.variant.size].filter(Boolean).join(" / ") || "—"}
+                              {vr.variant.variant_sku ? ` · ${vr.variant.variant_sku}` : ""}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{VARIANT_MODE_LABEL[vr.state]}</TableCell>
+                          <TableCell>
+                            {vr.variant.woo_variation_id ? (
+                              <Badge variant="outline" className="font-mono text-[11px]">
+                                #{g.wooProductId ?? "?"}·{vr.variant.woo_variation_id}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {vr.unitCost != null ? vr.unitCost.toFixed(2) : (
+                              <span className="inline-flex items-center gap-1 text-destructive text-xs">
+                                <AlertTriangle className="h-3 w-3" />s/costo
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{g.base?.base_currency ?? "—"}</TableCell>
+                          <TableCell />
+                          <TableCell>
+                            <Badge variant="outline" className={meta.className}>{meta.label}</Badge>
+                          </TableCell>
+                          <TableCell />
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost" size="icon"
+                                title={vr.state === "custom" ? "Editar costo variante" : "Personalizar costo"}
+                                onClick={() => navigate(`/core/estructuras-costos/nueva?variant=${vr.variant.id}`)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              {vr.structureId && (
+                                <Button
+                                  variant="ghost" size="icon" title="Ver estructura asociada"
+                                  onClick={() => navigate(`/core/estructuras-costos/${vr.structureId}`)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {(vr.state === "custom" || vr.state === "override") && (
+                                <Button variant="ghost" size="icon" title="Volver a heredar base" onClick={() => revertToBase(vr)}>
+                                  <Undo2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </>
                 );
               })}
             </TableBody>
