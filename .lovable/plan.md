@@ -39,36 +39,39 @@ Preview muestra: códigos, períodos actuales, período consolidado, operarios, 
 
 Modal de confirmación con el texto pedido y campo "Motivo de fusión" obligatorio.
 
-Caso a ejecutar: **destino NM-000004, origen NM-000002**. NM-000002 no se pagó realmente, así que la fusión la trata como no pagada y su estado pasa a "fusionada". Resultado: una sola nómina activa NM-000004, período 01/08/2026 → 13/08/2026, 215 trabajos, USD 120,19, fecha de pago conservada la del destino.
+Caso a ejecutar: **destino NM-000004, origen NM-000002**. Como NM-000002 figura como "pagada" pero no se pagó realmente, la fusión exige dos condiciones: que no tenga comprobantes de pago registrados y que el usuario marque la casilla "Confirmo que esta nómina no fue pagada realmente y puede fusionarse." Esa confirmación queda guardada en la auditoría. Resultado: una sola nómina activa NM-000004, período consolidado 01/08/2026 → 13/08/2026, 215 trabajos, USD 120,19, fecha de pago conservada la del destino.
 
 ## C. Después de fusionar
 
-- NM-000004 queda visible con el total consolidado.
+- NM-000004 queda visible con el total consolidado y la leyenda "Período fusionado: 01/08/2026 → 13/08/2026", diferenciada de una semana operativa normal.
 - NM-000002 aparece como "Fusionada → NM-000004", con enlace al destino y su historial intacto.
+- La nómina origen conserva su información original guardada (total, trabajos, operarios y período previos a la fusión), visible al abrirla, aunque sus contadores activos queden en 0.
 - Las nóminas fusionadas se excluyen de los indicadores de pendientes/aprobadas/pagadas y de los totales, para no contar dos veces.
 - Nada se borra.
+
 
 ## Detalles técnicos
 
 Migración:
 
-- `core_payroll_runs`: permitir `status = 'merged'` en el check existente y agregar `merged_into_payroll_id uuid` (FK a la misma tabla), `merged_at timestamptz`, `merged_reason text`.
-- Nueva RPC `public.core_merge_payrolls(p_target_payroll_id uuid, p_source_payroll_id uuid, p_reason text)`, `security definer`, restringida a admin/manager:
+- `core_payroll_runs`: permitir `status = 'merged'` en el check existente y agregar `merged_into_payroll_id uuid` (FK a la misma tabla), `merged_at timestamptz`, `merged_by uuid`, `merged_reason text` y `merge_metadata jsonb` (guarda `original_total_amount`, `original_work_entries_count`, `original_operators_count`, `original_period_start`, `original_period_end`).
+- Nueva RPC `public.core_merge_payrolls(p_target_payroll_id uuid, p_source_payroll_id uuid, p_reason text, p_confirm_unpaid boolean default false)`, `security definer`, restringida a admin/manager:
   1. Bloquea ambas filas; valida existencia, que sean distintas y que ninguna esté ya fusionada o cancelada.
-  2. Bloquea si el destino está pagado; si el origen está pagado exige que no tenga comprobantes de pago registrados (`core_payroll_payment_proofs`).
+  2. Bloquea si el destino está pagado. Si el origen está pagado, exige que no tenga comprobantes en `core_payroll_payment_proofs` y que `p_confirm_unpaid` sea verdadero; si no, rechaza con mensaje claro.
   3. Reasigna `core_payroll_operator_lines` del origen al destino; si el operario ya tiene línea en el destino, fusiona las dos líneas (suma procesos, subtotales y ajustes) y reapunta sus `core_payroll_work_entry_links`; si no, mueve la línea completa.
   4. Reapunta los `core_payroll_work_entry_links` del origen al destino y a la línea correspondiente. La restricción única por `work_entry_id` garantiza que ningún trabajo quede duplicado; los `core_payroll_adjustments` siguen a su línea.
   5. Recalcula el destino desde los vínculos reales: `work_entries_count`, `operators_count`, `total_amount`, `adjustments_total`.
-  6. Ajusta el período del destino: `period_start` = menor de ambos, `period_end` = mayor de ambos; `payment_date` se conserva del destino.
-  7. Marca el origen: `status='merged'`, `merged_into_payroll_id`, `merged_at`, `merged_reason`, contadores y total en 0 para que no sume en reportes (los vínculos ya se movieron).
-  8. Inserta auditoría en `core_audit_logs` (`action = 'payroll_merged'`) con origen, destino, motivo, usuario, total anterior del destino, total del origen y total nuevo.
+  6. Ajusta el período del destino: `period_start` = menor de ambos, `period_end` = mayor de ambos; `payment_date` se conserva del destino; marca el destino como período fusionado.
+  7. Marca el origen: `status='merged'`, `merged_into_payroll_id`, `merged_at`, `merged_by`, `merged_reason`, guarda en `merge_metadata` los valores originales antes de ponerlos en 0 para que no sumen en reportes.
+  8. Inserta auditoría en `core_audit_logs` (`action = 'payroll_merged'`) con origen, destino, motivo, usuario, confirmación de "no pagada" cuando aplique, totales originales del origen, total anterior del destino y total nuevo.
   9. Devuelve JSON para la UI.
 
 Frontend:
 
-- `src/components/core/payroll/MergePayrollsDialog.tsx` (nuevo): selectores destino/origen, preview calculado desde los vínculos reales, motivo obligatorio, llamada a la RPC.
+- `src/components/core/payroll/MergePayrollsDialog.tsx` (nuevo): selectores destino/origen, preview calculado desde los vínculos reales, casilla de confirmación cuando el origen está pagado, motivo obligatorio, llamada a la RPC.
 - `src/components/core/payroll/GeneratePayrollDialog.tsx` (nuevo): selector de semana, cálculo viernes→jueves, detección de solape y preview del período/pago/trabajos/total.
-- `src/pages/core/CorePayroll.tsx`: usar ambos diálogos, badge "Fusionada → NM-xxxxx" en la tabla, excluir `merged` de KPIs y de la búsqueda de nómina de la semana actual.
+- `src/pages/core/CorePayroll.tsx`: usar ambos diálogos, badge "Fusionada → NM-xxxxx", leyenda "Período fusionado" en el destino, datos originales visibles en la fusionada, y exclusión de `merged` en KPIs y en la búsqueda de la semana actual.
+
 
 No se tocan Woo, órdenes de producción, QR, escaneos, inventario, Partidas ni los trabajos históricos.
 
