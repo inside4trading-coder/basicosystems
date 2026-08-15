@@ -45,7 +45,10 @@ type Unit = {
   entered_inventory_at: string | null;
   entered_inventory_by: string | null;
   inventory_entry_source: string | null;
+  cancelled_reason: string | null;
+  cancelled_at: string | null;
 };
+
 
 type UnitProcess = {
   id: string;
