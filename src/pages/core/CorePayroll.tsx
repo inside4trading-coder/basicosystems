@@ -86,38 +86,17 @@ type Adjustment = {
   created_at: string;
 };
 
-// --- Week helpers (Friday→Thursday) ---
-function isoDate(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-function getCurrentWeek(): { start: string; end: string; payment: string } {
-  // Period: Friday → Thursday. Payment: Friday after period_end.
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  // Find most recent Friday on or before today
-  const dow = today.getDay(); // 0=Sun..6=Sat; Friday=5
-  const daysSinceFri = (dow - 5 + 7) % 7;
-  const start = new Date(today);
-  start.setDate(today.getDate() - daysSinceFri);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6); // Thursday
-  const payment = new Date(end);
-  payment.setDate(end.getDate() + 1); // Friday
-  return { start: isoDate(start), end: isoDate(end), payment: isoDate(payment) };
-}
-
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   draft: { label: "Borrador", className: "bg-muted text-foreground" },
   review: { label: "En revisión", className: "bg-amber-100 text-amber-900" },
   approved: { label: "Aprobada", className: "bg-blue-100 text-blue-900" },
   paid: { label: "Pagada", className: "bg-green-100 text-green-900" },
   cancelled: { label: "Cancelada", className: "bg-red-100 text-red-900" },
+  merged: { label: "Fusionada", className: "bg-slate-200 text-slate-900" },
   pending_review: { label: "Pendiente revisión", className: "bg-amber-100 text-amber-900" },
   adjusted: { label: "Ajustada", className: "bg-purple-100 text-purple-900" },
 };
+
 
 function StatusBadge({ s }: { s: string }) {
   const v = STATUS_BADGE[s] ?? { label: s, className: "bg-muted" };
