@@ -416,6 +416,12 @@ export default function EstudioVisual() {
           onBrandDialogClose={() => {}}
           generating={generating}
           onGenerate={handleGenerate}
+          backgrounds={activeBackgrounds}
+          backgroundUrls={backgroundUrls}
+          backgroundId={backgroundId}
+          onBackgroundChange={setBackgroundId}
+          onBackgroundsChanged={loadBackgrounds}
+          backgroundPrompt={resolvedBackgroundPrompt}
         />
       )}
 
