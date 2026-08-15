@@ -2009,6 +2009,12 @@ export type Database = {
           created_by: string | null
           currency: string
           id: string
+          is_merged_period: boolean
+          merge_metadata: Json | null
+          merged_at: string | null
+          merged_by: string | null
+          merged_into_payroll_id: string | null
+          merged_reason: string | null
           operators_count: number
           paid_at: string | null
           paid_by: string | null
@@ -2033,6 +2039,12 @@ export type Database = {
           created_by?: string | null
           currency?: string
           id?: string
+          is_merged_period?: boolean
+          merge_metadata?: Json | null
+          merged_at?: string | null
+          merged_by?: string | null
+          merged_into_payroll_id?: string | null
+          merged_reason?: string | null
           operators_count?: number
           paid_at?: string | null
           paid_by?: string | null
@@ -2057,6 +2069,12 @@ export type Database = {
           created_by?: string | null
           currency?: string
           id?: string
+          is_merged_period?: boolean
+          merge_metadata?: Json | null
+          merged_at?: string | null
+          merged_by?: string | null
+          merged_into_payroll_id?: string | null
+          merged_reason?: string | null
           operators_count?: number
           paid_at?: string | null
           paid_by?: string | null
@@ -2072,7 +2090,15 @@ export type Database = {
           updated_by?: string | null
           work_entries_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "core_payroll_runs_merged_into_payroll_id_fkey"
+            columns: ["merged_into_payroll_id"]
+            isOneToOne: false
+            referencedRelation: "core_payroll_runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       core_payroll_work_entry_links: {
         Row: {
@@ -9234,6 +9260,15 @@ export type Database = {
           p_notes?: string
           p_order_id: string
           p_reference?: string
+        }
+        Returns: Json
+      }
+      core_merge_payrolls: {
+        Args: {
+          p_confirm_unpaid?: boolean
+          p_reason: string
+          p_source_payroll_id: string
+          p_target_payroll_id: string
         }
         Returns: Json
       }
