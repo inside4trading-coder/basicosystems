@@ -393,8 +393,19 @@ export function StudioWizard(props: StudioWizardProps) {
           </Step>
 
           <Step n={stepGenerar} title="Generar">
+            {showCompositionControls && (
+              <CompositionControls
+                backgroundUrl={backgroundId ? backgroundUrls[backgroundId] ?? null : null}
+                cutoutUrl={cutout.previewUrl}
+                aspect={format}
+                params={compositionParams}
+                onChange={(p) => onCompositionParamsChange?.(p)}
+              />
+            )}
+
             <div className="space-y-2">
               <Label className="font-medium text-sm">Modelo de generación</Label>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {modelOptions.map((m) => {
                   const active = m.model_id === imageModel && m.available;
