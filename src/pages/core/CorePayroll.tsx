@@ -12,9 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { logCoreAudit } from "@/lib/coreAudit";
-import { Wallet, Plus, CheckCircle2, AlertTriangle, FileText, Printer, RefreshCw, DollarSign, Users, ListChecks } from "lucide-react";
+import { Wallet, Plus, CheckCircle2, AlertTriangle, FileText, Printer, RefreshCw, DollarSign, Users, ListChecks, Merge } from "lucide-react";
 import { formatDMY } from "@/lib/dateUtils";
+import { getCurrentPayrollWeek } from "@/lib/corePayrollWeek";
 import { TransferWorkEntryDialog } from "@/components/core/payroll/TransferWorkEntryDialog";
+import { GeneratePayrollDialog } from "@/components/core/payroll/GeneratePayrollDialog";
+import { MergePayrollsDialog } from "@/components/core/payroll/MergePayrollsDialog";
+
 
 
 type WorkEntry = {
@@ -53,7 +57,13 @@ type PayrollRun = {
   approved_at: string | null;
   paid_at: string | null;
   created_at: string;
+  merged_into_payroll_id: string | null;
+  merged_at: string | null;
+  merged_reason: string | null;
+  merge_metadata: any;
+  is_merged_period: boolean;
 };
+
 
 type OperatorLine = {
   id: string;
@@ -80,38 +90,17 @@ type Adjustment = {
   created_at: string;
 };
 
-// --- Week helpers (Friday→Thursday) ---
-function isoDate(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-function getCurrentWeek(): { start: string; end: string; payment: string } {
-  // Period: Friday → Thursday. Payment: Friday after period_end.
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  // Find most recent Friday on or before today
-  const dow = today.getDay(); // 0=Sun..6=Sat; Friday=5
-  const daysSinceFri = (dow - 5 + 7) % 7;
-  const start = new Date(today);
-  start.setDate(today.getDate() - daysSinceFri);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6); // Thursday
-  const payment = new Date(end);
-  payment.setDate(end.getDate() + 1); // Friday
-  return { start: isoDate(start), end: isoDate(end), payment: isoDate(payment) };
-}
-
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   draft: { label: "Borrador", className: "bg-muted text-foreground" },
   review: { label: "En revisión", className: "bg-amber-100 text-amber-900" },
   approved: { label: "Aprobada", className: "bg-blue-100 text-blue-900" },
   paid: { label: "Pagada", className: "bg-green-100 text-green-900" },
   cancelled: { label: "Cancelada", className: "bg-red-100 text-red-900" },
+  merged: { label: "Fusionada", className: "bg-slate-200 text-slate-900" },
   pending_review: { label: "Pendiente revisión", className: "bg-amber-100 text-amber-900" },
   adjusted: { label: "Ajustada", className: "bg-purple-100 text-purple-900" },
 };
+
 
 function StatusBadge({ s }: { s: string }) {
   const v = STATUS_BADGE[s] ?? { label: s, className: "bg-muted" };
@@ -129,12 +118,11 @@ export default function CorePayroll() {
   const [missingRateEntries, setMissingRateEntries] = useState<WorkEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [genOpen, setGenOpen] = useState(false);
-  const week = useMemo(() => getCurrentWeek(), []);
-  const [periodStart, setPeriodStart] = useState(week.start);
-  const [periodEnd, setPeriodEnd] = useState(week.end);
-  const [paymentDate, setPaymentDate] = useState(week.payment);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const week = useMemo(() => getCurrentPayrollWeek(), []);
   const [openRunId, setOpenRunId] = useState<string | null>(null);
   const [transferEntry, setTransferEntry] = useState<WorkEntry | null>(null);
+
 
 
   const loadAll = useCallback(async () => {
@@ -155,7 +143,8 @@ export default function CorePayroll() {
 
   // KPIs
   const kpis = useMemo(() => {
-    const currentRun = runs.find(r => r.period_start === week.start && r.period_end === week.end && r.status !== "cancelled");
+    const activeRuns = runs.filter(r => !["cancelled", "merged"].includes(r.status));
+    const currentRun = activeRuns.find(r => r.period_start === week.start && r.period_end === week.end);
     const inWeek = (e: WorkEntry) => {
       const d = (e.created_at ?? "").slice(0, 10);
       return d >= week.start && d <= week.end;
@@ -163,10 +152,11 @@ export default function CorePayroll() {
     const totalPendingThisWeek = pendingEntries.filter(inWeek).reduce((s, e) => s + Number(e.payroll_amount ?? 0), 0);
     const totalPendingAll = pendingEntries.reduce((s, e) => s + Number(e.payroll_amount ?? 0), 0);
     const operatorsPending = new Set(pendingEntries.filter(e => e.operator_id).map(e => e.operator_id!)).size;
-    const approved = runs.filter(r => r.status === "approved").length;
-    const paid = runs.filter(r => r.status === "paid").length;
+    const approved = activeRuns.filter(r => r.status === "approved").length;
+    const paid = activeRuns.filter(r => r.status === "paid").length;
     return { currentRun, totalPendingThisWeek, totalPendingAll, operatorsPending, processesCount: pendingEntries.length, missing: missingRateEntries.length, approved, paid };
   }, [runs, pendingEntries, missingRateEntries, week]);
+
 
   // Group pending entries by operator
   const operatorSummaries = useMemo(() => {
@@ -204,105 +194,8 @@ export default function CorePayroll() {
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
   }, [pendingEntries]);
 
-  async function generatePayroll() {
-    if (!periodStart || !periodEnd || periodEnd < periodStart) {
-      toast({ title: "Rango inválido", variant: "destructive" });
-      return;
-    }
-    // Check existing
-    const { data: existing } = await supabase
-      .from("core_payroll_runs")
-      .select("id, payroll_code, status")
-      .eq("period_start", periodStart)
-      .eq("period_end", periodEnd)
-      .neq("status", "cancelled")
-      .maybeSingle();
-    if (existing) {
-      toast({ title: "Semana ya generada", description: `Nómina ${existing.payroll_code} (${existing.status}). Se abrirá.`, variant: "destructive" });
-      setGenOpen(false);
-      setOpenRunId(existing.id);
-      return;
-    }
 
-    // Fetch pending work entries in range
-    const { data: entries, error: entriesErr } = await supabase
-      .from("core_production_work_entries")
-      .select("*")
-      .eq("payroll_status", "pending")
-      .gte("created_at", `${periodStart}T00:00:00Z`)
-      .lte("created_at", `${periodEnd}T23:59:59Z`);
-    if (entriesErr) { toast({ title: "Error", description: entriesErr.message, variant: "destructive" }); return; }
-    const valid = (entries ?? []).filter(e => e.operator_id && Number(e.payroll_amount ?? 0) > 0) as WorkEntry[];
 
-    // Group by operator
-    const byOp = new Map<string, WorkEntry[]>();
-    valid.forEach(e => {
-      const arr = byOp.get(e.operator_id!) ?? [];
-      arr.push(e);
-      byOp.set(e.operator_id!, arr);
-    });
-
-    const subtotal = valid.reduce((s, e) => s + Number(e.payroll_amount ?? 0), 0);
-
-    // Create run
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: run, error: runErr } = await supabase
-      .from("core_payroll_runs")
-      .insert({
-        period_start: periodStart,
-        period_end: periodEnd,
-        payment_date: paymentDate || null,
-        status: "draft",
-        total_amount: subtotal,
-        operators_count: byOp.size,
-        work_entries_count: valid.length,
-        created_by: user?.id ?? null,
-        updated_by: user?.id ?? null,
-      })
-      .select()
-      .single();
-    if (runErr || !run) { toast({ title: "Error creando nómina", description: runErr?.message, variant: "destructive" }); return; }
-
-    // Operator lines + links + update work entries
-    for (const [opId, es] of byOp.entries()) {
-      const sub = es.reduce((s, e) => s + Number(e.payroll_amount ?? 0), 0);
-      const { data: line, error: lineErr } = await supabase
-        .from("core_payroll_operator_lines")
-        .insert({
-          payroll_run_id: run.id,
-          operator_id: opId,
-          operator_name_snapshot: es[0].operator_name_snapshot,
-          total_processes: es.length,
-          subtotal_amount: sub,
-          total_amount: sub,
-          status: "pending_review",
-        })
-        .select()
-        .single();
-      if (lineErr || !line) continue;
-
-      const links = es.map(e => ({
-        payroll_run_id: run.id,
-        payroll_operator_line_id: line.id,
-        work_entry_id: e.id,
-        operator_id: opId,
-        amount: Number(e.payroll_amount ?? 0),
-        currency: e.currency ?? "USD",
-      }));
-      await supabase.from("core_payroll_work_entry_links").insert(links);
-      await supabase
-        .from("core_production_work_entries")
-        .update({ payroll_status: "included_in_payroll" })
-        .in("id", es.map(e => e.id));
-    }
-
-    await logCoreAudit({ table: "core_payroll_runs", recordId: run.id, action: "payroll_generated", newValue: { period_start: periodStart, period_end: periodEnd, total: subtotal, operators: byOp.size, entries: valid.length } });
-
-    toast({ title: "Nómina generada", description: `${run.payroll_code} — ${byOp.size} operarios, ${valid.length} trabajos` });
-    setGenOpen(false);
-    await loadAll();
-    setOpenRunId(run.id);
-  }
 
   return (
     <div className="space-y-6">
@@ -320,11 +213,15 @@ export default function CorePayroll() {
           <Button variant="outline" size="sm" onClick={loadAll} disabled={loading}>
             <RefreshCw className="h-4 w-4 mr-1" /> Refrescar
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setMergeOpen(true)}>
+            <Merge className="h-4 w-4 mr-1" /> Fusionar
+          </Button>
           <Button onClick={() => setGenOpen(true)} size="sm">
             <Plus className="h-4 w-4 mr-1" /> Generar nómina semanal
           </Button>
         </div>
       </div>
+
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -377,21 +274,52 @@ export default function CorePayroll() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {runs.map(r => (
-                      <TableRow key={r.id}>
+                    {runs.map(r => {
+                      const mergedInto = r.merged_into_payroll_id
+                        ? runs.find(x => x.id === r.merged_into_payroll_id)?.payroll_code ?? "otra nómina"
+                        : null;
+                      const meta = (r.merge_metadata ?? {}) as Record<string, any>;
+                      return (
+                      <TableRow key={r.id} className={r.status === "merged" ? "opacity-70" : undefined}>
                         <TableCell className="font-mono text-xs">{r.payroll_code}</TableCell>
-                        <TableCell className="text-sm">{formatDMY(r.period_start)} → {formatDMY(r.period_end)}</TableCell>
+                        <TableCell className="text-sm">
+                          {r.status === "merged" ? (
+                            <span className="text-muted-foreground">
+                              {formatDMY(meta.original_period_start ?? r.period_start)} → {formatDMY(meta.original_period_end ?? r.period_end)}
+                            </span>
+                          ) : (
+                            <>
+                              {formatDMY(r.period_start)} → {formatDMY(r.period_end)}
+                              {r.is_merged_period && (
+                                <span className="block text-[11px] text-muted-foreground">
+                                  Período fusionado: {formatDMY(r.period_start)} → {formatDMY(r.period_end)}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm">{r.payment_date ? formatDMY(r.payment_date) : "—"}</TableCell>
-                        <TableCell>{r.operators_count}</TableCell>
-                        <TableCell>{r.work_entries_count}</TableCell>
-                        <TableCell>{fmt(r.total_amount, r.currency)}</TableCell>
-                        <TableCell><StatusBadge s={r.status} /></TableCell>
+                        <TableCell>{r.status === "merged" ? (meta.original_operators_count ?? 0) : r.operators_count}</TableCell>
+                        <TableCell>{r.status === "merged" ? (meta.original_work_entries_count ?? 0) : r.work_entries_count}</TableCell>
+                        <TableCell>
+                          {r.status === "merged"
+                            ? <span className="text-muted-foreground line-through">{fmt(Number(meta.original_total_amount ?? 0), r.currency)}</span>
+                            : fmt(r.total_amount, r.currency)}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge s={r.status} />
+                          {mergedInto && (
+                            <span className="block text-[11px] text-muted-foreground mt-0.5">Fusionada → {mergedInto}</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Button variant="outline" size="sm" onClick={() => setOpenRunId(r.id)}>Abrir</Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
+
                 </Table>
               )}
             </CardContent>
@@ -408,33 +336,19 @@ export default function CorePayroll() {
 
       </Tabs>
 
-      {/* Generate dialog */}
-      <Dialog open={genOpen} onOpenChange={setGenOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Generar nómina semanal</DialogTitle>
-            <DialogDescription>Selecciona el rango. Cierre viernes→jueves por defecto.</DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label>Inicio</Label>
-              <Input type="date" value={periodStart} onChange={e => setPeriodStart(e.target.value)} />
-            </div>
-            <div>
-              <Label>Fin</Label>
-              <Input type="date" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} />
-            </div>
-            <div>
-              <Label>Pago</Label>
-              <Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setGenOpen(false)}>Cancelar</Button>
-            <Button onClick={generatePayroll}>Generar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <GeneratePayrollDialog
+        open={genOpen}
+        onOpenChange={setGenOpen}
+        onGenerated={async (id) => { await loadAll(); setOpenRunId(id); }}
+      />
+
+      <MergePayrollsDialog
+        open={mergeOpen}
+        onOpenChange={setMergeOpen}
+        runs={runs}
+        onMerged={loadAll}
+      />
+
 
       {openRunId && (
         <RunDetailDialog runId={openRunId} onClose={() => setOpenRunId(null)} onChange={loadAll} />
