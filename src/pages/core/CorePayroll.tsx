@@ -53,7 +53,13 @@ type PayrollRun = {
   approved_at: string | null;
   paid_at: string | null;
   created_at: string;
+  merged_into_payroll_id: string | null;
+  merged_at: string | null;
+  merged_reason: string | null;
+  merge_metadata: any;
+  is_merged_period: boolean;
 };
+
 
 type OperatorLine = {
   id: string;
