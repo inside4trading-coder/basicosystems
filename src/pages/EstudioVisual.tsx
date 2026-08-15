@@ -349,7 +349,7 @@ export default function EstudioVisual() {
     <div className="space-y-8">
       <header>
         <p className="text-[11px] uppercase tracking-[0.25em] text-primary font-bold">Basico</p>
-        <h1 className="text-4xl font-black tracking-tight">BASICO STUDIO</h1>
+        <h1 className="text-4xl font-black tracking-tight">Basico Studio</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Crea imágenes de producto listas para catálogo, campañas y redes.
         </p>

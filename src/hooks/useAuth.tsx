@@ -33,7 +33,7 @@ export const ALL_ROUTES: { path: string; label: string }[] = [
   { path: "/configuracion", label: "Configuración" },
   { path: "/core", label: "BASICO CORE" },
   { path: "/espana", label: "BASICO ESPAÑA" },
-  { path: "/estudio-visual", label: "BASICO STUDIO" },
+  { path: "/estudio-visual", label: "Basico Studio" },
 ];
 
 const DEFAULT_ROLE_ROUTES: Record<ProfileRole, string[]> = {
