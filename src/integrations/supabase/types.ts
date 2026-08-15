@@ -9202,6 +9202,10 @@ export type Database = {
         Args: { p_order_id: string; p_reason: string }
         Returns: Json
       }
+      core_cancel_production_unit: {
+        Args: { p_notes?: string; p_reason: string; p_unit_id: string }
+        Returns: Json
+      }
       core_close_dispatch: {
         Args: { _dispatch_id: string; _factory_responsible?: string }
         Returns: Json
