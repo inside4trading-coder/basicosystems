@@ -81,6 +81,10 @@ export default function EstudioVisual() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState("");
   const [promptDialog, setPromptDialog] = useState<{ title: string; body: string } | null>(null);
+  const [backgrounds, setBackgrounds] = useState<StudioBackground[]>([]);
+  const [backgroundPrompts, setBackgroundPrompts] = useState<StudioBackgroundPrompt[]>([]);
+  const [backgroundUrls, setBackgroundUrls] = useState<Record<string, string>>({});
+  const [backgroundId, setBackgroundId] = useState<string | null>(null);
 
   const loadPresets = useCallback(async () => {
     const { data, error } = await estudioDb
