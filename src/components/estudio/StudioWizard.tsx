@@ -192,6 +192,11 @@ export function StudioWizard(props: StudioWizardProps) {
   const stepFormato = kind === "dinamico" ? 4 : 3;
   const stepGenerar = stepFormato + 1;
   const missingBackground = kind === "dinamico" && !backgroundId;
+  const modelOptions = imageModelOptions(imageModels);
+  const selectedModel = modelOptions.find((m) => m.model_id === imageModel) ?? null;
+  const missingModel = !imageModel || !selectedModel?.available;
+  const missingBackgroundPrompt =
+    kind === "dinamico" && !!backgroundId && backgroundPrompt === null && !promptText.trim();
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
