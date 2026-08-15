@@ -289,19 +289,31 @@ export default function EstudioVisual() {
 
   const handleGenerate = async () => {
     const kind = wizardKind;
-    const frontFile = views.frente.file;
     if (!kind) return;
-    if (!frontFile) {
-      toast.error("Sube la foto frontal de la prenda.");
-      return;
-    }
+    const frontFile = views.frente.file;
+    const cutoutFile = cutout.file;
+
+    // El recorte manda: si hay PNG recortado, jamás se llama a la IA.
+    const useComposition = Boolean(cutoutFile) && (kind === "transparente" || kind === "dinamico");
+
+    console.log("BASICO_STUDIO_MODE_DECISION", {
+      kind,
+      hasCutoutFile: Boolean(cutoutFile),
+      cutoutPath: null,
+      backgroundReferencePath: selectedBackground?.reference_path ?? null,
+      willUseComposedMode: useComposition,
+    });
+
     const preset = presetForKind(kind);
     if (!preset) {
       toast.error("No hay estilos de fotografía disponibles.");
       return;
     }
-    const cutoutFile = cutout.file;
-    const useComposition = Boolean(cutoutFile) && (kind === "transparente" || kind === "dinamico");
+
+    if (!useComposition && !frontFile) {
+      toast.error("Sube la foto frontal de la prenda o un PNG recortado.");
+      return;
+    }
 
     if (kind === "dinamico") {
       if (!selectedBackground) {
@@ -314,6 +326,7 @@ export default function EstudioVisual() {
       }
     }
 
+
     // Composición real por capas: la prenda no pasa por ningún modelo generativo.
     if (useComposition && cutoutFile) {
       setGenerating(true);
@@ -323,6 +336,13 @@ export default function EstudioVisual() {
         saveStudioSetMeta(sessionId, { seq, kind, mode: "individual" });
 
         const cutoutPath = await uploadEstudioCutout(cutoutFile);
+        console.log("BASICO_STUDIO_MODE_DECISION", {
+          kind,
+          hasCutoutFile: true,
+          cutoutPath,
+          backgroundReferencePath: selectedBackground?.reference_path ?? null,
+          willUseComposedMode: true,
+        });
         let compositionPath: string | null = null;
         let compositionMode: "cutout_ready" | "composited" = "cutout_ready";
 
@@ -385,6 +405,7 @@ export default function EstudioVisual() {
     }
 
 
+    if (!frontFile) return;
     const isCarousel = kind === "dinamico" && mode === "carrusel";
     setGenerating(true);
     try {
