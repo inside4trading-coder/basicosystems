@@ -273,6 +273,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Referencia del fondo dinámico elegido: si falla, no se inventa otro fondo.
+    let backgroundBase64: string | null = null;
+    if (backgroundReferencePath) {
+      backgroundBase64 = await downloadAsBase64(admin, backgroundReferencePath);
+      if (!backgroundBase64) {
+        await admin.from("estudio_image_jobs").update({
+          status: "failed",
+          error_message: "No se pudo leer la imagen de referencia del fondo.",
+        }).eq("id", job.id);
+        return json(200, { error: "No se pudo leer la imagen de referencia del fondo." });
+      }
+    }
+
     // 6. Llamar a OpenRouter (endpoint dedicado de imágenes)
     const aiRes = await fetch("https://openrouter.ai/api/v1/images", {
       method: "POST",
@@ -287,6 +300,7 @@ Deno.serve(async (req) => {
         input_references: [
           { type: "image_url", image_url: { url: photoBase64 } },
           ...(modelPhotoBase64 ? [{ type: "image_url", image_url: { url: modelPhotoBase64 } }] : []),
+          ...(backgroundBase64 ? [{ type: "image_url", image_url: { url: backgroundBase64 } }] : []),
         ],
         // Ningún modelo publica `size`; la proporción se pide con `aspect_ratio`, y solo se
         // manda `resolution` en los modelos que la publican.
