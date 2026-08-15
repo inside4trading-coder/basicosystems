@@ -136,6 +136,10 @@ export interface StudioWizardProps {
   /** PNG recortado de la prenda: activa la composición real por capas. */
   cutout?: ViewInput;
   onCutoutFile?: (file: File | null) => void;
+  /** Ajustes de composición (solo fondo dinámico con PNG recortado). */
+  compositionParams?: CompositionParams;
+  onCompositionParamsChange?: (params: CompositionParams) => void;
+
 
   promptText: string;
   onPromptChange: (v: string) => void;
