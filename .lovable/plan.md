@@ -23,7 +23,7 @@ Dos tablas nuevas, nada destructivo, mismas políticas RLS que el resto de `estu
 
 Seed: los 4 fondos (Asfalto POV, Concreto Crudo, Línea Industrial, Parking Grid) con `sort_order` 1–4 y `is_active = true`. **No se crea ninguna fila de prompt**: todas las combinaciones fondo+modelo nacen vacías, sin defaults ni fallback.
 
-Las 4 imágenes adjuntas se suben tal cual al bucket `estudio-visual` (carpeta `fondos/`) y se usan como portada y como imagen de referencia inicial (campos separados, aunque apunten al mismo archivo). El recorte 1:1 es solo visual (`aspect-square` + `object-cover`), no se modifican los archivos.
+Las 4 imágenes adjuntas se suben sin modificar al bucket privado `estudio-visual`, en la carpeta `fondos/`, y se usan a la vez como `cover_path` y `reference_path` de su fondo (campos separados, aunque de inicio apunten al mismo archivo): asfalto con zapatos → Asfalto POV, concreto liso → Concreto Crudo, línea amarilla diagonal → Línea Industrial, varias líneas amarillas → Parking Grid. El recorte 1:1 es solo visual en la card (`aspect-square` + `object-cover`); no se altera ni recorta el archivo original y no se usan placeholders.
 
 ### 2. Paso "Fondo" dentro del modal existente
 
