@@ -32,6 +32,19 @@ export async function uploadEstudioSourcePhoto(file: File): Promise<string> {
   return path;
 }
 
+/** Sube la portada o la imagen de referencia de un fondo dinámico (carpeta `fondos/`). */
+export async function uploadEstudioBackgroundImage(file: File): Promise<string> {
+  const check = validateEstudioPhotoFile(file);
+  if (!check.ok) throw new Error(check.message);
+  const ext = extForMime(file.type);
+  const path = `fondos/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage
+    .from(ESTUDIO_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+  return path;
+}
+
 const signedUrlCache = new Map<string, { url: string; exp: number }>();
 
 export async function resolveEstudioSignedUrl(path: string): Promise<string> {
