@@ -45,6 +45,31 @@ export async function uploadEstudioBackgroundImage(file: File): Promise<string> 
   return path;
 }
 
+/**
+ * Sube el PNG recortado de la prenda (carpeta `cutouts/`).
+ * Solo PNG: es el único formato que garantiza canal alfa real.
+ */
+export async function uploadEstudioCutout(file: File): Promise<string> {
+  if (file.type !== "image/png") throw new Error("El recorte debe ser un PNG con transparencia.");
+  if (file.size > ESTUDIO_PHOTO_MAX_BYTES) throw new Error("La imagen supera el límite de 10 MB.");
+  const path = `cutouts/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+  const { error } = await supabase.storage
+    .from(ESTUDIO_BUCKET)
+    .upload(path, file, { contentType: "image/png", upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+/** Sube el resultado de una composición real por capas (carpeta `composiciones/`). */
+export async function uploadEstudioComposition(blob: Blob, key: string): Promise<string> {
+  const path = `composiciones/${key}.png`;
+  const { error } = await supabase.storage
+    .from(ESTUDIO_BUCKET)
+    .upload(path, blob, { contentType: "image/png", upsert: true });
+  if (error) throw error;
+  return path;
+}
+
 const signedUrlCache = new Map<string, { url: string; exp: number }>();
 
 export async function resolveEstudioSignedUrl(path: string): Promise<string> {

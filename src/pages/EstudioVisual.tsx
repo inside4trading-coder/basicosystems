@@ -32,7 +32,15 @@ import {
   type StudioKind,
   type StudioMode,
 } from "@/lib/estudioNaming";
-import { resolveEstudioSignedUrl, downloadEstudioImage, uploadEstudioSourcePhoto } from "@/lib/estudioStorage";
+import {
+  resolveEstudioSignedUrl,
+  downloadEstudioImage,
+  uploadEstudioSourcePhoto,
+  uploadEstudioCutout,
+  uploadEstudioComposition,
+} from "@/lib/estudioStorage";
+import { composeCutoutOnBackground } from "@/lib/estudioCompositing";
+
 
 interface PromptPreset {
   id: string;
@@ -83,6 +91,8 @@ export default function EstudioVisual() {
     tres_cuartos: emptyViewInput(),
   });
   const [modelPhoto, setModelPhoto] = useState<ViewInput>(emptyViewInput());
+  const [cutout, setCutout] = useState<ViewInput>(emptyViewInput());
+
 
   const [jobs, setJobs] = useState<StudioJob[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -118,7 +128,7 @@ export default function EstudioVisual() {
     const { data } = await estudioDb
       .from("estudio_image_jobs")
       .select(
-        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, prompt_used, cost_usd, error_message",
+        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, prompt_used, cost_usd, error_message, composition_mode, cutout_path, composition_path",
       )
       .order("created_at", { ascending: false })
       .limit(60);
@@ -215,7 +225,14 @@ export default function EstudioVisual() {
     [basePromptFor, presetForKind],
   );
 
-  const closeWizard = () => setWizardKind(null);
+  const closeWizard = () => {
+    setCutout((prev) => {
+      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return emptyViewInput();
+    });
+    setWizardKind(null);
+  };
+
 
   const setViewFile = (view: ViewType, file: File | null) => {
     setViews((prev) => {
@@ -243,6 +260,18 @@ export default function EstudioVisual() {
     });
   };
 
+  const setCutoutFile = (file: File | null) => {
+    setCutout((prev) => {
+      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return {
+        include: Boolean(file),
+        file,
+        previewUrl: file ? URL.createObjectURL(file) : null,
+      };
+    });
+  };
+
+
   const toggleView = (view: ViewType, include: boolean) => {
     setViews((prev) => ({ ...prev, [view]: { ...prev[view], include } }));
   };
@@ -260,16 +289,82 @@ export default function EstudioVisual() {
       toast.error("No hay estilos de fotografía disponibles.");
       return;
     }
+    const cutoutFile = cutout.file;
+    const useComposition = Boolean(cutoutFile) && (kind === "transparente" || kind === "dinamico");
+
     if (kind === "dinamico") {
       if (!selectedBackground) {
         toast.error("Elige un fondo para el fondo dinámico.");
         return;
       }
-      if (!resolvedBackgroundPrompt && !promptText.trim()) {
+      if (!useComposition && !resolvedBackgroundPrompt && !promptText.trim()) {
         toast.error("Ese fondo no tiene prompt configurado para el modelo elegido.");
         return;
       }
     }
+
+    // Composición real por capas: la prenda no pasa por ningún modelo generativo.
+    if (useComposition && cutoutFile) {
+      setGenerating(true);
+      try {
+        const sessionId = crypto.randomUUID();
+        const seq = nextStudioSeq();
+        saveStudioSetMeta(sessionId, { seq, kind, mode: "individual" });
+
+        const cutoutPath = await uploadEstudioCutout(cutoutFile);
+        let compositionPath: string | null = null;
+        let compositionMode: "cutout_ready" | "composited" = "cutout_ready";
+
+        if (kind === "dinamico") {
+          const backgroundUrl = selectedBackground ? backgroundUrls[selectedBackground.id] : null;
+          if (!backgroundUrl) throw new Error("No se pudo cargar la imagen del fondo elegido.");
+          const cutoutUrl = URL.createObjectURL(cutoutFile);
+          try {
+            const blob = await composeCutoutOnBackground(backgroundUrl, cutoutUrl, format);
+            compositionPath = await uploadEstudioComposition(blob, sessionId);
+          } finally {
+            URL.revokeObjectURL(cutoutUrl);
+          }
+          compositionMode = "composited";
+        }
+
+        const { data: auth } = await supabase.auth.getUser();
+        const { error } = await estudioDb.from("estudio_image_jobs").insert({
+          created_by: auth.user?.id ?? null,
+          status: "completed",
+          photo_type: preset.photo_type,
+          source_photo_path: cutoutPath,
+          cutout_path: cutoutPath,
+          composition_path: compositionPath,
+          background_reference_path:
+            kind === "dinamico" ? selectedBackground?.reference_path ?? null : null,
+          generated_image_path: compositionPath ?? cutoutPath,
+          composition_mode: compositionMode,
+          fidelity_pipeline_version: 1,
+          output_size: format,
+          cost_usd: 0,
+          session_id: sessionId,
+          view_type: "frente",
+          is_inferred: false,
+          prompt_used: null,
+        });
+        if (error) throw error;
+
+        toast.success(
+          compositionMode === "composited"
+            ? "Composición lista: la prenda no se alteró."
+            : "Recorte guardado tal cual, sin generación.",
+        );
+        await loadJobs();
+        closeWizard();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "No se pudo componer la imagen.");
+      } finally {
+        setGenerating(false);
+      }
+      return;
+    }
+
 
     const isCarousel = kind === "dinamico" && mode === "carrusel";
     setGenerating(true);
@@ -477,6 +572,9 @@ export default function EstudioVisual() {
           onToggleView={toggleView}
           modelPhoto={modelPhoto}
           onModelPhotoFile={setModelPhotoFile}
+          cutout={cutout}
+          onCutoutFile={setCutoutFile}
+
           promptText={promptText}
           onPromptChange={setPromptText}
           imageModels={imageModels}
