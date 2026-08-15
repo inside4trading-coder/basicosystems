@@ -493,6 +493,8 @@ export default function EstudioVisual() {
           onBackgroundChange={setBackgroundId}
           onBackgroundsChanged={loadBackgrounds}
           backgroundPrompt={resolvedBackgroundPrompt}
+          onSavePromptBase={handleSavePromptBase}
+          hasPromptBase={resolvedBackgroundPrompt !== null}
         />
       )}
 
