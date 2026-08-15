@@ -63,6 +63,12 @@ export default {
           error: "hsl(var(--status-error))",
           inactive: "hsl(var(--status-inactive))",
         },
+        studio: {
+          accent: "hsl(var(--studio-accent))",
+          "accent-foreground": "hsl(var(--studio-accent-foreground))",
+          ink: "hsl(var(--studio-ink))",
+          mist: "hsl(var(--studio-mist))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
