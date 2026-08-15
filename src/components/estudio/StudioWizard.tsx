@@ -429,9 +429,41 @@ export function StudioWizard(props: StudioWizardProps) {
                     value={promptText}
                     onChange={(e) => onPromptChange(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Aplica solo a esta generación.
-                  </p>
+                  <div className="flex items-center justify-between gap-3 mt-2">
+                    <p className="text-xs text-muted-foreground">
+                      Aplica solo a esta generación.
+                    </p>
+                    {kind === "dinamico" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={
+                          savingPromptBase ||
+                          !backgroundId ||
+                          !imageModel ||
+                          !promptText.trim() ||
+                          !onSavePromptBase
+                        }
+                        onClick={async () => {
+                          if (!onSavePromptBase) return;
+                          setSavingPromptBase(true);
+                          try {
+                            await onSavePromptBase();
+                          } finally {
+                            setSavingPromptBase(false);
+                          }
+                        }}
+                      >
+                        {savingPromptBase ? (
+                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-3.5 w-3.5" />
+                        )}
+                        {hasPromptBase ? "Actualizar prompt base" : "Guardar como prompt base"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
