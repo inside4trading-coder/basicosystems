@@ -260,10 +260,28 @@ export function StudioResults({
                     </span>
                   </div>
 
+
+                  {(() => {
+                    const badge =
+                      COMPOSITION_BADGES[set.jobs[0]?.composition_mode ?? "generative"];
+                    return (
+                      <span
+                        title={badge.hint}
+                        className={cn(
+                          "inline-block text-[11px] rounded-full px-2 py-0.5",
+                          badge.className,
+                        )}
+                      >
+                        {badge.label}
+                      </span>
+                    );
+                  })()}
+
                   <p className="text-xs text-muted-foreground">
                     {new Date(set.createdAt).toLocaleString("es-VE")}
                     {set.costUsd != null && ` · $${set.costUsd.toFixed(4)} USD`}
                   </p>
+
 
                   {failed ? (
                     <div className="space-y-2">
