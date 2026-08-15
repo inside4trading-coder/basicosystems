@@ -15,8 +15,14 @@ import PromptTab from "@/components/estudio/config/PromptTab";
 import BrandTab from "@/components/estudio/config/BrandTab";
 import BackgroundsTab from "@/components/estudio/config/BackgroundsTab";
 import { StudioBackgroundStep } from "@/components/estudio/StudioBackgroundStep";
+import { CompositionControls } from "@/components/estudio/CompositionControls";
+import {
+  DEFAULT_COMPOSITION_PARAMS,
+  type CompositionParams,
+} from "@/lib/estudioCompositing";
 import type { StudioBackground } from "@/lib/estudioBackgrounds";
 import { cn } from "@/lib/utils";
+
 
 export type ViewType = "frente" | "espalda" | "detalle" | "tres_cuartos";
 
