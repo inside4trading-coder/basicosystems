@@ -4,6 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { estudioDb } from "@/lib/estudioDb";
 import { readEdgeFunctionError, describeEstudioLoadError } from "@/lib/estudioErrors";
 import { loadEnabledModels, type EnabledModel } from "@/lib/estudioModels";
+import {
+  loadStudioBackgrounds,
+  loadStudioBackgroundPrompts,
+  resolveBackgroundPrompt,
+  type StudioBackground,
+  type StudioBackgroundPrompt,
+} from "@/lib/estudioBackgrounds";
 import { EstudioLoadError } from "@/components/estudio/EstudioLoadError";
 import { ImageLightbox } from "@/components/estudio/ImageLightbox";
 import { StudioActionCards } from "@/components/estudio/StudioActionCards";
@@ -81,6 +88,10 @@ export default function EstudioVisual() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState("");
   const [promptDialog, setPromptDialog] = useState<{ title: string; body: string } | null>(null);
+  const [backgrounds, setBackgrounds] = useState<StudioBackground[]>([]);
+  const [backgroundPrompts, setBackgroundPrompts] = useState<StudioBackgroundPrompt[]>([]);
+  const [backgroundUrls, setBackgroundUrls] = useState<Record<string, string>>({});
+  const [backgroundId, setBackgroundId] = useState<string | null>(null);
 
   const loadPresets = useCallback(async () => {
     const { data, error } = await estudioDb
@@ -120,11 +131,49 @@ export default function EstudioVisual() {
     setUrls(Object.fromEntries(entries));
   }, []);
 
+  const loadBackgrounds = useCallback(async () => {
+    try {
+      const [list, prompts] = await Promise.all([
+        loadStudioBackgrounds({ onlyActive: true }),
+        loadStudioBackgroundPrompts(),
+      ]);
+      setBackgrounds(list);
+      setBackgroundPrompts(prompts);
+      const entries = await Promise.all(
+        list
+          .filter((b) => b.cover_path)
+          .map(async (b) => [b.id, await resolveEstudioSignedUrl(b.cover_path!)] as const),
+      );
+      setBackgroundUrls(Object.fromEntries(entries));
+      setBackgroundId((current) => (current && list.some((b) => b.id === current) ? current : null));
+    } catch {
+      setBackgrounds([]);
+    }
+  }, []);
+
   useEffect(() => {
     loadPresets();
     loadModels();
     loadJobs();
-  }, [loadPresets, loadModels, loadJobs]);
+    loadBackgrounds();
+  }, [loadPresets, loadModels, loadJobs, loadBackgrounds]);
+
+  const resolvedBackgroundPrompt = useMemo(
+    () => resolveBackgroundPrompt(backgroundPrompts, backgroundId, imageModel),
+    [backgroundPrompts, backgroundId, imageModel],
+  );
+
+  const selectedBackground = useMemo(
+    () => backgrounds.find((b) => b.id === backgroundId) ?? null,
+    [backgrounds, backgroundId],
+  );
+
+  /** Al elegir fondo o cambiar de modelo, el prompt visible pasa a ser el de esa combinación. */
+  useEffect(() => {
+    if (wizardKind !== "dinamico" || !backgroundId) return;
+    setPromptText(resolvedBackgroundPrompt ?? "");
+  }, [wizardKind, backgroundId, resolvedBackgroundPrompt]);
+
 
   const presetForKind = useCallback(
     (kind: StudioKind): PromptPreset | null => {
@@ -201,6 +250,16 @@ export default function EstudioVisual() {
       toast.error("No hay estilos de fotografía disponibles.");
       return;
     }
+    if (kind === "dinamico") {
+      if (!selectedBackground) {
+        toast.error("Elige un fondo para el fondo dinámico.");
+        return;
+      }
+      if (!resolvedBackgroundPrompt && !promptText.trim()) {
+        toast.error("Ese fondo no tiene prompt configurado para el modelo elegido.");
+        return;
+      }
+    }
 
     const isCarousel = kind === "dinamico" && mode === "carrusel";
     setGenerating(true);
@@ -234,6 +293,8 @@ export default function EstudioVisual() {
               body: {
                 sourcePhotoPath: item.sourcePath,
                 modelPhotoPath: modelPath ?? undefined,
+                backgroundReferencePath:
+                  kind === "dinamico" ? selectedBackground?.reference_path ?? undefined : undefined,
                 photoType: preset.photo_type,
                 promptPresetId: preset.id,
                 promptOverride: `${promptText}${item.suffix ?? ""}`,
@@ -416,6 +477,12 @@ export default function EstudioVisual() {
           onBrandDialogClose={() => {}}
           generating={generating}
           onGenerate={handleGenerate}
+          backgrounds={backgrounds}
+          backgroundUrls={backgroundUrls}
+          backgroundId={backgroundId}
+          onBackgroundChange={setBackgroundId}
+          onBackgroundsChanged={loadBackgrounds}
+          backgroundPrompt={resolvedBackgroundPrompt}
         />
       )}
 
