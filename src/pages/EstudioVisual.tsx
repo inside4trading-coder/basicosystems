@@ -336,6 +336,13 @@ export default function EstudioVisual() {
         saveStudioSetMeta(sessionId, { seq, kind, mode: "individual" });
 
         const cutoutPath = await uploadEstudioCutout(cutoutFile);
+        console.log("BASICO_STUDIO_MODE_DECISION", {
+          kind,
+          hasCutoutFile: true,
+          cutoutPath,
+          backgroundReferencePath: selectedBackground?.reference_path ?? null,
+          willUseComposedMode: true,
+        });
         let compositionPath: string | null = null;
         let compositionMode: "cutout_ready" | "composited" = "cutout_ready";
 
