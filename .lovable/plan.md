@@ -39,14 +39,16 @@ Preview muestra: códigos, períodos actuales, período consolidado, operarios, 
 
 Modal de confirmación con el texto pedido y campo "Motivo de fusión" obligatorio.
 
-Caso a ejecutar: **destino NM-000004, origen NM-000002**. NM-000002 no se pagó realmente, así que la fusión la trata como no pagada y su estado pasa a "fusionada". Resultado: una sola nómina activa NM-000004, período 01/08/2026 → 13/08/2026, 215 trabajos, USD 120,19, fecha de pago conservada la del destino.
+Caso a ejecutar: **destino NM-000004, origen NM-000002**. Como NM-000002 figura como "pagada" pero no se pagó realmente, la fusión exige dos condiciones: que no tenga comprobantes de pago registrados y que el usuario marque la casilla "Confirmo que esta nómina no fue pagada realmente y puede fusionarse." Esa confirmación queda guardada en la auditoría. Resultado: una sola nómina activa NM-000004, período consolidado 01/08/2026 → 13/08/2026, 215 trabajos, USD 120,19, fecha de pago conservada la del destino.
 
 ## C. Después de fusionar
 
-- NM-000004 queda visible con el total consolidado.
+- NM-000004 queda visible con el total consolidado y la leyenda "Período fusionado: 01/08/2026 → 13/08/2026", diferenciada de una semana operativa normal.
 - NM-000002 aparece como "Fusionada → NM-000004", con enlace al destino y su historial intacto.
+- La nómina origen conserva su información original guardada (total, trabajos, operarios y período previos a la fusión), visible al abrirla, aunque sus contadores activos queden en 0.
 - Las nóminas fusionadas se excluyen de los indicadores de pendientes/aprobadas/pagadas y de los totales, para no contar dos veces.
 - Nada se borra.
+
 
 ## Detalles técnicos
 
