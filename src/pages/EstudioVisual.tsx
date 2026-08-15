@@ -39,7 +39,12 @@ import {
   uploadEstudioCutout,
   uploadEstudioComposition,
 } from "@/lib/estudioStorage";
-import { composeCutoutOnBackground } from "@/lib/estudioCompositing";
+import {
+  composeCutoutOnBackground,
+  DEFAULT_COMPOSITION_PARAMS,
+  type CompositionParams,
+} from "@/lib/estudioCompositing";
+
 
 
 interface PromptPreset {
@@ -92,6 +97,10 @@ export default function EstudioVisual() {
   });
   const [modelPhoto, setModelPhoto] = useState<ViewInput>(emptyViewInput());
   const [cutout, setCutout] = useState<ViewInput>(emptyViewInput());
+  const [compositionParams, setCompositionParams] = useState<CompositionParams>(
+    DEFAULT_COMPOSITION_PARAMS,
+  );
+
 
 
   const [jobs, setJobs] = useState<StudioJob[]>([]);
