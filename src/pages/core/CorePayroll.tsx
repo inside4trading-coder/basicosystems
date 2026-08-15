@@ -16,6 +16,8 @@ import { Wallet, Plus, CheckCircle2, AlertTriangle, FileText, Printer, RefreshCw
 import { formatDMY } from "@/lib/dateUtils";
 import { getCurrentPayrollWeek } from "@/lib/corePayrollWeek";
 import { TransferWorkEntryDialog } from "@/components/core/payroll/TransferWorkEntryDialog";
+import { generatePayrollReceiptPdf } from "@/lib/corePayrollReceiptPdf";
+
 import { GeneratePayrollDialog } from "@/components/core/payroll/GeneratePayrollDialog";
 import { MergePayrollsDialog } from "@/components/core/payroll/MergePayrollsDialog";
 
@@ -562,6 +564,10 @@ function RunDetailDialog({ runId, onClose, onChange }: { runId: string; onClose:
   const [lines, setLines] = useState<OperatorLine[]>([]);
   const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
   const [entryLinks, setEntryLinks] = useState<any[]>([]);
+  const [productNames, setProductNames] = useState<Record<string, string>>({});
+  const [variantLabels, setVariantLabels] = useState<Record<string, string>>({});
+  const [orderCodes, setOrderCodes] = useState<Record<string, string>>({});
+
   const [openLineId, setOpenLineId] = useState<string | null>(null);
   const [adjOpen, setAdjOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
@@ -591,7 +597,30 @@ function RunDetailDialog({ runId, onClose, onChange }: { runId: string; onClose:
     if (r1.data) setRun(r1.data as PayrollRun);
     setLines((r2.data ?? []) as OperatorLine[]);
     setAdjustments((r3.data ?? []) as Adjustment[]);
-    setEntryLinks(r4.data ?? []);
+    const links = (r4.data ?? []) as any[];
+    setEntryLinks(links);
+
+    // Enriquecer con producto / variante / OP (solo lectura, para el comprobante)
+    const productIds = Array.from(new Set(links.map(l => l.work_entry?.core_product_id).filter(Boolean))) as string[];
+    const variantIds = Array.from(new Set(links.map(l => l.work_entry?.core_variant_id).filter(Boolean))) as string[];
+    const orderIds = Array.from(new Set(links.map(l => l.work_entry?.production_order_id).filter(Boolean))) as string[];
+    const [p, v, o] = await Promise.all([
+      productIds.length ? supabase.from("core_products").select("id, name").in("id", productIds) : Promise.resolve({ data: [] as any[] }),
+      variantIds.length ? supabase.from("core_product_variants").select("id, variant_label, size, color").in("id", variantIds) : Promise.resolve({ data: [] as any[] }),
+      orderIds.length ? supabase.from("core_production_orders").select("id, order_code").in("id", orderIds) : Promise.resolve({ data: [] as any[] }),
+    ]);
+    const pm: Record<string, string> = {};
+    (p.data ?? []).forEach((r: any) => { pm[r.id] = r.name; });
+    const vm: Record<string, string> = {};
+    (v.data ?? []).forEach((r: any) => {
+      vm[r.id] = r.color && r.size ? `${r.color} / ${r.size}` : (r.variant_label ?? r.size ?? "");
+    });
+    const om: Record<string, string> = {};
+    (o.data ?? []).forEach((r: any) => { om[r.id] = r.order_code; });
+    setProductNames(pm);
+    setVariantLabels(vm);
+    setOrderCodes(om);
+
     if (r1.data) {
       setPayDate(r1.data.payment_date ?? "");
       setTotalPaid(String(r1.data.total_amount ?? ""));
@@ -741,6 +770,34 @@ function RunDetailDialog({ runId, onClose, onChange }: { runId: string; onClose:
 
   function printable(lineId: string) { setPrintLineId(lineId); }
 
+  function downloadReceipt(lineId: string) {
+    if (!run) return;
+    const line = lines.find(l => l.id === lineId);
+    if (!line) return;
+    const links = entryLinks.filter(l => l.payroll_operator_line_id === lineId);
+    const rows = links.map((l: any) => ({
+      scanned_at: l.work_entry?.created_at ?? null,
+      order_code: l.work_entry?.production_order_id ? (orderCodes[l.work_entry.production_order_id] ?? null) : null,
+      unit_code: l.work_entry?.unit_code ?? null,
+      product_name: l.work_entry?.core_product_id ? (productNames[l.work_entry.core_product_id] ?? null) : null,
+      variant_label: l.work_entry?.core_variant_id ? (variantLabels[l.work_entry.core_variant_id] ?? null) : null,
+      process_name: l.work_entry?.process_name ?? null,
+      rate: l.work_entry?.rate_snapshot ?? null,
+      amount: l.amount ?? null,
+    }));
+    const adj = adjustments
+      .filter(a => a.payroll_operator_line_id === lineId)
+      .map(a => ({ adjustment_type: a.adjustment_type, amount: a.amount, reason: a.reason }));
+    generatePayrollReceiptPdf(
+      run,
+      line,
+      rows,
+      adj,
+      STATUS_BADGE[run.status]?.label ?? run.status
+    );
+  }
+
+
   if (!run) return null;
 
   const printLine = lines.find(l => l.id === printLineId);
@@ -803,9 +860,13 @@ function RunDetailDialog({ runId, onClose, onChange }: { runId: string; onClose:
                           Ajuste
                         </Button>
                       )}
-                      <Button size="sm" variant="outline" onClick={() => printable(l.id)}>
+                      <Button size="sm" variant="ghost" onClick={() => printable(l.id)}>
+                        Ver
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => downloadReceipt(l.id)}>
                         <Printer className="h-3.5 w-3.5 mr-1" /> Comprobante
                       </Button>
+
                     </TableCell>
                   </TableRow>
                 );
@@ -952,8 +1013,12 @@ function RunDetailDialog({ runId, onClose, onChange }: { runId: string; onClose:
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setPrintLineId(null)}>Cerrar</Button>
+                <Button variant="outline" onClick={() => downloadReceipt(printLine.id)}>
+                  <Printer className="h-4 w-4 mr-1" /> Descargar PDF
+                </Button>
                 <Button onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" /> Imprimir</Button>
               </DialogFooter>
+
             </DialogContent>
           </Dialog>
         )}
