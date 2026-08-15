@@ -158,7 +158,21 @@ type ManualItemLine = {
   core_variant_id: string;
   quantity: number;
   size: string | null;
+  color: string | null;
+  variant_label: string | null;
   variant_sku: string | null;
+};
+
+const buildVariantDisplayLabel = (v: { size?: string | null; color?: string | null; variant_label?: string | null; variant_sku?: string | null }) => {
+  const size = v.size?.trim() || null;
+  const color = v.color?.trim() || null;
+  const label = v.variant_label?.trim() || null;
+  if (color && size) return `${color} / ${size}`;
+  if (label && size) return `${label} / ${size}`;
+  if (label) return label;
+  if (color) return color;
+  if (size) return size;
+  return v.variant_sku?.trim() || "Variante";
 };
 
 type ManualItem = {
