@@ -1013,8 +1013,12 @@ function RunDetailDialog({ runId, onClose, onChange }: { runId: string; onClose:
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setPrintLineId(null)}>Cerrar</Button>
+                <Button variant="outline" onClick={() => downloadReceipt(printLine.id)}>
+                  <Printer className="h-4 w-4 mr-1" /> Descargar PDF
+                </Button>
                 <Button onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" /> Imprimir</Button>
               </DialogFooter>
+
             </DialogContent>
           </Dialog>
         )}
