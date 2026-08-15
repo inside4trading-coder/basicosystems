@@ -1,11 +1,11 @@
 import { Camera, Scissors, Sparkles, Clapperboard, UserRound, Lock } from "lucide-react";
 import type { StudioKind } from "@/lib/estudioNaming";
 import { cn } from "@/lib/utils";
-import heroCatalogo from "@/assets/studio-catalogo.jpg.asset.json";
-import heroTransparente from "@/assets/studio-transparente.jpg.asset.json";
-import heroDinamico from "@/assets/studio-dinamico.jpg.asset.json";
-import heroVideo from "@/assets/studio-video.jpg.asset.json";
-import heroModelo from "@/assets/studio-modelo.jpg.asset.json";
+import heroCatalogo from "@/assets/studio-catalogo.jpg";
+import heroTransparente from "@/assets/studio-transparente.jpg";
+import heroDinamico from "@/assets/studio-dinamico.jpg";
+import heroVideo from "@/assets/studio-video.jpg";
+import heroModelo from "@/assets/studio-modelo.jpg";
 
 interface ActionCard {
   kind: StudioKind | null;
