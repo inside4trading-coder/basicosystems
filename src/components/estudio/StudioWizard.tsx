@@ -270,10 +270,48 @@ export function StudioWizard(props: StudioWizardProps) {
 
           <Step n={2} title="Prenda">
             <div className="rounded-xl border divide-y">
+              {supportsCutout && (
+                <div className="p-4 space-y-2">
+                  <Label className="font-medium text-sm">
+                    PNG recortado de la prenda {hasCutout ? "" : "(opcional)"}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Si subes un PNG con transparencia, la prenda no se manda a ningún modelo: se usa
+                    tu capa tal cual y no hace falta la foto frontal.
+                  </p>
+                  <ViewPhotoPicker
+                    altLabel="del recorte"
+                    input={cutout}
+                    accept="image/png"
+                    onFile={(f) => onCutoutFile?.(f)}
+                    onClear={() => onCutoutFile?.(null)}
+                  />
+                  {hasCutout ? (
+                    <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-2">
+                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
+                        {kind === "transparente" ? "Recorte listo" : "Modo compuesto activo"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        No se llamará a IA. Costo 0.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      {kind === "transparente"
+                        ? "Generativo: el modelo intenta aislar la prenda; puede alterar detalles."
+                        : "Generativo: el modelo recrea la prenda; puede alterar detalles."}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="p-4 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm">{VIEW_LABELS.frente}</span>
-                  <span className="text-xs text-muted-foreground">(obligatoria)</span>
+                  <span className="text-xs text-muted-foreground">
+                    {hasCutout ? "(no hace falta en modo compuesto)" : "(obligatoria)"}
+                  </span>
                 </div>
                 <ViewPhotoPicker
                   altLabel={VIEW_LABELS.frente}
@@ -282,6 +320,7 @@ export function StudioWizard(props: StudioWizardProps) {
                   onClear={() => onViewFile("frente", null)}
                 />
               </div>
+
 
               {!isCarousel &&
                 OPTIONAL_VIEWS.map((view) => {
