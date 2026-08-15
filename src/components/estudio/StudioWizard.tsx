@@ -476,11 +476,18 @@ export function StudioWizard(props: StudioWizardProps) {
               )}
             </div>
 
-            {missingBackgroundPrompt && (
+            {missingBackgroundPrompt && !hasCutout && (
               <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5">
                 <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                 Este fondo no tiene prompt configurado para el modelo seleccionado. Configúralo en
                 Avanzado antes de generar.
+              </p>
+            )}
+
+            {hasCutout && (
+              <p className="text-xs text-emerald-600 dark:text-emerald-500">
+                Modo Composición: no se llama a ningún modelo, así que no hay costo ni riesgo de que
+                la prenda cambie.
               </p>
             )}
 
@@ -491,11 +498,11 @@ export function StudioWizard(props: StudioWizardProps) {
                   generating ||
                   !views.frente.file ||
                   missingBackground ||
-                  missingModel ||
-                  missingBackgroundPrompt
+                  (!hasCutout && (missingModel || missingBackgroundPrompt))
                 }
                 size="lg"
               >
+
                 {generating ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
