@@ -405,6 +405,7 @@ export default function EstudioVisual() {
     }
 
 
+    if (!frontFile) return;
     const isCarousel = kind === "dinamico" && mode === "carrusel";
     setGenerating(true);
     try {
