@@ -143,7 +143,8 @@ export default function CorePayroll() {
 
   // KPIs
   const kpis = useMemo(() => {
-    const currentRun = runs.find(r => r.period_start === week.start && r.period_end === week.end && r.status !== "cancelled");
+    const activeRuns = runs.filter(r => !["cancelled", "merged"].includes(r.status));
+    const currentRun = activeRuns.find(r => r.period_start === week.start && r.period_end === week.end);
     const inWeek = (e: WorkEntry) => {
       const d = (e.created_at ?? "").slice(0, 10);
       return d >= week.start && d <= week.end;
@@ -151,10 +152,11 @@ export default function CorePayroll() {
     const totalPendingThisWeek = pendingEntries.filter(inWeek).reduce((s, e) => s + Number(e.payroll_amount ?? 0), 0);
     const totalPendingAll = pendingEntries.reduce((s, e) => s + Number(e.payroll_amount ?? 0), 0);
     const operatorsPending = new Set(pendingEntries.filter(e => e.operator_id).map(e => e.operator_id!)).size;
-    const approved = runs.filter(r => r.status === "approved").length;
-    const paid = runs.filter(r => r.status === "paid").length;
+    const approved = activeRuns.filter(r => r.status === "approved").length;
+    const paid = activeRuns.filter(r => r.status === "paid").length;
     return { currentRun, totalPendingThisWeek, totalPendingAll, operatorsPending, processesCount: pendingEntries.length, missing: missingRateEntries.length, approved, paid };
   }, [runs, pendingEntries, missingRateEntries, week]);
+
 
   // Group pending entries by operator
   const operatorSummaries = useMemo(() => {
