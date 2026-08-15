@@ -120,11 +120,49 @@ export default function EstudioVisual() {
     setUrls(Object.fromEntries(entries));
   }, []);
 
+  const loadBackgrounds = useCallback(async () => {
+    try {
+      const [list, prompts] = await Promise.all([
+        loadStudioBackgrounds({ onlyActive: true }),
+        loadStudioBackgroundPrompts(),
+      ]);
+      setBackgrounds(list);
+      setBackgroundPrompts(prompts);
+      const entries = await Promise.all(
+        list
+          .filter((b) => b.cover_path)
+          .map(async (b) => [b.id, await resolveEstudioSignedUrl(b.cover_path!)] as const),
+      );
+      setBackgroundUrls(Object.fromEntries(entries));
+      setBackgroundId((current) => (current && list.some((b) => b.id === current) ? current : null));
+    } catch {
+      setBackgrounds([]);
+    }
+  }, []);
+
   useEffect(() => {
     loadPresets();
     loadModels();
     loadJobs();
-  }, [loadPresets, loadModels, loadJobs]);
+    loadBackgrounds();
+  }, [loadPresets, loadModels, loadJobs, loadBackgrounds]);
+
+  const resolvedBackgroundPrompt = useMemo(
+    () => resolveBackgroundPrompt(backgroundPrompts, backgroundId, imageModel),
+    [backgroundPrompts, backgroundId, imageModel],
+  );
+
+  const selectedBackground = useMemo(
+    () => backgrounds.find((b) => b.id === backgroundId) ?? null,
+    [backgrounds, backgroundId],
+  );
+
+  /** Al elegir fondo o cambiar de modelo, el prompt visible pasa a ser el de esa combinación. */
+  useEffect(() => {
+    if (wizardKind !== "dinamico" || !backgroundId) return;
+    setPromptText(resolvedBackgroundPrompt ?? "");
+  }, [wizardKind, backgroundId, resolvedBackgroundPrompt]);
+
 
   const presetForKind = useCallback(
     (kind: StudioKind): PromptPreset | null => {
