@@ -182,6 +182,10 @@ export function StudioWizard(props: StudioWizardProps) {
     onModelPhotoFile,
     cutout = { include: false, file: null, previewUrl: null },
     onCutoutFile,
+    compositionParams = DEFAULT_COMPOSITION_PARAMS,
+    onCompositionParamsChange,
+
+
 
     promptText,
     onPromptChange,
@@ -208,6 +212,8 @@ export function StudioWizard(props: StudioWizardProps) {
   const isCarousel = kind === "dinamico" && mode === "carrusel";
   const supportsCutout = kind === "transparente" || kind === "dinamico";
   const hasCutout = supportsCutout && !!cutout.file;
+  const showCompositionControls = kind === "dinamico" && hasCutout;
+
 
   const extraViews = isCarousel ? 0 : OPTIONAL_VIEWS.filter((v) => views[v].include).length;
   const outputs = isCarousel ? 4 : 1 + extraViews;
