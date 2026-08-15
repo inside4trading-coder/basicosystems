@@ -131,6 +131,14 @@ export interface StudioWizardProps {
   onBrandDialogClose: () => void;
   generating: boolean;
   onGenerate: () => void;
+  /** Fondos dinámicos activos (solo se usan cuando kind === "dinamico"). */
+  backgrounds?: StudioBackground[];
+  backgroundUrls?: Record<string, string>;
+  backgroundId?: string | null;
+  onBackgroundChange?: (id: string) => void;
+  onBackgroundsChanged?: () => void;
+  /** Prompt resuelto para fondo + modelo. `null` cuando falta configurarlo. */
+  backgroundPrompt?: string | null;
 }
 
 export function StudioWizard(props: StudioWizardProps) {
