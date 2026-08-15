@@ -462,7 +462,7 @@ export default function CoreProductionOrders() {
     if (!manualProductId) { setManualVariants([]); return; }
     supabase
       .from("core_product_variants")
-      .select("id, variant_sku, variant_label, size")
+      .select("id, variant_sku, variant_label, size, color")
       .eq("core_product_id", manualProductId)
       .order("sort_order", { ascending: true })
       .then(({ data }) => setManualVariants(data ?? []));
