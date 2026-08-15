@@ -8,6 +8,7 @@ import {
   loadStudioBackgrounds,
   loadStudioBackgroundPrompts,
   resolveBackgroundPrompt,
+  saveStudioBackgroundPrompts,
   type StudioBackground,
   type StudioBackgroundPrompt,
 } from "@/lib/estudioBackgrounds";
