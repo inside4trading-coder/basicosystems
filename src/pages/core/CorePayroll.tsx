@@ -768,6 +768,34 @@ function RunDetailDialog({ runId, onClose, onChange }: { runId: string; onClose:
 
   function printable(lineId: string) { setPrintLineId(lineId); }
 
+  function downloadReceipt(lineId: string) {
+    if (!run) return;
+    const line = lines.find(l => l.id === lineId);
+    if (!line) return;
+    const links = entryLinks.filter(l => l.payroll_operator_line_id === lineId);
+    const rows = links.map((l: any) => ({
+      scanned_at: l.work_entry?.created_at ?? null,
+      order_code: l.work_entry?.production_order_id ? (orderCodes[l.work_entry.production_order_id] ?? null) : null,
+      unit_code: l.work_entry?.unit_code ?? null,
+      product_name: l.work_entry?.core_product_id ? (productNames[l.work_entry.core_product_id] ?? null) : null,
+      variant_label: l.work_entry?.core_variant_id ? (variantLabels[l.work_entry.core_variant_id] ?? null) : null,
+      process_name: l.work_entry?.process_name ?? null,
+      rate: l.work_entry?.rate_snapshot ?? null,
+      amount: l.amount ?? null,
+    }));
+    const adj = adjustments
+      .filter(a => a.payroll_operator_line_id === lineId)
+      .map(a => ({ adjustment_type: a.adjustment_type, amount: a.amount, reason: a.reason }));
+    generatePayrollReceiptPdf(
+      run,
+      line,
+      rows,
+      adj,
+      STATUS_BADGE[run.status]?.label ?? run.status
+    );
+  }
+
+
   if (!run) return null;
 
   const printLine = lines.find(l => l.id === printLineId);
