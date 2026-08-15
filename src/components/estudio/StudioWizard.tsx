@@ -142,6 +142,10 @@ export interface StudioWizardProps {
   onBackgroundsChanged?: () => void;
   /** Prompt resuelto para fondo + modelo. `null` cuando falta configurarlo. */
   backgroundPrompt?: string | null;
+  /** Guarda el texto actual como prompt base de fondo + modelo. */
+  onSavePromptBase?: () => void | Promise<void>;
+  /** Indica si ya existe un prompt base para la combinación activa. */
+  hasPromptBase?: boolean;
 }
 
 export function StudioWizard(props: StudioWizardProps) {
