@@ -235,6 +235,8 @@ export default function EstudioVisual() {
   );
 
   const closeWizard = () => {
+    setCompositionParams(DEFAULT_COMPOSITION_PARAMS);
+
     setCutout((prev) => {
       if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
       return emptyViewInput();
