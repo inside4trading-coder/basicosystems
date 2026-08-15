@@ -83,6 +83,8 @@ export default function EstudioVisual() {
     tres_cuartos: emptyViewInput(),
   });
   const [modelPhoto, setModelPhoto] = useState<ViewInput>(emptyViewInput());
+  const [cutout, setCutout] = useState<ViewInput>(emptyViewInput());
+
 
   const [jobs, setJobs] = useState<StudioJob[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -118,7 +120,7 @@ export default function EstudioVisual() {
     const { data } = await estudioDb
       .from("estudio_image_jobs")
       .select(
-        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, prompt_used, cost_usd, error_message",
+        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, prompt_used, cost_usd, error_message, composition_mode, cutout_path, composition_path",
       )
       .order("created_at", { ascending: false })
       .limit(60);
@@ -242,6 +244,18 @@ export default function EstudioVisual() {
       };
     });
   };
+
+  const setCutoutFile = (file: File | null) => {
+    setCutout((prev) => {
+      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return {
+        include: Boolean(file),
+        file,
+        previewUrl: file ? URL.createObjectURL(file) : null,
+      };
+    });
+  };
+
 
   const toggleView = (view: ViewType, include: boolean) => {
     setViews((prev) => ({ ...prev, [view]: { ...prev[view], include } }));
@@ -477,6 +491,9 @@ export default function EstudioVisual() {
           onToggleView={toggleView}
           modelPhoto={modelPhoto}
           onModelPhotoFile={setModelPhotoFile}
+          cutout={cutout}
+          onCutoutFile={setCutoutFile}
+
           promptText={promptText}
           onPromptChange={setPromptText}
           imageModels={imageModels}
