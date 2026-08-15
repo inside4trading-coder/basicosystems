@@ -196,6 +196,9 @@ export function StudioWizard(props: StudioWizardProps) {
   const [savingPromptBase, setSavingPromptBase] = useState(false);
 
   const isCarousel = kind === "dinamico" && mode === "carrusel";
+  const supportsCutout = kind === "transparente" || kind === "dinamico";
+  const hasCutout = supportsCutout && !!cutout.file;
+
   const extraViews = isCarousel ? 0 : OPTIONAL_VIEWS.filter((v) => views[v].include).length;
   const outputs = isCarousel ? 4 : 1 + extraViews;
   const inferred = isCarousel ? 0 : OPTIONAL_VIEWS.filter((v) => views[v].include && !views[v].file).length;
