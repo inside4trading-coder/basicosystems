@@ -591,6 +591,9 @@ export default function EstudioVisual() {
           onModelPhotoFile={setModelPhotoFile}
           cutout={cutout}
           onCutoutFile={setCutoutFile}
+          compositionParams={compositionParams}
+          onCompositionParamsChange={setCompositionParams}
+
 
           promptText={promptText}
           onPromptChange={setPromptText}
