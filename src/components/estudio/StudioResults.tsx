@@ -11,6 +11,8 @@ import {
   type StudioMode,
 } from "@/lib/estudioNaming";
 
+export type CompositionMode = "generative" | "cutout_ready" | "composited";
+
 export interface StudioJob {
   id: string;
   created_at: string;
@@ -24,7 +26,29 @@ export interface StudioJob {
   prompt_used: string | null;
   cost_usd: number | null;
   error_message: string | null;
+  composition_mode: CompositionMode | null;
+  cutout_path: string | null;
+  composition_path: string | null;
 }
+
+const COMPOSITION_BADGES: Record<CompositionMode, { label: string; hint: string; className: string }> = {
+  generative: {
+    label: "Generativo",
+    hint: "Generativo: puede alterar detalles de la prenda.",
+    className: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+  },
+  cutout_ready: {
+    label: "Recorte listo",
+    hint: "Recorte listo: PNG entregado tal cual se subió.",
+    className: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
+  },
+  composited: {
+    label: "Compuesto",
+    hint: "Compuesto: usa recorte/capa de la prenda sobre fondo real.",
+    className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+  },
+};
+
 
 export interface StudioSet {
   key: string;
