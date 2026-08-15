@@ -16,6 +16,8 @@ import { Wallet, Plus, CheckCircle2, AlertTriangle, FileText, Printer, RefreshCw
 import { formatDMY } from "@/lib/dateUtils";
 import { getCurrentPayrollWeek } from "@/lib/corePayrollWeek";
 import { TransferWorkEntryDialog } from "@/components/core/payroll/TransferWorkEntryDialog";
+import { generatePayrollReceiptPdf } from "@/lib/corePayrollReceiptPdf";
+
 import { GeneratePayrollDialog } from "@/components/core/payroll/GeneratePayrollDialog";
 import { MergePayrollsDialog } from "@/components/core/payroll/MergePayrollsDialog";
 
