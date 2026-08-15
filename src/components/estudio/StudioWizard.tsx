@@ -401,6 +401,12 @@ export function StudioWizard(props: StudioWizardProps) {
                 </p>
               )}
               <p>
+                <span className="text-muted-foreground">Modelo: </span>
+                {selectedModel
+                  ? `${selectedModel.name} / ${selectedModel.tier}`
+                  : describeImageModel(imageModel)?.name ?? "Sin elegir"}
+              </p>
+              <p>
                 <span className="text-muted-foreground">Formato: </span>
                 {FORMAT_OPTIONS.find((o) => o.value === format)?.label ?? format}
               </p>
@@ -422,10 +428,24 @@ export function StudioWizard(props: StudioWizardProps) {
               )}
             </div>
 
+            {missingBackgroundPrompt && (
+              <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                Este fondo no tiene prompt configurado para el modelo seleccionado. Configúralo en
+                Avanzado antes de generar.
+              </p>
+            )}
+
             <div className="flex flex-wrap gap-3">
               <Button
                 onClick={onGenerate}
-                disabled={generating || !views.frente.file || missingBackground}
+                disabled={
+                  generating ||
+                  !views.frente.file ||
+                  missingBackground ||
+                  missingModel ||
+                  missingBackgroundPrompt
+                }
                 size="lg"
               >
                 {generating ? (
@@ -444,6 +464,7 @@ export function StudioWizard(props: StudioWizardProps) {
                 Elige un fondo para poder generar.
               </p>
             )}
+
           </Step>
 
           <Accordion type="single" collapsible>
