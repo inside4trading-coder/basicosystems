@@ -6783,16 +6783,22 @@ export type Database = {
       }
       estudio_image_jobs: {
         Row: {
+          background_reference_path: string | null
+          composition_mode: string
+          composition_path: string | null
           cost_usd: number | null
           created_at: string
           created_by: string | null
+          cutout_path: string | null
           error_message: string | null
+          fidelity_pipeline_version: number
           generated_image_path: string | null
           id: string
           image_model: string
           instagram_feed_path: string | null
           instagram_story_path: string | null
           is_inferred: boolean
+          mask_path: string | null
           model_photo_path: string | null
           output_size: string | null
           photo_type: string
@@ -6805,16 +6811,22 @@ export type Database = {
           view_type: string
         }
         Insert: {
+          background_reference_path?: string | null
+          composition_mode?: string
+          composition_path?: string | null
           cost_usd?: number | null
           created_at?: string
           created_by?: string | null
+          cutout_path?: string | null
           error_message?: string | null
+          fidelity_pipeline_version?: number
           generated_image_path?: string | null
           id?: string
           image_model: string
           instagram_feed_path?: string | null
           instagram_story_path?: string | null
           is_inferred?: boolean
+          mask_path?: string | null
           model_photo_path?: string | null
           output_size?: string | null
           photo_type: string
@@ -6827,16 +6839,22 @@ export type Database = {
           view_type?: string
         }
         Update: {
+          background_reference_path?: string | null
+          composition_mode?: string
+          composition_path?: string | null
           cost_usd?: number | null
           created_at?: string
           created_by?: string | null
+          cutout_path?: string | null
           error_message?: string | null
+          fidelity_pipeline_version?: number
           generated_image_path?: string | null
           id?: string
           image_model?: string
           instagram_feed_path?: string | null
           instagram_story_path?: string | null
           is_inferred?: boolean
+          mask_path?: string | null
           model_photo_path?: string | null
           output_size?: string | null
           photo_type?: string
