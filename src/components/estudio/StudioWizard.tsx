@@ -48,20 +48,23 @@ export function ViewPhotoPicker({
   input,
   onFile,
   onClear,
+  accept = "image/jpeg,image/png,image/webp",
 }: {
   altLabel: string;
   input: ViewInput;
   onFile: (file: File) => void;
   onClear: () => void;
+  accept?: string;
 }) {
   const ref = useRef<HTMLInputElement>(null);
+
 
   return (
     <div className="flex items-center gap-3">
       <input
         ref={ref}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept={accept}
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
