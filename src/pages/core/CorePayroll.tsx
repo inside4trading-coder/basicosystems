@@ -562,6 +562,10 @@ function RunDetailDialog({ runId, onClose, onChange }: { runId: string; onClose:
   const [lines, setLines] = useState<OperatorLine[]>([]);
   const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
   const [entryLinks, setEntryLinks] = useState<any[]>([]);
+  const [productNames, setProductNames] = useState<Record<string, string>>({});
+  const [variantLabels, setVariantLabels] = useState<Record<string, string>>({});
+  const [orderCodes, setOrderCodes] = useState<Record<string, string>>({});
+
   const [openLineId, setOpenLineId] = useState<string | null>(null);
   const [adjOpen, setAdjOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
