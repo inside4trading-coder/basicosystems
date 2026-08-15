@@ -1240,8 +1240,8 @@ export default function CoreProductionOrders() {
                         </div>
                         <div className="mt-1 flex flex-wrap gap-1">
                           {it.lines.map((l) => (
-                            <Badge key={l.core_variant_id} variant="outline" className="text-xs">
-                              {l.size ?? l.variant_sku ?? "—"}: {l.quantity}
+                            <Badge key={l.core_variant_id} variant="outline" className="text-xs" title={buildVariantDisplayLabel(l)}>
+                              {buildVariantDisplayLabel(l)}: {l.quantity}
                             </Badge>
                           ))}
                         </div>
