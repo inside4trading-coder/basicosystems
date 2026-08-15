@@ -12,9 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { logCoreAudit } from "@/lib/coreAudit";
-import { Wallet, Plus, CheckCircle2, AlertTriangle, FileText, Printer, RefreshCw, DollarSign, Users, ListChecks } from "lucide-react";
+import { Wallet, Plus, CheckCircle2, AlertTriangle, FileText, Printer, RefreshCw, DollarSign, Users, ListChecks, Merge } from "lucide-react";
 import { formatDMY } from "@/lib/dateUtils";
+import { getCurrentPayrollWeek } from "@/lib/corePayrollWeek";
 import { TransferWorkEntryDialog } from "@/components/core/payroll/TransferWorkEntryDialog";
+import { GeneratePayrollDialog } from "@/components/core/payroll/GeneratePayrollDialog";
+import { MergePayrollsDialog } from "@/components/core/payroll/MergePayrollsDialog";
+
 
 
 type WorkEntry = {
@@ -207,11 +211,15 @@ export default function CorePayroll() {
           <Button variant="outline" size="sm" onClick={loadAll} disabled={loading}>
             <RefreshCw className="h-4 w-4 mr-1" /> Refrescar
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setMergeOpen(true)}>
+            <Merge className="h-4 w-4 mr-1" /> Fusionar
+          </Button>
           <Button onClick={() => setGenOpen(true)} size="sm">
             <Plus className="h-4 w-4 mr-1" /> Generar nómina semanal
           </Button>
         </div>
       </div>
+
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -264,21 +272,52 @@ export default function CorePayroll() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {runs.map(r => (
-                      <TableRow key={r.id}>
+                    {runs.map(r => {
+                      const mergedInto = r.merged_into_payroll_id
+                        ? runs.find(x => x.id === r.merged_into_payroll_id)?.payroll_code ?? "otra nómina"
+                        : null;
+                      const meta = (r.merge_metadata ?? {}) as Record<string, any>;
+                      return (
+                      <TableRow key={r.id} className={r.status === "merged" ? "opacity-70" : undefined}>
                         <TableCell className="font-mono text-xs">{r.payroll_code}</TableCell>
-                        <TableCell className="text-sm">{formatDMY(r.period_start)} → {formatDMY(r.period_end)}</TableCell>
+                        <TableCell className="text-sm">
+                          {r.status === "merged" ? (
+                            <span className="text-muted-foreground">
+                              {formatDMY(meta.original_period_start ?? r.period_start)} → {formatDMY(meta.original_period_end ?? r.period_end)}
+                            </span>
+                          ) : (
+                            <>
+                              {formatDMY(r.period_start)} → {formatDMY(r.period_end)}
+                              {r.is_merged_period && (
+                                <span className="block text-[11px] text-muted-foreground">
+                                  Período fusionado: {formatDMY(r.period_start)} → {formatDMY(r.period_end)}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm">{r.payment_date ? formatDMY(r.payment_date) : "—"}</TableCell>
-                        <TableCell>{r.operators_count}</TableCell>
-                        <TableCell>{r.work_entries_count}</TableCell>
-                        <TableCell>{fmt(r.total_amount, r.currency)}</TableCell>
-                        <TableCell><StatusBadge s={r.status} /></TableCell>
+                        <TableCell>{r.status === "merged" ? (meta.original_operators_count ?? 0) : r.operators_count}</TableCell>
+                        <TableCell>{r.status === "merged" ? (meta.original_work_entries_count ?? 0) : r.work_entries_count}</TableCell>
+                        <TableCell>
+                          {r.status === "merged"
+                            ? <span className="text-muted-foreground line-through">{fmt(Number(meta.original_total_amount ?? 0), r.currency)}</span>
+                            : fmt(r.total_amount, r.currency)}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge s={r.status} />
+                          {mergedInto && (
+                            <span className="block text-[11px] text-muted-foreground mt-0.5">Fusionada → {mergedInto}</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Button variant="outline" size="sm" onClick={() => setOpenRunId(r.id)}>Abrir</Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
+
                 </Table>
               )}
             </CardContent>
@@ -295,33 +334,19 @@ export default function CorePayroll() {
 
       </Tabs>
 
-      {/* Generate dialog */}
-      <Dialog open={genOpen} onOpenChange={setGenOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Generar nómina semanal</DialogTitle>
-            <DialogDescription>Selecciona el rango. Cierre viernes→jueves por defecto.</DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label>Inicio</Label>
-              <Input type="date" value={periodStart} onChange={e => setPeriodStart(e.target.value)} />
-            </div>
-            <div>
-              <Label>Fin</Label>
-              <Input type="date" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} />
-            </div>
-            <div>
-              <Label>Pago</Label>
-              <Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setGenOpen(false)}>Cancelar</Button>
-            <Button onClick={generatePayroll}>Generar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <GeneratePayrollDialog
+        open={genOpen}
+        onOpenChange={setGenOpen}
+        onGenerated={async (id) => { await loadAll(); setOpenRunId(id); }}
+      />
+
+      <MergePayrollsDialog
+        open={mergeOpen}
+        onOpenChange={setMergeOpen}
+        runs={runs}
+        onMerged={loadAll}
+      />
+
 
       {openRunId && (
         <RunDetailDialog runId={openRunId} onClose={() => setOpenRunId(null)} onChange={loadAll} />
