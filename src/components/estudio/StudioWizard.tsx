@@ -409,6 +409,32 @@ export function StudioWizard(props: StudioWizardProps) {
           </Step>
 
           <Step n={stepGenerar} title="Generar">
+            {supportsCutout && (
+              <div
+                className={cn(
+                  "rounded-xl border p-3 mb-3",
+                  hasCutout
+                    ? "border-emerald-500/40 bg-emerald-500/5"
+                    : "border-amber-500/40 bg-amber-500/5",
+                )}
+              >
+                <p className="text-sm font-semibold">
+                  {hasCutout
+                    ? kind === "transparente"
+                      ? "Recorte listo"
+                      : "Modo compuesto"
+                    : "Modo generativo"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {hasCutout
+                    ? kind === "transparente"
+                      ? "Se entregará tu PNG tal cual, sin llamar a IA. Costo 0."
+                      : "Usaremos tu PNG recortado como capa real sobre el fondo. No se llamará a IA. Costo 0."
+                    : "La IA intentará integrar la prenda y puede alterar detalles."}
+                </p>
+              </div>
+            )}
+
             {showCompositionControls && (
               <CompositionControls
                 backgroundUrl={backgroundId ? backgroundUrls[backgroundId] ?? null : null}
@@ -418,6 +444,7 @@ export function StudioWizard(props: StudioWizardProps) {
                 onChange={(p) => onCompositionParamsChange?.(p)}
               />
             )}
+
 
             <div className="space-y-2">
               <Label className="font-medium text-sm">Modelo de generación</Label>
