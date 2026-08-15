@@ -179,7 +179,11 @@ export function StudioWizard(props: StudioWizardProps) {
     onBackgroundChange,
     onBackgroundsChanged,
     backgroundPrompt,
+    onSavePromptBase,
+    hasPromptBase,
   } = props;
+
+  const [savingPromptBase, setSavingPromptBase] = useState(false);
 
   const isCarousel = kind === "dinamico" && mode === "carrusel";
   const extraViews = isCarousel ? 0 : OPTIONAL_VIEWS.filter((v) => views[v].include).length;
