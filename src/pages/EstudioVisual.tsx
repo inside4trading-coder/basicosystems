@@ -169,6 +169,15 @@ export default function EstudioVisual() {
     [backgrounds, backgroundId],
   );
 
+  /** Persiste el texto actual como prompt base de fondo + modelo. */
+  const handleSavePromptBase = useCallback(async () => {
+    if (!backgroundId || !imageModel) return;
+    await saveStudioBackgroundPrompts(backgroundId, { [imageModel]: promptText });
+    const prompts = await loadStudioBackgroundPrompts();
+    setBackgroundPrompts(prompts);
+    toast.success("Prompt base guardado");
+  }, [backgroundId, imageModel, promptText]);
+
   /** Al elegir fondo o cambiar de modelo, el prompt visible pasa a ser el de esa combinación. */
   useEffect(() => {
     if (wizardKind !== "dinamico" || !backgroundId) return;
