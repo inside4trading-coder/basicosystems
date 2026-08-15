@@ -490,6 +490,8 @@ export default function CoreProductionOrders() {
         core_variant_id: v.id as string,
         quantity: Number(manualQuantities[v.id]),
         size: (v.size ?? null) as string | null,
+        color: (v.color ?? null) as string | null,
+        variant_label: (v.variant_label ?? null) as string | null,
         variant_sku: (v.variant_sku ?? null) as string | null,
       }));
     if (!lines.length) { toast.error("Agrega al menos una talla con cantidad"); return; }
