@@ -169,12 +169,21 @@ export function StudioWizard(props: StudioWizardProps) {
     onBrandDialogClose,
     generating,
     onGenerate,
+    backgrounds = [],
+    backgroundUrls = {},
+    backgroundId = null,
+    onBackgroundChange,
+    onBackgroundsChanged,
+    backgroundPrompt,
   } = props;
 
   const isCarousel = kind === "dinamico" && mode === "carrusel";
   const extraViews = isCarousel ? 0 : OPTIONAL_VIEWS.filter((v) => views[v].include).length;
   const outputs = isCarousel ? 4 : 1 + extraViews;
   const inferred = isCarousel ? 0 : OPTIONAL_VIEWS.filter((v) => views[v].include && !views[v].file).length;
+  const stepFormato = kind === "dinamico" ? 4 : 3;
+  const stepGenerar = stepFormato + 1;
+  const missingBackground = kind === "dinamico" && !backgroundId;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
