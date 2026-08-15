@@ -860,9 +860,13 @@ function RunDetailDialog({ runId, onClose, onChange }: { runId: string; onClose:
                           Ajuste
                         </Button>
                       )}
-                      <Button size="sm" variant="outline" onClick={() => printable(l.id)}>
+                      <Button size="sm" variant="ghost" onClick={() => printable(l.id)}>
+                        Ver
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => downloadReceipt(l.id)}>
                         <Printer className="h-3.5 w-3.5 mr-1" /> Comprobante
                       </Button>
+
                     </TableCell>
                   </TableRow>
                 );
