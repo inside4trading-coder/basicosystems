@@ -4,6 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { estudioDb } from "@/lib/estudioDb";
 import { readEdgeFunctionError, describeEstudioLoadError } from "@/lib/estudioErrors";
 import { loadEnabledModels, type EnabledModel } from "@/lib/estudioModels";
+import {
+  loadStudioBackgrounds,
+  loadStudioBackgroundPrompts,
+  resolveBackgroundPrompt,
+  type StudioBackground,
+  type StudioBackgroundPrompt,
+} from "@/lib/estudioBackgrounds";
 import { EstudioLoadError } from "@/components/estudio/EstudioLoadError";
 import { ImageLightbox } from "@/components/estudio/ImageLightbox";
 import { StudioActionCards } from "@/components/estudio/StudioActionCards";
