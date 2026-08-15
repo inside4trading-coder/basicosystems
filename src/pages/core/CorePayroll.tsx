@@ -114,12 +114,11 @@ export default function CorePayroll() {
   const [missingRateEntries, setMissingRateEntries] = useState<WorkEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [genOpen, setGenOpen] = useState(false);
-  const week = useMemo(() => getCurrentWeek(), []);
-  const [periodStart, setPeriodStart] = useState(week.start);
-  const [periodEnd, setPeriodEnd] = useState(week.end);
-  const [paymentDate, setPaymentDate] = useState(week.payment);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const week = useMemo(() => getCurrentPayrollWeek(), []);
   const [openRunId, setOpenRunId] = useState<string | null>(null);
   const [transferEntry, setTransferEntry] = useState<WorkEntry | null>(null);
+
 
 
   const loadAll = useCallback(async () => {
