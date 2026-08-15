@@ -289,7 +289,25 @@ export function StudioWizard(props: StudioWizardProps) {
             </div>
           </Step>
 
-          <Step n={3} title="Formato">
+          {kind === "dinamico" && (
+            <Step n={3} title="Fondo">
+              <StudioBackgroundStep
+                backgrounds={backgrounds}
+                coverUrls={backgroundUrls}
+                selectedId={backgroundId ?? null}
+                onSelect={(id) => onBackgroundChange?.(id)}
+                onChanged={() => onBackgroundsChanged?.()}
+              />
+              {backgroundId && backgroundPrompt === null && (
+                <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5 mt-2">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  Este fondo no tiene prompt configurado para el modelo elegido.
+                </p>
+              )}
+            </Step>
+          )}
+
+          <Step n={stepFormato} title="Formato">
             <Select value={format} onValueChange={onFormatChange}>
               <SelectTrigger className="sm:max-w-xs">
                 <SelectValue />
@@ -304,12 +322,18 @@ export function StudioWizard(props: StudioWizardProps) {
             </Select>
           </Step>
 
-          <Step n={4} title="Generar">
+          <Step n={stepGenerar} title="Generar">
             <div className="rounded-xl border p-4 text-sm space-y-1">
               <p>
                 <span className="text-muted-foreground">Tipo: </span>
                 {STUDIO_KIND_LABELS[kind]}
               </p>
+              {kind === "dinamico" && (
+                <p>
+                  <span className="text-muted-foreground">Fondo: </span>
+                  {backgrounds.find((b) => b.id === backgroundId)?.name ?? "Sin elegir"}
+                </p>
+              )}
               <p>
                 <span className="text-muted-foreground">Formato: </span>
                 {FORMAT_OPTIONS.find((o) => o.value === format)?.label ?? format}
@@ -333,7 +357,11 @@ export function StudioWizard(props: StudioWizardProps) {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Button onClick={onGenerate} disabled={generating || !views.frente.file} size="lg">
+              <Button
+                onClick={onGenerate}
+                disabled={generating || !views.frente.file || missingBackground}
+                size="lg"
+              >
                 {generating ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -345,6 +373,11 @@ export function StudioWizard(props: StudioWizardProps) {
                 Cancelar
               </Button>
             </div>
+            {missingBackground && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Elige un fondo para poder generar.
+              </p>
+            )}
           </Step>
 
           <Accordion type="single" collapsible>
