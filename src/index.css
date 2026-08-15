@@ -56,6 +56,13 @@
     --segment-active: 142 71% 45%;
     --segment-inactive: 45 93% 47%;
     --segment-single: 0 0% 64%;
+
+    /* BASICO STUDIO (B Systems): azul eléctrico + tinta + superficie mist.
+       Local al módulo visual; no altera el rojo de marca del resto del hub. */
+    --studio-accent: 228 100% 52%;
+    --studio-accent-foreground: 0 0% 100%;
+    --studio-ink: 218 24% 6%;
+    --studio-mist: 220 25% 97%;
   }
 }
 
