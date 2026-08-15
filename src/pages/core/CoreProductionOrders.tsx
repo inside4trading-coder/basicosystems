@@ -158,7 +158,21 @@ type ManualItemLine = {
   core_variant_id: string;
   quantity: number;
   size: string | null;
+  color: string | null;
+  variant_label: string | null;
   variant_sku: string | null;
+};
+
+const buildVariantDisplayLabel = (v: { size?: string | null; color?: string | null; variant_label?: string | null; variant_sku?: string | null }) => {
+  const size = v.size?.trim() || null;
+  const color = v.color?.trim() || null;
+  const label = v.variant_label?.trim() || null;
+  if (color && size) return `${color} / ${size}`;
+  if (label && size) return `${label} / ${size}`;
+  if (label) return label;
+  if (color) return color;
+  if (size) return size;
+  return v.variant_sku?.trim() || "Variante";
 };
 
 type ManualItem = {
@@ -448,7 +462,7 @@ export default function CoreProductionOrders() {
     if (!manualProductId) { setManualVariants([]); return; }
     supabase
       .from("core_product_variants")
-      .select("id, variant_sku, variant_label, size")
+      .select("id, variant_sku, variant_label, size, color")
       .eq("core_product_id", manualProductId)
       .order("sort_order", { ascending: true })
       .then(({ data }) => setManualVariants(data ?? []));
@@ -476,6 +490,8 @@ export default function CoreProductionOrders() {
         core_variant_id: v.id as string,
         quantity: Number(manualQuantities[v.id]),
         size: (v.size ?? null) as string | null,
+        color: (v.color ?? null) as string | null,
+        variant_label: (v.variant_label ?? null) as string | null,
         variant_sku: (v.variant_sku ?? null) as string | null,
       }));
     if (!lines.length) { toast.error("Agrega al menos una talla con cantidad"); return; }
@@ -1160,26 +1176,29 @@ export default function CoreProductionOrders() {
                 <div>
                   <Label>Tallas / Variaciones</Label>
                   <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-auto">
-                    {manualVariants.map((v) => (
-                      <div key={v.id} className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 text-sm min-w-0">
-                          <Badge className="bg-primary text-primary-foreground font-bold text-sm px-2.5 py-0.5 min-w-[2.5rem] justify-center">
-                            {v.size ?? "—"}
-                          </Badge>
-                          <span className="font-mono text-xs text-muted-foreground truncate">{v.variant_sku}</span>
+                    {manualVariants.map((v) => {
+                      const label = buildVariantDisplayLabel(v);
+                      return (
+                        <div key={v.id} className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 text-sm min-w-0" title={label}>
+                            <span className="text-sm font-medium truncate">{label}</span>
+                            {v.variant_sku && (
+                              <span className="font-mono text-xs text-muted-foreground truncate">{v.variant_sku}</span>
+                            )}
+                          </div>
+                          <Input
+                            type="number"
+                            min={0}
+                            placeholder="0"
+                            value={manualQuantities[v.id] ?? ""}
+                            onChange={(e) => setManualQuantities((p) => ({
+                              ...p, [v.id]: Number(e.target.value),
+                            }))}
+                            className="h-8 w-24 shrink-0"
+                          />
                         </div>
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="0"
-                          value={manualQuantities[v.id] ?? ""}
-                          onChange={(e) => setManualQuantities((p) => ({
-                            ...p, [v.id]: Number(e.target.value),
-                          }))}
-                          className="h-8 w-24"
-                        />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1221,8 +1240,8 @@ export default function CoreProductionOrders() {
                         </div>
                         <div className="mt-1 flex flex-wrap gap-1">
                           {it.lines.map((l) => (
-                            <Badge key={l.core_variant_id} variant="outline" className="text-xs">
-                              {l.size ?? l.variant_sku ?? "—"}: {l.quantity}
+                            <Badge key={l.core_variant_id} variant="outline" className="text-xs" title={buildVariantDisplayLabel(l)}>
+                              {buildVariantDisplayLabel(l)}: {l.quantity}
                             </Badge>
                           ))}
                         </div>
