@@ -225,7 +225,14 @@ export default function EstudioVisual() {
     [basePromptFor, presetForKind],
   );
 
-  const closeWizard = () => setWizardKind(null);
+  const closeWizard = () => {
+    setCutout((prev) => {
+      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return emptyViewInput();
+    });
+    setWizardKind(null);
+  };
+
 
   const setViewFile = (view: ViewType, file: File | null) => {
     setViews((prev) => {
