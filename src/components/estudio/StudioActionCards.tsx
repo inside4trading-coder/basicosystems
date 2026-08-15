@@ -128,7 +128,7 @@ export function StudioActionCards({ onSelect }: { onSelect: (kind: StudioKind) =
                 >
                   <Icon className="h-5 w-5" />
                 </span>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <span className="text-[10px] font-semibold tracking-[0.18em] text-muted-foreground">
                   Basico Studio
                 </span>
               </div>

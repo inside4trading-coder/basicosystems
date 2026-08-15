@@ -32,7 +32,7 @@ const mainItems = [
   { title: "Basico Core", url: "/core", icon: Factory },
   { title: "Basico España", url: "/espana", icon: Flag },
   { title: "Fondo Transparente", url: "/fondo-transparente", icon: HeartHandshake },
-  { title: "BASICO STUDIO", url: "/estudio-visual", icon: Wand2 },
+  { title: "Basico Studio", url: "/estudio-visual", icon: Wand2 },
 ];
 
 const adminItems = [
