@@ -127,6 +127,10 @@ export interface StudioWizardProps {
   onToggleView: (view: ViewType, include: boolean) => void;
   modelPhoto: ViewInput;
   onModelPhotoFile: (file: File | null) => void;
+  /** PNG recortado de la prenda: activa la composición real por capas. */
+  cutout?: ViewInput;
+  onCutoutFile?: (file: File | null) => void;
+
   promptText: string;
   onPromptChange: (v: string) => void;
   imageModels: EnabledModel[];
