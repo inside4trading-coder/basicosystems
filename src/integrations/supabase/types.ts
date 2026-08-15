@@ -6785,6 +6785,7 @@ export type Database = {
         Row: {
           background_reference_path: string | null
           composition_mode: string
+          composition_params: Json | null
           composition_path: string | null
           cost_usd: number | null
           created_at: string
@@ -6813,6 +6814,7 @@ export type Database = {
         Insert: {
           background_reference_path?: string | null
           composition_mode?: string
+          composition_params?: Json | null
           composition_path?: string | null
           cost_usd?: number | null
           created_at?: string
@@ -6841,6 +6843,7 @@ export type Database = {
         Update: {
           background_reference_path?: string | null
           composition_mode?: string
+          composition_params?: Json | null
           composition_path?: string | null
           cost_usd?: number | null
           created_at?: string
