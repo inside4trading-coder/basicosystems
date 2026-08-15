@@ -13,6 +13,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  Ban,
   CheckCircle2,
   Circle,
   Loader2,
@@ -26,6 +27,7 @@ import {
   History,
   Wrench,
 } from "lucide-react";
+import { CancelProductionUnitDialog, type CancelUnitTarget } from "@/components/core/CancelProductionUnitDialog";
 
 type Props = {
   productionOrderId: string;
@@ -107,6 +109,16 @@ function processStepState(p: UnitProcess): "done" | "pending" | "in_progress" | 
 }
 
 function unitOverall(unit: Unit, procs: UnitProcess[]) {
+  if (unit.status === "cancelled" || unit.status === "discarded") {
+    return {
+      label: "Cancelada",
+      tone: "error" as const,
+      icon: <Ban className="h-3 w-3" />,
+      progress: 0,
+      completedSteps: 0,
+      totalSteps: 1,
+    };
+  }
   if (procs.length === 0) {
     return {
       label: "Sin procesos generados",
@@ -159,13 +171,14 @@ export function ProductionPipelineSection({ productionOrderId, orderCode, onRepa
   const [operatorNames, setOperatorNames] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [repairing, setRepairing] = useState(false);
+  const [cancelUnit, setCancelUnit] = useState<CancelUnitTarget | null>(null);
 
   async function load() {
     setLoading(true);
     const { data: uns } = await supabase
       .from("core_production_units")
       .select(
-        "id, unit_code, status, size, variant_label, variant_sku, sku, core_product_id, entered_inventory_at, entered_inventory_by, inventory_entry_source",
+        "id, unit_code, status, size, variant_label, variant_sku, sku, core_product_id, entered_inventory_at, entered_inventory_by, inventory_entry_source, cancelled_reason, cancelled_at",
       )
       .eq("production_order_id", productionOrderId)
       .order("unit_code");
@@ -257,6 +270,7 @@ export function ProductionPipelineSection({ productionOrderId, orderCode, onRepa
 
   // Summary
   const summary = useMemo(() => {
+    let cancelled = 0;
     let inProd = 0,
       prodDone = 0,
       readyNotEntered = 0,
@@ -269,6 +283,10 @@ export function ProductionPipelineSection({ productionOrderId, orderCode, onRepa
       progressCount = 0;
     for (const u of units) {
       const ps = procsByUnit[u.id] ?? [];
+      if (u.status === "cancelled" || u.status === "discarded") {
+        cancelled++;
+        continue;
+      }
       const ov = unitOverall(u, ps);
       progressSum += ov.progress;
       progressCount += 1;
@@ -299,6 +317,7 @@ export function ProductionPipelineSection({ productionOrderId, orderCode, onRepa
       payrollEntries,
       payrollPendingAmount,
       avg,
+      cancelled,
     };
   }, [units, procsByUnit, workEntries]);
 
@@ -379,6 +398,12 @@ export function ProductionPipelineSection({ productionOrderId, orderCode, onRepa
         <Card className="p-3">
           <div className="text-[10px] uppercase text-muted-foreground">Ingresadas inventario</div>
           <div className="text-xl font-bold text-emerald-700">{summary.entered}</div>
+        </Card>
+        <Card className="p-3">
+          <div className="text-[10px] uppercase text-muted-foreground">Canceladas</div>
+          <div className={`text-xl font-bold ${summary.cancelled > 0 ? "text-red-700" : ""}`}>
+            {summary.cancelled}
+          </div>
         </Card>
         <Card className="p-3">
           <div className="text-[10px] uppercase text-muted-foreground">Progreso promedio</div>
