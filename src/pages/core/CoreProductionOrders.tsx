@@ -31,6 +31,7 @@ import { ProductionPipelineSection } from "@/components/core/ProductionPipelineS
 import { PolicyBlockedDialog } from "@/components/core/woocore/PolicyBlockedDialog";
 import { parsePolicyBlocked, type BlockedLine } from "@/lib/policyBlocked";
 import { downloadProductionOrderBackupPdf } from "@/lib/coreProductionOrderPdf";
+import { CancelledUnitsTab } from "@/components/core/CancelledUnitsTab";
 
 type Unit = {
   id: string;
@@ -48,25 +49,34 @@ type Unit = {
 };
 
 type OrderInvStats = {
-  total: number;
+  total: number;              // unidades activas (excluye canceladas)
   completed: number;          // status completed OR entered_inventory
   entered: number;            // status entered_inventory
+  cancelled: number;          // canceladas / descartadas
+  closed: number;             // completadas + ingresadas + canceladas
+  pending: number;            // activas sin cerrar
   pending_inventory: number;  // completed but not entered
   status: "not_ready" | "pending_inventory" | "partially_entered" | "fully_entered";
 };
 
+const CANCELLED_UNIT_STATUSES = ["cancelled", "discarded"];
+
 function computeInvStats(units: Unit[], totalQuantityFallback: number): OrderInvStats {
-  const total = units.length || totalQuantityFallback;
-  const entered = units.filter((u) => u.status === "entered_inventory").length;
-  const completed = units.filter(
+  const cancelled = units.filter((u) => CANCELLED_UNIT_STATUSES.includes(u.status)).length;
+  const active = units.filter((u) => !CANCELLED_UNIT_STATUSES.includes(u.status));
+  const total = active.length || (units.length ? 0 : totalQuantityFallback);
+  const entered = active.filter((u) => u.status === "entered_inventory").length;
+  const completed = active.filter(
     (u) => u.status === "completed" || u.status === "entered_inventory",
   ).length;
   const pending_inventory = Math.max(0, completed - entered);
+  const closed = entered + Math.max(0, completed - entered) + cancelled;
+  const pending = Math.max(0, total - (completed));
   let status: OrderInvStats["status"] = "not_ready";
   if (total > 0 && entered === total) status = "fully_entered";
   else if (entered > 0) status = "partially_entered";
   else if (completed > 0) status = "pending_inventory";
-  return { total, completed, entered, pending_inventory, status };
+  return { total, completed, entered, cancelled, closed, pending, pending_inventory, status };
 }
 
 type Order = {
@@ -1014,12 +1024,21 @@ export default function CoreProductionOrders() {
           <TabsTrigger value="done">Completadas</TabsTrigger>
           <TabsTrigger value="closed">Cerradas</TabsTrigger>
           <TabsTrigger value="cancelled">Canceladas</TabsTrigger>
+          <TabsTrigger value="cancelled_units">Prendas canceladas</TabsTrigger>
         </TabsList>
         <TabsContent value="open">{filterTable("open")}</TabsContent>
         <TabsContent value="prod">{filterTable("prod")}</TabsContent>
         <TabsContent value="done">{filterTable("done")}</TabsContent>
         <TabsContent value="closed">{filterTable("closed")}</TabsContent>
         <TabsContent value="cancelled">{filterTable("cancelled")}</TabsContent>
+        <TabsContent value="cancelled_units">
+          <CancelledUnitsTab
+            onOpenOrder={(orderId) => {
+              const o = orders.find((x) => x.id === orderId);
+              if (o) openDetail(o);
+            }}
+          />
+        </TabsContent>
       </Tabs>
 
       {/* Crear desde necesidades */}
@@ -1350,6 +1369,18 @@ export default function CoreProductionOrders() {
                     <div>
                       <div className="text-xs text-muted-foreground">Estado inventario</div>
                       {renderInventoryBadge(invByOrder[detailOrder.id])}
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Cerradas / Pendientes</div>
+                      <span className="font-semibold">
+                        {invByOrder[detailOrder.id]?.closed ?? 0} / {invByOrder[detailOrder.id]?.pending ?? 0}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Canceladas</div>
+                      <span className={(invByOrder[detailOrder.id]?.cancelled ?? 0) > 0 ? "text-red-700 font-semibold" : ""}>
+                        {invByOrder[detailOrder.id]?.cancelled ?? 0}
+                      </span>
                     </div>
                   </div>
 
