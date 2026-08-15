@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertTriangle, ImagePlus, Loader2, Save, Sparkles, X } from "lucide-react";
-import { modelLabel, type EnabledModel } from "@/lib/estudioModels";
+import { modelLabel, imageModelOptions, describeImageModel, type EnabledModel } from "@/lib/estudioModels";
 import { STUDIO_KIND_LABELS, type StudioKind, type StudioMode } from "@/lib/estudioNaming";
 import { ManageDialogButton } from "@/components/estudio/DropdownWithManageDialog";
 import ModelsTab from "@/components/estudio/config/ModelsTab";
@@ -192,6 +192,11 @@ export function StudioWizard(props: StudioWizardProps) {
   const stepFormato = kind === "dinamico" ? 4 : 3;
   const stepGenerar = stepFormato + 1;
   const missingBackground = kind === "dinamico" && !backgroundId;
+  const modelOptions = imageModelOptions(imageModels);
+  const selectedModel = modelOptions.find((m) => m.model_id === imageModel) ?? null;
+  const missingModel = !imageModel || !selectedModel?.available;
+  const missingBackgroundPrompt =
+    kind === "dinamico" && !!backgroundId && backgroundPrompt === null && !promptText.trim();
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -340,7 +345,51 @@ export function StudioWizard(props: StudioWizardProps) {
           </Step>
 
           <Step n={stepGenerar} title="Generar">
+            <div className="space-y-2">
+              <Label className="font-medium text-sm">Modelo de generación</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {modelOptions.map((m) => {
+                  const active = m.model_id === imageModel && m.available;
+                  return (
+                    <button
+                      key={m.model_id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      disabled={!m.available}
+                      onClick={() => m.available && onImageModelChange(m.model_id)}
+                      className={cn(
+                        "rounded-xl border p-3 text-left transition-colors",
+                        active ? "border-primary bg-primary/5" : "hover:bg-muted",
+                        !m.available && "opacity-50 cursor-not-allowed hover:bg-transparent",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm leading-tight">{m.name}</p>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                            m.available ? "border-primary/40 text-primary" : "text-muted-foreground",
+                          )}
+                        >
+                          {m.available ? m.tier : "No configurado"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{m.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+              {missingModel && (
+                <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  Elige un modelo disponible para poder generar.
+                </p>
+              )}
+            </div>
+
             <div className="rounded-xl border p-4 text-sm space-y-1">
+
               <p>
                 <span className="text-muted-foreground">Tipo: </span>
                 {STUDIO_KIND_LABELS[kind]}
@@ -351,6 +400,12 @@ export function StudioWizard(props: StudioWizardProps) {
                   {backgrounds.find((b) => b.id === backgroundId)?.name ?? "Sin elegir"}
                 </p>
               )}
+              <p>
+                <span className="text-muted-foreground">Modelo: </span>
+                {selectedModel
+                  ? `${selectedModel.name} / ${selectedModel.tier}`
+                  : describeImageModel(imageModel)?.name ?? "Sin elegir"}
+              </p>
               <p>
                 <span className="text-muted-foreground">Formato: </span>
                 {FORMAT_OPTIONS.find((o) => o.value === format)?.label ?? format}
@@ -373,10 +428,24 @@ export function StudioWizard(props: StudioWizardProps) {
               )}
             </div>
 
+            {missingBackgroundPrompt && (
+              <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                Este fondo no tiene prompt configurado para el modelo seleccionado. Configúralo en
+                Avanzado antes de generar.
+              </p>
+            )}
+
             <div className="flex flex-wrap gap-3">
               <Button
                 onClick={onGenerate}
-                disabled={generating || !views.frente.file || missingBackground}
+                disabled={
+                  generating ||
+                  !views.frente.file ||
+                  missingBackground ||
+                  missingModel ||
+                  missingBackgroundPrompt
+                }
                 size="lg"
               >
                 {generating ? (
@@ -395,6 +464,7 @@ export function StudioWizard(props: StudioWizardProps) {
                 Elige un fondo para poder generar.
               </p>
             )}
+
           </Step>
 
           <Accordion type="single" collapsible>
