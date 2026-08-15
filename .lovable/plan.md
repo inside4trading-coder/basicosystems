@@ -1,82 +1,58 @@
-# Diagnóstico técnico — Basico Studio Visual (pérdida de fidelidad de la prenda)
+# CREDIT EFFICIENCY PROTOCOL — evaluación y adopción
 
-## Hallazgos
+No se modifica código de la aplicación. Esta propuesta solo define cómo trabajamos y qué se guarda en memoria permanente.
 
-1. **No existe pipeline de composición.** Hoy hay un único paso: subir foto → llamar a un modelo generativo texto+referencia → guardar lo que devuelva el modelo. No hay etapas de aislamiento, máscara, fondo, sombra ni integración.
-2. **La prenda viaja como "referencia", no como asset bloqueado.** En `supabase/functions/estudio-generate-image/index.ts` la foto original se descarga del bucket, se convierte a base64 y se manda dentro de `input_references` junto al prompt a `https://openrouter.ai/api/v1/images`. Ese endpoint es de *generación*: devuelve una imagen nueva (`data[0].b64_json`) creada desde cero por el modelo. Nada obliga al modelo a copiar píxeles.
-3. **No hay segmentación ni recorte real.** Ninguna búsqueda en el proyecto encuentra segmentación, matting, alpha o recorte. El "Fondo transparente" es solo un texto agregado al prompt (`TRANSPARENT_SUFFIX` en `src/pages/EstudioVisual.tsx`): se le *pide* al modelo que recorte, no se recorta.
-4. **No existe máscara del producto.** No se genera, no se guarda y no se envía ninguna máscara. La tabla `estudio_image_jobs` no tiene columna de máscara ni de recorte.
-5. **No hay composición real.** El único código de composición del proyecto, `src/lib/estudioCompositing.ts` (canvas: cover + logo), **no está importado en ninguna parte** — es código muerto y, aun así, solo recorta al formato de Instagram y estampa el logo; no compone prenda sobre fondo.
-6. **Fondo dinámico también es prompt.** El fondo elegido se manda como una referencia adicional (`backgroundReferencePath`) al mismo endpoint de generación: el modelo *reinterpreta* prenda y fondo juntos en una imagen nueva.
-7. **La proporción fuerza reencuadre generativo.** Se envía `aspect_ratio` (4:5, 1:1, 9:16) al modelo, así que además de repintar la prenda, el modelo la reescala y reencuadra a su criterio.
-8. **Las vistas "inferidas" son alucinación por diseño.** Cuando el usuario marca espalda/detalle/tres cuartos sin subir foto, se manda la foto frontal con `isInferred: true` y se le pide al modelo que invente la vista. Eso es incompatible con Product Lock salvo que se prohíba explícitamente.
+## Qué puedo aplicar directamente (sin fricción)
 
-## Causa raíz
+- Exploración dirigida: empezar por el módulo/archivo que nombres y ampliar solo ante dependencia real.
+- Superficie mínima de cambio: sin refactors, renombres, cleanup ni reformateos fuera de alcance.
+- Reutilizar antes de crear (componentes, hooks, edge functions, tablas, tipos).
+- No usar herramientas caras por defecto: nada de web search, imagegen, videogen ni browser automation salvo necesidad real.
+- Tratar tu diagnóstico/plan como contexto válido y ejecutar directo; solo señalo contradicciones concretas con el código.
+- Sin ciclos de prueba/error: ante un fallo, primero evidencia (error, log, request, stack) y luego un arreglo dirigido.
+- Guardrails duros: auth, pagos, inventario, producción, datos históricos, integraciones y migraciones no se tocan si no son parte de la tarea.
+- Aviso previo cuando una tarea sea claramente costosa, con alternativa de alcance reducido.
+- Aviso cuando un cambio sea trivial y puedas hacerlo tú a mano sin Build.
+- Resumen final compacto: Modificado / Resultado / Verificación / No tocado / Pendiente.
 
-El pipeline es **generativo de extremo a extremo**: la única salida posible del endpoint usado es una imagen sintetizada. La prenda original nunca aparece en el resultado final — ni un solo píxel. Toda la fidelidad depende de que el modelo "adivine" bien la tipografía, los números, el retrato y las proporciones. No es un problema de prompt: es que el pipeline no tiene ninguna etapa donde los píxeles originales se preserven.
+## Cómo estamos trabajando hoy (observación honesta)
 
-## Archivos implicados
+Ya trabajamos bastante cerca de este protocolo: tus mensajes suelen venir en formato "BLOQUE/PARCHE AHORRO" con alcance cerrado, y la ejecución es normalmente quirúrgica. Los desvíos reales que veo:
 
-- `supabase/functions/estudio-generate-image/index.ts` — corazón del problema: llamada a `/v1/images` con `input_references`, `aspect_ratio` y prompt.
-- `src/pages/EstudioVisual.tsx` — orquesta la subida, arma los prompts (`TRANSPARENT_SUFFIX`, `CAROUSEL_SCENES`), decide vistas inferidas y llama a la función.
-- `src/components/estudio/StudioWizard.tsx` — pasos, selección de fondo, formato y modelo.
-- `src/lib/estudioStorage.ts` — sube la original a `originales/`, resuelve signed URLs (la original sí se conserva en el bucket, pero solo como insumo del modelo).
-- `src/lib/estudioBackgrounds.ts` + tablas `estudio_backgrounds` / `estudio_background_prompts` — fondos como referencia textual/visual, no como capa de composición.
-- `src/lib/estudioCompositing.ts` — composición canvas existente pero **sin uso**.
-- `src/components/estudio/config/*` (Prompt, Backgrounds, Models) — configuración del modo generativo actual.
+- Diagnósticos amplios sobre módulos grandes (el caso de Basico Studio) que consumen varias lecturas. Es evitable pidiendo el diagnóstico acotado a los archivos sospechosos.
+- Verificaciones amplias cuando bastaba una consulta puntual a la base o un typecheck.
+- Memoria de proyecto desactualizada: el índice actual describe módulos antiguos (Trello en Planning, cuando hoy es Notion) y no menciona Basico Core, España, Sublime, Crew, RRPP ni Basico Studio. Eso obliga a reexplorar contexto que debería estar escrito.
 
-## Flujo actual (resumido)
+## Riesgos / conflictos del protocolo
 
-```text
-foto prenda -> bucket originales/
-      -> edge function estudio-generate-image
-      -> base64 + prompt + (foto modelo) + (imagen de fondo) + aspect_ratio
-      -> OpenRouter /v1/images  [GENERACIÓN COMPLETA]
-      -> imagen nueva b64 -> bucket <jobId>/generado.png
-      -> UI muestra resultado
-```
-La prenda se recrea en el paso del modelo. Ahí se pierden tipografías, números, retratos y proporciones.
+- **Regla 2 y 5 llevadas al extremo**: si no exploro dependencias, un cambio "de 2 archivos" puede romper consumidores no vistos. Propuesta: mantengo una lectura de dependencias directas siempre; es barata y evita reintentos caros.
+- **Regla 6 (confiar en el diagnóstico entregado)**: si el diagnóstico se apoya en supuestos incorrectos del esquema o de una RPC, ejecutar directo genera migraciones erróneas. Propuesta: verifico solo los hechos de base de datos que la tarea va a modificar.
+- **Regla 5 aplicada a cambios de UI complejos**: sin una captura del preview a veces no puedo confirmar un fallo visual. Propuesta: browser solo cuando reportes un bug visual que no se explique leyendo el código.
+- **Regla 14 (nada extra)**: puede chocar con requisitos no negociables de la plataforma, como RLS y GRANT en cada tabla nueva. Esos no son trabajo "extra"; los seguiré aplicando siempre.
+- **Regla 12 (menos Plan Mode)**: de acuerdo, salvo cambios con impacto en datos históricos o en dinero, donde un plan corto previo sigue siendo más barato que revertir.
 
-## Flujo correcto propuesto (PRODUCT LOCK)
+## Bloque propuesto para memoria permanente
+
+Se guardaría como regla de proyecto (Core, siempre activa), sin detalles de tareas puntuales:
 
 ```text
-foto prenda (master, inmutable)
-  -> segmentación / matting  -> máscara alfa persistida (cutout PNG)
-  -> product lock: cutout = capa superior intocable
-  -> fondo: preset del catálogo (imagen real) o fondo generado SIN la prenda
-  -> composición: colocar cutout sobre fondo (escala/posición determinística por formato)
-  -> sombra de contacto: derivada de la máscara (no del modelo)
-  -> integración de luz: ajustes de color/curvas sobre el cutout, con límite duro
-  -> exportación 4:5 / 1:1 / 9:16 desde el mismo cutout
+Modo de trabajo: exploración dirigida al módulo indicado; cambio quirúrgico y mínimo;
+reutilizar antes de crear; nada de refactor/cleanup/mejoras no pedidos.
+Herramientas caras (web, imagen, video, browser) solo si son imprescindibles.
+El diagnóstico o plan del usuario se ejecuta directo; solo se señalan contradicciones con el código.
+Ante un fallo: evidencia primero (log/error/request), luego un arreglo dirigido. Sin prueba y error.
+No tocar auth, pagos, inventario, producción, datos históricos, integraciones ni migraciones
+fuera del alcance de la tarea.
+Avisar antes de tareas costosas y cuando un cambio sea trivial de hacer a mano.
+Cerrar cada build con: Modificado / Resultado / Verificación / No tocado / Pendiente.
 ```
-Regla estructural: **el modelo generativo nunca recibe la prenda como entrada de una imagen que va a devolver**. Solo puede producir fondos vacíos.
 
-## Plan de refactor por etapas
+Además propongo actualizar el mapa de módulos en memoria (hoy desactualizado) con una línea por módulo: Dashboard, Pedidos, CRM, Campañas, Planning (Notion), Basico Core, España, Sublime, Crew, RRPP, Administración, Basico Studio, Configuración. Eso es lo que más créditos ahorra a futuro, porque evita reexplorar la estructura en cada conversación.
 
-**Etapa 1 — Segmentación y máscara (base de todo).**
-Nueva edge function `estudio-segment-garment`: recibe la original, produce cutout PNG con alfa + máscara, los guarda en el bucket (`cutouts/<id>.png`, `masks/<id>.png`) y registra la fila en una tabla nueva `estudio_garment_assets` (original_path, cutout_path, mask_path, bbox, estado). Elección de proveedor de matting a definir (ver pregunta abierta). "Fondo transparente" pasa a ser esta etapa: deja de ser un prompt.
+## Qué haría al aprobar esto
 
-**Etapa 2 — Composición determinística en servidor.**
-Nueva edge function `estudio-compose`: fondo + cutout + máscara → imagen final. Escalado/encuadre por formato, sombra de contacto derivada de la máscara (desenfoque + offset + opacidad), match de luz acotado. Sin llamadas a modelos generativos.
+1. Guardar el bloque de protocolo en memoria de proyecto (Core).
+2. Actualizar/crear la memoria del mapa de módulos e integraciones vigentes.
+3. Corregir la entrada obsoleta de Planning (Trello → Notion).
 
-**Etapa 3 — Fondos sin prenda.**
-`estudio_backgrounds` se vuelve la fuente principal (imágenes reales). Para "fondo dinámico" nuevo, la generación produce **solo el escenario vacío**, se guarda como fondo reutilizable y luego entra a la Etapa 2.
-
-**Etapa 4 — Reescritura del wizard.**
-`StudioWizard` pasa a: subir prenda → ver cutout aprobado (con control de re-recorte) → elegir fondo → ajustar composición → exportar formatos. Se elimina el prompt libre sobre la prenda y las vistas inferidas (espalda/detalle solo con foto real subida).
-
-**Etapa 5 — Retiro del camino generativo.**
-`estudio-generate-image` queda restringido a generar fondos, o se marca legacy. Los presets de prompt de prenda se archivan.
-
-## Riesgos técnicos
-
-- **Calidad del matting**: prendas sobre fondo claro, tejidos con transparencias, pelo/flecos y sombras propias en la foto original producen bordes sucios. Necesita un paso de aprobación/refinado manual del cutout.
-- **Realismo**: la composición determinística se ve "pegada" si la luz del fondo no coincide con la de la foto. Mitigación: fondos del catálogo con dirección de luz declarada y match de color acotado; nunca repintar la prenda.
-- **Foto con modelo humano**: Product Lock estricto es incompatible con "vestir a una persona" — eso siempre implica generación. Hay que decidir si ese caso queda fuera o se marca explícitamente como modo no-lock.
-- **Coste/latencia**: dos servicios (matting + composición) en vez de uno; la composición en servidor requiere una librería de imagen en Deno (resvg/sharp-wasm/canvas) con límites de memoria de edge functions. Alternativa: composición en cliente con Canvas (ya hay base en `estudioCompositing.ts`) y subida del resultado.
-- **Migración de datos**: los jobs existentes no tienen cutout ni máscara; la UI de resultados debe convivir con ambos formatos.
-- **Vistas espalda/detalle**: al eliminar la inferencia, el usuario debe subir cada vista; cambia el flujo operativo actual.
-
-## Pregunta abierta antes de implementar
-
-Elección del motor de segmentación (API externa de matting vs. modelo local en cliente vs. modelo vía OpenRouter con salida de máscara) y dónde corre la composición (edge function vs. navegador). Lo resolvemos antes de la Etapa 1.
+Ningún archivo de la aplicación se modifica.
