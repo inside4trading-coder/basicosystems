@@ -561,7 +561,7 @@ export function StudioWizard(props: StudioWizardProps) {
                 onClick={onGenerate}
                 disabled={
                   generating ||
-                  !views.frente.file ||
+                  (!hasCutout && !views.frente.file) ||
                   missingBackground ||
                   (!hasCutout && (missingModel || missingBackgroundPrompt))
                 }
