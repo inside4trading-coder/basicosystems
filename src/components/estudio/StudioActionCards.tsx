@@ -106,7 +106,9 @@ export function StudioActionCards({ onSelect }: { onSelect: (kind: StudioKind) =
                   loading="lazy"
                   className={cn(
                     "h-full w-full object-cover transition-transform duration-500",
+                    card.kind === "transparente" && "scale-[1.10]",
                     blocked ? "grayscale opacity-60" : "group-hover:scale-[1.03]",
+                    card.kind === "transparente" && !blocked && "group-hover:scale-[1.13]",
                   )}
                 />
                 {blocked && (
