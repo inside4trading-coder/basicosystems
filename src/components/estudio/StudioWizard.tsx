@@ -403,6 +403,17 @@ export function StudioWizard(props: StudioWizardProps) {
                       children: <ModelsTab />,
                     }}
                   />
+                  {kind === "dinamico" && (
+                    <ManageDialogButton
+                      buttonLabel="Fondos dinámicos"
+                      manage={{
+                        title: "Fondos dinámicos",
+                        description: "Portada, imagen de referencia y prompt por modelo de cada fondo.",
+                        onClose: () => onBackgroundsChanged?.(),
+                        children: <BackgroundsTab />,
+                      }}
+                    />
+                  )}
                   <ManageDialogButton
                     buttonLabel="Preset de marca BASICO"
                     manage={{
