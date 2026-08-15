@@ -311,6 +311,41 @@ export function StudioWizard(props: StudioWizardProps) {
                   </p>
                 )}
               </div>
+
+              {supportsCutout && (
+                <div className="p-4 space-y-2">
+                  <Label className="font-medium text-sm">
+                    PNG recortado de la prenda (opcional)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Si subes un PNG con transparencia, la prenda no se manda a ningún modelo: se usa
+                    tu capa tal cual.
+                  </p>
+                  <ViewPhotoPicker
+                    altLabel="del recorte"
+                    input={cutout}
+                    accept="image/png"
+                    onFile={(f) => onCutoutFile?.(f)}
+                    onClear={() => onCutoutFile?.(null)}
+                  />
+                  <p
+                    className={cn(
+                      "text-xs flex items-start gap-1.5",
+                      hasCutout ? "text-emerald-600 dark:text-emerald-500" : "text-amber-600 dark:text-amber-500",
+                    )}
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    {hasCutout
+                      ? kind === "transparente"
+                        ? "Recorte listo: se usa tu capa de prenda sin recrearla."
+                        : "Compuesto: la prenda recortada se coloca sobre el fondo, sin recrearla."
+                      : kind === "transparente"
+                        ? "Generativo: el modelo intenta aislar la prenda; puede alterar detalles."
+                        : "Generativo: el modelo recrea la prenda; puede alterar detalles."}
+                  </p>
+                </div>
+              )}
+
             </div>
           </Step>
 
