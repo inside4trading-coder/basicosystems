@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertTriangle, ImagePlus, Loader2, Sparkles, X } from "lucide-react";
+import { AlertTriangle, ImagePlus, Loader2, Save, Sparkles, X } from "lucide-react";
 import { modelLabel, type EnabledModel } from "@/lib/estudioModels";
 import { STUDIO_KIND_LABELS, type StudioKind, type StudioMode } from "@/lib/estudioNaming";
 import { ManageDialogButton } from "@/components/estudio/DropdownWithManageDialog";
@@ -142,6 +142,10 @@ export interface StudioWizardProps {
   onBackgroundsChanged?: () => void;
   /** Prompt resuelto para fondo + modelo. `null` cuando falta configurarlo. */
   backgroundPrompt?: string | null;
+  /** Guarda el texto actual como prompt base de fondo + modelo. */
+  onSavePromptBase?: () => void | Promise<void>;
+  /** Indica si ya existe un prompt base para la combinación activa. */
+  hasPromptBase?: boolean;
 }
 
 export function StudioWizard(props: StudioWizardProps) {
@@ -175,7 +179,11 @@ export function StudioWizard(props: StudioWizardProps) {
     onBackgroundChange,
     onBackgroundsChanged,
     backgroundPrompt,
+    onSavePromptBase,
+    hasPromptBase,
   } = props;
+
+  const [savingPromptBase, setSavingPromptBase] = useState(false);
 
   const isCarousel = kind === "dinamico" && mode === "carrusel";
   const extraViews = isCarousel ? 0 : OPTIONAL_VIEWS.filter((v) => views[v].include).length;
@@ -421,9 +429,41 @@ export function StudioWizard(props: StudioWizardProps) {
                     value={promptText}
                     onChange={(e) => onPromptChange(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Aplica solo a esta generación.
-                  </p>
+                  <div className="flex items-center justify-between gap-3 mt-2">
+                    <p className="text-xs text-muted-foreground">
+                      Aplica solo a esta generación.
+                    </p>
+                    {kind === "dinamico" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={
+                          savingPromptBase ||
+                          !backgroundId ||
+                          !imageModel ||
+                          !promptText.trim() ||
+                          !onSavePromptBase
+                        }
+                        onClick={async () => {
+                          if (!onSavePromptBase) return;
+                          setSavingPromptBase(true);
+                          try {
+                            await onSavePromptBase();
+                          } finally {
+                            setSavingPromptBase(false);
+                          }
+                        }}
+                      >
+                        {savingPromptBase ? (
+                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-3.5 w-3.5" />
+                        )}
+                        {hasPromptBase ? "Actualizar prompt base" : "Guardar como prompt base"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
