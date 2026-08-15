@@ -442,6 +442,11 @@ export function StudioWizard(props: StudioWizardProps) {
                 <span className="text-muted-foreground">Tipo: </span>
                 {STUDIO_KIND_LABELS[kind]}
               </p>
+              <p>
+                <span className="text-muted-foreground">Modo: </span>
+                {hasCutout ? "Composición" : "Generativo"}
+              </p>
+
               {kind === "dinamico" && (
                 <p>
                   <span className="text-muted-foreground">Fondo: </span>
