@@ -1176,26 +1176,29 @@ export default function CoreProductionOrders() {
                 <div>
                   <Label>Tallas / Variaciones</Label>
                   <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-auto">
-                    {manualVariants.map((v) => (
-                      <div key={v.id} className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 text-sm min-w-0">
-                          <Badge className="bg-primary text-primary-foreground font-bold text-sm px-2.5 py-0.5 min-w-[2.5rem] justify-center">
-                            {v.size ?? "—"}
-                          </Badge>
-                          <span className="font-mono text-xs text-muted-foreground truncate">{v.variant_sku}</span>
+                    {manualVariants.map((v) => {
+                      const label = buildVariantDisplayLabel(v);
+                      return (
+                        <div key={v.id} className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 text-sm min-w-0" title={label}>
+                            <span className="text-sm font-medium truncate">{label}</span>
+                            {v.variant_sku && (
+                              <span className="font-mono text-xs text-muted-foreground truncate">{v.variant_sku}</span>
+                            )}
+                          </div>
+                          <Input
+                            type="number"
+                            min={0}
+                            placeholder="0"
+                            value={manualQuantities[v.id] ?? ""}
+                            onChange={(e) => setManualQuantities((p) => ({
+                              ...p, [v.id]: Number(e.target.value),
+                            }))}
+                            className="h-8 w-24 shrink-0"
+                          />
                         </div>
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="0"
-                          value={manualQuantities[v.id] ?? ""}
-                          onChange={(e) => setManualQuantities((p) => ({
-                            ...p, [v.id]: Number(e.target.value),
-                          }))}
-                          className="h-8 w-24"
-                        />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
