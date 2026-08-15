@@ -428,7 +428,7 @@ export function StudioWizard(props: StudioWizardProps) {
                   {hasCutout
                     ? kind === "transparente"
                       ? "Recorte listo"
-                      : "Modo compuesto"
+                      : "Modo compuesto activo"
                     : "Modo generativo"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
