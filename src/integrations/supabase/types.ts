@@ -6650,6 +6650,77 @@ export type Database = {
         }
         Relationships: []
       }
+      estudio_background_prompts: {
+        Row: {
+          background_id: string
+          created_at: string
+          id: string
+          model_id: string
+          prompt_text: string
+          updated_at: string
+        }
+        Insert: {
+          background_id: string
+          created_at?: string
+          id?: string
+          model_id: string
+          prompt_text?: string
+          updated_at?: string
+        }
+        Update: {
+          background_id?: string
+          created_at?: string
+          id?: string
+          model_id?: string
+          prompt_text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estudio_background_prompts_background_id_fkey"
+            columns: ["background_id"]
+            isOneToOne: false
+            referencedRelation: "estudio_backgrounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estudio_backgrounds: {
+        Row: {
+          cover_path: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          reference_path: string | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          cover_path?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          reference_path?: string | null
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          cover_path?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          reference_path?: string | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       estudio_brand_template: {
         Row: {
           generate_story_variant: boolean
