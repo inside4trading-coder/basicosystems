@@ -156,6 +156,7 @@ Deno.serve(async (req) => {
     const viewType = (body?.viewType as ViewType | undefined) ?? "frente";
     const isInferred = Boolean(body?.isInferred);
     const modelPhotoPath = (body?.modelPhotoPath as string | undefined)?.trim() || null;
+    const backgroundReferencePath = (body?.backgroundReferencePath as string | undefined)?.trim() || null;
 
     if (!sourcePhotoPath) return json(400, { error: "sourcePhotoPath requerido" });
     if (!photoType || !PHOTO_TYPES.includes(photoType)) {
