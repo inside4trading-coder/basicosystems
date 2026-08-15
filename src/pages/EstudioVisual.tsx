@@ -465,7 +465,7 @@ export default function EstudioVisual() {
           onBrandDialogClose={() => {}}
           generating={generating}
           onGenerate={handleGenerate}
-          backgrounds={activeBackgrounds}
+          backgrounds={backgrounds}
           backgroundUrls={backgroundUrls}
           backgroundId={backgroundId}
           onBackgroundChange={setBackgroundId}
