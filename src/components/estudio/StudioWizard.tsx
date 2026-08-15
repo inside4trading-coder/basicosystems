@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertTriangle, ImagePlus, Loader2, Save, Sparkles, X } from "lucide-react";
-import { modelLabel, type EnabledModel } from "@/lib/estudioModels";
+import { modelLabel, imageModelOptions, describeImageModel, type EnabledModel } from "@/lib/estudioModels";
 import { STUDIO_KIND_LABELS, type StudioKind, type StudioMode } from "@/lib/estudioNaming";
 import { ManageDialogButton } from "@/components/estudio/DropdownWithManageDialog";
 import ModelsTab from "@/components/estudio/config/ModelsTab";
