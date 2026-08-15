@@ -32,7 +32,15 @@ import {
   type StudioKind,
   type StudioMode,
 } from "@/lib/estudioNaming";
-import { resolveEstudioSignedUrl, downloadEstudioImage, uploadEstudioSourcePhoto } from "@/lib/estudioStorage";
+import {
+  resolveEstudioSignedUrl,
+  downloadEstudioImage,
+  uploadEstudioSourcePhoto,
+  uploadEstudioCutout,
+  uploadEstudioComposition,
+} from "@/lib/estudioStorage";
+import { composeCutoutOnBackground } from "@/lib/estudioCompositing";
+
 
 interface PromptPreset {
   id: string;
