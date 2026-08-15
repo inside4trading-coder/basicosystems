@@ -250,6 +250,16 @@ export default function EstudioVisual() {
       toast.error("No hay estilos de fotografía disponibles.");
       return;
     }
+    if (kind === "dinamico") {
+      if (!selectedBackground) {
+        toast.error("Elige un fondo para el fondo dinámico.");
+        return;
+      }
+      if (!resolvedBackgroundPrompt && !promptText.trim()) {
+        toast.error("Ese fondo no tiene prompt configurado para el modelo elegido.");
+        return;
+      }
+    }
 
     const isCarousel = kind === "dinamico" && mode === "carrusel";
     setGenerating(true);
@@ -283,6 +293,8 @@ export default function EstudioVisual() {
               body: {
                 sourcePhotoPath: item.sourcePath,
                 modelPhotoPath: modelPath ?? undefined,
+                backgroundReferencePath:
+                  kind === "dinamico" ? selectedBackground?.reference_path ?? undefined : undefined,
                 photoType: preset.photo_type,
                 promptPresetId: preset.id,
                 promptOverride: `${promptText}${item.suffix ?? ""}`,
