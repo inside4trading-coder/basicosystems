@@ -591,7 +591,30 @@ function RunDetailDialog({ runId, onClose, onChange }: { runId: string; onClose:
     if (r1.data) setRun(r1.data as PayrollRun);
     setLines((r2.data ?? []) as OperatorLine[]);
     setAdjustments((r3.data ?? []) as Adjustment[]);
-    setEntryLinks(r4.data ?? []);
+    const links = (r4.data ?? []) as any[];
+    setEntryLinks(links);
+
+    // Enriquecer con producto / variante / OP (solo lectura, para el comprobante)
+    const productIds = Array.from(new Set(links.map(l => l.work_entry?.core_product_id).filter(Boolean))) as string[];
+    const variantIds = Array.from(new Set(links.map(l => l.work_entry?.core_variant_id).filter(Boolean))) as string[];
+    const orderIds = Array.from(new Set(links.map(l => l.work_entry?.production_order_id).filter(Boolean))) as string[];
+    const [p, v, o] = await Promise.all([
+      productIds.length ? supabase.from("core_products").select("id, name").in("id", productIds) : Promise.resolve({ data: [] as any[] }),
+      variantIds.length ? supabase.from("core_product_variants").select("id, variant_label, size, color").in("id", variantIds) : Promise.resolve({ data: [] as any[] }),
+      orderIds.length ? supabase.from("core_production_orders").select("id, order_code").in("id", orderIds) : Promise.resolve({ data: [] as any[] }),
+    ]);
+    const pm: Record<string, string> = {};
+    (p.data ?? []).forEach((r: any) => { pm[r.id] = r.name; });
+    const vm: Record<string, string> = {};
+    (v.data ?? []).forEach((r: any) => {
+      vm[r.id] = r.color && r.size ? `${r.color} / ${r.size}` : (r.variant_label ?? r.size ?? "");
+    });
+    const om: Record<string, string> = {};
+    (o.data ?? []).forEach((r: any) => { om[r.id] = r.order_code; });
+    setProductNames(pm);
+    setVariantLabels(vm);
+    setOrderCodes(om);
+
     if (r1.data) {
       setPayDate(r1.data.payment_date ?? "");
       setTotalPaid(String(r1.data.total_amount ?? ""));
