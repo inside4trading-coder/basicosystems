@@ -39,7 +39,12 @@ import {
   uploadEstudioCutout,
   uploadEstudioComposition,
 } from "@/lib/estudioStorage";
-import { composeCutoutOnBackground } from "@/lib/estudioCompositing";
+import {
+  composeCutoutOnBackground,
+  DEFAULT_COMPOSITION_PARAMS,
+  type CompositionParams,
+} from "@/lib/estudioCompositing";
+
 
 
 interface PromptPreset {
@@ -92,6 +97,10 @@ export default function EstudioVisual() {
   });
   const [modelPhoto, setModelPhoto] = useState<ViewInput>(emptyViewInput());
   const [cutout, setCutout] = useState<ViewInput>(emptyViewInput());
+  const [compositionParams, setCompositionParams] = useState<CompositionParams>(
+    DEFAULT_COMPOSITION_PARAMS,
+  );
+
 
 
   const [jobs, setJobs] = useState<StudioJob[]>([]);
@@ -226,6 +235,8 @@ export default function EstudioVisual() {
   );
 
   const closeWizard = () => {
+    setCompositionParams(DEFAULT_COMPOSITION_PARAMS);
+
     setCutout((prev) => {
       if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
       return emptyViewInput();
@@ -320,7 +331,13 @@ export default function EstudioVisual() {
           if (!backgroundUrl) throw new Error("No se pudo cargar la imagen del fondo elegido.");
           const cutoutUrl = URL.createObjectURL(cutoutFile);
           try {
-            const blob = await composeCutoutOnBackground(backgroundUrl, cutoutUrl, format);
+            const blob = await composeCutoutOnBackground(
+              backgroundUrl,
+              cutoutUrl,
+              format,
+              compositionParams,
+            );
+
             compositionPath = await uploadEstudioComposition(blob, sessionId);
           } finally {
             URL.revokeObjectURL(cutoutUrl);
@@ -341,6 +358,8 @@ export default function EstudioVisual() {
           generated_image_path: compositionPath ?? cutoutPath,
           composition_mode: compositionMode,
           fidelity_pipeline_version: 1,
+          composition_params: compositionMode === "composited" ? compositionParams : null,
+
           output_size: format,
           cost_usd: 0,
           session_id: sessionId,
@@ -574,6 +593,9 @@ export default function EstudioVisual() {
           onModelPhotoFile={setModelPhotoFile}
           cutout={cutout}
           onCutoutFile={setCutoutFile}
+          compositionParams={compositionParams}
+          onCompositionParamsChange={setCompositionParams}
+
 
           promptText={promptText}
           onPromptChange={setPromptText}

@@ -15,8 +15,14 @@ import PromptTab from "@/components/estudio/config/PromptTab";
 import BrandTab from "@/components/estudio/config/BrandTab";
 import BackgroundsTab from "@/components/estudio/config/BackgroundsTab";
 import { StudioBackgroundStep } from "@/components/estudio/StudioBackgroundStep";
+import { CompositionControls } from "@/components/estudio/CompositionControls";
+import {
+  DEFAULT_COMPOSITION_PARAMS,
+  type CompositionParams,
+} from "@/lib/estudioCompositing";
 import type { StudioBackground } from "@/lib/estudioBackgrounds";
 import { cn } from "@/lib/utils";
+
 
 export type ViewType = "frente" | "espalda" | "detalle" | "tres_cuartos";
 
@@ -130,6 +136,10 @@ export interface StudioWizardProps {
   /** PNG recortado de la prenda: activa la composición real por capas. */
   cutout?: ViewInput;
   onCutoutFile?: (file: File | null) => void;
+  /** Ajustes de composición (solo fondo dinámico con PNG recortado). */
+  compositionParams?: CompositionParams;
+  onCompositionParamsChange?: (params: CompositionParams) => void;
+
 
   promptText: string;
   onPromptChange: (v: string) => void;
@@ -172,6 +182,10 @@ export function StudioWizard(props: StudioWizardProps) {
     onModelPhotoFile,
     cutout = { include: false, file: null, previewUrl: null },
     onCutoutFile,
+    compositionParams = DEFAULT_COMPOSITION_PARAMS,
+    onCompositionParamsChange,
+
+
 
     promptText,
     onPromptChange,
@@ -198,6 +212,8 @@ export function StudioWizard(props: StudioWizardProps) {
   const isCarousel = kind === "dinamico" && mode === "carrusel";
   const supportsCutout = kind === "transparente" || kind === "dinamico";
   const hasCutout = supportsCutout && !!cutout.file;
+  const showCompositionControls = kind === "dinamico" && hasCutout;
+
 
   const extraViews = isCarousel ? 0 : OPTIONAL_VIEWS.filter((v) => views[v].include).length;
   const outputs = isCarousel ? 4 : 1 + extraViews;
@@ -393,8 +409,19 @@ export function StudioWizard(props: StudioWizardProps) {
           </Step>
 
           <Step n={stepGenerar} title="Generar">
+            {showCompositionControls && (
+              <CompositionControls
+                backgroundUrl={backgroundId ? backgroundUrls[backgroundId] ?? null : null}
+                cutoutUrl={cutout.previewUrl}
+                aspect={format}
+                params={compositionParams}
+                onChange={(p) => onCompositionParamsChange?.(p)}
+              />
+            )}
+
             <div className="space-y-2">
               <Label className="font-medium text-sm">Modelo de generación</Label>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {modelOptions.map((m) => {
                   const active = m.model_id === imageModel && m.available;
