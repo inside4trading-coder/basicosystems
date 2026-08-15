@@ -170,6 +170,9 @@ export function StudioWizard(props: StudioWizardProps) {
     onToggleView,
     modelPhoto,
     onModelPhotoFile,
+    cutout = { include: false, file: null, previewUrl: null },
+    onCutoutFile,
+
     promptText,
     onPromptChange,
     imageModels,
