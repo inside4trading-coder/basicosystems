@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, Copy, Download, DownloadCloud, Eye, FileText, RefreshCw } from "lucide-react";
+import { AlertTriangle, Archive, ArchiveRestore, Copy, Download, DownloadCloud, Eye, FileText, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   STUDIO_KIND_LABELS,
