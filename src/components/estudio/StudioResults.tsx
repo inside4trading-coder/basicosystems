@@ -66,7 +66,9 @@ export interface StudioSet {
   jobs: StudioJob[];
   status: "listo" | "procesando" | "fallido";
   costUsd: number | null;
+  archived: boolean;
 }
+
 
 type FilterId =
   | "todos"
