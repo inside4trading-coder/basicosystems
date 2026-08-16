@@ -452,8 +452,7 @@ function SetCard({
           </div>
         )}
 
-          </div>
-        )}
+
 
         {set.mode === "carrusel" && !failed && (
           <p className="text-[11px] text-muted-foreground">
