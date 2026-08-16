@@ -109,6 +109,7 @@ export interface StudioResultsProps {
   onUseAsReference: (set: StudioSet) => void;
   onShowPrompt: (set: StudioSet) => void;
   onRetry: (set: StudioSet) => void;
+  onArchive: (set: StudioSet, archived: boolean) => void;
   onRefresh: () => void;
 }
 
@@ -122,14 +123,19 @@ export function StudioResults({
   onUseAsReference,
   onShowPrompt,
   onRetry,
+  onArchive,
   onRefresh,
 }: StudioResultsProps) {
   const [filter, setFilter] = useState<FilterId>("todos");
   const [query, setQuery] = useState("");
+  const [view, setView] = useState<"galeria" | "archivados">("galeria");
+
+  const archivedCount = useMemo(() => sets.filter((s) => s.archived).length, [sets]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return sets.filter((s) => {
+      if (s.archived !== (view === "archivados")) return false;
       const matchesFilter =
         filter === "todos" ||
         (filter === "listos" && s.status === "listo") ||
@@ -151,7 +157,8 @@ export function StudioResults({
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [sets, filter, query]);
+  }, [sets, filter, query, view]);
+
 
   return (
     <section className="space-y-4">
