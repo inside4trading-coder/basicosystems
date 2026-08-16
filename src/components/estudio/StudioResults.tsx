@@ -163,11 +163,37 @@ export function StudioResults({
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-black tracking-tight">Resultados recientes</h2>
+        <h2 className="text-xl font-black tracking-tight">
+          {view === "archivados" ? "Archivados" : "Resultados recientes"}
+        </h2>
         <Button variant="ghost" size="sm" onClick={onRefresh}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Actualizar
         </Button>
+      </div>
+
+      <div className="inline-flex rounded-full border p-1">
+        <button
+          type="button"
+          onClick={() => setView("galeria")}
+          className={cn(
+            "text-xs rounded-full px-3 py-1.5 transition-colors",
+            view === "galeria" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          Galería ({sets.length - archivedCount})
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("archivados")}
+          className={cn(
+            "text-xs rounded-full px-3 py-1.5 transition-colors inline-flex items-center gap-1.5",
+            view === "archivados" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          <Archive className="h-3.5 w-3.5" />
+          Archivados ({archivedCount})
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -197,7 +223,9 @@ export function StudioResults({
 
       {filtered.length === 0 ? (
         <Card className="p-8 rounded-2xl text-center text-sm text-muted-foreground">
-          No hay resultados que coincidan.
+          {view === "archivados"
+            ? "No hay generaciones archivadas."
+            : "No hay resultados que coincidan."}
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -213,10 +241,12 @@ export function StudioResults({
               onUseAsReference={onUseAsReference}
               onShowPrompt={onShowPrompt}
               onRetry={onRetry}
+              onArchive={onArchive}
             />
           ))}
         </div>
       )}
+
     </section>
   );
 }
