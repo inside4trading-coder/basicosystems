@@ -60,36 +60,28 @@ export interface ModelPresentation {
  */
 export const IMAGE_MODEL_PRESENTATION: ModelPresentation[] = [
   {
-    model_id: "google/gemini-2.5-flash-image",
-    name: "Gemini 2.5 Flash Image",
-    tier: "Económico",
-    description: "Rápido para pruebas y borradores.",
+    model_id: "bytedance-seed/seedream-5.0-lite",
+    name: "ByteDance Seed: Seedream 5.0 Lite",
+    tier: "Borrador",
+    description: "Rápido y económico para pruebas de composición.",
   },
   {
-    model_id: "google/gemini-3-pro-image",
-    name: "Gemini 3 Pro Image",
-    tier: "Calidad final",
-    description: "Mejor fidelidad para campaña y producto.",
-  },
-  {
-    model_id: "google/gemini-3.1-flash-image",
-    name: "Nano Banana 2 · Gemini 3.1 Flash Image",
+    model_id: "bytedance-seed/seedream-4.5",
+    name: "ByteDance Seed: Seedream 4.5",
     tier: "Balance",
     description: "Buen equilibrio entre fidelidad y velocidad.",
   },
   {
-    model_id: "openai/gpt-5-image",
-    name: "GPT-5 Image",
+    model_id: "bytedance-seed/seedream-5.0-pro",
+    name: "ByteDance Seed: Seedream 5.0 Pro",
     tier: "Calidad final",
-    description: "Alta fidelidad para producto y detalle.",
-  },
-  {
-    model_id: "openai/gpt-5-image-mini",
-    name: "GPT-5 Image Mini",
-    tier: "Borrador",
-    description: "Pruebas rápidas de composición.",
+    description: "Mejor fidelidad para campaña y producto.",
   },
 ];
+
+/** Modelos curados del hub: siempre disponibles en el modal aunque OpenRouter no los liste. */
+export const CURATED_IMAGE_MODEL_IDS = IMAGE_MODEL_PRESENTATION.map((m) => m.model_id);
+
 
 /** Combina el catálogo de presentación con los modelos realmente habilitados. */
 export function imageModelOptions(enabled: EnabledModel[]) {
