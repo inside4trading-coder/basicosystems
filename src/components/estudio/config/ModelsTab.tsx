@@ -67,6 +67,21 @@ export default function ModelsTab() {
       }
     }
 
+    // Modelos curados del hub: deben poder gestionarse siempre, aunque el catálogo de
+    // OpenRouter no los devuelva (o falle la consulta).
+    for (const p of IMAGE_MODEL_PRESENTATION) {
+      const key = `image:${p.model_id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      next.push({
+        modelId: p.model_id,
+        name: p.name,
+        kind: "image",
+        enabled: enabledMap.get(key)?.is_enabled ?? false,
+        estimatedCost: null,
+      });
+    }
+
     // Modelos habilitados que ya no existen en el catálogo: hay que verlos para poder
     // desactivarlos, porque si se usan la generación falla.
     for (const e of enabled) {
@@ -81,6 +96,7 @@ export default function ModelsTab() {
         missingFromCatalog: true,
       });
     }
+
 
     setRows(next);
     setLoading(false);
