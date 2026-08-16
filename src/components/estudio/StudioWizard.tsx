@@ -15,14 +15,8 @@ import PromptTab from "@/components/estudio/config/PromptTab";
 import BrandTab from "@/components/estudio/config/BrandTab";
 import BackgroundsTab from "@/components/estudio/config/BackgroundsTab";
 import { StudioBackgroundStep } from "@/components/estudio/StudioBackgroundStep";
-import { CompositionControls } from "@/components/estudio/CompositionControls";
-import {
-  DEFAULT_COMPOSITION_PARAMS,
-  type CompositionParams,
-} from "@/lib/estudioCompositing";
 import type { StudioBackground } from "@/lib/estudioBackgrounds";
 import { cn } from "@/lib/utils";
-
 
 export type ViewType = "frente" | "espalda" | "detalle" | "tres_cuartos";
 
@@ -136,10 +130,6 @@ export interface StudioWizardProps {
   /** PNG recortado de la prenda: activa la composición real por capas. */
   cutout?: ViewInput;
   onCutoutFile?: (file: File | null) => void;
-  /** Ajustes de composición (solo fondo dinámico con PNG recortado). */
-  compositionParams?: CompositionParams;
-  onCompositionParamsChange?: (params: CompositionParams) => void;
-
 
   promptText: string;
   onPromptChange: (v: string) => void;
@@ -182,10 +172,6 @@ export function StudioWizard(props: StudioWizardProps) {
     onModelPhotoFile,
     cutout = { include: false, file: null, previewUrl: null },
     onCutoutFile,
-    compositionParams = DEFAULT_COMPOSITION_PARAMS,
-    onCompositionParamsChange,
-
-
 
     promptText,
     onPromptChange,
@@ -212,8 +198,6 @@ export function StudioWizard(props: StudioWizardProps) {
   const isCarousel = kind === "dinamico" && mode === "carrusel";
   const supportsCutout = kind === "transparente" || kind === "dinamico";
   const hasCutout = supportsCutout && !!cutout.file;
-  const showCompositionControls = kind === "dinamico" && hasCutout;
-
 
   const extraViews = isCarousel ? 0 : OPTIONAL_VIEWS.filter((v) => views[v].include).length;
   const outputs = isCarousel ? 4 : 1 + extraViews;
@@ -270,48 +254,10 @@ export function StudioWizard(props: StudioWizardProps) {
 
           <Step n={2} title="Prenda">
             <div className="rounded-xl border divide-y">
-              {supportsCutout && (
-                <div className="p-4 space-y-2">
-                  <Label className="font-medium text-sm">
-                    PNG recortado de la prenda {hasCutout ? "" : "(opcional)"}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Si subes un PNG con transparencia, la prenda no se manda a ningún modelo: se usa
-                    tu capa tal cual y no hace falta la foto frontal.
-                  </p>
-                  <ViewPhotoPicker
-                    altLabel="del recorte"
-                    input={cutout}
-                    accept="image/png"
-                    onFile={(f) => onCutoutFile?.(f)}
-                    onClear={() => onCutoutFile?.(null)}
-                  />
-                  {hasCutout ? (
-                    <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-2">
-                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
-                        {kind === "transparente" ? "Recorte listo" : "Modo compuesto activo"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        No se llamará a IA. Costo 0.
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-amber-600 dark:text-amber-500 flex items-start gap-1.5">
-                      <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                      {kind === "transparente"
-                        ? "Generativo: el modelo intenta aislar la prenda; puede alterar detalles."
-                        : "Generativo: el modelo recrea la prenda; puede alterar detalles."}
-                    </p>
-                  )}
-                </div>
-              )}
-
               <div className="p-4 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm">{VIEW_LABELS.frente}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {hasCutout ? "(no hace falta en modo compuesto)" : "(obligatoria)"}
-                  </span>
+                  <span className="text-xs text-muted-foreground">(obligatoria)</span>
                 </div>
                 <ViewPhotoPicker
                   altLabel={VIEW_LABELS.frente}
@@ -320,7 +266,6 @@ export function StudioWizard(props: StudioWizardProps) {
                   onClear={() => onViewFile("frente", null)}
                 />
               </div>
-
 
               {!isCarousel &&
                 OPTIONAL_VIEWS.map((view) => {
@@ -377,6 +322,39 @@ export function StudioWizard(props: StudioWizardProps) {
                 )}
               </div>
 
+              {supportsCutout && (
+                <div className="p-4 space-y-2">
+                  <Label className="font-medium text-sm">
+                    PNG recortado de la prenda (opcional)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Si subes un PNG con transparencia, la prenda no se manda a ningún modelo: se usa
+                    tu capa tal cual.
+                  </p>
+                  <ViewPhotoPicker
+                    altLabel="del recorte"
+                    input={cutout}
+                    accept="image/png"
+                    onFile={(f) => onCutoutFile?.(f)}
+                    onClear={() => onCutoutFile?.(null)}
+                  />
+                  <p
+                    className={cn(
+                      "text-xs flex items-start gap-1.5",
+                      hasCutout ? "text-emerald-600 dark:text-emerald-500" : "text-amber-600 dark:text-amber-500",
+                    )}
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    {hasCutout
+                      ? kind === "transparente"
+                        ? "Recorte listo: se usa tu capa de prenda sin recrearla."
+                        : "Compuesto: la prenda recortada se coloca sobre el fondo, sin recrearla."
+                      : kind === "transparente"
+                        ? "Generativo: el modelo intenta aislar la prenda; puede alterar detalles."
+                        : "Generativo: el modelo recrea la prenda; puede alterar detalles."}
+                  </p>
+                </div>
+              )}
 
             </div>
           </Step>
@@ -415,46 +393,8 @@ export function StudioWizard(props: StudioWizardProps) {
           </Step>
 
           <Step n={stepGenerar} title="Generar">
-            {supportsCutout && (
-              <div
-                className={cn(
-                  "rounded-xl border p-3 mb-3",
-                  hasCutout
-                    ? "border-emerald-500/40 bg-emerald-500/5"
-                    : "border-amber-500/40 bg-amber-500/5",
-                )}
-              >
-                <p className="text-sm font-semibold">
-                  {hasCutout
-                    ? kind === "transparente"
-                      ? "Recorte listo"
-                      : "Modo compuesto activo"
-                    : "Modo generativo"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {hasCutout
-                    ? kind === "transparente"
-                      ? "Se entregará tu PNG tal cual, sin llamar a IA. Costo 0."
-                      : "Usaremos tu PNG recortado como capa real sobre el fondo. No se llamará a IA. Costo 0."
-                    : "La IA intentará integrar la prenda y puede alterar detalles."}
-                </p>
-              </div>
-            )}
-
-            {showCompositionControls && (
-              <CompositionControls
-                backgroundUrl={backgroundId ? backgroundUrls[backgroundId] ?? null : null}
-                cutoutUrl={cutout.previewUrl}
-                aspect={format}
-                params={compositionParams}
-                onChange={(p) => onCompositionParamsChange?.(p)}
-              />
-            )}
-
-
             <div className="space-y-2">
               <Label className="font-medium text-sm">Modelo de generación</Label>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {modelOptions.map((m) => {
                   const active = m.model_id === imageModel && m.available;
@@ -561,7 +501,7 @@ export function StudioWizard(props: StudioWizardProps) {
                 onClick={onGenerate}
                 disabled={
                   generating ||
-                  (!hasCutout && !views.frente.file) ||
+                  !views.frente.file ||
                   missingBackground ||
                   (!hasCutout && (missingModel || missingBackgroundPrompt))
                 }

@@ -129,86 +129,45 @@ function drawContain(
   return { width: w, height: h, bottom: y + h };
 }
 
-/** Ajustes visibles de la composición por capas (escala, posición y sombra de contacto). */
-export interface CompositionParams {
-  /** Porcentaje del lienzo que puede ocupar la prenda (40–120). */
-  cutout_scale: number;
-  /** Desplazamiento horizontal en porcentaje del ancho (-50 a 50). */
-  cutout_offset_x: number;
-  /** Desplazamiento vertical en porcentaje del alto (-50 a 50). */
-  cutout_offset_y: number;
-  shadow_enabled: boolean;
-  /** Opacidad de la sombra (0–100). */
-  shadow_intensity: number;
-  /** Difuminado de la sombra (0–100). */
-  shadow_blur: number;
-}
-
-export const DEFAULT_COMPOSITION_PARAMS: CompositionParams = {
-  cutout_scale: 80,
-  cutout_offset_x: 0,
-  cutout_offset_y: 0,
-  shadow_enabled: true,
-  shadow_intensity: 35,
-  shadow_blur: 45,
-};
-
 /**
  * Composición real por capas (Fase 1): fondo base + PNG recortado de la prenda + sombra de
  * contacto simple. No pasa por ningún modelo generativo, así que la prenda no se altera.
- * `target` permite reutilizar un canvas ya montado (preview en vivo) en lugar de crear uno nuevo.
  */
 export async function composeCutoutOnBackground(
   backgroundUrl: string,
   cutoutUrl: string,
   aspect: string,
-  params: CompositionParams = DEFAULT_COMPOSITION_PARAMS,
-  target?: HTMLCanvasElement,
 ): Promise<Blob> {
   const { width, height } = ASPECT_CANVAS[aspect] ?? ASPECT_CANVAS["4:5"];
-  const canvas = target ?? document.createElement("canvas");
+  const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D no disponible en este navegador.");
 
   const [bg, cutout] = await Promise.all([loadImage(backgroundUrl), loadImage(cutoutUrl)]);
-  ctx.clearRect(0, 0, width, height);
   drawCover(ctx, bg, width, height);
 
-  const scale = Math.min(Math.max(params.cutout_scale, 40), 120) / 100;
-  const boxW = width * scale;
-  const boxH = height * scale;
-  const centerX = width / 2 + (width * params.cutout_offset_x) / 100;
-  const centerY = height * 0.47 + (height * params.cutout_offset_y) / 100;
+  // La prenda ocupa como máximo el 78% del lienzo y queda ligeramente sobre el centro,
+  // dejando aire abajo para la sombra de contacto.
+  const boxW = width * 0.78;
+  const boxH = height * 0.78;
+  const centerY = height * 0.47;
 
-  const fit = Math.min(boxW / cutout.width, boxH / cutout.height);
-  const garmentW = cutout.width * fit;
-  const garmentH = cutout.height * fit;
+  // Sombra de contacto: elipse difuminada bajo la prenda, dibujada antes que la capa.
+  const probe = Math.min(boxW / cutout.width, boxH / cutout.height);
+  const garmentH = cutout.height * probe;
+  const garmentW = cutout.width * probe;
+  const shadowY = centerY + garmentH / 2 - garmentH * 0.02;
+  ctx.save();
+  ctx.filter = "blur(24px)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
+  ctx.beginPath();
+  ctx.ellipse(width / 2, shadowY, garmentW * 0.34, garmentH * 0.035, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 
-  // Sombra de contacto: elipse difuminada justo bajo la prenda, dibujada antes que la capa.
-  if (params.shadow_enabled && params.shadow_intensity > 0) {
-    const opacity = Math.min(Math.max(params.shadow_intensity, 0), 100) / 100;
-    const blurPx = (Math.min(Math.max(params.shadow_blur, 0), 100) / 100) * 60;
-    ctx.save();
-    ctx.filter = `blur(${blurPx}px)`;
-    ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
-    ctx.beginPath();
-    ctx.ellipse(
-      centerX,
-      centerY + garmentH / 2 - garmentH * 0.02,
-      garmentW * 0.34,
-      garmentH * 0.035,
-      0,
-      0,
-      Math.PI * 2,
-    );
-    ctx.fill();
-    ctx.restore();
-  }
-
-  drawContain(ctx, cutout, boxW, boxH, centerX, centerY);
-
+  drawContain(ctx, cutout, boxW, boxH, width / 2, centerY);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

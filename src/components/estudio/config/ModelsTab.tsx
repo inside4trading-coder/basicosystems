@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { estudioDb } from "@/lib/estudioDb";
 import { readEdgeFunctionError } from "@/lib/estudioErrors";
-import { estimatedImageCost, IMAGE_MODEL_PRESENTATION, type CatalogModel, type EnabledModel, type ModelKind } from "@/lib/estudioModels";
+import { estimatedImageCost, type CatalogModel, type EnabledModel, type ModelKind } from "@/lib/estudioModels";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -67,21 +67,6 @@ export default function ModelsTab() {
       }
     }
 
-    // Modelos curados del hub: deben poder gestionarse siempre, aunque el catálogo de
-    // OpenRouter no los devuelva (o falle la consulta).
-    for (const p of IMAGE_MODEL_PRESENTATION) {
-      const key = `image:${p.model_id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      next.push({
-        modelId: p.model_id,
-        name: p.name,
-        kind: "image",
-        enabled: enabledMap.get(key)?.is_enabled ?? false,
-        estimatedCost: null,
-      });
-    }
-
     // Modelos habilitados que ya no existen en el catálogo: hay que verlos para poder
     // desactivarlos, porque si se usan la generación falla.
     for (const e of enabled) {
@@ -96,7 +81,6 @@ export default function ModelsTab() {
         missingFromCatalog: true,
       });
     }
-
 
     setRows(next);
     setLoading(false);
