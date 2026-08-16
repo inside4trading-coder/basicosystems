@@ -192,166 +192,231 @@ export function StudioResults({
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((set) => {
-            const code = `BASICO-STUDIO-${formatStudioSeq(set.seq)}`;
-            const ready = set.jobs.filter((j) => j.status === "completed" && j.generated_image_path);
-            const failed = set.status === "fallido";
-
-            return (
-              <Card
-                key={set.key}
-                className={cn("rounded-2xl overflow-hidden", failed && "border-destructive/40")}
-              >
-                {!failed && (
-                  <div
-                    className={cn(
-                      "bg-muted",
-                      set.mode === "carrusel" ? "flex gap-1 overflow-x-auto p-1" : "",
-                    )}
-                  >
-                    {ready.length === 0 ? (
-                      <div className="h-40 w-full flex items-center justify-center text-xs text-muted-foreground">
-                        {set.status === "procesando" ? "Generando…" : "Sin vista previa"}
-                      </div>
-                    ) : set.mode === "carrusel" ? (
-                      ready.map((j, i) => (
-                        <button
-                          key={j.id}
-                          type="button"
-                          onClick={() => onPreview(j.id, `${code}-${String(i + 1).padStart(2, "0")}`)}
-                          className="shrink-0"
-                          aria-label="Ver imagen"
-                        >
-                          <img
-                            src={urls[j.id]}
-                            alt={`${code} imagen ${i + 1}`}
-                            className="h-40 w-32 object-cover rounded-lg"
-                          />
-                        </button>
-                      ))
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onPreview(ready[0].id, `${code}-01`)}
-                        className="block w-full"
-                        aria-label="Ver imagen"
-                      >
-                        <img
-                          src={urls[ready[0].id]}
-                          alt={code}
-                          className="w-full h-56 object-cover"
-                        />
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                <div className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm truncate">{code}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {STUDIO_KIND_LABELS[set.kind]} ·{" "}
-                        {set.mode === "carrusel" ? "Carrusel · 4 imágenes" : "Individual"}
-                      </p>
-                    </div>
-                    <span
-                      className={cn(
-                        "text-[11px] rounded-full px-2 py-0.5 shrink-0",
-                        set.status === "listo" && "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-                        set.status === "procesando" && "bg-muted text-muted-foreground",
-                        set.status === "fallido" && "bg-destructive/10 text-destructive",
-                      )}
-                    >
-                      {STATUS_LABELS[set.status]}
-                    </span>
-                  </div>
-
-
-                  {(() => {
-                    const badge =
-                      COMPOSITION_BADGES[set.jobs[0]?.composition_mode ?? "generative"];
-                    return (
-                      <span
-                        title={badge.hint}
-                        className={cn(
-                          "inline-block text-[11px] rounded-full px-2 py-0.5",
-                          badge.className,
-                        )}
-                      >
-                        {badge.label}
-                      </span>
-                    );
-                  })()}
-
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(set.createdAt).toLocaleString("es-VE")}
-                    {set.costUsd != null && ` · $${set.costUsd.toFixed(4)} USD`}
-                  </p>
-
-
-                  {failed ? (
-                    <div className="space-y-2">
-                      <p className="text-xs text-destructive flex items-start gap-1.5">
-                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                        {set.jobs.find((j) => j.error_message)?.error_message ?? "La generación falló."}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <Button size="sm" variant="outline" onClick={() => onRetry(set)}>
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Reintentar
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => onShowPrompt(set)}>
-                          <FileText className="mr-2 h-4 w-4" />
-                          Ver error
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {ready.map((_, i) => (
-                        <Button
-                          key={i}
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onDownloadJob(set, i)}
-                        >
-                          <Download className="mr-2 h-4 w-4" />
-                          {set.mode === "carrusel" ? String(i + 1).padStart(2, "0") : "Descargar"}
-                        </Button>
-                      ))}
-                      {set.mode === "carrusel" && ready.length > 1 && (
-                        <Button size="sm" onClick={() => onDownloadAll(set)}>
-                          <DownloadCloud className="mr-2 h-4 w-4" />
-                          Descargar todo
-                        </Button>
-                      )}
-                      <Button size="sm" variant="ghost" onClick={() => onDuplicate(set)}>
-                        <Copy className="mr-2 h-4 w-4" />
-                        Duplicar
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => onUseAsReference(set)}>
-                        <Eye className="mr-2 h-4 w-4" />
-                        Usar como referencia
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => onShowPrompt(set)}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        Ver prompt
-                      </Button>
-                    </div>
-                  )}
-
-                  {set.mode === "carrusel" && !failed && (
-                    <p className="text-[11px] text-muted-foreground">
-                      Las imágenes se descargan en orden para carrusel.
-                    </p>
-                  )}
-                </div>
-              </Card>
-            );
-          })}
+          {filtered.map((set) => (
+            <SetCard
+              key={set.key}
+              set={set}
+              urls={urls}
+              onPreview={onPreview}
+              onDownloadJob={onDownloadJob}
+              onDownloadAll={onDownloadAll}
+              onDuplicate={onDuplicate}
+              onUseAsReference={onUseAsReference}
+              onShowPrompt={onShowPrompt}
+              onRetry={onRetry}
+            />
+          ))}
         </div>
       )}
     </section>
   );
 }
+
+type SetCardProps = Omit<StudioResultsProps, "sets" | "onRefresh"> & { set: StudioSet };
+
+/** Ordena las imágenes listas por vista (frente, espalda, detalle, otro) manteniendo el orden real dentro de cada vista. */
+export function sortReadyJobs(jobs: StudioJob[]): StudioJob[] {
+  return [...jobs].sort((a, b) => {
+    const rank = studioViewRank(a.view_type) - studioViewRank(b.view_type);
+    if (rank !== 0) return rank;
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
+}
+
+function SetCard({
+  set,
+  urls,
+  onPreview,
+  onDownloadJob,
+  onDownloadAll,
+  onDuplicate,
+  onUseAsReference,
+  onShowPrompt,
+  onRetry,
+}: SetCardProps) {
+  const [active, setActive] = useState(0);
+  const code = `BASICO-STUDIO-${formatStudioSeq(set.seq)}`;
+  const failed = set.status === "fallido";
+  const ready = useMemo(
+    () =>
+      sortReadyJobs(set.jobs.filter((j) => j.status === "completed" && j.generated_image_path)),
+    [set.jobs],
+  );
+
+  const distinctViews = new Set(ready.map((j) => j.view_type ?? "otro")).size;
+  const multiView = set.mode !== "carrusel" && distinctViews > 1;
+  const current = ready[Math.min(active, Math.max(ready.length - 1, 0))];
+  const badge = COMPOSITION_BADGES[set.jobs[0]?.composition_mode ?? "generative"];
+
+  const subtitle =
+    set.mode === "carrusel"
+      ? "Carrusel · 4 imágenes"
+      : multiView
+        ? `${ready.length} vistas`
+        : "Individual";
+
+  return (
+    <Card className={cn("rounded-2xl overflow-hidden", failed && "border-destructive/40")}>
+      {!failed && (
+        <div className="bg-muted">
+          {ready.length === 0 ? (
+            <div className="h-40 w-full flex items-center justify-center text-xs text-muted-foreground">
+              {set.status === "procesando" ? "Generando…" : "Sin vista previa"}
+            </div>
+          ) : set.mode === "carrusel" ? (
+            <div className="flex gap-1 overflow-x-auto p-1">
+              {ready.map((j, i) => (
+                <button
+                  key={j.id}
+                  type="button"
+                  onClick={() => onPreview(j.id, `${code}-${String(i + 1).padStart(2, "0")}`)}
+                  className="shrink-0"
+                  aria-label="Ver imagen"
+                >
+                  <img
+                    src={urls[j.id]}
+                    alt={`${code} imagen ${i + 1}`}
+                    className="h-40 w-32 object-cover rounded-lg"
+                  />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  current && onPreview(current.id, `${code} · ${studioViewLabel(current.view_type)}`)
+                }
+                className="block w-full"
+                aria-label="Ver imagen"
+              >
+                <img src={urls[current.id]} alt={code} className="w-full h-56 object-cover" />
+              </button>
+              <span className="absolute top-2 left-2 text-[11px] rounded-full bg-background/90 px-2 py-0.5 font-medium">
+                Vista: {studioViewLabel(current.view_type)}
+              </span>
+              {ready.length > 1 && (
+                <div className="flex gap-1 p-1 overflow-x-auto">
+                  {ready.map((j, i) => (
+                    <button
+                      key={j.id}
+                      type="button"
+                      onClick={() => setActive(i)}
+                      className={cn(
+                        "shrink-0 rounded-lg overflow-hidden border-2",
+                        i === active ? "border-primary" : "border-transparent opacity-70",
+                      )}
+                      aria-label={`Ver ${studioViewLabel(j.view_type)}`}
+                    >
+                      <img
+                        src={urls[j.id]}
+                        alt={studioViewLabel(j.view_type)}
+                        className="h-14 w-12 object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-semibold text-sm truncate">{code}</p>
+            <p className="text-xs text-muted-foreground">
+              {STUDIO_KIND_LABELS[set.kind]} · {subtitle}
+            </p>
+          </div>
+          <span
+            className={cn(
+              "text-[11px] rounded-full px-2 py-0.5 shrink-0",
+              set.status === "listo" && "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+              set.status === "procesando" && "bg-muted text-muted-foreground",
+              set.status === "fallido" && "bg-destructive/10 text-destructive",
+            )}
+          >
+            {STATUS_LABELS[set.status]}
+          </span>
+        </div>
+
+        <span
+          title={badge.hint}
+          className={cn("inline-block text-[11px] rounded-full px-2 py-0.5", badge.className)}
+        >
+          {badge.label}
+        </span>
+
+        <p className="text-xs text-muted-foreground">
+          {new Date(set.createdAt).toLocaleString("es-VE")}
+          {set.costUsd != null && ` · $${set.costUsd.toFixed(4)} USD`}
+        </p>
+
+        {failed ? (
+          <div className="space-y-2">
+            <p className="text-xs text-destructive flex items-start gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              {set.jobs.find((j) => j.error_message)?.error_message ?? "La generación falló."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => onRetry(set)}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Reintentar
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => onShowPrompt(set)}>
+                <FileText className="mr-2 h-4 w-4" />
+                Ver error
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {ready.map((j, i) => (
+              <Button
+                key={j.id}
+                size="sm"
+                variant="outline"
+                onClick={() => onDownloadJob(set, j, i)}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {set.mode === "carrusel"
+                  ? String(i + 1).padStart(2, "0")
+                  : multiView
+                    ? studioViewLabel(j.view_type)
+                    : "Descargar"}
+              </Button>
+            ))}
+            {ready.length > 1 && (
+              <Button size="sm" onClick={() => onDownloadAll(set)}>
+                <DownloadCloud className="mr-2 h-4 w-4" />
+                Descargar todo
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => onDuplicate(set)}>
+              <Copy className="mr-2 h-4 w-4" />
+              Duplicar
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => onUseAsReference(set)}>
+              <Eye className="mr-2 h-4 w-4" />
+              Usar como referencia
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => onShowPrompt(set)}>
+              <FileText className="mr-2 h-4 w-4" />
+              Ver detalles
+            </Button>
+          </div>
+        )}
+
+        {set.mode === "carrusel" && !failed && (
+          <p className="text-[11px] text-muted-foreground">
+            Las imágenes se descargan en orden para carrusel.
+          </p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
