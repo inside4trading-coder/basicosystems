@@ -555,15 +555,8 @@ export default function EstudioVisual() {
           openWizard(set.kind, { mode: set.mode, prompt: set.jobs[0].prompt_used ?? undefined });
           toast.info("Se cargó la configuración de ese resultado. Sube la foto de la prenda.");
         }}
-        onShowPrompt={(set) =>
-          setPromptDialog({
-            title: `${STUDIO_KIND_LABELS[set.kind]} — prompt`,
-            body:
-              set.status === "fallido"
-                ? `${set.jobs.find((j) => j.error_message)?.error_message ?? "Sin detalle del error."}\n\n---\n\n${set.jobs[0].prompt_used ?? ""}`
-                : set.jobs[0].prompt_used ?? "Sin prompt guardado.",
-          })
-        }
+        onShowPrompt={(set) => setPromptDialog(buildSetDetail(set))}
+
         onRetry={(set) => openWizard(set.kind, { mode: set.mode, prompt: set.jobs[0].prompt_used ?? undefined })}
         onRefresh={loadJobs}
       />
