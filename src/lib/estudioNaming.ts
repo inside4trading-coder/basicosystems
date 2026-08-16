@@ -73,7 +73,30 @@ export function formatStudioSeq(seq: number): string {
   return String(seq).padStart(4, "0");
 }
 
-/** `BASICO-STUDIO-0001-01.png` */
-export function studioFileName(seq: number, index: number, ext = "png"): string {
-  return `BASICO-STUDIO-${formatStudioSeq(seq)}-${String(index).padStart(2, "0")}.${ext}`;
+/** Etiquetas legibles de cada vista de prenda. */
+export const STUDIO_VIEW_LABELS: Record<string, string> = {
+  frente: "Frente",
+  espalda: "Espalda",
+  detalle: "Detalle",
+  tres_cuartos: "Tres cuartos",
+};
+
+/** Orden fijo de las vistas en galerías y descargas. */
+export const STUDIO_VIEW_ORDER = ["frente", "espalda", "detalle", "tres_cuartos"];
+
+export function studioViewLabel(view: string | null | undefined): string {
+  if (!view) return "Otro";
+  return STUDIO_VIEW_LABELS[view] ?? "Otro";
 }
+
+export function studioViewRank(view: string | null | undefined): number {
+  const idx = view ? STUDIO_VIEW_ORDER.indexOf(view) : -1;
+  return idx === -1 ? STUDIO_VIEW_ORDER.length : idx;
+}
+
+/** `BASICO-STUDIO-0001-01.png` o `BASICO-STUDIO-0001-01-espalda.png` */
+export function studioFileName(seq: number, index: number, view?: string | null, ext = "png"): string {
+  const base = `BASICO-STUDIO-${formatStudioSeq(seq)}-${String(index).padStart(2, "0")}`;
+  return view ? `${base}-${view}.${ext}` : `${base}.${ext}`;
+}
+

@@ -21,7 +21,12 @@ import {
   type ViewInput,
   type ViewType,
 } from "@/components/estudio/StudioWizard";
-import { StudioResults, type StudioJob, type StudioSet } from "@/components/estudio/StudioResults";
+import {
+  StudioResults,
+  sortReadyJobs,
+  type StudioJob,
+  type StudioSet,
+} from "@/components/estudio/StudioResults";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   STUDIO_KIND_LABELS,
@@ -29,6 +34,7 @@ import {
   nextStudioSeq,
   saveStudioSetMeta,
   studioFileName,
+  studioViewLabel,
   type StudioKind,
   type StudioMode,
 } from "@/lib/estudioNaming";
@@ -128,7 +134,7 @@ export default function EstudioVisual() {
     const { data } = await estudioDb
       .from("estudio_image_jobs")
       .select(
-        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, prompt_used, cost_usd, error_message, composition_mode, cutout_path, composition_path",
+        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, source_photo_path, image_model, output_size, background_reference_path, prompt_used, cost_usd, error_message, composition_mode, cutout_path, composition_path",
       )
       .order("created_at", { ascending: false })
       .limit(60);
@@ -485,21 +491,60 @@ export default function EstudioVisual() {
   }, [jobs]);
 
   const readyJobs = (set: StudioSet) =>
-    set.jobs.filter((j) => j.status === "completed" && j.generated_image_path);
+    sortReadyJobs(set.jobs.filter((j) => j.status === "completed" && j.generated_image_path));
 
-  const handleDownloadJob = async (set: StudioSet, index: number) => {
-    const job = readyJobs(set)[index];
-    if (!job?.generated_image_path) return;
-    await downloadEstudioImage(job.generated_image_path, studioFileName(set.seq, index + 1));
+  const handleDownloadJob = async (set: StudioSet, job: StudioJob, index: number) => {
+    if (!job.generated_image_path) return;
+    await downloadEstudioImage(
+      job.generated_image_path,
+      studioFileName(set.seq, index + 1, set.mode === "carrusel" ? null : job.view_type),
+    );
   };
 
   const handleDownloadAll = async (set: StudioSet) => {
     const ready = readyJobs(set);
     for (let i = 0; i < ready.length; i++) {
-      await downloadEstudioImage(ready[i].generated_image_path!, studioFileName(set.seq, i + 1));
+      await downloadEstudioImage(
+        ready[i].generated_image_path!,
+        studioFileName(set.seq, i + 1, set.mode === "carrusel" ? null : ready[i].view_type),
+      );
     }
-    toast.success("Las imágenes se descargan en orden para carrusel.");
+    toast.success("Las imágenes se descargan en orden.");
   };
+
+  /** Detalle por vista: fuente usada, modelo, fondo, formato y prompt. */
+  const buildSetDetail = (set: StudioSet): { title: string; body: string } => {
+    const ordered = sortReadyJobs(set.jobs);
+    const multiView = set.mode !== "carrusel" && new Set(ordered.map((j) => j.view_type)).size > 1;
+    const tipo =
+      set.mode === "carrusel"
+        ? "Carrusel"
+        : multiView
+          ? "Batch multi-vista"
+          : "Generación individual";
+
+    const blocks = ordered.map((job, i) => {
+      const bg = backgrounds.find((b) => b.reference_path === job.background_reference_path);
+      return [
+        `— ${String(i + 1).padStart(2, "0")} · Vista: ${studioViewLabel(job.view_type)}`,
+        `Imagen fuente: ${job.source_photo_path ?? "—"}`,
+        `Modelo: ${job.image_model ?? "—"}`,
+        `Fondo: ${bg?.name ?? job.background_reference_path ?? "—"}`,
+        `Formato: ${job.output_size ?? "—"}`,
+        job.error_message ? `Error: ${job.error_message}` : null,
+        "",
+        job.prompt_used ?? "Sin prompt guardado.",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    });
+
+    return {
+      title: `${STUDIO_KIND_LABELS[set.kind]} — detalles`,
+      body: [`Tipo: ${tipo}`, "", ...blocks].join("\n\n"),
+    };
+  };
+
 
   const handlePreview = (jobId: string, title: string) => {
     const url = urls[jobId];
@@ -544,15 +589,8 @@ export default function EstudioVisual() {
           openWizard(set.kind, { mode: set.mode, prompt: set.jobs[0].prompt_used ?? undefined });
           toast.info("Se cargó la configuración de ese resultado. Sube la foto de la prenda.");
         }}
-        onShowPrompt={(set) =>
-          setPromptDialog({
-            title: `${STUDIO_KIND_LABELS[set.kind]} — prompt`,
-            body:
-              set.status === "fallido"
-                ? `${set.jobs.find((j) => j.error_message)?.error_message ?? "Sin detalle del error."}\n\n---\n\n${set.jobs[0].prompt_used ?? ""}`
-                : set.jobs[0].prompt_used ?? "Sin prompt guardado.",
-          })
-        }
+        onShowPrompt={(set) => setPromptDialog(buildSetDetail(set))}
+
         onRetry={(set) => openWizard(set.kind, { mode: set.mode, prompt: set.jobs[0].prompt_used ?? undefined })}
         onRefresh={loadJobs}
       />
