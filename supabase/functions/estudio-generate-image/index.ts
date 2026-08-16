@@ -329,12 +329,19 @@ Deno.serve(async (req) => {
     }
     if (!aiRes.ok) {
       const errText = await aiRes.text().catch(() => "");
+      // 404 = el id del modelo no existe en el catálogo de OpenRouter (típicamente un
+      // modelo retirado o mal escrito en Configuración). Decirlo explícitamente.
+      const message =
+        aiRes.status === 404
+          ? `El modelo "${imageModel}" ya no existe en OpenRouter. Elige otro modelo o actualiza el catálogo en Configuración.`
+          : `La generación falló (OpenRouter respondió ${aiRes.status}).`;
       await admin.from("estudio_image_jobs").update({
         status: "failed",
         error_message: `OpenRouter respondió ${aiRes.status}: ${errText.slice(0, 300)}`,
       }).eq("id", job.id);
-      return json(200, { error: `La generación falló (OpenRouter respondió ${aiRes.status}).` });
+      return json(200, { error: message });
     }
+
 
     const aiData = await aiRes.json();
     const generatedB64 = aiData?.data?.[0]?.b64_json as string | undefined;

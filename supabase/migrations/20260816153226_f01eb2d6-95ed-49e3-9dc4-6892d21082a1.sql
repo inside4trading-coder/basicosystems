@@ -1,0 +1,3 @@
+UPDATE public.estudio_enabled_models SET model_id = 'bytedance-seed/seedream-5-0-lite' WHERE model_id = 'bytedance-seed/seedream-5.0-lite' AND kind = 'image';
+UPDATE public.estudio_enabled_models SET model_id = 'bytedance-seed/seedream-5-0-pro' WHERE model_id = 'bytedance-seed/seedream-5.0-pro' AND kind = 'image';
+UPDATE public.estudio_enabled_models SET is_enabled = true WHERE kind = 'image' AND model_id IN ('google/gemini-2.5-flash-image','google/gemini-3-pro-image','google/gemini-3.1-flash-image','openai/gpt-5-image','openai/gpt-5-image-mini');
