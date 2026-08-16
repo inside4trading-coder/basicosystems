@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, Copy, Download, DownloadCloud, Eye, FileText, RefreshCw } from "lucide-react";
+import { AlertTriangle, Archive, ArchiveRestore, Copy, Download, DownloadCloud, Eye, FileText, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   STUDIO_KIND_LABELS,
@@ -35,6 +35,7 @@ export interface StudioJob {
   composition_mode: CompositionMode | null;
   cutout_path: string | null;
   composition_path: string | null;
+  archived_at: string | null;
 }
 
 
@@ -66,7 +67,9 @@ export interface StudioSet {
   jobs: StudioJob[];
   status: "listo" | "procesando" | "fallido";
   costUsd: number | null;
+  archived: boolean;
 }
+
 
 type FilterId =
   | "todos"
@@ -107,6 +110,7 @@ export interface StudioResultsProps {
   onUseAsReference: (set: StudioSet) => void;
   onShowPrompt: (set: StudioSet) => void;
   onRetry: (set: StudioSet) => void;
+  onArchive: (set: StudioSet, archived: boolean) => void;
   onRefresh: () => void;
 }
 
@@ -120,14 +124,19 @@ export function StudioResults({
   onUseAsReference,
   onShowPrompt,
   onRetry,
+  onArchive,
   onRefresh,
 }: StudioResultsProps) {
   const [filter, setFilter] = useState<FilterId>("todos");
   const [query, setQuery] = useState("");
+  const [view, setView] = useState<"galeria" | "archivados">("galeria");
+
+  const archivedCount = useMemo(() => sets.filter((s) => s.archived).length, [sets]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return sets.filter((s) => {
+      if (s.archived !== (view === "archivados")) return false;
       const matchesFilter =
         filter === "todos" ||
         (filter === "listos" && s.status === "listo") ||
@@ -149,16 +158,43 @@ export function StudioResults({
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [sets, filter, query]);
+  }, [sets, filter, query, view]);
+
 
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-black tracking-tight">Resultados recientes</h2>
+        <h2 className="text-xl font-black tracking-tight">
+          {view === "archivados" ? "Archivados" : "Resultados recientes"}
+        </h2>
         <Button variant="ghost" size="sm" onClick={onRefresh}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Actualizar
         </Button>
+      </div>
+
+      <div className="inline-flex rounded-full border p-1">
+        <button
+          type="button"
+          onClick={() => setView("galeria")}
+          className={cn(
+            "text-xs rounded-full px-3 py-1.5 transition-colors",
+            view === "galeria" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          Galería ({sets.length - archivedCount})
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("archivados")}
+          className={cn(
+            "text-xs rounded-full px-3 py-1.5 transition-colors inline-flex items-center gap-1.5",
+            view === "archivados" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          <Archive className="h-3.5 w-3.5" />
+          Archivados ({archivedCount})
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -188,7 +224,9 @@ export function StudioResults({
 
       {filtered.length === 0 ? (
         <Card className="p-8 rounded-2xl text-center text-sm text-muted-foreground">
-          No hay resultados que coincidan.
+          {view === "archivados"
+            ? "No hay generaciones archivadas."
+            : "No hay resultados que coincidan."}
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -204,10 +242,12 @@ export function StudioResults({
               onUseAsReference={onUseAsReference}
               onShowPrompt={onShowPrompt}
               onRetry={onRetry}
+              onArchive={onArchive}
             />
           ))}
         </div>
       )}
+
     </section>
   );
 }
@@ -233,6 +273,7 @@ function SetCard({
   onUseAsReference,
   onShowPrompt,
   onRetry,
+  onArchive,
 }: SetCardProps) {
   const [active, setActive] = useState(0);
   const code = `BASICO-STUDIO-${formatStudioSeq(set.seq)}`;
@@ -370,6 +411,7 @@ function SetCard({
                 <FileText className="mr-2 h-4 w-4" />
                 Ver error
               </Button>
+              <ArchiveButton set={set} onArchive={onArchive} />
             </div>
           </div>
         ) : (
@@ -407,8 +449,11 @@ function SetCard({
               <FileText className="mr-2 h-4 w-4" />
               Ver detalles
             </Button>
+            <ArchiveButton set={set} onArchive={onArchive} />
           </div>
         )}
+
+
 
         {set.mode === "carrusel" && !failed && (
           <p className="text-[11px] text-muted-foreground">
@@ -420,3 +465,27 @@ function SetCard({
   );
 }
 
+
+function ArchiveButton({
+  set,
+  onArchive,
+}: {
+  set: StudioSet;
+  onArchive: (set: StudioSet, archived: boolean) => void;
+}) {
+  return (
+    <Button size="sm" variant="ghost" onClick={() => onArchive(set, !set.archived)}>
+      {set.archived ? (
+        <>
+          <ArchiveRestore className="mr-2 h-4 w-4" />
+          Restaurar
+        </>
+      ) : (
+        <>
+          <Archive className="mr-2 h-4 w-4" />
+          Archivar
+        </>
+      )}
+    </Button>
+  );
+}

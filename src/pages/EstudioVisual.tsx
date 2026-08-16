@@ -134,7 +134,7 @@ export default function EstudioVisual() {
     const { data } = await estudioDb
       .from("estudio_image_jobs")
       .select(
-        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, source_photo_path, image_model, output_size, background_reference_path, prompt_used, cost_usd, error_message, composition_mode, cutout_path, composition_path",
+        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, source_photo_path, image_model, output_size, background_reference_path, prompt_used, cost_usd, error_message, composition_mode, cutout_path, composition_path, archived_at",
       )
       .order("created_at", { ascending: false })
       .limit(60);
@@ -484,7 +484,9 @@ export default function EstudioVisual() {
         jobs: items,
         status: anyRunning ? "procesando" : anyDone ? "listo" : "fallido",
         costUsd: costs.length ? costs.reduce((a, b) => a + b, 0) : null,
+        archived: items.every((j) => j.archived_at != null),
       });
+
     }
 
     return built.reverse();
@@ -492,6 +494,26 @@ export default function EstudioVisual() {
 
   const readyJobs = (set: StudioSet) =>
     sortReadyJobs(set.jobs.filter((j) => j.status === "completed" && j.generated_image_path));
+
+  /** Archiva o restaura todas las imágenes del set (no borra nada). */
+  const handleArchive = async (set: StudioSet, archived: boolean) => {
+    const ids = set.jobs.map((j) => j.id);
+    const { error } = await estudioDb
+      .from("estudio_image_jobs")
+      .update({ archived_at: archived ? new Date().toISOString() : null })
+      .in("id", ids);
+    if (error) {
+      toast.error("No se pudo archivar la generación.");
+      return;
+    }
+    setJobs((prev) =>
+      prev.map((j) =>
+        ids.includes(j.id) ? { ...j, archived_at: archived ? new Date().toISOString() : null } : j,
+      ),
+    );
+    toast.success(archived ? "Generación archivada." : "Generación restaurada.");
+  };
+
 
   const handleDownloadJob = async (set: StudioSet, job: StudioJob, index: number) => {
     if (!job.generated_image_path) return;
@@ -579,6 +601,7 @@ export default function EstudioVisual() {
       <StudioResults
         sets={sets}
         urls={urls}
+        onArchive={handleArchive}
         onPreview={handlePreview}
         onDownloadJob={handleDownloadJob}
         onDownloadAll={handleDownloadAll}
