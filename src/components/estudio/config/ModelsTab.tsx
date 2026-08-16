@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { estudioDb } from "@/lib/estudioDb";
 import { readEdgeFunctionError } from "@/lib/estudioErrors";
-import { estimatedImageCost, type CatalogModel, type EnabledModel, type ModelKind } from "@/lib/estudioModels";
+import { estimatedImageCost, IMAGE_MODEL_PRESENTATION, type CatalogModel, type EnabledModel, type ModelKind } from "@/lib/estudioModels";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
