@@ -511,6 +511,39 @@ export default function EstudioVisual() {
     toast.success("Las imágenes se descargan en orden.");
   };
 
+  /** Detalle por vista: fuente usada, modelo, fondo, formato y prompt. */
+  const buildSetDetail = (set: StudioSet): { title: string; body: string } => {
+    const ordered = sortReadyJobs(set.jobs);
+    const multiView = set.mode !== "carrusel" && new Set(ordered.map((j) => j.view_type)).size > 1;
+    const tipo =
+      set.mode === "carrusel"
+        ? "Carrusel"
+        : multiView
+          ? "Batch multi-vista"
+          : "Generación individual";
+
+    const blocks = ordered.map((job, i) => {
+      const bg = backgrounds.find((b) => b.reference_path === job.background_reference_path);
+      return [
+        `— ${String(i + 1).padStart(2, "0")} · Vista: ${studioViewLabel(job.view_type)}`,
+        `Imagen fuente: ${job.source_photo_path ?? "—"}`,
+        `Modelo: ${job.image_model ?? "—"}`,
+        `Fondo: ${bg?.name ?? job.background_reference_path ?? "—"}`,
+        `Formato: ${job.output_size ?? "—"}`,
+        job.error_message ? `Error: ${job.error_message}` : null,
+        "",
+        job.prompt_used ?? "Sin prompt guardado.",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    });
+
+    return {
+      title: `${STUDIO_KIND_LABELS[set.kind]} — detalles`,
+      body: [`Tipo: ${tipo}`, "", ...blocks].join("\n\n"),
+    };
+  };
+
 
   const handlePreview = (jobId: string, title: string) => {
     const url = urls[jobId];
