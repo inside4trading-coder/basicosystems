@@ -27,24 +27,25 @@ let cache: { at: number; image: OpenRouterModel[]; video: OpenRouterModel[] } | 
 async function fetchCatalog() {
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache;
 
-  const [allRes, videoRes] = await Promise.all([
-    fetch("https://openrouter.ai/api/v1/models"),
+  // Los modelos de imagen viven en su propio catálogo: `/v1/models` ya no los publica y
+  // filtrarlo por `output_modalities` devolvía una lista vieja con ids inexistentes (404
+  // al generar). `/v1/images/models` es la misma fuente que usa la función de generación.
+  const [imageRes, videoRes] = await Promise.all([
+    fetch("https://openrouter.ai/api/v1/images/models"),
     fetch("https://openrouter.ai/api/v1/models?output_modality=video"),
   ]);
-  if (!allRes.ok || !videoRes.ok) throw new Error("No se pudo leer el catálogo de OpenRouter.");
+  if (!imageRes.ok || !videoRes.ok) throw new Error("No se pudo leer el catálogo de OpenRouter.");
 
-  const all = (await allRes.json())?.data as OpenRouterModel[] ?? [];
+  const imageAll = (await imageRes.json())?.data as OpenRouterModel[] ?? [];
   const video = (await videoRes.json())?.data as OpenRouterModel[] ?? [];
 
-  const image = all.filter((m) =>
-    (m.architecture?.output_modalities ?? []).includes("image") &&
-    // Los routers automáticos no sirven para generación dirigida de producto.
-    !m.id.startsWith("openrouter/auto")
-  );
+  // Los routers automáticos no sirven para generación dirigida de producto.
+  const image = imageAll.filter((m) => !m.id.startsWith("openrouter/auto"));
 
   cache = { at: Date.now(), image, video };
   return cache;
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
