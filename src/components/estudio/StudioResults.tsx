@@ -272,6 +272,7 @@ function SetCard({
   onUseAsReference,
   onShowPrompt,
   onRetry,
+  onArchive,
 }: SetCardProps) {
   const [active, setActive] = useState(0);
   const code = `BASICO-STUDIO-${formatStudioSeq(set.seq)}`;
