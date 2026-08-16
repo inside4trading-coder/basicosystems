@@ -21,7 +21,12 @@ import {
   type ViewInput,
   type ViewType,
 } from "@/components/estudio/StudioWizard";
-import { StudioResults, type StudioJob, type StudioSet } from "@/components/estudio/StudioResults";
+import {
+  StudioResults,
+  sortReadyJobs,
+  type StudioJob,
+  type StudioSet,
+} from "@/components/estudio/StudioResults";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   STUDIO_KIND_LABELS,
