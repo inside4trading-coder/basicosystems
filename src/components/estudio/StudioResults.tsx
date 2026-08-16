@@ -101,7 +101,7 @@ export interface StudioResultsProps {
   sets: StudioSet[];
   urls: Record<string, string>;
   onPreview: (jobId: string, title: string) => void;
-  onDownloadJob: (set: StudioSet, index: number) => void;
+  onDownloadJob: (set: StudioSet, job: StudioJob, index: number) => void;
   onDownloadAll: (set: StudioSet) => void;
   onDuplicate: (set: StudioSet) => void;
   onUseAsReference: (set: StudioSet) => void;
