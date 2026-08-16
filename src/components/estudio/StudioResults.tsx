@@ -410,6 +410,7 @@ function SetCard({
                 <FileText className="mr-2 h-4 w-4" />
                 Ver error
               </Button>
+              <ArchiveButton set={set} onArchive={onArchive} />
             </div>
           </div>
         ) : (
@@ -447,6 +448,10 @@ function SetCard({
               <FileText className="mr-2 h-4 w-4" />
               Ver detalles
             </Button>
+            <ArchiveButton set={set} onArchive={onArchive} />
+          </div>
+        )}
+
           </div>
         )}
 
