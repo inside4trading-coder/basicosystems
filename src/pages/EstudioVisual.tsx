@@ -484,7 +484,9 @@ export default function EstudioVisual() {
         jobs: items,
         status: anyRunning ? "procesando" : anyDone ? "listo" : "fallido",
         costUsd: costs.length ? costs.reduce((a, b) => a + b, 0) : null,
+        archived: items.every((j) => j.archived_at != null),
       });
+
     }
 
     return built.reverse();
