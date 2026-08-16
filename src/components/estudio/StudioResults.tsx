@@ -464,3 +464,27 @@ function SetCard({
   );
 }
 
+
+function ArchiveButton({
+  set,
+  onArchive,
+}: {
+  set: StudioSet;
+  onArchive: (set: StudioSet, archived: boolean) => void;
+}) {
+  return (
+    <Button size="sm" variant="ghost" onClick={() => onArchive(set, !set.archived)}>
+      {set.archived ? (
+        <>
+          <ArchiveRestore className="mr-2 h-4 w-4" />
+          Restaurar
+        </>
+      ) : (
+        <>
+          <Archive className="mr-2 h-4 w-4" />
+          Archivar
+        </>
+      )}
+    </Button>
+  );
+}
