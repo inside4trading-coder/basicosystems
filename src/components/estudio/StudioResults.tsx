@@ -35,6 +35,7 @@ export interface StudioJob {
   composition_mode: CompositionMode | null;
   cutout_path: string | null;
   composition_path: string | null;
+  archived_at: string | null;
 }
 
 
