@@ -485,21 +485,27 @@ export default function EstudioVisual() {
   }, [jobs]);
 
   const readyJobs = (set: StudioSet) =>
-    set.jobs.filter((j) => j.status === "completed" && j.generated_image_path);
+    sortReadyJobs(set.jobs.filter((j) => j.status === "completed" && j.generated_image_path));
 
-  const handleDownloadJob = async (set: StudioSet, index: number) => {
-    const job = readyJobs(set)[index];
-    if (!job?.generated_image_path) return;
-    await downloadEstudioImage(job.generated_image_path, studioFileName(set.seq, index + 1));
+  const handleDownloadJob = async (set: StudioSet, job: StudioJob, index: number) => {
+    if (!job.generated_image_path) return;
+    await downloadEstudioImage(
+      job.generated_image_path,
+      studioFileName(set.seq, index + 1, set.mode === "carrusel" ? null : job.view_type),
+    );
   };
 
   const handleDownloadAll = async (set: StudioSet) => {
     const ready = readyJobs(set);
     for (let i = 0; i < ready.length; i++) {
-      await downloadEstudioImage(ready[i].generated_image_path!, studioFileName(set.seq, i + 1));
+      await downloadEstudioImage(
+        ready[i].generated_image_path!,
+        studioFileName(set.seq, i + 1, set.mode === "carrusel" ? null : ready[i].view_type),
+      );
     }
-    toast.success("Las imágenes se descargan en orden para carrusel.");
+    toast.success("Las imágenes se descargan en orden.");
   };
+
 
   const handlePreview = (jobId: string, title: string) => {
     const url = urls[jobId];
