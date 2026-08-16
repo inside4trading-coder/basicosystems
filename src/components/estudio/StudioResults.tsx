@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import {
   STUDIO_KIND_LABELS,
   formatStudioSeq,
+  studioViewLabel,
+  studioViewRank,
   type StudioKind,
   type StudioMode,
 } from "@/lib/estudioNaming";
@@ -23,6 +25,10 @@ export interface StudioJob {
   is_inferred: boolean | null;
   uses_model_reference: boolean | null;
   generated_image_path: string | null;
+  source_photo_path: string | null;
+  image_model: string | null;
+  output_size: string | null;
+  background_reference_path: string | null;
   prompt_used: string | null;
   cost_usd: number | null;
   error_message: string | null;
@@ -30,6 +36,7 @@ export interface StudioJob {
   cutout_path: string | null;
   composition_path: string | null;
 }
+
 
 const COMPOSITION_BADGES: Record<CompositionMode, { label: string; hint: string; className: string }> = {
   generative: {
