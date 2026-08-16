@@ -581,6 +581,7 @@ export default function EstudioVisual() {
       <StudioResults
         sets={sets}
         urls={urls}
+        onArchive={handleArchive}
         onPreview={handlePreview}
         onDownloadJob={handleDownloadJob}
         onDownloadAll={handleDownloadAll}
