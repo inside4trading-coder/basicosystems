@@ -1,0 +1,1 @@
+delete from public.estudio_image_jobs where id not in (select id from public.estudio_image_jobs order by created_at desc limit 3);
