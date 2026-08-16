@@ -34,6 +34,7 @@ import {
   nextStudioSeq,
   saveStudioSetMeta,
   studioFileName,
+  studioViewLabel,
   type StudioKind,
   type StudioMode,
 } from "@/lib/estudioNaming";
