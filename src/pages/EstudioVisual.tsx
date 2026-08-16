@@ -495,6 +495,26 @@ export default function EstudioVisual() {
   const readyJobs = (set: StudioSet) =>
     sortReadyJobs(set.jobs.filter((j) => j.status === "completed" && j.generated_image_path));
 
+  /** Archiva o restaura todas las imágenes del set (no borra nada). */
+  const handleArchive = async (set: StudioSet, archived: boolean) => {
+    const ids = set.jobs.map((j) => j.id);
+    const { error } = await estudioDb
+      .from("estudio_image_jobs")
+      .update({ archived_at: archived ? new Date().toISOString() : null })
+      .in("id", ids);
+    if (error) {
+      toast.error("No se pudo archivar la generación.");
+      return;
+    }
+    setJobs((prev) =>
+      prev.map((j) =>
+        ids.includes(j.id) ? { ...j, archived_at: archived ? new Date().toISOString() : null } : j,
+      ),
+    );
+    toast.success(archived ? "Generación archivada." : "Generación restaurada.");
+  };
+
+
   const handleDownloadJob = async (set: StudioSet, job: StudioJob, index: number) => {
     if (!job.generated_image_path) return;
     await downloadEstudioImage(
