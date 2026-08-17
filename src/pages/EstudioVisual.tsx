@@ -210,10 +210,11 @@ export default function EstudioVisual() {
       }
       // Cada card tiene su propia fila de prompt base; transparente cae en catálogo
       // mientras no se haya guardado la suya.
-      return (
+      const found =
         findBasePreset(presets as StudioPromptPreset[], kind) ??
-        (kind === "transparente" ? findBasePreset(presets as StudioPromptPreset[], "catalogo") : null)
-      );
+        (kind === "transparente" ? findBasePreset(presets as StudioPromptPreset[], "catalogo") : null);
+      return found ? (presets.find((p) => p.id === found.id) ?? null) : null;
+
     },
     [presets],
   );
