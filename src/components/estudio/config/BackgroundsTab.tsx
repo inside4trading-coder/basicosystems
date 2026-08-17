@@ -281,7 +281,7 @@ export default function BackgroundsTab({ startNew = false }: { startNew?: boolea
         <Card className="p-4 rounded-2xl space-y-3">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
-              Prompts por modelo
+              Prompt por modelo para este fondo
             </p>
             <span className="text-xs text-muted-foreground">
               {configuredCount} de {models.length} configurados

@@ -46,6 +46,7 @@ import {
   uploadEstudioComposition,
 } from "@/lib/estudioStorage";
 import { composeCutoutOnBackground } from "@/lib/estudioCompositing";
+import { findBasePreset, type StudioPromptPreset } from "@/lib/estudioPrompts";
 
 
 interface PromptPreset {
@@ -203,9 +204,17 @@ export default function EstudioVisual() {
 
   const presetForKind = useCallback(
     (kind: StudioKind): PromptPreset | null => {
-      const photoType = kind === "dinamico" ? "mockup" : "fondo_blanco";
-      const pool = presets.filter((p) => p.photo_type === photoType);
-      return pool.find((p) => p.is_default) ?? pool[0] ?? presets[0] ?? null;
+      if (kind === "dinamico") {
+        const pool = presets.filter((p) => p.photo_type === "mockup");
+        return pool.find((p) => p.is_default) ?? pool[0] ?? null;
+      }
+      // Cada card tiene su propia fila de prompt base; transparente cae en catálogo
+      // mientras no se haya guardado la suya.
+      const found =
+        findBasePreset(presets as StudioPromptPreset[], kind) ??
+        (kind === "transparente" ? findBasePreset(presets as StudioPromptPreset[], "catalogo") : null);
+      return found ? (presets.find((p) => p.id === found.id) ?? null) : null;
+
     },
     [presets],
   );
@@ -225,11 +234,11 @@ export default function EstudioVisual() {
       setMode(kind === "dinamico" ? opts?.mode ?? "individual" : "individual");
       setFormat(opts?.format ?? "4:5");
       setPromptText(opts?.prompt ?? basePromptFor(kind));
-      const preset = presetForKind(kind);
-      if (preset?.image_model) setImageModel(preset.image_model);
+      // El modelo ya no viene del preset: se elige en el asistente.
     },
-    [basePromptFor, presetForKind],
+    [basePromptFor],
   );
+
 
   const closeWizard = () => {
     setCutout((prev) => {

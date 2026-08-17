@@ -13,7 +13,6 @@ import { ManageDialogButton } from "@/components/estudio/DropdownWithManageDialo
 import ModelsTab from "@/components/estudio/config/ModelsTab";
 import PromptTab from "@/components/estudio/config/PromptTab";
 import BrandTab from "@/components/estudio/config/BrandTab";
-import BackgroundsTab from "@/components/estudio/config/BackgroundsTab";
 import { StudioBackgroundStep } from "@/components/estudio/StudioBackgroundStep";
 import type { StudioBackground } from "@/lib/estudioBackgrounds";
 import { cn } from "@/lib/utils";
@@ -210,6 +209,10 @@ export function StudioWizard(props: StudioWizardProps) {
   const missingModel = !imageModel || !selectedModel?.available;
   const missingBackgroundPrompt =
     kind === "dinamico" && !!backgroundId && backgroundPrompt === null && !promptText.trim();
+  /** Catálogo y transparente dependen de su prompt base: sin él no se gasta crédito. */
+  const missingBasePrompt = kind !== "dinamico" && !promptText.trim();
+
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -503,7 +506,7 @@ export function StudioWizard(props: StudioWizardProps) {
                   generating ||
                   !views.frente.file ||
                   missingBackground ||
-                  (!hasCutout && (missingModel || missingBackgroundPrompt))
+                  (!hasCutout && (missingModel || missingBackgroundPrompt || missingBasePrompt))
                 }
                 size="lg"
               >
@@ -522,6 +525,11 @@ export function StudioWizard(props: StudioWizardProps) {
             {missingBackground && (
               <p className="text-xs text-muted-foreground mt-2">
                 Elige un fondo para poder generar.
+              </p>
+            )}
+            {missingBasePrompt && (
+              <p className="text-xs text-destructive mt-2">
+                Falta el prompt base de “{STUDIO_KIND_LABELS[kind]}”. Configúralo en “Prompts BASICO STUDIO”.
               </p>
             )}
 
@@ -598,11 +606,14 @@ export function StudioWizard(props: StudioWizardProps) {
 
                 <div className="flex flex-wrap gap-2">
                   <ManageDialogButton
-                    buttonLabel="Estilos de fotografía"
+                    buttonLabel="Prompts BASICO STUDIO"
                     manage={{
-                      title: "Estilos de fotografía",
-                      description: "Prompt y modelo por defecto de cada estilo.",
-                      onClose: onPresetsDialogClose,
+                      title: "Prompts BASICO STUDIO",
+                      description: "Configura el prompt base de cada tipo de generación.",
+                      onClose: () => {
+                        onPresetsDialogClose();
+                        onBackgroundsChanged?.();
+                      },
                       children: <PromptTab />,
                     }}
                   />
@@ -615,17 +626,6 @@ export function StudioWizard(props: StudioWizardProps) {
                       children: <ModelsTab />,
                     }}
                   />
-                  {kind === "dinamico" && (
-                    <ManageDialogButton
-                      buttonLabel="Fondos dinámicos"
-                      manage={{
-                        title: "Fondos dinámicos",
-                        description: "Portada, imagen de referencia y prompt por modelo de cada fondo.",
-                        onClose: () => onBackgroundsChanged?.(),
-                        children: <BackgroundsTab />,
-                      }}
-                    />
-                  )}
                   <ManageDialogButton
                     buttonLabel="Preset de marca BASICO"
                     manage={{
