@@ -46,6 +46,7 @@ import {
   uploadEstudioComposition,
 } from "@/lib/estudioStorage";
 import { composeCutoutOnBackground } from "@/lib/estudioCompositing";
+import { findBasePreset, type StudioPromptPreset } from "@/lib/estudioPrompts";
 
 
 interface PromptPreset {
