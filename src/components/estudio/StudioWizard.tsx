@@ -502,7 +502,7 @@ export function StudioWizard(props: StudioWizardProps) {
                   generating ||
                   !views.frente.file ||
                   missingBackground ||
-                  (!hasCutout && (missingModel || missingBackgroundPrompt))
+                  (!hasCutout && (missingModel || missingBackgroundPrompt || missingBasePrompt))
                 }
                 size="lg"
               >
@@ -521,6 +521,11 @@ export function StudioWizard(props: StudioWizardProps) {
             {missingBackground && (
               <p className="text-xs text-muted-foreground mt-2">
                 Elige un fondo para poder generar.
+              </p>
+            )}
+            {missingBasePrompt && (
+              <p className="text-xs text-destructive mt-2">
+                Falta el prompt base de “{STUDIO_KIND_LABELS[kind]}”. Configúralo en “Prompts BASICO STUDIO”.
               </p>
             )}
 
