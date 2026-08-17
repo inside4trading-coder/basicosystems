@@ -209,6 +209,10 @@ export function StudioWizard(props: StudioWizardProps) {
   const missingModel = !imageModel || !selectedModel?.available;
   const missingBackgroundPrompt =
     kind === "dinamico" && !!backgroundId && backgroundPrompt === null && !promptText.trim();
+  /** Catálogo y transparente dependen de su prompt base: sin él no se gasta crédito. */
+  const missingBasePrompt = kind !== "dinamico" && !promptText.trim();
+
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
