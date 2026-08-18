@@ -612,6 +612,10 @@ export default function EstudioVisual() {
         `Modelo: ${job.image_model ?? "—"}`,
         `Fondo: ${bg?.name ?? job.background_reference_path ?? "—"}`,
         `Formato: ${job.output_size ?? "—"}`,
+        job.catalog_background_color
+          ? `Color de fondo: ${job.catalog_background_color} (${job.background_color_source ?? "default"})`
+          : null,
+        `Composición: ${job.composition_mode ?? "generative"}`,
         job.garment_notes ? `\nDetalles de la prenda:\n${job.garment_notes}` : null,
         job.error_message ? `Error: ${job.error_message}` : null,
         "",
@@ -631,8 +635,9 @@ export default function EstudioVisual() {
   /** Reabre el asistente con el prompt base y las notas de esa generación (sin duplicarlas). */
   const reopenOptions = (set: StudioSet) => ({
     mode: set.mode,
-    prompt: stripGarmentNotes(set.jobs[0].prompt_used) || undefined,
+    prompt: stripCatalogBackground(stripGarmentNotes(set.jobs[0].prompt_used)) || undefined,
     notes: set.jobs[0].garment_notes ?? undefined,
+    catalogBgColor: set.jobs[0].catalog_background_color ?? undefined,
   });
 
 
