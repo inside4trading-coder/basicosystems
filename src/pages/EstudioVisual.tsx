@@ -89,6 +89,9 @@ export default function EstudioVisual() {
   const [format, setFormat] = useState("4:5");
   const [mode, setMode] = useState<StudioMode>("individual");
   const [promptText, setPromptText] = useState("");
+  /** Contexto extra por prenda: se inyecta en el prompt final y se guarda con el job. */
+  const [garmentNotes, setGarmentNotes] = useState("");
+
   const [generating, setGenerating] = useState(false);
 
   const [views, setViews] = useState<Record<ViewType, ViewInput>>({
