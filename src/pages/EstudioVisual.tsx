@@ -100,6 +100,8 @@ export default function EstudioVisual() {
   const [promptText, setPromptText] = useState("");
   /** Contexto extra por prenda: se inyecta en el prompt final y se guarda con el job. */
   const [garmentNotes, setGarmentNotes] = useState("");
+  /** Color de fondo de "Foto para catálogo": default gris BASICO, editable por generación. */
+  const [catalogBgColor, setCatalogBgColor] = useState(DEFAULT_CATALOG_BG);
 
   const [generating, setGenerating] = useState(false);
 
