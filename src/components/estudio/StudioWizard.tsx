@@ -132,6 +132,10 @@ export interface StudioWizardProps {
 
   promptText: string;
   onPromptChange: (v: string) => void;
+  /** Contexto extra por prenda que se inyecta en el prompt final. */
+  garmentNotes: string;
+  onGarmentNotesChange: (v: string) => void;
+
   imageModels: EnabledModel[];
   imageModel: string;
   onImageModelChange: (v: string) => void;
