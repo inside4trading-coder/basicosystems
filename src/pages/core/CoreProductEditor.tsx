@@ -219,12 +219,13 @@ export default function CoreProductEditor() {
     const prefilled: string[] = [];
     if (!name.trim() && s.name) { setName(s.name); prefilled.push("nombre"); }
 
-    // Si la estructura está conectada a WooCommerce, el SKU Core = SKU principal de Woo
-    const wooSkuFromStructure = s.woo_product_id && s.sku ? s.sku : null;
+    // Si la estructura está conectada a WooCommerce, el SKU comercial visible = SKU Woo.
+    // El SKU interno (core_sku) NO se sobreescribe: se conserva como código interno/fallback.
+    const wooSkuFromStructure = s.woo_product_id && s.sku ? String(s.sku).trim() : null;
     if (wooSkuFromStructure) {
-      setCoreSku(wooSkuFromStructure);
-      prefilled.push("SKU Core (desde Woo)");
-    } else if (!coreSku.trim() && s.sku) {
+      setWooSku(wooSkuFromStructure);
+      prefilled.push("SKU Woo");
+    } else if (isNew && !coreSku.trim() && s.sku) {
       setCoreSku(s.sku);
       prefilled.push("SKU");
     }
@@ -234,7 +235,6 @@ export default function CoreProductEditor() {
       setWooProductId(Number(s.woo_product_id));
       if (s.woo_product_name) setWooProductName(s.woo_product_name);
       if (s.woo_permalink) setWooPermalink(s.woo_permalink);
-      if (s.sku) setWooSku(s.sku);
       prefilled.push("Woo ID");
     }
 
@@ -392,7 +392,8 @@ export default function CoreProductEditor() {
         suggested_fabrication_fund: suggestedFund,
         woo_product_id: wooProductId ? Number(wooProductId) : null,
         woo_product_name: wooProductName || null,
-        woo_sku: wooSku || null,
+        woo_sku: wooSku.trim() || null,
+        sku_source: wooSku.trim() ? "woocommerce" : "interno",
         woo_permalink: wooPermalink || null,
         woo_status: wooStatus || null,
         woo_stock_quantity: typeof wooStockQuantity === "number" ? wooStockQuantity : null,
@@ -535,14 +536,26 @@ export default function CoreProductEditor() {
     if (productId) {
       const { data: { user } } = await supabase.auth.getUser();
       // Persistir el costo operativo del producto (no solo el historial)
-      const { error: upErr } = await supabase.from("core_products").update({
+      const detectedWooSku = s.woo_product_id && s.sku ? String(s.sku).trim() : null;
+      const upPayload: any = {
         cost_structure_id: costStructureId,
         cost_snapshot: snap as any,
         unit_cost: newUnitCost,
         currency: s.base_currency,
         updated_at: new Date().toISOString(),
         updated_by: user?.id ?? null,
-      } as any).eq("id", productId);
+      };
+      if (s.woo_product_id) {
+        upPayload.woo_product_id = Number(s.woo_product_id);
+        if (s.woo_product_name) upPayload.woo_product_name = s.woo_product_name;
+        if (s.woo_permalink) upPayload.woo_permalink = s.woo_permalink;
+        upPayload.woo_last_sync_at = new Date().toISOString();
+      }
+      if (detectedWooSku) {
+        upPayload.woo_sku = detectedWooSku;
+        upPayload.sku_source = "woocommerce";
+      }
+      const { error: upErr } = await supabase.from("core_products").update(upPayload).eq("id", productId);
       if (upErr) { toast.error("No se pudo guardar el costo: " + upErr.message); return; }
 
       await supabase.from("core_product_cost_snapshots").insert({
@@ -575,8 +588,14 @@ export default function CoreProductEditor() {
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/core/productos")}><ArrowLeft className="h-4 w-4" /></Button>
           <div>
-            <h1 className="text-2xl font-black tracking-tight">{isNew ? "Nuevo producto de fabricación" : `${coreSku} — ${name || "Producto"}`}</h1>
-            <p className="text-xs text-muted-foreground">{isNew ? `SKU asignado al guardar: ${coreSku}` : `SKU: ${coreSku}`}</p>
+            <h1 className="text-2xl font-black tracking-tight">{isNew ? "Nuevo producto de fabricación" : `${wooSku.trim() || coreSku} — ${name || "Producto"}`}</h1>
+            <p className="text-xs text-muted-foreground">
+              {isNew
+                ? `SKU interno asignado al guardar: ${coreSku}`
+                : wooSku.trim()
+                  ? `SKU interno: ${coreSku}`
+                  : `SKU Woo: sin SKU · SKU interno: ${coreSku}`}
+            </p>
           </div>
         </div>
         <Button onClick={handleSave} disabled={saving}><Save className="h-4 w-4 mr-1" />{saving ? "Guardando…" : "Guardar"}</Button>
@@ -595,15 +614,15 @@ export default function CoreProductEditor() {
           <Card className="p-5 space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <Label>SKU Core</Label>
+                <Label>SKU interno (fabricación)</Label>
                 <div className="flex gap-2">
                   <Input value={coreSku} readOnly className="font-mono font-semibold bg-muted" />
                   {isNew && <Button variant="outline" size="icon" onClick={suggestNextSku} title="Refrescar"><RefreshCw className="h-4 w-4" /></Button>}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {wooSku.trim()
-                    ? <>Usando el SKU de WooCommerce (<span className="font-mono">{wooSku}</span>) para facilitar la reposición.</>
-                    : "Generado automáticamente desde Configuración Core. Si conectas WooCommerce, se usará el SKU de Woo."}
+                    ? <>SKU visible en catálogo: <span className="font-mono">{wooSku}</span> (WooCommerce). El interno se conserva como fallback.</>
+                    : "Generado automáticamente desde Configuración Core. Si hay SKU en WooCommerce, ese será el SKU visible."}
                 </p>
               </div>
               <div>
