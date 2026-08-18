@@ -243,6 +243,8 @@ Deno.serve(async (req) => {
         photo_type: photoType,
         prompt_preset_id: presetId,
         prompt_used: promptText,
+        garment_notes: garmentNotes,
+
         image_model: imageModel,
         output_size: aspectRatio,
         session_id: sessionId,
