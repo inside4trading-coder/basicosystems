@@ -185,6 +185,8 @@ export function StudioWizard(props: StudioWizardProps) {
     onPromptChange,
     garmentNotes,
     onGarmentNotesChange,
+    catalogBgColor = DEFAULT_CATALOG_BG,
+    onCatalogBgColorChange,
 
     imageModels,
     imageModel,
