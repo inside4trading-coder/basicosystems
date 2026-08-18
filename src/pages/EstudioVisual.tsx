@@ -428,7 +428,9 @@ export default function EstudioVisual() {
                   kind === "dinamico" ? selectedBackground?.reference_path ?? undefined : undefined,
                 photoType: preset.photo_type,
                 promptPresetId: preset.id,
-                promptOverride: `${promptText}${item.suffix ?? ""}`,
+                promptOverride: withGarmentNotes(`${promptText}${item.suffix ?? ""}`, garmentNotes),
+                garmentNotes: garmentNotes.trim() || undefined,
+
                 imageModel: imageModel || undefined,
                 outputSize: format,
                 sessionId,
