@@ -672,6 +672,9 @@ export default function EstudioVisual() {
 
           promptText={promptText}
           onPromptChange={setPromptText}
+          garmentNotes={garmentNotes}
+          onGarmentNotesChange={setGarmentNotes}
+
           imageModels={imageModels}
           imageModel={imageModel}
           onImageModelChange={setImageModel}
