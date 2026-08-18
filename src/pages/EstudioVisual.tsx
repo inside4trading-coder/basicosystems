@@ -232,11 +232,15 @@ export default function EstudioVisual() {
   );
 
   const openWizard = useCallback(
-    (kind: StudioKind, opts?: { format?: string; mode?: StudioMode; prompt?: string }) => {
+    (
+      kind: StudioKind,
+      opts?: { format?: string; mode?: StudioMode; prompt?: string; notes?: string },
+    ) => {
       setWizardKind(kind);
       setMode(kind === "dinamico" ? opts?.mode ?? "individual" : "individual");
       setFormat(opts?.format ?? "4:5");
       setPromptText(opts?.prompt ?? basePromptFor(kind));
+      setGarmentNotes(opts?.notes ?? "");
       // El modelo ya no viene del preset: se elige en el asistente.
     },
     [basePromptFor],
@@ -248,8 +252,10 @@ export default function EstudioVisual() {
       if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
       return emptyViewInput();
     });
+    setGarmentNotes("");
     setWizardKind(null);
   };
+
 
 
   const setViewFile = (view: ViewType, file: File | null) => {
