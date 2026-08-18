@@ -127,13 +127,17 @@ export default function CoreProducts() {
     if (error) { toast.error(error.message); return; }
     const list = ((data as any) ?? []) as Variant[];
     // Resolve cost per variant with source
+    let rpcError: string | null = null;
     const enriched = await Promise.all(list.map(async v => {
-      const { data: r } = await supabase.rpc("resolve_core_variant_unit_cost_with_source" as any, {
+      const { data: r, error: rErr } = await supabase.rpc("resolve_core_variant_unit_cost_with_source" as any, {
         p_product_id: productId, p_variant_id: v.id,
       });
+      if (rErr) rpcError = rErr.message;
       const row = Array.isArray(r) ? r[0] : r;
       return { ...v, resolved_unit_cost: Number(row?.unit_cost ?? 0), cost_source: row?.cost_source ?? "zero_fallback" };
     }));
+    if (rpcError) toast.error("No se pudo resolver el costo de las variantes: " + rpcError);
+
     setVariantsByProduct(prev => {
       const m = new Map(prev);
       m.set(productId, enriched);
