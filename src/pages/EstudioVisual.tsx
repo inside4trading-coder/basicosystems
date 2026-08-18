@@ -627,16 +627,15 @@ export default function EstudioVisual() {
         onPreview={handlePreview}
         onDownloadJob={handleDownloadJob}
         onDownloadAll={handleDownloadAll}
-        onDuplicate={(set) =>
-          openWizard(set.kind, { mode: set.mode, prompt: set.jobs[0].prompt_used ?? undefined })
-        }
+        onDuplicate={(set) => openWizard(set.kind, reopenOptions(set))}
         onUseAsReference={(set) => {
-          openWizard(set.kind, { mode: set.mode, prompt: set.jobs[0].prompt_used ?? undefined });
+          openWizard(set.kind, reopenOptions(set));
           toast.info("Se cargó la configuración de ese resultado. Sube la foto de la prenda.");
         }}
         onShowPrompt={(set) => setPromptDialog(buildSetDetail(set))}
 
-        onRetry={(set) => openWizard(set.kind, { mode: set.mode, prompt: set.jobs[0].prompt_used ?? undefined })}
+        onRetry={(set) => openWizard(set.kind, reopenOptions(set))}
+
         onRefresh={loadJobs}
       />
 
