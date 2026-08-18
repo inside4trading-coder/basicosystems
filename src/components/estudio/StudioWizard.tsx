@@ -178,6 +178,9 @@ export function StudioWizard(props: StudioWizardProps) {
 
     promptText,
     onPromptChange,
+    garmentNotes,
+    onGarmentNotesChange,
+
     imageModels,
     imageModel,
     onImageModelChange,
