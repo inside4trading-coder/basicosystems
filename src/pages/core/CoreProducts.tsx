@@ -536,11 +536,14 @@ export default function CoreProducts() {
                                     {vars.map(v => {
                                       const src = v.cost_source ?? "product_unit_cost";
                                       const srcLabel: Record<string, { label: string; cls: string }> = {
-                                        variant_override: { label: "variant_override", cls: "border-red-600 text-red-700" },
-                                        product_base: { label: "product_base", cls: "border-muted-foreground text-muted-foreground" },
-                                        product_unit_cost: { label: "product_unit_cost", cls: "border-muted-foreground text-muted-foreground" },
-                                        zero_fallback: { label: "zero_fallback", cls: "border-amber-600 text-amber-700" },
+                                        variant_override: { label: "Estructura propia", cls: "border-red-600 text-red-700" },
+                                        variant_manual: { label: "Costo manual variante", cls: "border-red-600 text-red-700" },
+                                        product_base: { label: "Estructura base", cls: "border-muted-foreground text-muted-foreground" },
+                                        product_manual: { label: "Costo manual producto", cls: "border-muted-foreground text-muted-foreground" },
+                                        product_unit_cost: { label: "Costo base producto", cls: "border-muted-foreground text-muted-foreground" },
+                                        zero_fallback: { label: "Sin costo", cls: "border-amber-600 text-amber-700" },
                                       };
+
                                       const sInfo = srcLabel[src] ?? srcLabel.product_unit_cost;
                                       return (
                                         <TableRow key={v.id} className={cn(v.status !== "active" && "opacity-60")}>
