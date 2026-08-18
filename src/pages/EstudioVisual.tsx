@@ -333,7 +333,10 @@ export default function EstudioVisual() {
       return;
     }
     const cutoutFile = cutout.file;
-    const useComposition = Boolean(cutoutFile) && (kind === "transparente" || kind === "dinamico");
+    const useComposition = Boolean(cutoutFile);
+
+    // Prioridad del color de catálogo: UI > notas > gris BASICO.
+    const catalogBg = resolveCatalogBackground(catalogBgColor, garmentNotes);
 
     if (kind === "dinamico") {
       if (!selectedBackground) {
@@ -358,12 +361,18 @@ export default function EstudioVisual() {
         let compositionPath: string | null = null;
         let compositionMode: "cutout_ready" | "composited" = "cutout_ready";
 
-        if (kind === "dinamico") {
-          const backgroundUrl = selectedBackground ? backgroundUrls[selectedBackground.id] : null;
-          if (!backgroundUrl) throw new Error("No se pudo cargar la imagen del fondo elegido.");
+        if (kind === "dinamico" || kind === "catalogo") {
+          const backgroundUrl =
+            kind === "dinamico" && selectedBackground ? backgroundUrls[selectedBackground.id] : null;
+          if (kind === "dinamico" && !backgroundUrl) {
+            throw new Error("No se pudo cargar la imagen del fondo elegido.");
+          }
           const cutoutUrl = URL.createObjectURL(cutoutFile);
           try {
-            const blob = await composeCutoutOnBackground(backgroundUrl, cutoutUrl, format);
+            const blob =
+              kind === "catalogo"
+                ? await composeCutoutOnSolidColor(cutoutUrl, catalogBg.color, format)
+                : await composeCutoutOnBackground(backgroundUrl!, cutoutUrl, format);
             compositionPath = await uploadEstudioComposition(blob, sessionId);
           } finally {
             URL.revokeObjectURL(cutoutUrl);
@@ -391,6 +400,8 @@ export default function EstudioVisual() {
           is_inferred: false,
           prompt_used: null,
           garment_notes: garmentNotes.trim() || null,
+          catalog_background_color: kind === "catalogo" ? catalogBg.color : null,
+          background_color_source: kind === "catalogo" ? catalogBg.source : null,
         });
 
         if (error) throw error;
