@@ -45,11 +45,14 @@ import {
   uploadEstudioCutout,
   uploadEstudioComposition,
 } from "@/lib/estudioStorage";
-import { composeCutoutOnBackground } from "@/lib/estudioCompositing";
+import { composeCutoutOnBackground, composeCutoutOnSolidColor } from "@/lib/estudioCompositing";
 import {
   findBasePreset,
   withGarmentNotes,
   stripGarmentNotes,
+  withCatalogBackground,
+  resolveCatalogBackground,
+  DEFAULT_CATALOG_BG,
   type StudioPromptPreset,
 } from "@/lib/estudioPrompts";
 
