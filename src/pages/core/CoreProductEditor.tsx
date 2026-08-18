@@ -219,12 +219,13 @@ export default function CoreProductEditor() {
     const prefilled: string[] = [];
     if (!name.trim() && s.name) { setName(s.name); prefilled.push("nombre"); }
 
-    // Si la estructura está conectada a WooCommerce, el SKU Core = SKU principal de Woo
-    const wooSkuFromStructure = s.woo_product_id && s.sku ? s.sku : null;
+    // Si la estructura está conectada a WooCommerce, el SKU comercial visible = SKU Woo.
+    // El SKU interno (core_sku) NO se sobreescribe: se conserva como código interno/fallback.
+    const wooSkuFromStructure = s.woo_product_id && s.sku ? String(s.sku).trim() : null;
     if (wooSkuFromStructure) {
-      setCoreSku(wooSkuFromStructure);
-      prefilled.push("SKU Core (desde Woo)");
-    } else if (!coreSku.trim() && s.sku) {
+      setWooSku(wooSkuFromStructure);
+      prefilled.push("SKU Woo");
+    } else if (isNew && !coreSku.trim() && s.sku) {
       setCoreSku(s.sku);
       prefilled.push("SKU");
     }
@@ -234,7 +235,6 @@ export default function CoreProductEditor() {
       setWooProductId(Number(s.woo_product_id));
       if (s.woo_product_name) setWooProductName(s.woo_product_name);
       if (s.woo_permalink) setWooPermalink(s.woo_permalink);
-      if (s.sku) setWooSku(s.sku);
       prefilled.push("Woo ID");
     }
 
