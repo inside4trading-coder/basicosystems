@@ -50,6 +50,7 @@ import {
   findBasePreset,
   withGarmentNotes,
   stripGarmentNotes,
+  stripCatalogBackground,
   withCatalogBackground,
   resolveCatalogBackground,
   DEFAULT_CATALOG_BG,
