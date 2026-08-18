@@ -62,6 +62,7 @@ type Product = {
   estimated_sale_price: number | null;
   woo_product_id: number | null;
   woo_product_name: string | null;
+  woo_sku: string | null;
   sku_source: string;
   sync_status: string;
   updated_at: string;
