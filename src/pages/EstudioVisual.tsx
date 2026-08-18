@@ -371,7 +371,9 @@ export default function EstudioVisual() {
           view_type: "frente",
           is_inferred: false,
           prompt_used: null,
+          garment_notes: garmentNotes.trim() || null,
         });
+
         if (error) throw error;
 
         toast.success(
