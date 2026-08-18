@@ -87,3 +87,10 @@ export function withGarmentNotes(prompt: string, notes: string | null | undefine
   return `${prompt}\n\n${GARMENT_NOTES_HEADER}\n${clean}`;
 }
 
+
+/** Quita la sección de notas del prompt guardado, para reabrir el asistente sin duplicarlas. */
+export function stripGarmentNotes(prompt: string | null | undefined): string {
+  if (!prompt) return "";
+  const i = prompt.indexOf(GARMENT_NOTES_HEADER);
+  return i === -1 ? prompt : prompt.slice(0, i).trimEnd();
+}
