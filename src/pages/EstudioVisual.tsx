@@ -581,9 +581,11 @@ export default function EstudioVisual() {
         `Modelo: ${job.image_model ?? "—"}`,
         `Fondo: ${bg?.name ?? job.background_reference_path ?? "—"}`,
         `Formato: ${job.output_size ?? "—"}`,
+        job.garment_notes ? `\nDetalles de la prenda:\n${job.garment_notes}` : null,
         job.error_message ? `Error: ${job.error_message}` : null,
         "",
         job.prompt_used ?? "Sin prompt guardado.",
+
       ]
         .filter(Boolean)
         .join("\n");
