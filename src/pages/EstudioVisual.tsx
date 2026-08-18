@@ -589,6 +589,13 @@ export default function EstudioVisual() {
     };
   };
 
+  /** Reabre el asistente con el prompt base y las notas de esa generación (sin duplicarlas). */
+  const reopenOptions = (set: StudioSet) => ({
+    mode: set.mode,
+    prompt: stripGarmentNotes(set.jobs[0].prompt_used) || undefined,
+    notes: set.jobs[0].garment_notes ?? undefined,
+  });
+
 
   const handlePreview = (jobId: string, title: string) => {
     const url = urls[jobId];
