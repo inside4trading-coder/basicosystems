@@ -458,8 +458,15 @@ export default function EstudioVisual() {
                   kind === "dinamico" ? selectedBackground?.reference_path ?? undefined : undefined,
                 photoType: preset.photo_type,
                 promptPresetId: preset.id,
-                promptOverride: withGarmentNotes(`${promptText}${item.suffix ?? ""}`, garmentNotes),
+                promptOverride: withGarmentNotes(
+                  kind === "catalogo"
+                    ? withCatalogBackground(`${promptText}${item.suffix ?? ""}`, catalogBg.color)
+                    : `${promptText}${item.suffix ?? ""}`,
+                  garmentNotes,
+                ),
                 garmentNotes: garmentNotes.trim() || undefined,
+                catalogBackgroundColor: kind === "catalogo" ? catalogBg.color : undefined,
+                backgroundColorSource: kind === "catalogo" ? catalogBg.source : undefined,
 
                 imageModel: imageModel || undefined,
                 outputSize: format,
