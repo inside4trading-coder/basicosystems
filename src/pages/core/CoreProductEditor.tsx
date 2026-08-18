@@ -482,8 +482,20 @@ export default function CoreProductEditor() {
         if (ev) throw ev;
       }
 
-      toast.success(isNew ? `Producto creado: ${assignedSku}` : "Producto guardado");
+      // Releer desde la base para no quedarnos con estado local desactualizado
+      const { data: fresh } = await supabase.from("core_products").select("unit_cost, currency, cost_snapshot, cost_structure_id").eq("id", savedId).maybeSingle();
+      if (fresh) {
+        setUnitCost(Number(fresh.unit_cost) || 0);
+        setCurrency(fresh.currency);
+        setCostSnapshot(fresh.cost_snapshot);
+        setCostStructureId(fresh.cost_structure_id ?? "");
+      }
+      const { data: freshVars } = await supabase.from("core_product_variants").select("*").eq("core_product_id", savedId).order("sort_order");
+      setVariants((freshVars as any) ?? []);
+
+      toast.success(isNew ? `Producto creado: ${assignedSku}` : "Costos guardados y variantes heredadas recalculadas.");
       navigate(`/core/productos/${savedId}`, { replace: true });
+
     } catch (err: any) {
       toast.error(err?.message ?? "Error guardando");
     } finally {
