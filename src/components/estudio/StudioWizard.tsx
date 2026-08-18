@@ -395,6 +395,10 @@ export function StudioWizard(props: StudioWizardProps) {
             </Select>
           </Step>
 
+          <GarmentNotesBlock value={garmentNotes} onChange={onGarmentNotesChange} />
+
+
+
           <Step n={stepGenerar} title="Generar">
             <div className="space-y-2">
               <Label className="font-medium text-sm">Modelo de generación</Label>
