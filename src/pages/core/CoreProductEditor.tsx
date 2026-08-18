@@ -614,15 +614,15 @@ export default function CoreProductEditor() {
           <Card className="p-5 space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <Label>SKU Core</Label>
+                <Label>SKU interno (fabricación)</Label>
                 <div className="flex gap-2">
                   <Input value={coreSku} readOnly className="font-mono font-semibold bg-muted" />
                   {isNew && <Button variant="outline" size="icon" onClick={suggestNextSku} title="Refrescar"><RefreshCw className="h-4 w-4" /></Button>}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {wooSku.trim()
-                    ? <>Usando el SKU de WooCommerce (<span className="font-mono">{wooSku}</span>) para facilitar la reposición.</>
-                    : "Generado automáticamente desde Configuración Core. Si conectas WooCommerce, se usará el SKU de Woo."}
+                    ? <>SKU visible en catálogo: <span className="font-mono">{wooSku}</span> (WooCommerce). El interno se conserva como fallback.</>
+                    : "Generado automáticamente desde Configuración Core. Si hay SKU en WooCommerce, ese será el SKU visible."}
                 </p>
               </div>
               <div>
