@@ -150,6 +150,9 @@ Deno.serve(async (req) => {
     const photoType = body?.photoType as PhotoType | undefined;
     const promptPresetId = body?.promptPresetId as string | undefined;
     const promptOverride = body?.promptOverride as string | undefined;
+    // Contexto extra por prenda: llega ya incluido en el prompt, se guarda aparte para auditar.
+    const garmentNotes = (body?.garmentNotes as string | undefined)?.trim() || null;
+
     const imageModelOverride = body?.imageModel as string | undefined;
     const outputSizeOverride = body?.outputSize as string | undefined;
     const sessionId = (body?.sessionId as string | undefined) ?? null;
