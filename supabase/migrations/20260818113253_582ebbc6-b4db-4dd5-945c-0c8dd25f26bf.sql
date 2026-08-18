@@ -1,0 +1,1 @@
+ALTER TABLE public.estudio_image_jobs ADD COLUMN IF NOT EXISTS garment_notes text;

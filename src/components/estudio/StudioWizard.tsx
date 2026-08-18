@@ -14,6 +14,8 @@ import ModelsTab from "@/components/estudio/config/ModelsTab";
 import PromptTab from "@/components/estudio/config/PromptTab";
 import BrandTab from "@/components/estudio/config/BrandTab";
 import { StudioBackgroundStep } from "@/components/estudio/StudioBackgroundStep";
+import { GarmentNotesBlock } from "@/components/estudio/GarmentNotesBlock";
+
 import type { StudioBackground } from "@/lib/estudioBackgrounds";
 import { cn } from "@/lib/utils";
 
@@ -132,6 +134,10 @@ export interface StudioWizardProps {
 
   promptText: string;
   onPromptChange: (v: string) => void;
+  /** Contexto extra por prenda que se inyecta en el prompt final. */
+  garmentNotes: string;
+  onGarmentNotesChange: (v: string) => void;
+
   imageModels: EnabledModel[];
   imageModel: string;
   onImageModelChange: (v: string) => void;
@@ -174,6 +180,9 @@ export function StudioWizard(props: StudioWizardProps) {
 
     promptText,
     onPromptChange,
+    garmentNotes,
+    onGarmentNotesChange,
+
     imageModels,
     imageModel,
     onImageModelChange,
@@ -394,6 +403,10 @@ export function StudioWizard(props: StudioWizardProps) {
               </SelectContent>
             </Select>
           </Step>
+
+          <GarmentNotesBlock value={garmentNotes} onChange={onGarmentNotesChange} />
+
+
 
           <Step n={stepGenerar} title="Generar">
             <div className="space-y-2">

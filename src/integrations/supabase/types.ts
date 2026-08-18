@@ -6794,6 +6794,7 @@ export type Database = {
           cutout_path: string | null
           error_message: string | null
           fidelity_pipeline_version: number
+          garment_notes: string | null
           generated_image_path: string | null
           id: string
           image_model: string
@@ -6824,6 +6825,7 @@ export type Database = {
           cutout_path?: string | null
           error_message?: string | null
           fidelity_pipeline_version?: number
+          garment_notes?: string | null
           generated_image_path?: string | null
           id?: string
           image_model: string
@@ -6854,6 +6856,7 @@ export type Database = {
           cutout_path?: string | null
           error_message?: string | null
           fidelity_pipeline_version?: number
+          garment_notes?: string | null
           generated_image_path?: string | null
           id?: string
           image_model?: string

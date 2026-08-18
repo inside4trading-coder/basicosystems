@@ -46,7 +46,13 @@ import {
   uploadEstudioComposition,
 } from "@/lib/estudioStorage";
 import { composeCutoutOnBackground } from "@/lib/estudioCompositing";
-import { findBasePreset, type StudioPromptPreset } from "@/lib/estudioPrompts";
+import {
+  findBasePreset,
+  withGarmentNotes,
+  stripGarmentNotes,
+  type StudioPromptPreset,
+} from "@/lib/estudioPrompts";
+
 
 
 interface PromptPreset {
@@ -89,6 +95,9 @@ export default function EstudioVisual() {
   const [format, setFormat] = useState("4:5");
   const [mode, setMode] = useState<StudioMode>("individual");
   const [promptText, setPromptText] = useState("");
+  /** Contexto extra por prenda: se inyecta en el prompt final y se guarda con el job. */
+  const [garmentNotes, setGarmentNotes] = useState("");
+
   const [generating, setGenerating] = useState(false);
 
   const [views, setViews] = useState<Record<ViewType, ViewInput>>({
@@ -135,7 +144,7 @@ export default function EstudioVisual() {
     const { data } = await estudioDb
       .from("estudio_image_jobs")
       .select(
-        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, source_photo_path, image_model, output_size, background_reference_path, prompt_used, cost_usd, error_message, composition_mode, cutout_path, composition_path, archived_at",
+        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, source_photo_path, image_model, output_size, background_reference_path, prompt_used, garment_notes, cost_usd, error_message, composition_mode, cutout_path, composition_path, archived_at",
       )
       .order("created_at", { ascending: false })
       .limit(60);
@@ -229,11 +238,15 @@ export default function EstudioVisual() {
   );
 
   const openWizard = useCallback(
-    (kind: StudioKind, opts?: { format?: string; mode?: StudioMode; prompt?: string }) => {
+    (
+      kind: StudioKind,
+      opts?: { format?: string; mode?: StudioMode; prompt?: string; notes?: string },
+    ) => {
       setWizardKind(kind);
       setMode(kind === "dinamico" ? opts?.mode ?? "individual" : "individual");
       setFormat(opts?.format ?? "4:5");
       setPromptText(opts?.prompt ?? basePromptFor(kind));
+      setGarmentNotes(opts?.notes ?? "");
       // El modelo ya no viene del preset: se elige en el asistente.
     },
     [basePromptFor],
@@ -245,8 +258,10 @@ export default function EstudioVisual() {
       if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
       return emptyViewInput();
     });
+    setGarmentNotes("");
     setWizardKind(null);
   };
+
 
 
   const setViewFile = (view: ViewType, file: File | null) => {
@@ -362,7 +377,9 @@ export default function EstudioVisual() {
           view_type: "frente",
           is_inferred: false,
           prompt_used: null,
+          garment_notes: garmentNotes.trim() || null,
         });
+
         if (error) throw error;
 
         toast.success(
@@ -417,7 +434,9 @@ export default function EstudioVisual() {
                   kind === "dinamico" ? selectedBackground?.reference_path ?? undefined : undefined,
                 photoType: preset.photo_type,
                 promptPresetId: preset.id,
-                promptOverride: `${promptText}${item.suffix ?? ""}`,
+                promptOverride: withGarmentNotes(`${promptText}${item.suffix ?? ""}`, garmentNotes),
+                garmentNotes: garmentNotes.trim() || undefined,
+
                 imageModel: imageModel || undefined,
                 outputSize: format,
                 sessionId,
@@ -562,9 +581,11 @@ export default function EstudioVisual() {
         `Modelo: ${job.image_model ?? "—"}`,
         `Fondo: ${bg?.name ?? job.background_reference_path ?? "—"}`,
         `Formato: ${job.output_size ?? "—"}`,
+        job.garment_notes ? `\nDetalles de la prenda:\n${job.garment_notes}` : null,
         job.error_message ? `Error: ${job.error_message}` : null,
         "",
         job.prompt_used ?? "Sin prompt guardado.",
+
       ]
         .filter(Boolean)
         .join("\n");
@@ -575,6 +596,13 @@ export default function EstudioVisual() {
       body: [`Tipo: ${tipo}`, "", ...blocks].join("\n\n"),
     };
   };
+
+  /** Reabre el asistente con el prompt base y las notas de esa generación (sin duplicarlas). */
+  const reopenOptions = (set: StudioSet) => ({
+    mode: set.mode,
+    prompt: stripGarmentNotes(set.jobs[0].prompt_used) || undefined,
+    notes: set.jobs[0].garment_notes ?? undefined,
+  });
 
 
   const handlePreview = (jobId: string, title: string) => {
@@ -614,16 +642,15 @@ export default function EstudioVisual() {
         onPreview={handlePreview}
         onDownloadJob={handleDownloadJob}
         onDownloadAll={handleDownloadAll}
-        onDuplicate={(set) =>
-          openWizard(set.kind, { mode: set.mode, prompt: set.jobs[0].prompt_used ?? undefined })
-        }
+        onDuplicate={(set) => openWizard(set.kind, reopenOptions(set))}
         onUseAsReference={(set) => {
-          openWizard(set.kind, { mode: set.mode, prompt: set.jobs[0].prompt_used ?? undefined });
+          openWizard(set.kind, reopenOptions(set));
           toast.info("Se cargó la configuración de ese resultado. Sube la foto de la prenda.");
         }}
         onShowPrompt={(set) => setPromptDialog(buildSetDetail(set))}
 
-        onRetry={(set) => openWizard(set.kind, { mode: set.mode, prompt: set.jobs[0].prompt_used ?? undefined })}
+        onRetry={(set) => openWizard(set.kind, reopenOptions(set))}
+
         onRefresh={loadJobs}
       />
 
@@ -647,6 +674,9 @@ export default function EstudioVisual() {
 
           promptText={promptText}
           onPromptChange={setPromptText}
+          garmentNotes={garmentNotes}
+          onGarmentNotesChange={setGarmentNotes}
+
           imageModels={imageModels}
           imageModel={imageModel}
           onImageModelChange={setImageModel}

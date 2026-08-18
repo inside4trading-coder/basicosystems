@@ -76,3 +76,21 @@ export async function saveStudioBasePrompt(
   });
   if (error) throw error;
 }
+
+/** Sección estructurada con el contexto extra que escribió el usuario para esa prenda. */
+export const GARMENT_NOTES_HEADER = "Additional garment notes:";
+
+/** Devuelve el prompt final: base + notas de la prenda (si las hay). */
+export function withGarmentNotes(prompt: string, notes: string | null | undefined): string {
+  const clean = (notes ?? "").trim();
+  if (!clean) return prompt;
+  return `${prompt}\n\n${GARMENT_NOTES_HEADER}\n${clean}`;
+}
+
+
+/** Quita la sección de notas del prompt guardado, para reabrir el asistente sin duplicarlas. */
+export function stripGarmentNotes(prompt: string | null | undefined): string {
+  if (!prompt) return "";
+  const i = prompt.indexOf(GARMENT_NOTES_HEADER);
+  return i === -1 ? prompt : prompt.slice(0, i).trimEnd();
+}

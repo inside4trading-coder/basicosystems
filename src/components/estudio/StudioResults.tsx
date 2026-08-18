@@ -30,6 +30,9 @@ export interface StudioJob {
   output_size: string | null;
   background_reference_path: string | null;
   prompt_used: string | null;
+  /** Contexto extra escrito por el usuario para esa prenda. */
+  garment_notes: string | null;
+
   cost_usd: number | null;
   error_message: string | null;
   composition_mode: CompositionMode | null;
