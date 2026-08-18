@@ -137,6 +137,9 @@ export interface StudioWizardProps {
   /** Contexto extra por prenda que se inyecta en el prompt final. */
   garmentNotes: string;
   onGarmentNotesChange: (v: string) => void;
+  /** Color de fondo para "Foto para catálogo" (default gris BASICO, editable). */
+  catalogBgColor?: string;
+  onCatalogBgColorChange?: (v: string) => void;
 
   imageModels: EnabledModel[];
   imageModel: string;
