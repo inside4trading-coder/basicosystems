@@ -535,14 +535,26 @@ export default function CoreProductEditor() {
     if (productId) {
       const { data: { user } } = await supabase.auth.getUser();
       // Persistir el costo operativo del producto (no solo el historial)
-      const { error: upErr } = await supabase.from("core_products").update({
+      const detectedWooSku = s.woo_product_id && s.sku ? String(s.sku).trim() : null;
+      const upPayload: any = {
         cost_structure_id: costStructureId,
         cost_snapshot: snap as any,
         unit_cost: newUnitCost,
         currency: s.base_currency,
         updated_at: new Date().toISOString(),
         updated_by: user?.id ?? null,
-      } as any).eq("id", productId);
+      };
+      if (s.woo_product_id) {
+        upPayload.woo_product_id = Number(s.woo_product_id);
+        if (s.woo_product_name) upPayload.woo_product_name = s.woo_product_name;
+        if (s.woo_permalink) upPayload.woo_permalink = s.woo_permalink;
+        upPayload.woo_last_sync_at = new Date().toISOString();
+      }
+      if (detectedWooSku) {
+        upPayload.woo_sku = detectedWooSku;
+        upPayload.sku_source = "woocommerce";
+      }
+      const { error: upErr } = await supabase.from("core_products").update(upPayload).eq("id", productId);
       if (upErr) { toast.error("No se pudo guardar el costo: " + upErr.message); return; }
 
       await supabase.from("core_product_cost_snapshots").insert({
