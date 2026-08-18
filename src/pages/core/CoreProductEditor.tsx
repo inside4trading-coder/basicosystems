@@ -528,7 +528,7 @@ export default function CoreProductEditor() {
         cost_snapshot: snap as any,
         unit_cost: newUnitCost,
         currency: s.base_currency,
-        cost_updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         updated_by: user?.id ?? null,
       } as any).eq("id", productId);
       if (upErr) { toast.error("No se pudo guardar el costo: " + upErr.message); return; }
