@@ -149,7 +149,7 @@ export default function EstudioVisual() {
     const { data } = await estudioDb
       .from("estudio_image_jobs")
       .select(
-        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, source_photo_path, image_model, output_size, background_reference_path, prompt_used, garment_notes, cost_usd, error_message, composition_mode, cutout_path, composition_path, archived_at",
+        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, source_photo_path, image_model, output_size, background_reference_path, prompt_used, garment_notes, catalog_background_color, background_color_source, cost_usd, error_message, composition_mode, cutout_path, composition_path, archived_at",
       )
       .order("created_at", { ascending: false })
       .limit(60);
