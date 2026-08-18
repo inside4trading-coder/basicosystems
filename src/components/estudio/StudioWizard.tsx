@@ -411,6 +411,14 @@ export function StudioWizard(props: StudioWizardProps) {
             </Select>
           </Step>
 
+          {kind === "catalogo" && (
+            <CatalogBackgroundField
+              value={catalogBgColor}
+              onChange={(v) => onCatalogBgColorChange?.(v)}
+              exact={hasCutout}
+            />
+          )}
+
           <GarmentNotesBlock value={garmentNotes} onChange={onGarmentNotesChange} />
 
 
