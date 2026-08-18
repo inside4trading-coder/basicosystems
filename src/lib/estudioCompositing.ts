@@ -176,3 +176,49 @@ export async function composeCutoutOnBackground(
     );
   });
 }
+
+/**
+ * Composición de catálogo: lienzo de color sólido exacto + PNG recortado de la prenda.
+ * No pasa por ningún modelo, así que el gris es idéntico en todas las imágenes.
+ */
+export async function composeCutoutOnSolidColor(
+  cutoutUrl: string,
+  hexColor: string,
+  aspect: string,
+): Promise<Blob> {
+  const { width, height } = ASPECT_CANVAS[aspect] ?? ASPECT_CANVAS["4:5"];
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas 2D no disponible en este navegador.");
+
+  ctx.fillStyle = hexColor;
+  ctx.fillRect(0, 0, width, height);
+
+  const cutout = await loadImage(cutoutUrl);
+  const boxW = width * 0.78;
+  const boxH = height * 0.78;
+  const centerY = height * 0.47;
+
+  const probe = Math.min(boxW / cutout.width, boxH / cutout.height);
+  const garmentH = cutout.height * probe;
+  const garmentW = cutout.width * probe;
+  const shadowY = centerY + garmentH / 2 - garmentH * 0.02;
+  ctx.save();
+  ctx.filter = "blur(24px)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+  ctx.beginPath();
+  ctx.ellipse(width / 2, shadowY, garmentW * 0.34, garmentH * 0.03, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  drawContain(ctx, cutout, boxW, boxH, width / 2, centerY);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("No se pudo componer la imagen."))),
+      "image/png",
+    );
+  });
+}

@@ -45,11 +45,15 @@ import {
   uploadEstudioCutout,
   uploadEstudioComposition,
 } from "@/lib/estudioStorage";
-import { composeCutoutOnBackground } from "@/lib/estudioCompositing";
+import { composeCutoutOnBackground, composeCutoutOnSolidColor } from "@/lib/estudioCompositing";
 import {
   findBasePreset,
   withGarmentNotes,
   stripGarmentNotes,
+  stripCatalogBackground,
+  withCatalogBackground,
+  resolveCatalogBackground,
+  DEFAULT_CATALOG_BG,
   type StudioPromptPreset,
 } from "@/lib/estudioPrompts";
 
@@ -97,6 +101,8 @@ export default function EstudioVisual() {
   const [promptText, setPromptText] = useState("");
   /** Contexto extra por prenda: se inyecta en el prompt final y se guarda con el job. */
   const [garmentNotes, setGarmentNotes] = useState("");
+  /** Color de fondo de "Foto para catálogo": default gris BASICO, editable por generación. */
+  const [catalogBgColor, setCatalogBgColor] = useState(DEFAULT_CATALOG_BG);
 
   const [generating, setGenerating] = useState(false);
 
@@ -144,7 +150,7 @@ export default function EstudioVisual() {
     const { data } = await estudioDb
       .from("estudio_image_jobs")
       .select(
-        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, source_photo_path, image_model, output_size, background_reference_path, prompt_used, garment_notes, cost_usd, error_message, composition_mode, cutout_path, composition_path, archived_at",
+        "id, created_at, status, session_id, view_type, photo_type, is_inferred, uses_model_reference, generated_image_path, source_photo_path, image_model, output_size, background_reference_path, prompt_used, garment_notes, catalog_background_color, background_color_source, cost_usd, error_message, composition_mode, cutout_path, composition_path, archived_at",
       )
       .order("created_at", { ascending: false })
       .limit(60);
@@ -240,13 +246,20 @@ export default function EstudioVisual() {
   const openWizard = useCallback(
     (
       kind: StudioKind,
-      opts?: { format?: string; mode?: StudioMode; prompt?: string; notes?: string },
+      opts?: {
+        format?: string;
+        mode?: StudioMode;
+        prompt?: string;
+        notes?: string;
+        catalogBgColor?: string | null;
+      },
     ) => {
       setWizardKind(kind);
       setMode(kind === "dinamico" ? opts?.mode ?? "individual" : "individual");
       setFormat(opts?.format ?? "4:5");
       setPromptText(opts?.prompt ?? basePromptFor(kind));
       setGarmentNotes(opts?.notes ?? "");
+      setCatalogBgColor(opts?.catalogBgColor ?? DEFAULT_CATALOG_BG);
       // El modelo ya no viene del preset: se elige en el asistente.
     },
     [basePromptFor],
@@ -259,6 +272,7 @@ export default function EstudioVisual() {
       return emptyViewInput();
     });
     setGarmentNotes("");
+    setCatalogBgColor(DEFAULT_CATALOG_BG);
     setWizardKind(null);
   };
 
@@ -320,7 +334,10 @@ export default function EstudioVisual() {
       return;
     }
     const cutoutFile = cutout.file;
-    const useComposition = Boolean(cutoutFile) && (kind === "transparente" || kind === "dinamico");
+    const useComposition = Boolean(cutoutFile);
+
+    // Prioridad del color de catálogo: UI > notas > gris BASICO.
+    const catalogBg = resolveCatalogBackground(catalogBgColor, garmentNotes);
 
     if (kind === "dinamico") {
       if (!selectedBackground) {
@@ -345,12 +362,18 @@ export default function EstudioVisual() {
         let compositionPath: string | null = null;
         let compositionMode: "cutout_ready" | "composited" = "cutout_ready";
 
-        if (kind === "dinamico") {
-          const backgroundUrl = selectedBackground ? backgroundUrls[selectedBackground.id] : null;
-          if (!backgroundUrl) throw new Error("No se pudo cargar la imagen del fondo elegido.");
+        if (kind === "dinamico" || kind === "catalogo") {
+          const backgroundUrl =
+            kind === "dinamico" && selectedBackground ? backgroundUrls[selectedBackground.id] : null;
+          if (kind === "dinamico" && !backgroundUrl) {
+            throw new Error("No se pudo cargar la imagen del fondo elegido.");
+          }
           const cutoutUrl = URL.createObjectURL(cutoutFile);
           try {
-            const blob = await composeCutoutOnBackground(backgroundUrl, cutoutUrl, format);
+            const blob =
+              kind === "catalogo"
+                ? await composeCutoutOnSolidColor(cutoutUrl, catalogBg.color, format)
+                : await composeCutoutOnBackground(backgroundUrl!, cutoutUrl, format);
             compositionPath = await uploadEstudioComposition(blob, sessionId);
           } finally {
             URL.revokeObjectURL(cutoutUrl);
@@ -378,6 +401,8 @@ export default function EstudioVisual() {
           is_inferred: false,
           prompt_used: null,
           garment_notes: garmentNotes.trim() || null,
+          catalog_background_color: kind === "catalogo" ? catalogBg.color : null,
+          background_color_source: kind === "catalogo" ? catalogBg.source : null,
         });
 
         if (error) throw error;
@@ -434,8 +459,15 @@ export default function EstudioVisual() {
                   kind === "dinamico" ? selectedBackground?.reference_path ?? undefined : undefined,
                 photoType: preset.photo_type,
                 promptPresetId: preset.id,
-                promptOverride: withGarmentNotes(`${promptText}${item.suffix ?? ""}`, garmentNotes),
+                promptOverride: withGarmentNotes(
+                  kind === "catalogo"
+                    ? withCatalogBackground(`${promptText}${item.suffix ?? ""}`, catalogBg.color)
+                    : `${promptText}${item.suffix ?? ""}`,
+                  garmentNotes,
+                ),
                 garmentNotes: garmentNotes.trim() || undefined,
+                catalogBackgroundColor: kind === "catalogo" ? catalogBg.color : undefined,
+                backgroundColorSource: kind === "catalogo" ? catalogBg.source : undefined,
 
                 imageModel: imageModel || undefined,
                 outputSize: format,
@@ -581,6 +613,10 @@ export default function EstudioVisual() {
         `Modelo: ${job.image_model ?? "—"}`,
         `Fondo: ${bg?.name ?? job.background_reference_path ?? "—"}`,
         `Formato: ${job.output_size ?? "—"}`,
+        job.catalog_background_color
+          ? `Color de fondo: ${job.catalog_background_color} (${job.background_color_source ?? "default"})`
+          : null,
+        `Composición: ${job.composition_mode ?? "generative"}`,
         job.garment_notes ? `\nDetalles de la prenda:\n${job.garment_notes}` : null,
         job.error_message ? `Error: ${job.error_message}` : null,
         "",
@@ -600,8 +636,9 @@ export default function EstudioVisual() {
   /** Reabre el asistente con el prompt base y las notas de esa generación (sin duplicarlas). */
   const reopenOptions = (set: StudioSet) => ({
     mode: set.mode,
-    prompt: stripGarmentNotes(set.jobs[0].prompt_used) || undefined,
+    prompt: stripCatalogBackground(stripGarmentNotes(set.jobs[0].prompt_used)) || undefined,
     notes: set.jobs[0].garment_notes ?? undefined,
+    catalogBgColor: set.jobs[0].catalog_background_color ?? undefined,
   });
 
 
@@ -676,6 +713,8 @@ export default function EstudioVisual() {
           onPromptChange={setPromptText}
           garmentNotes={garmentNotes}
           onGarmentNotesChange={setGarmentNotes}
+          catalogBgColor={catalogBgColor}
+          onCatalogBgColorChange={setCatalogBgColor}
 
           imageModels={imageModels}
           imageModel={imageModel}

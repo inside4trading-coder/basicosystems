@@ -6784,7 +6784,9 @@ export type Database = {
       estudio_image_jobs: {
         Row: {
           archived_at: string | null
+          background_color_source: string | null
           background_reference_path: string | null
+          catalog_background_color: string | null
           composition_mode: string
           composition_params: Json | null
           composition_path: string | null
@@ -6815,7 +6817,9 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          background_color_source?: string | null
           background_reference_path?: string | null
+          catalog_background_color?: string | null
           composition_mode?: string
           composition_params?: Json | null
           composition_path?: string | null
@@ -6846,7 +6850,9 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          background_color_source?: string | null
           background_reference_path?: string | null
+          catalog_background_color?: string | null
           composition_mode?: string
           composition_params?: Json | null
           composition_path?: string | null

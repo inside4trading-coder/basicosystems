@@ -94,3 +94,56 @@ export function stripGarmentNotes(prompt: string | null | undefined): string {
   const i = prompt.indexOf(GARMENT_NOTES_HEADER);
   return i === -1 ? prompt : prompt.slice(0, i).trimEnd();
 }
+
+/** Gris BASICO: fondo por defecto de "Foto para catálogo" (RGB 247, 247, 247). */
+export const DEFAULT_CATALOG_BG = "#F7F7F7";
+
+/** Devuelve el HEX normalizado a `#RRGGBB` en mayúsculas, o `null` si no es válido. */
+export function normalizeHexColor(value: string | null | undefined): string | null {
+  const raw = (value ?? "").trim().replace(/^#/, "");
+  if (/^[0-9a-fA-F]{3}$/.test(raw)) {
+    return `#${raw.split("").map((c) => c + c).join("")}`.toUpperCase();
+  }
+  if (/^[0-9a-fA-F]{6}$/.test(raw)) return `#${raw}`.toUpperCase();
+  return null;
+}
+
+/**
+ * Busca un color de fondo escrito en las notas de la prenda
+ * ("usar fondo #EFEFEF", "use background color #EFEFEF").
+ */
+export function extractBackgroundColorFromNotes(notes: string | null | undefined): string | null {
+  const text = notes ?? "";
+  const re = /(fondo|background)[^#\n]{0,24}#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/i;
+  const m = text.match(re);
+  return m ? normalizeHexColor(m[2]) : null;
+}
+
+/** Origen del color usado en esa generación. */
+export type BackgroundColorSource = "default" | "ui" | "notes";
+
+/**
+ * Resuelve el color final de catálogo. Prioridad: color elegido en la UI > color detectado
+ * en las notas > gris BASICO.
+ */
+export function resolveCatalogBackground(
+  uiColor: string | null | undefined,
+  notes: string | null | undefined,
+): { color: string; source: BackgroundColorSource } {
+  const ui = normalizeHexColor(uiColor);
+  if (ui && ui !== DEFAULT_CATALOG_BG) return { color: ui, source: "ui" };
+  const fromNotes = extractBackgroundColorFromNotes(notes);
+  if (fromNotes) return { color: fromNotes, source: "notes" };
+  return { color: ui ?? DEFAULT_CATALOG_BG, source: "default" };
+}
+
+/** Línea que se anexa al prompt para pedirle el color al modelo (garantía solo con recorte). */
+export function withCatalogBackground(prompt: string, color: string): string {
+  return `${prompt}\n\nUse catalog background color: ${color}`;
+}
+
+/** Quita la línea de color de catálogo del prompt guardado, para no duplicarla al reabrir. */
+export function stripCatalogBackground(prompt: string | null | undefined): string {
+  if (!prompt) return "";
+  return prompt.replace(/\n*Use catalog background color:.*$/gim, "").trimEnd();
+}

@@ -15,6 +15,8 @@ import PromptTab from "@/components/estudio/config/PromptTab";
 import BrandTab from "@/components/estudio/config/BrandTab";
 import { StudioBackgroundStep } from "@/components/estudio/StudioBackgroundStep";
 import { GarmentNotesBlock } from "@/components/estudio/GarmentNotesBlock";
+import { CatalogBackgroundField } from "@/components/estudio/CatalogBackgroundField";
+import { DEFAULT_CATALOG_BG } from "@/lib/estudioPrompts";
 
 import type { StudioBackground } from "@/lib/estudioBackgrounds";
 import { cn } from "@/lib/utils";
@@ -137,6 +139,9 @@ export interface StudioWizardProps {
   /** Contexto extra por prenda que se inyecta en el prompt final. */
   garmentNotes: string;
   onGarmentNotesChange: (v: string) => void;
+  /** Color de fondo para "Foto para catálogo" (default gris BASICO, editable). */
+  catalogBgColor?: string;
+  onCatalogBgColorChange?: (v: string) => void;
 
   imageModels: EnabledModel[];
   imageModel: string;
@@ -182,6 +187,8 @@ export function StudioWizard(props: StudioWizardProps) {
     onPromptChange,
     garmentNotes,
     onGarmentNotesChange,
+    catalogBgColor = DEFAULT_CATALOG_BG,
+    onCatalogBgColorChange,
 
     imageModels,
     imageModel,
@@ -204,7 +211,7 @@ export function StudioWizard(props: StudioWizardProps) {
   const [savingPromptBase, setSavingPromptBase] = useState(false);
 
   const isCarousel = kind === "dinamico" && mode === "carrusel";
-  const supportsCutout = kind === "transparente" || kind === "dinamico";
+  const supportsCutout = kind === "transparente" || kind === "dinamico" || kind === "catalogo";
   const hasCutout = supportsCutout && !!cutout.file;
 
   const extraViews = isCarousel ? 0 : OPTIONAL_VIEWS.filter((v) => views[v].include).length;
@@ -403,6 +410,14 @@ export function StudioWizard(props: StudioWizardProps) {
               </SelectContent>
             </Select>
           </Step>
+
+          {kind === "catalogo" && (
+            <CatalogBackgroundField
+              value={catalogBgColor}
+              onChange={(v) => onCatalogBgColorChange?.(v)}
+              exact={hasCutout}
+            />
+          )}
 
           <GarmentNotesBlock value={garmentNotes} onChange={onGarmentNotesChange} />
 

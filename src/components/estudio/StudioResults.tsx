@@ -32,6 +32,8 @@ export interface StudioJob {
   prompt_used: string | null;
   /** Contexto extra escrito por el usuario para esa prenda. */
   garment_notes: string | null;
+  catalog_background_color?: string | null;
+  background_color_source?: string | null;
 
   cost_usd: number | null;
   error_message: string | null;
