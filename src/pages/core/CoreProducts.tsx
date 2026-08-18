@@ -210,7 +210,7 @@ export default function CoreProducts() {
     setLoading(true);
     const { data, error } = await supabase
       .from("core_products")
-      .select("id, core_sku, name, product_type, color, commercial_status, is_restockable, product_priority, replenishment_mode, unit_cost, currency, estimated_sale_price, woo_product_id, woo_product_name, sku_source, sync_status, updated_at")
+      .select("id, core_sku, name, product_type, color, commercial_status, is_restockable, product_priority, replenishment_mode, unit_cost, currency, estimated_sale_price, woo_product_id, woo_product_name, woo_sku, sku_source, sync_status, updated_at")
       .order("updated_at", { ascending: false });
     if (error) toast.error("Error cargando productos: " + error.message);
     const products = ((data as any) ?? []) as Product[];
@@ -239,7 +239,7 @@ export default function CoreProducts() {
   const filtered = useMemo(() => items.filter(p => {
     if (search) {
       const s = search.toLowerCase();
-      if (!p.name.toLowerCase().includes(s) && !p.core_sku.toLowerCase().includes(s)) return false;
+      if (!p.name.toLowerCase().includes(s) && !p.core_sku.toLowerCase().includes(s) && !(p.woo_sku ?? "").toLowerCase().includes(s)) return false;
     }
     if (fStatus !== "all" && p.commercial_status !== fStatus) return false;
     if (fType !== "all" && p.product_type !== fType) return false;
@@ -440,7 +440,10 @@ export default function CoreProducts() {
                         </Button>
                       </TableCell>
                       <TableCell className="font-mono font-semibold">
-                        <div>{p.core_sku}</div>
+                        <div>{(p.woo_sku ?? "").trim() || p.core_sku}</div>
+                        {(p.woo_sku ?? "").trim() && (p.woo_sku ?? "").trim() !== p.core_sku && (
+                          <div className="text-[10px] font-normal text-muted-foreground">Interno: {p.core_sku}</div>
+                        )}
                         <div className="flex gap-1 mt-1 flex-wrap">
                           {p.sku_source === "woocommerce" && <Badge variant="outline" className="text-[10px] py-0 px-1">Woo</Badge>}
                           {p.sync_status === "draft_from_woo" && !(p.commercial_status === "active" && p.woo_product_id && Number(p.unit_cost) > 0) && <Badge variant="secondary" className="text-[10px] py-0 px-1">borrador Woo</Badge>}
