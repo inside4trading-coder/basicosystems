@@ -245,13 +245,20 @@ export default function EstudioVisual() {
   const openWizard = useCallback(
     (
       kind: StudioKind,
-      opts?: { format?: string; mode?: StudioMode; prompt?: string; notes?: string },
+      opts?: {
+        format?: string;
+        mode?: StudioMode;
+        prompt?: string;
+        notes?: string;
+        catalogBgColor?: string | null;
+      },
     ) => {
       setWizardKind(kind);
       setMode(kind === "dinamico" ? opts?.mode ?? "individual" : "individual");
       setFormat(opts?.format ?? "4:5");
       setPromptText(opts?.prompt ?? basePromptFor(kind));
       setGarmentNotes(opts?.notes ?? "");
+      setCatalogBgColor(opts?.catalogBgColor ?? DEFAULT_CATALOG_BG);
       // El modelo ya no viene del preset: se elige en el asistente.
     },
     [basePromptFor],
@@ -264,6 +271,7 @@ export default function EstudioVisual() {
       return emptyViewInput();
     });
     setGarmentNotes("");
+    setCatalogBgColor(DEFAULT_CATALOG_BG);
     setWizardKind(null);
   };
 
