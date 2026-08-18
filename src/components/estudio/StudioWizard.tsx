@@ -15,6 +15,8 @@ import PromptTab from "@/components/estudio/config/PromptTab";
 import BrandTab from "@/components/estudio/config/BrandTab";
 import { StudioBackgroundStep } from "@/components/estudio/StudioBackgroundStep";
 import { GarmentNotesBlock } from "@/components/estudio/GarmentNotesBlock";
+import { CatalogBackgroundField } from "@/components/estudio/CatalogBackgroundField";
+import { DEFAULT_CATALOG_BG } from "@/lib/estudioPrompts";
 
 import type { StudioBackground } from "@/lib/estudioBackgrounds";
 import { cn } from "@/lib/utils";
