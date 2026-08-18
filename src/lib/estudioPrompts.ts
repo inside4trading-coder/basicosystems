@@ -141,3 +141,9 @@ export function resolveCatalogBackground(
 export function withCatalogBackground(prompt: string, color: string): string {
   return `${prompt}\n\nUse catalog background color: ${color}`;
 }
+
+/** Quita la línea de color de catálogo del prompt guardado, para no duplicarla al reabrir. */
+export function stripCatalogBackground(prompt: string | null | undefined): string {
+  if (!prompt) return "";
+  return prompt.replace(/\n*Use catalog background color:.*$/gim, "").trimEnd();
+}
