@@ -482,8 +482,20 @@ export default function CoreProductEditor() {
         if (ev) throw ev;
       }
 
-      toast.success(isNew ? `Producto creado: ${assignedSku}` : "Producto guardado");
+      // Releer desde la base para no quedarnos con estado local desactualizado
+      const { data: fresh } = await supabase.from("core_products").select("unit_cost, currency, cost_snapshot, cost_structure_id").eq("id", savedId).maybeSingle();
+      if (fresh) {
+        setUnitCost(Number(fresh.unit_cost) || 0);
+        setCurrency(fresh.currency);
+        setCostSnapshot(fresh.cost_snapshot);
+        setCostStructureId(fresh.cost_structure_id ?? "");
+      }
+      const { data: freshVars } = await supabase.from("core_product_variants").select("*").eq("core_product_id", savedId).order("sort_order");
+      setVariants((freshVars as any) ?? []);
+
+      toast.success(isNew ? `Producto creado: ${assignedSku}` : "Costos guardados y variantes heredadas recalculadas.");
       navigate(`/core/productos/${savedId}`, { replace: true });
+
     } catch (err: any) {
       toast.error(err?.message ?? "Error guardando");
     } finally {
@@ -493,22 +505,67 @@ export default function CoreProductEditor() {
 
   async function refreshSnapshotFromStructure() {
     if (!costStructureId) return toast.error("No hay estructura asociada");
+    const s = structures.find(x => x.id === costStructureId);
+    if (!s) return toast.error("Estructura no encontrada");
     applyCostStructure(costStructureId);
+
+    // Snapshot calculado directamente desde la estructura (no desde el estado local, que aún no se actualizó)
+    const snap = {
+      cost_structure_id: s.id,
+      cost_structure_name: s.name,
+      unit_cost: Number(s.total_unit_cost) || 0,
+      currency: s.base_currency,
+      breakdown: {
+        raw_materials: Number(s.total_raw_materials) || 0,
+        labor: Number(s.total_labor) || 0,
+        technical_processes: Number(s.total_technical_processes) || 0,
+        variable_costs: Number(s.total_variable_costs) || 0,
+        logistics: Number(s.total_logistics) || 0,
+        other_costs: Number(s.total_other_costs) || 0,
+        packaging: Number(s.total_packaging) || 0,
+      },
+      woo_product_id: s.woo_product_id ?? null,
+      woo_variation_id: s.woo_variation_id ?? null,
+      woo_product_name: s.woo_product_name ?? null,
+      woo_permalink: s.woo_permalink ?? null,
+      taken_at: new Date().toISOString(),
+    };
+    const newUnitCost = Number(s.total_unit_cost) || 0;
+
     if (productId) {
       const { data: { user } } = await supabase.auth.getUser();
+      // Persistir el costo operativo del producto (no solo el historial)
+      const { error: upErr } = await supabase.from("core_products").update({
+        cost_structure_id: costStructureId,
+        cost_snapshot: snap as any,
+        unit_cost: newUnitCost,
+        currency: s.base_currency,
+        updated_at: new Date().toISOString(),
+        updated_by: user?.id ?? null,
+      } as any).eq("id", productId);
+      if (upErr) { toast.error("No se pudo guardar el costo: " + upErr.message); return; }
+
       await supabase.from("core_product_cost_snapshots").insert({
         core_product_id: productId,
         cost_structure_id: costStructureId,
-        snapshot_data: costSnapshot,
-        unit_cost: unitCost,
-        currency,
+        snapshot_data: snap as any,
+        unit_cost: newUnitCost,
+        currency: s.base_currency,
         created_by: user?.id ?? null,
         notes: "Actualización manual desde estructura",
       });
       await logCoreAudit({ table: "core_products", recordId: productId, action: "update_cost_snapshot", newValue: costStructureId });
+
+      const { data: snaps } = await supabase
+        .from("core_product_cost_snapshots").select("*")
+        .eq("core_product_id", productId).order("created_at", { ascending: false });
+      setSnapshots((snaps as any) ?? []);
+      toast.success("Costos guardados y variantes heredadas recalculadas.");
+    } else {
       toast.success("Snapshot de costo actualizado");
     }
   }
+
 
   if (loading) return <div className="p-8 text-muted-foreground">Cargando…</div>;
 

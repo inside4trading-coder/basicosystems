@@ -127,13 +127,17 @@ export default function CoreProducts() {
     if (error) { toast.error(error.message); return; }
     const list = ((data as any) ?? []) as Variant[];
     // Resolve cost per variant with source
+    let rpcError: string | null = null;
     const enriched = await Promise.all(list.map(async v => {
-      const { data: r } = await supabase.rpc("resolve_core_variant_unit_cost_with_source" as any, {
+      const { data: r, error: rErr } = await supabase.rpc("resolve_core_variant_unit_cost_with_source" as any, {
         p_product_id: productId, p_variant_id: v.id,
       });
+      if (rErr) rpcError = rErr.message;
       const row = Array.isArray(r) ? r[0] : r;
       return { ...v, resolved_unit_cost: Number(row?.unit_cost ?? 0), cost_source: row?.cost_source ?? "zero_fallback" };
     }));
+    if (rpcError) toast.error("No se pudo resolver el costo de las variantes: " + rpcError);
+
     setVariantsByProduct(prev => {
       const m = new Map(prev);
       m.set(productId, enriched);
@@ -536,11 +540,14 @@ export default function CoreProducts() {
                                     {vars.map(v => {
                                       const src = v.cost_source ?? "product_unit_cost";
                                       const srcLabel: Record<string, { label: string; cls: string }> = {
-                                        variant_override: { label: "variant_override", cls: "border-red-600 text-red-700" },
-                                        product_base: { label: "product_base", cls: "border-muted-foreground text-muted-foreground" },
-                                        product_unit_cost: { label: "product_unit_cost", cls: "border-muted-foreground text-muted-foreground" },
-                                        zero_fallback: { label: "zero_fallback", cls: "border-amber-600 text-amber-700" },
+                                        variant_override: { label: "Estructura propia", cls: "border-red-600 text-red-700" },
+                                        variant_manual: { label: "Costo manual variante", cls: "border-red-600 text-red-700" },
+                                        product_base: { label: "Estructura base", cls: "border-muted-foreground text-muted-foreground" },
+                                        product_manual: { label: "Costo manual producto", cls: "border-muted-foreground text-muted-foreground" },
+                                        product_unit_cost: { label: "Costo base producto", cls: "border-muted-foreground text-muted-foreground" },
+                                        zero_fallback: { label: "Sin costo", cls: "border-amber-600 text-amber-700" },
                                       };
+
                                       const sInfo = srcLabel[src] ?? srcLabel.product_unit_cost;
                                       return (
                                         <TableRow key={v.id} className={cn(v.status !== "active" && "opacity-60")}>

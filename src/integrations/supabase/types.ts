@@ -9694,11 +9694,11 @@ export type Database = {
         }[]
       }
       resolve_core_variant_unit_cost: {
-        Args: { p_product_id: string; p_variant_id: string }
+        Args: { p_product_id: string; p_variant_id?: string }
         Returns: number
       }
       resolve_core_variant_unit_cost_with_source: {
-        Args: { p_product_id: string; p_variant_id: string }
+        Args: { p_product_id: string; p_variant_id?: string }
         Returns: {
           cost_source: string
           unit_cost: number
