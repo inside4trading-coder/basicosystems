@@ -713,6 +713,8 @@ export default function EstudioVisual() {
           onPromptChange={setPromptText}
           garmentNotes={garmentNotes}
           onGarmentNotesChange={setGarmentNotes}
+          catalogBgColor={catalogBgColor}
+          onCatalogBgColorChange={setCatalogBgColor}
 
           imageModels={imageModels}
           imageModel={imageModel}
