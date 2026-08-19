@@ -62,13 +62,10 @@ export function UnitInventorySection({ unit, processes }: Props) {
 
   async function reload() {
     setLoading(true);
-    const [{ data: settings }, productResp, variantResp, { data: logs }] = await Promise.all([
+    const [{ data: settings }, productResp, { data: logs }] = await Promise.all([
       supabase.from("core_settings").select("woo_write_mode").limit(1).maybeSingle(),
       unit.core_product_id
         ? supabase.from("core_products").select("woo_product_id").eq("id", unit.core_product_id).maybeSingle()
-        : Promise.resolve({ data: null } as any),
-      unit.core_variant_id
-        ? supabase.from("core_product_variants").select("woo_variation_id").eq("id", unit.core_variant_id).maybeSingle()
         : Promise.resolve({ data: null } as any),
       supabase
         .from("core_woo_write_logs")
@@ -80,14 +77,25 @@ export function UnitInventorySection({ unit, processes }: Props) {
     ]);
     setMode((settings as any)?.woo_write_mode ?? "dry_run");
     setWooProductId((productResp as any)?.data?.woo_product_id ?? null);
-    // Si la unidad tiene core_variant_id, asumimos producto variable y exigimos woo_variation_id.
-    setHasVariants(!!unit.core_variant_id);
-    setWooVariationId((variantResp as any)?.data?.woo_variation_id ?? null);
+
+    // Resolver la variante viva (tolerante a vínculos rotos por reinserción de variantes).
+    const resolved = await resolveUnitVariant(unit);
+    setHasVariants(!!unit.core_variant_id || !!resolved.variant);
+    setWooVariationId(resolved.variant?.woo_variation_id ?? null);
+    setVariantIssue(resolved.status === "resolved" ? null : resolved.reason ?? null);
+    if (resolved.status === "resolved" && resolved.recovered && resolved.variant) {
+      setRecoveredVariationId(resolved.variant.woo_variation_id ?? null);
+      await persistUnitVariantLink(unit.id, resolved.variant);
+    } else {
+      setRecoveredVariationId(null);
+    }
+
     const logsArr = (logs as any[]) || [];
     setLatestLog(logsArr[0] ?? null);
     setActiveLog(logsArr.find((l) => l.status === "confirmed" || l.status === "success") ?? null);
     setLoading(false);
   }
+
 
   useEffect(() => {
     reload();
