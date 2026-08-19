@@ -28,6 +28,9 @@ import {
   InventoryWriteResult,
   type InventoryVerification,
 } from "@/components/core/InventoryWriteResult";
+import { pickVariant, VARIANT_SELECT } from "@/lib/coreVariantResolve";
+
+
 
 import {
   Warehouse,
