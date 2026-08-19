@@ -342,6 +342,14 @@ export function UnitInventorySection({ unit, processes }: Props) {
             )}
           </div>
 
+          {recoveredVariationId != null && (
+            <p className="text-xs text-green-700 flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" /> Woo Variation ID resuelto: {recoveredVariationId}
+            </p>
+          )}
+
+
+
           {blockers.length > 0 && (
             <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
               {blockers.map((b, i) => (
