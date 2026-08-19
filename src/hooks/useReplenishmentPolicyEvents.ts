@@ -32,6 +32,7 @@ export type PolicyEvent = {
   resolution_data?: any;
   // synthetic (non-policy-event rows)
   _kind?: "policy_event" | "pending_item" | "pending_classification" | "internal_missing_core";
+  _unlinkedRoute?: "external_supplier" | "no_restock" | "replacement" | null;
   _synthetic?: boolean;
   _dedupe_key?: string | null;
   // pending_classification-only
