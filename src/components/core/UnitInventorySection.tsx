@@ -15,6 +15,7 @@ import { Package, AlertTriangle, CheckCircle2, ExternalLink, Loader2, ShieldChec
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { isPreviewStale, previewAgeLabel, INVENTORY_PREVIEW_TTL_MINUTES } from "@/lib/coreInventoryPreview";
+import { resolveUnitVariant, persistUnitVariantLink } from "@/lib/coreVariantResolve";
 import { InventoryWriteResult, type InventoryVerification } from "@/components/core/InventoryWriteResult";
 
 
