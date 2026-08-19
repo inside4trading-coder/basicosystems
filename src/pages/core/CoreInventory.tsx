@@ -159,7 +159,6 @@ export default function CoreInventory() {
       const rows = (uData ?? []) as Unit[];
       const orderIds = Array.from(new Set(rows.map((r) => r.production_order_id).filter(Boolean)));
       const productIds = Array.from(new Set(rows.map((r) => r.core_product_id).filter(Boolean) as string[]));
-      const variantIds = Array.from(new Set(rows.map((r) => r.core_variant_id).filter(Boolean) as string[]));
 
       const [{ data: orders }, { data: products }, { data: variants }] = await Promise.all([
         orderIds.length
@@ -171,21 +170,29 @@ export default function CoreInventory() {
               .select("id, name, woo_product_id, woo_stock_quantity")
               .in("id", productIds)
           : Promise.resolve({ data: [] as any[] }),
-        variantIds.length
+        productIds.length
           ? supabase
               .from("core_product_variants")
-              .select("id, woo_variation_id, woo_stock_quantity, size, variant_label")
-              .in("id", variantIds)
+              .select(`${VARIANT_SELECT}, woo_stock_quantity`)
+              .in("core_product_id", productIds)
           : Promise.resolve({ data: [] as any[] }),
       ]);
 
       const oMap = new Map((orders ?? []).map((o: any) => [o.id, o]));
       const pMap = new Map((products ?? []).map((p: any) => [p.id, p]));
-      const vMap = new Map((variants ?? []).map((v: any) => [v.id, v]));
+      const variantsByProduct = new Map<string, any[]>();
+      for (const v of (variants ?? []) as any[]) {
+        const arr = variantsByProduct.get(v.core_product_id) ?? [];
+        arr.push(v);
+        variantsByProduct.set(v.core_product_id, arr);
+      }
 
       const enriched: Unit[] = rows.map((u) => {
         const p = u.core_product_id ? pMap.get(u.core_product_id) : null;
-        const v = u.core_variant_id ? vMap.get(u.core_variant_id) : null;
+        const list = u.core_product_id ? variantsByProduct.get(u.core_product_id) ?? [] : [];
+        // Resolución tolerante: si el core_variant_id quedó huérfano, se recupera por SKU/talla.
+        const resolved = pickVariant(u as any, list as any);
+        const v = resolved.variant as any;
         const o = u.production_order_id ? oMap.get(u.production_order_id) : null;
         return {
           ...u,
@@ -194,8 +201,11 @@ export default function CoreInventory() {
           woo_product_id: p?.woo_product_id ?? null,
           woo_variation_id: v?.woo_variation_id ?? null,
           woo_stock_quantity: v?.woo_stock_quantity ?? p?.woo_stock_quantity ?? null,
-        };
+          _variant_issue: resolved.status === "resolved" ? null : resolved.reason ?? null,
+          _variant_recovered: resolved.recovered,
+        } as Unit;
       });
+
       setUnits(enriched);
 
       // 2) logs woo
