@@ -15,6 +15,7 @@ import { Package, AlertTriangle, CheckCircle2, ExternalLink, Loader2, ShieldChec
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { isPreviewStale, previewAgeLabel, INVENTORY_PREVIEW_TTL_MINUTES } from "@/lib/coreInventoryPreview";
+import { resolveUnitVariant, persistUnitVariantLink } from "@/lib/coreVariantResolve";
 import { InventoryWriteResult, type InventoryVerification } from "@/components/core/InventoryWriteResult";
 
 
@@ -58,17 +59,16 @@ export function UnitInventorySection({ unit, processes }: Props) {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [lastResult, setLastResult] = useState<InventoryVerification | null>(null);
+  const [variantIssue, setVariantIssue] = useState<string | null>(null);
+  const [recoveredVariationId, setRecoveredVariationId] = useState<number | null>(null);
 
 
   async function reload() {
     setLoading(true);
-    const [{ data: settings }, productResp, variantResp, { data: logs }] = await Promise.all([
+    const [{ data: settings }, productResp, { data: logs }] = await Promise.all([
       supabase.from("core_settings").select("woo_write_mode").limit(1).maybeSingle(),
       unit.core_product_id
         ? supabase.from("core_products").select("woo_product_id").eq("id", unit.core_product_id).maybeSingle()
-        : Promise.resolve({ data: null } as any),
-      unit.core_variant_id
-        ? supabase.from("core_product_variants").select("woo_variation_id").eq("id", unit.core_variant_id).maybeSingle()
         : Promise.resolve({ data: null } as any),
       supabase
         .from("core_woo_write_logs")
@@ -80,14 +80,25 @@ export function UnitInventorySection({ unit, processes }: Props) {
     ]);
     setMode((settings as any)?.woo_write_mode ?? "dry_run");
     setWooProductId((productResp as any)?.data?.woo_product_id ?? null);
-    // Si la unidad tiene core_variant_id, asumimos producto variable y exigimos woo_variation_id.
-    setHasVariants(!!unit.core_variant_id);
-    setWooVariationId((variantResp as any)?.data?.woo_variation_id ?? null);
+
+    // Resolver la variante viva (tolerante a vínculos rotos por reinserción de variantes).
+    const resolved = await resolveUnitVariant(unit);
+    setHasVariants(!!unit.core_variant_id || !!resolved.variant);
+    setWooVariationId(resolved.variant?.woo_variation_id ?? null);
+    setVariantIssue(resolved.status === "resolved" ? null : resolved.reason ?? null);
+    if (resolved.status === "resolved" && resolved.recovered && resolved.variant) {
+      setRecoveredVariationId(resolved.variant.woo_variation_id ?? null);
+      await persistUnitVariantLink(unit.id, resolved.variant);
+    } else {
+      setRecoveredVariationId(null);
+    }
+
     const logsArr = (logs as any[]) || [];
     setLatestLog(logsArr[0] ?? null);
     setActiveLog(logsArr.find((l) => l.status === "confirmed" || l.status === "success") ?? null);
     setLoading(false);
   }
+
 
   useEffect(() => {
     reload();
@@ -100,7 +111,7 @@ export function UnitInventorySection({ unit, processes }: Props) {
     processes.every((p) => p.status === "completed" || p.status === "skipped");
   const enteredInventory = unit.status === "entered_inventory";
   const invalidStatus = unit.status === "cancelled" || unit.status === "lost";
-  const missingVariant = !unit.core_variant_id;
+  const missingVariant = !unit.core_variant_id && !wooVariationId;
   const missingWooProduct = !wooProductId;
   const missingWooVariation = hasVariants && !wooVariationId;
 
@@ -113,7 +124,12 @@ export function UnitInventorySection({ unit, processes }: Props) {
   }
   if (missingVariant) blockers.push("Falta variante asociada.");
   if (missingWooProduct) blockers.push("Falta Woo Product ID.");
-  if (missingWooVariation) blockers.push("Falta Woo Variation ID.");
+  if (missingWooVariation) {
+    blockers.push(
+      `Falta Woo Variation ID${variantIssue ? ` (${variantIssue})` : ""}. Revisa el vínculo de esta variante en Catálogo / Mapa Woo-Core.`,
+    );
+  }
+
 
   const canEnter = blockers.length === 0 && !enteredInventory;
 
@@ -325,6 +341,14 @@ export function UnitInventorySection({ unit, processes }: Props) {
               <span className="text-amber-700 text-xs">No lista para inventario</span>
             )}
           </div>
+
+          {recoveredVariationId != null && (
+            <p className="text-xs text-green-700 flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" /> Woo Variation ID resuelto: {recoveredVariationId}
+            </p>
+          )}
+
+
 
           {blockers.length > 0 && (
             <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">

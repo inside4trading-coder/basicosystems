@@ -28,6 +28,9 @@ import {
   InventoryWriteResult,
   type InventoryVerification,
 } from "@/components/core/InventoryWriteResult";
+import { pickVariant, VARIANT_SELECT } from "@/lib/coreVariantResolve";
+
+
 
 import {
   Warehouse,
@@ -59,6 +62,8 @@ type Unit = {
   woo_product_id?: number | null;
   woo_variation_id?: number | null;
   woo_stock_quantity?: number | null;
+  _variant_issue?: string | null;
+  _variant_recovered?: boolean;
 };
 
 type WooLog = {
@@ -132,6 +137,9 @@ export default function CoreInventory() {
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [lastResult, setLastResult] = useState<InventoryVerification | null>(null);
+  const [repairing, setRepairing] = useState(false);
+
+
 
 
   const load = useCallback(async () => {
@@ -159,7 +167,6 @@ export default function CoreInventory() {
       const rows = (uData ?? []) as Unit[];
       const orderIds = Array.from(new Set(rows.map((r) => r.production_order_id).filter(Boolean)));
       const productIds = Array.from(new Set(rows.map((r) => r.core_product_id).filter(Boolean) as string[]));
-      const variantIds = Array.from(new Set(rows.map((r) => r.core_variant_id).filter(Boolean) as string[]));
 
       const [{ data: orders }, { data: products }, { data: variants }] = await Promise.all([
         orderIds.length
@@ -171,21 +178,29 @@ export default function CoreInventory() {
               .select("id, name, woo_product_id, woo_stock_quantity")
               .in("id", productIds)
           : Promise.resolve({ data: [] as any[] }),
-        variantIds.length
+        productIds.length
           ? supabase
               .from("core_product_variants")
-              .select("id, woo_variation_id, woo_stock_quantity, size, variant_label")
-              .in("id", variantIds)
+              .select(`${VARIANT_SELECT}, woo_stock_quantity`)
+              .in("core_product_id", productIds)
           : Promise.resolve({ data: [] as any[] }),
       ]);
 
       const oMap = new Map((orders ?? []).map((o: any) => [o.id, o]));
       const pMap = new Map((products ?? []).map((p: any) => [p.id, p]));
-      const vMap = new Map((variants ?? []).map((v: any) => [v.id, v]));
+      const variantsByProduct = new Map<string, any[]>();
+      for (const v of (variants ?? []) as any[]) {
+        const arr = variantsByProduct.get(v.core_product_id) ?? [];
+        arr.push(v);
+        variantsByProduct.set(v.core_product_id, arr);
+      }
 
       const enriched: Unit[] = rows.map((u) => {
         const p = u.core_product_id ? pMap.get(u.core_product_id) : null;
-        const v = u.core_variant_id ? vMap.get(u.core_variant_id) : null;
+        const list = u.core_product_id ? variantsByProduct.get(u.core_product_id) ?? [] : [];
+        // Resolución tolerante: si el core_variant_id quedó huérfano, se recupera por SKU/talla.
+        const resolved = pickVariant(u as any, list as any);
+        const v = resolved.variant as any;
         const o = u.production_order_id ? oMap.get(u.production_order_id) : null;
         return {
           ...u,
@@ -194,8 +209,11 @@ export default function CoreInventory() {
           woo_product_id: p?.woo_product_id ?? null,
           woo_variation_id: v?.woo_variation_id ?? null,
           woo_stock_quantity: v?.woo_stock_quantity ?? p?.woo_stock_quantity ?? null,
-        };
+          _variant_issue: resolved.status === "resolved" ? null : resolved.reason ?? null,
+          _variant_recovered: resolved.recovered,
+        } as Unit;
       });
+
       setUnits(enriched);
 
       // 2) logs woo
@@ -228,6 +246,27 @@ export default function CoreInventory() {
       setLoading(false);
     }
   }, []);
+
+  // Reparación admin: revincula unidades cuyo core_variant_id quedó huérfano.
+  // Solo metadata interna, no escribe en WooCommerce.
+  const repairVariantLinks = async () => {
+    setRepairing(true);
+    try {
+      const { data, error } = await supabase.rpc("core_repair_unit_variant_links" as any, { p_dry_run: false });
+      if (error) throw error;
+      const r: any = data ?? {};
+      toast({
+        title: "Reparación completada",
+        description: `Reparadas: ${r.reparadas ?? 0} · Ambiguas: ${r.ambiguas ?? 0} · No resueltas: ${r.no_resueltas ?? 0}`,
+      });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Error en la reparación", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setRepairing(false);
+    }
+  };
+
 
   useEffect(() => {
     load();
@@ -265,9 +304,13 @@ export default function CoreInventory() {
     for (const u of units) {
       const reasons: string[] = [];
       if (u.status !== "completed") reasons.push(`Estado: ${u.status} (no completed)`);
-      if (!u.core_variant_id) reasons.push("Falta variante (core_variant_id)");
+      if (!u.core_variant_id && !u.woo_variation_id) reasons.push("Falta variante (core_variant_id)");
       if (!u.woo_product_id) reasons.push("Falta woo_product_id");
-      if (u.core_variant_id && !u.woo_variation_id) reasons.push("Falta woo_variation_id");
+      if ((u.core_variant_id || u._variant_issue) && !u.woo_variation_id) {
+        reasons.push(
+          `Falta woo_variation_id${u._variant_issue ? ` (${u._variant_issue})` : ""} — revisa el vínculo en Catálogo / Mapa Woo-Core`,
+        );
+      }
       if (successKeys.has(`${u.unit_code}::stock_increase`)) reasons.push("Ya ingresada (idempotency)");
       if (reasons.length > 0) {
         blocked.push({ ...u, reason: reasons.join(" · ") });
@@ -525,6 +568,10 @@ export default function CoreInventory() {
           <Badge variant="outline" className="border-primary/40 text-primary">
             Modo Woo: {writeMode}
           </Badge>
+          <Button variant="outline" size="sm" onClick={repairVariantLinks} disabled={repairing || loading}>
+            <ShieldCheck className={`h-4 w-4 ${repairing ? "animate-pulse" : ""}`} />
+            Reparar Woo Variation IDs pendientes
+          </Button>
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refrescar

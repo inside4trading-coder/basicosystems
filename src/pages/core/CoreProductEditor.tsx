@@ -459,11 +459,29 @@ export default function CoreProductEditor() {
 
       if (!savedId) throw new Error("No id");
 
-      // Save variants: delete-all + insert (simple, atomic-ish)
-      await supabase.from("core_product_variants").delete().eq("core_product_id", savedId);
-      const cleanVars = variants
-        .filter(v => v.size.trim() || (v.color ?? "").trim())
-        .map((v, i) => ({
+      // Guardado conservador de variantes: update de las existentes, insert de las nuevas,
+      // delete SOLO de las eliminadas en la UI. Nunca rotamos core_variant_id (las unidades
+      // de producción y las OP apuntan a esos ids).
+      const { data: existingVars } = await supabase
+        .from("core_product_variants")
+        .select("id, size, color, variant_sku, woo_sku")
+        .eq("core_product_id", savedId);
+      const existingList = (existingVars as any[]) ?? [];
+
+      const keyOf = (size: string | null | undefined, color: string | null | undefined) =>
+        `${normVar(size)}|${normVar(color)}`;
+      const byId = new Map(existingList.map((v) => [v.id as string, v]));
+      const byKey = new Map(existingList.map((v) => [keyOf(v.size, v.color), v]));
+      const bySku = new Map(
+        existingList.filter((v) => v.woo_sku).map((v) => [normVar(v.woo_sku), v]),
+      );
+
+      const cleanVars = variants.filter(v => v.size.trim() || (v.color ?? "").trim());
+      const keptIds = new Set<string>();
+
+      for (let i = 0; i < cleanVars.length; i++) {
+        const v = cleanVars[i];
+        const fields = {
           core_product_id: savedId,
           size: v.size.trim(),
           color: v.color?.trim() || null,
@@ -477,11 +495,38 @@ export default function CoreProductEditor() {
           woo_sale_price: v.woo_sale_price ?? null,
           notes: v.notes || null,
           sort_order: i,
-        }));
-      if (cleanVars.length > 0) {
-        const { error: ev } = await supabase.from("core_product_variants").insert(cleanVars);
-        if (ev) throw ev;
+        };
+
+        const match =
+          (v.id && byId.get(v.id)) ||
+          byKey.get(keyOf(v.size, v.color)) ||
+          (v.woo_sku ? bySku.get(normVar(v.woo_sku)) : null) ||
+          null;
+
+        if (match && !keptIds.has(match.id)) {
+          keptIds.add(match.id);
+          const { error: eu } = await supabase
+            .from("core_product_variants")
+            .update(fields)
+            .eq("id", match.id);
+          if (eu) throw eu;
+        } else {
+          const { data: ins, error: ei } = await supabase
+            .from("core_product_variants")
+            .insert(fields)
+            .select("id")
+            .single();
+          if (ei) throw ei;
+          if (ins?.id) keptIds.add(ins.id);
+        }
       }
+
+      const toDelete = existingList.filter((v) => !keptIds.has(v.id)).map((v) => v.id);
+      if (toDelete.length > 0) {
+        const { error: ed } = await supabase.from("core_product_variants").delete().in("id", toDelete);
+        if (ed) throw ed;
+      }
+
 
       // Releer desde la base para no quedarnos con estado local desactualizado
       const { data: fresh } = await supabase.from("core_products").select("unit_cost, currency, cost_snapshot, cost_structure_id").eq("id", savedId).maybeSingle();

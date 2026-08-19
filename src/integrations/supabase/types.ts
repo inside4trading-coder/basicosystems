@@ -9405,6 +9405,10 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
+      core_repair_unit_variant_links: {
+        Args: { p_dry_run?: boolean }
+        Returns: Json
+      }
       core_resolve_missing_sku_pending_item: {
         Args: {
           p_action: string
