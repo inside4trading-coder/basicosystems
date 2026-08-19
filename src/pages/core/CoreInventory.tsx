@@ -137,6 +137,9 @@ export default function CoreInventory() {
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [lastResult, setLastResult] = useState<InventoryVerification | null>(null);
+  const [repairing, setRepairing] = useState(false);
+
+
 
 
   const load = useCallback(async () => {
