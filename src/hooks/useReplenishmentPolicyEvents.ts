@@ -393,13 +393,39 @@ export function useReplenishmentPolicyEvents() {
       const key = makeDedupeKey(m.source_order_id, m.source_order_item_id);
       if (key && seen.has(key)) continue;
       if (key) seen.add(key);
+      const pol =
+        m.woo_product_id != null
+          ? (unlinkedPolicies as any)[Number(m.woo_product_id)] ?? null
+          : null;
+      const extCost =
+        pol?.external_supplier_unit_cost_usd != null
+          ? Number(pol.external_supplier_unit_cost_usd)
+          : m.unit_cost_snapshot != null
+            ? Number(m.unit_cost_snapshot)
+            : null;
+      let route: "external_supplier" | "no_restock" | "replacement" | null = null;
+      if (pol?.replenishment_route === "external_supplier" && (extCost ?? 0) > 0) {
+        route = "external_supplier";
+      } else if (pol && (pol.restock_enabled === false || pol.replenishment_route === "no_restock")) {
+        route = "no_restock";
+      } else if (pol?.replacement_product_id || pol?.replacement_woo_product_id) {
+        route = "replacement";
+      }
+      const message =
+        route === "external_supplier"
+          ? "Ruta proveedor externo con costo operativo. No requiere vínculo Core interno."
+          : route === "no_restock"
+            ? "Política sin reposición. No requiere vínculo Core interno."
+            : route === "replacement"
+              ? "Política con reemplazo definido. No requiere vínculo Core interno."
+              : "Venta interna reservada, pero falta vincular producto/variante Core.";
       out.push({
         id: `imc:${m.id}`,
         created_at: m.created_at,
         source_type: "fabrication_fund_movement",
         action: "missing_map",
-        severity: "warning",
-        message: "Venta interna reservada, pero falta vincular producto/variante Core.",
+        severity: route ? "review" : "warning",
+        message,
         warning: "missing_core_ids",
         status: "pending",
         quantity: m.quantity != null ? Number(m.quantity) : null,
@@ -412,11 +438,12 @@ export function useReplenishmentPolicyEvents() {
         woo_variation_id: m.woo_variation_id ?? null,
         woo_order_id: m.source_order_id ?? null,
         woo_order_item_id: m.source_order_item_id ?? null,
-        replacement_product_id: null,
-        replacement_woo_product_id: null,
-        external_supplier_name: null,
-        external_supplier_unit_cost_usd: null,
+        replacement_product_id: pol?.replacement_product_id ?? null,
+        replacement_woo_product_id: pol?.replacement_woo_product_id ?? null,
+        external_supplier_name: route === "external_supplier" ? pol?.external_supplier_name ?? null : null,
+        external_supplier_unit_cost_usd: route === "external_supplier" ? extCost : null,
         _kind: "internal_missing_core",
+        _unlinkedRoute: route,
         _synthetic: true,
         _dedupe_key: key,
         sourceMovementId: m.id,
@@ -428,6 +455,7 @@ export function useReplenishmentPolicyEvents() {
           woo_sku: m.sku,
         },
       });
+
     }
 
     return out;
