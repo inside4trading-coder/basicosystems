@@ -863,7 +863,7 @@ export function useReplenishmentPolicyEvents() {
 
   const resolveUnlinkedCoreMovement = async (args: {
     movementId: string;
-    action: "no_restock" | "mark_replaced";
+    action: "no_restock" | "mark_replaced" | "external_supplier" | "mark_reviewed";
     replacementEventId?: string | null;
   }): Promise<any | null> => {
     try {
