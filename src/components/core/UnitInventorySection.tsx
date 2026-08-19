@@ -59,6 +59,8 @@ export function UnitInventorySection({ unit, processes }: Props) {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [lastResult, setLastResult] = useState<InventoryVerification | null>(null);
+  const [variantIssue, setVariantIssue] = useState<string | null>(null);
+  const [recoveredVariationId, setRecoveredVariationId] = useState<number | null>(null);
 
 
   async function reload() {
