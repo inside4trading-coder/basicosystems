@@ -232,6 +232,39 @@ export function useReplenishmentPolicyEvents() {
     (m: any) => !isCovered(m.id, makeDedupeKey(m.source_order_id, m.source_order_item_id)),
   );
 
+  // Políticas vigentes de los movimientos sin vínculo Core: permiten reclasificar
+  // la fila como Proveedor externo / No restock / Reemplazo sin exigir vínculo interno.
+  const unlinkedWooIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          internalMissingCoreMovs
+            .map((m: any) => m.woo_product_id)
+            .filter((n: any): n is number => typeof n === "number"),
+        ),
+      ),
+    [internalMissingCoreMovs],
+  );
+
+  const { data: unlinkedPolicies = {} } = useQuery({
+    queryKey: ["unlinked_core_policies", unlinkedWooIds.slice().sort()],
+    enabled: unlinkedWooIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("core_replenishment_policies" as any)
+        .select(
+          "id, woo_product_id, replenishment_route, restock_enabled, external_supplier_name, external_supplier_unit_cost_usd, replacement_product_id, replacement_woo_product_id, replacement_behavior",
+        )
+        .in("woo_product_id", unlinkedWooIds);
+      const map: Record<number, any> = {};
+      (data ?? []).forEach((p: any) => {
+        if (p.woo_product_id != null) map[Number(p.woo_product_id)] = p;
+      });
+      return map;
+    },
+  });
+
+
 
   // Bridge events referenced by corrected pending_classification movements
   // (used to show which product replaced the original one).
