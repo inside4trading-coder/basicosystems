@@ -460,7 +460,7 @@ export function useReplenishmentPolicyEvents() {
     }
 
     return out;
-  }, [policyRows, pendingItems, pendingClassMovs, internalMissingCoreMovs, bridgeEventsMap]);
+  }, [policyRows, pendingItems, pendingClassMovs, internalMissingCoreMovs, bridgeEventsMap, unlinkedPolicies]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { total: 0 };
