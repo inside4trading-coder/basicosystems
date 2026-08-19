@@ -4,21 +4,36 @@
 // woo_variation_id para ingresar a inventario.
 import { supabase } from "@/integrations/supabase/client";
 
+export type VariantRow = {
+  id: string;
+  core_product_id?: string | null;
+  woo_variation_id: number | null;
+  variant_sku: string | null;
+  woo_sku: string | null;
+  size: string | null;
+  color: string | null;
+  variant_label: string | null;
+};
+
+export type UnitLike = {
+  id?: string;
+  core_product_id: string | null;
+  core_variant_id: string | null;
+  variant_sku?: string | null;
+  size?: string | null;
+  variant_label?: string | null;
+};
+
 export type ResolvedVariant = {
   status: "resolved" | "ambiguous" | "not_found";
-  variant: {
-    id: string;
-    woo_variation_id: number | null;
-    variant_sku: string | null;
-    woo_sku: string | null;
-    size: string | null;
-    color: string | null;
-    variant_label: string | null;
-  } | null;
+  variant: VariantRow | null;
   /** true si se resolvió por fallback (sku / talla+color), no por core_variant_id directo */
   recovered: boolean;
   reason?: string;
 };
+
+export const VARIANT_SELECT =
+  "id, core_product_id, woo_variation_id, variant_sku, woo_sku, size, color, variant_label";
 
 function norm(s: string | null | undefined): string {
   if (!s) return "";
@@ -31,39 +46,17 @@ function norm(s: string | null | undefined): string {
     .toUpperCase();
 }
 
-const SELECT = "id, core_product_id, woo_variation_id, variant_sku, woo_sku, size, color, variant_label";
-
-export async function resolveUnitVariant(unit: {
-  core_product_id: string | null;
-  core_variant_id: string | null;
-  variant_sku?: string | null;
-  size?: string | null;
-  variant_label?: string | null;
-}): Promise<ResolvedVariant> {
-  // 1) por core_variant_id
+/** Resolución pura contra una lista de variantes vivas del mismo producto. */
+export function pickVariant(unit: UnitLike, variants: VariantRow[]): ResolvedVariant {
   if (unit.core_variant_id) {
-    const { data } = await supabase
-      .from("core_product_variants")
-      .select(SELECT)
-      .eq("id", unit.core_variant_id)
-      .maybeSingle();
-    if (data) return { status: "resolved", variant: data as any, recovered: false };
+    const direct = variants.find((v) => v.id === unit.core_variant_id);
+    if (direct) return { status: "resolved", variant: direct, recovered: false };
   }
-
-  if (!unit.core_product_id) {
-    return { status: "not_found", variant: null, recovered: false, reason: "Unidad sin producto Core" };
-  }
-
-  const { data: allRaw } = await supabase
-    .from("core_product_variants")
-    .select(SELECT)
-    .eq("core_product_id", unit.core_product_id);
-  const all = ((allRaw as any[]) ?? []) as NonNullable<ResolvedVariant["variant"]>[];
+  const all = variants.filter((v) => !unit.core_product_id || !v.core_product_id || v.core_product_id === unit.core_product_id);
   if (all.length === 0) {
     return { status: "not_found", variant: null, recovered: false, reason: "El producto no tiene variantes en el catálogo" };
   }
 
-  // 2) por SKU de variante
   const sku = norm(unit.variant_sku);
   if (sku) {
     const bySku = all.filter((v) => norm(v.variant_sku) === sku || norm(v.woo_sku) === sku);
@@ -73,7 +66,6 @@ export async function resolveUnitVariant(unit: {
     }
   }
 
-  // 3) por talla (+ color deducido de la etiqueta / SKU)
   const size = norm(unit.size);
   if (size) {
     let bySize = all.filter((v) => norm(v.size) === size);
@@ -94,4 +86,36 @@ export async function resolveUnitVariant(unit: {
   }
 
   return { status: "not_found", variant: null, recovered: false, reason: "No se pudo resolver Woo Variation ID" };
+}
+
+/** Resolución con lecturas a base de datos, para una sola unidad (ficha viajera / escaneo). */
+export async function resolveUnitVariant(unit: UnitLike): Promise<ResolvedVariant> {
+  if (unit.core_variant_id) {
+    const { data } = await supabase
+      .from("core_product_variants")
+      .select(VARIANT_SELECT)
+      .eq("id", unit.core_variant_id)
+      .maybeSingle();
+    if (data) return { status: "resolved", variant: data as any, recovered: false };
+  }
+  if (!unit.core_product_id) {
+    return { status: "not_found", variant: null, recovered: false, reason: "Unidad sin producto Core" };
+  }
+  const { data: allRaw } = await supabase
+    .from("core_product_variants")
+    .select(VARIANT_SELECT)
+    .eq("core_product_id", unit.core_product_id);
+  return pickVariant(unit, ((allRaw as any[]) ?? []) as VariantRow[]);
+}
+
+/** Persiste el vínculo recuperado en la unidad para que el backend pueda escribir en Woo. */
+export async function persistUnitVariantLink(unitId: string, variant: VariantRow): Promise<boolean> {
+  const { error } = await supabase
+    .from("core_production_units")
+    .update({
+      core_variant_id: variant.id,
+      variant_sku: variant.variant_sku ?? variant.woo_sku ?? undefined,
+    })
+    .eq("id", unitId);
+  return !error;
 }
