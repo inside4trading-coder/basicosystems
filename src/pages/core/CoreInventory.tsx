@@ -247,6 +247,27 @@ export default function CoreInventory() {
     }
   }, []);
 
+  // Reparación admin: revincula unidades cuyo core_variant_id quedó huérfano.
+  // Solo metadata interna, no escribe en WooCommerce.
+  const repairVariantLinks = async () => {
+    setRepairing(true);
+    try {
+      const { data, error } = await supabase.rpc("core_repair_unit_variant_links" as any, { p_dry_run: false });
+      if (error) throw error;
+      const r: any = data ?? {};
+      toast({
+        title: "Reparación completada",
+        description: `Reparadas: ${r.reparadas ?? 0} · Ambiguas: ${r.ambiguas ?? 0} · No resueltas: ${r.no_resueltas ?? 0}`,
+      });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Error en la reparación", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setRepairing(false);
+    }
+  };
+
+
   useEffect(() => {
     load();
   }, [load]);
