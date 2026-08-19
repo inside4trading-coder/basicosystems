@@ -432,15 +432,30 @@ export default function CoreWooCoreMap() {
         </div>
       );
     }
+    const isExternalRoute = ctx.policy?.replenishment_route === "external_supplier";
     if (tier === 1) {
       return (
         <div className="space-y-1">
           <span className={yellowChip}>Sin conexión · con costo</span>
           {ctx.activeStructure && badge("Con estructura Woo", "secondary")}
+          {isExternalRoute && (
+            <div className="text-[10px] text-muted-foreground max-w-[220px]">
+              Proveedor externo sin vínculo Core interno. No requiere fabricación interna.
+            </div>
+          )}
         </div>
       );
     }
-    return <span className={redChip}>Sin conexión</span>;
+    return (
+      <div className="space-y-1">
+        <span className={redChip}>Sin conexión</span>
+        {isExternalRoute && (
+          <div className="text-[10px] text-muted-foreground max-w-[220px]">
+            Proveedor externo sin vínculo Core interno. No requiere fabricación interna.
+          </div>
+        )}
+      </div>
+    );
   }
 
 
