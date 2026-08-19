@@ -32,6 +32,7 @@ export type PolicyEvent = {
   resolution_data?: any;
   // synthetic (non-policy-event rows)
   _kind?: "policy_event" | "pending_item" | "pending_classification" | "internal_missing_core";
+  _unlinkedRoute?: "external_supplier" | "no_restock" | "replacement" | null;
   _synthetic?: boolean;
   _dedupe_key?: string | null;
   // pending_classification-only
@@ -232,6 +233,39 @@ export function useReplenishmentPolicyEvents() {
     (m: any) => !isCovered(m.id, makeDedupeKey(m.source_order_id, m.source_order_item_id)),
   );
 
+  // Políticas vigentes de los movimientos sin vínculo Core: permiten reclasificar
+  // la fila como Proveedor externo / No restock / Reemplazo sin exigir vínculo interno.
+  const unlinkedWooIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          internalMissingCoreMovs
+            .map((m: any) => m.woo_product_id)
+            .filter((n: any): n is number => typeof n === "number"),
+        ),
+      ),
+    [internalMissingCoreMovs],
+  );
+
+  const { data: unlinkedPolicies = {} } = useQuery({
+    queryKey: ["unlinked_core_policies", unlinkedWooIds.slice().sort()],
+    enabled: unlinkedWooIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("core_replenishment_policies" as any)
+        .select(
+          "id, woo_product_id, replenishment_route, restock_enabled, external_supplier_name, external_supplier_unit_cost_usd, replacement_product_id, replacement_woo_product_id, replacement_behavior",
+        )
+        .in("woo_product_id", unlinkedWooIds);
+      const map: Record<number, any> = {};
+      (data ?? []).forEach((p: any) => {
+        if (p.woo_product_id != null) map[Number(p.woo_product_id)] = p;
+      });
+      return map;
+    },
+  });
+
+
 
   // Bridge events referenced by corrected pending_classification movements
   // (used to show which product replaced the original one).
@@ -360,13 +394,39 @@ export function useReplenishmentPolicyEvents() {
       const key = makeDedupeKey(m.source_order_id, m.source_order_item_id);
       if (key && seen.has(key)) continue;
       if (key) seen.add(key);
+      const pol =
+        m.woo_product_id != null
+          ? (unlinkedPolicies as any)[Number(m.woo_product_id)] ?? null
+          : null;
+      const extCost =
+        pol?.external_supplier_unit_cost_usd != null
+          ? Number(pol.external_supplier_unit_cost_usd)
+          : m.unit_cost_snapshot != null
+            ? Number(m.unit_cost_snapshot)
+            : null;
+      let route: "external_supplier" | "no_restock" | "replacement" | null = null;
+      if (pol?.replenishment_route === "external_supplier" && (extCost ?? 0) > 0) {
+        route = "external_supplier";
+      } else if (pol && (pol.restock_enabled === false || pol.replenishment_route === "no_restock")) {
+        route = "no_restock";
+      } else if (pol?.replacement_product_id || pol?.replacement_woo_product_id) {
+        route = "replacement";
+      }
+      const message =
+        route === "external_supplier"
+          ? "Ruta proveedor externo con costo operativo. No requiere vínculo Core interno."
+          : route === "no_restock"
+            ? "Política sin reposición. No requiere vínculo Core interno."
+            : route === "replacement"
+              ? "Política con reemplazo definido. No requiere vínculo Core interno."
+              : "Venta interna reservada, pero falta vincular producto/variante Core.";
       out.push({
         id: `imc:${m.id}`,
         created_at: m.created_at,
         source_type: "fabrication_fund_movement",
         action: "missing_map",
-        severity: "warning",
-        message: "Venta interna reservada, pero falta vincular producto/variante Core.",
+        severity: route ? "review" : "warning",
+        message,
         warning: "missing_core_ids",
         status: "pending",
         quantity: m.quantity != null ? Number(m.quantity) : null,
@@ -379,11 +439,12 @@ export function useReplenishmentPolicyEvents() {
         woo_variation_id: m.woo_variation_id ?? null,
         woo_order_id: m.source_order_id ?? null,
         woo_order_item_id: m.source_order_item_id ?? null,
-        replacement_product_id: null,
-        replacement_woo_product_id: null,
-        external_supplier_name: null,
-        external_supplier_unit_cost_usd: null,
+        replacement_product_id: pol?.replacement_product_id ?? null,
+        replacement_woo_product_id: pol?.replacement_woo_product_id ?? null,
+        external_supplier_name: route === "external_supplier" ? pol?.external_supplier_name ?? null : null,
+        external_supplier_unit_cost_usd: route === "external_supplier" ? extCost : null,
         _kind: "internal_missing_core",
+        _unlinkedRoute: route,
         _synthetic: true,
         _dedupe_key: key,
         sourceMovementId: m.id,
@@ -395,10 +456,11 @@ export function useReplenishmentPolicyEvents() {
           woo_sku: m.sku,
         },
       });
+
     }
 
     return out;
-  }, [policyRows, pendingItems, pendingClassMovs, internalMissingCoreMovs, bridgeEventsMap]);
+  }, [policyRows, pendingItems, pendingClassMovs, internalMissingCoreMovs, bridgeEventsMap, unlinkedPolicies]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { total: 0 };
@@ -801,7 +863,7 @@ export function useReplenishmentPolicyEvents() {
 
   const resolveUnlinkedCoreMovement = async (args: {
     movementId: string;
-    action: "no_restock" | "mark_replaced";
+    action: "no_restock" | "mark_replaced" | "external_supplier" | "mark_reviewed";
     replacementEventId?: string | null;
   }): Promise<any | null> => {
     try {

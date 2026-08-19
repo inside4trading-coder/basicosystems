@@ -77,8 +77,30 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
     setEventStatus,
     closePendingClassification,
     resolvePendingItem,
+    resolveUnlinkedCoreMovement,
     refreshRow,
   } = useReplenishmentPolicyEvents();
+
+  const [externalBusy, setExternalBusy] = useState<Record<string, boolean>>({});
+  const handleExternalResolve = async (
+    row: PolicyEvent,
+    action: "external_supplier" | "mark_reviewed",
+  ) => {
+    if (!row.sourceMovementId) return;
+    setExternalBusy((s) => ({ ...s, [row.id]: true }));
+    const res = await resolveUnlinkedCoreMovement({ movementId: row.sourceMovementId, action });
+    setExternalBusy((s) => ({ ...s, [row.id]: false }));
+    if (res) {
+      toast({
+        title: action === "external_supplier" ? "Reposición externa confirmada" : "Marcado como revisado",
+        description:
+          action === "external_supplier"
+            ? "La reserva se movió a la partida de proveedores."
+            : "El pendiente se cerró sin mover dinero.",
+      });
+    }
+  };
+
 
   const [refreshing, setRefreshing] = useState<Record<string, boolean>>({});
   const [refreshAll, setRefreshAll] = useState(false);
@@ -262,7 +284,15 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                     <td className="p-2 text-right">{r.quantity ?? "—"}</td>
                     <td className="p-2">
                       <Badge className={SEVERITY_STYLES[r.severity] ?? ""}>
-                        {r._kind === "internal_missing_core" ? "Sin vínculo Core" : actionLabel(r.action)}
+                        {r._kind === "internal_missing_core"
+                          ? r._unlinkedRoute === "external_supplier"
+                            ? "Proveedor externo"
+                            : r._unlinkedRoute === "no_restock"
+                              ? "No restock"
+                              : r._unlinkedRoute === "replacement"
+                                ? "Reemplazo"
+                                : "Sin vínculo Core"
+                          : actionLabel(r.action)}
                       </Badge>
                       <div className="text-xs mt-1">
                         {r.message || describePolicyAction(r.action)}
@@ -393,9 +423,47 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         {r.action === "missing_map" && (
                           <>
                             {r._kind === "internal_missing_core" && r.sourceMovementId && (
-                              <Button size="sm" onClick={() => setUnlinkedRow(r)}>
-                                <Layers className="w-3 h-3 mr-1" /> Decidir reserva
-                              </Button>
+                              r._unlinkedRoute === "external_supplier" ? (
+                                <>
+                                  <div className="text-[11px] text-muted-foreground">
+                                    Ya tiene ruta proveedor externo y costo operativo: puede resolverse sin
+                                    vincularla a fabricación interna.
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    disabled={!!externalBusy[r.id]}
+                                    onClick={() => handleExternalResolve(r, "external_supplier")}
+                                  >
+                                    {externalBusy[r.id] ? (
+                                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                    ) : (
+                                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    )}
+                                    Confirmar reposición externa
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={!!externalBusy[r.id]}
+                                    onClick={() => handleExternalResolve(r, "mark_reviewed")}
+                                  >
+                                    Marcar revisado
+                                  </Button>
+                                  <Button size="sm" variant="outline" asChild>
+                                    <Link
+                                      to={`/core/mapa-woo-core?tab=external${
+                                        r.woo_product_id ? `&woo_product_id=${r.woo_product_id}` : ""
+                                      }`}
+                                    >
+                                      <ExternalLink className="w-3 h-3 mr-1" /> Abrir reposición externa
+                                    </Link>
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button size="sm" onClick={() => setUnlinkedRow(r)}>
+                                  <Layers className="w-3 h-3 mr-1" /> Decidir reserva
+                                </Button>
+                              )
                             )}
                             {r._kind === "pending_item" && r.sourcePendingItemId && (
                               <Button
