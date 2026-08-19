@@ -77,8 +77,30 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
     setEventStatus,
     closePendingClassification,
     resolvePendingItem,
+    resolveUnlinkedCoreMovement,
     refreshRow,
   } = useReplenishmentPolicyEvents();
+
+  const [externalBusy, setExternalBusy] = useState<Record<string, boolean>>({});
+  const handleExternalResolve = async (
+    row: PolicyEvent,
+    action: "external_supplier" | "mark_reviewed",
+  ) => {
+    if (!row.sourceMovementId) return;
+    setExternalBusy((s) => ({ ...s, [row.id]: true }));
+    const res = await resolveUnlinkedCoreMovement({ movementId: row.sourceMovementId, action });
+    setExternalBusy((s) => ({ ...s, [row.id]: false }));
+    if (res) {
+      toast({
+        title: action === "external_supplier" ? "Reposición externa confirmada" : "Marcado como revisado",
+        description:
+          action === "external_supplier"
+            ? "La reserva se movió a la partida de proveedores."
+            : "El pendiente se cerró sin mover dinero.",
+      });
+    }
+  };
+
 
   const [refreshing, setRefreshing] = useState<Record<string, boolean>>({});
   const [refreshAll, setRefreshAll] = useState(false);
