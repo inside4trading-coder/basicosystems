@@ -280,9 +280,13 @@ export default function CoreInventory() {
     for (const u of units) {
       const reasons: string[] = [];
       if (u.status !== "completed") reasons.push(`Estado: ${u.status} (no completed)`);
-      if (!u.core_variant_id) reasons.push("Falta variante (core_variant_id)");
+      if (!u.core_variant_id && !u.woo_variation_id) reasons.push("Falta variante (core_variant_id)");
       if (!u.woo_product_id) reasons.push("Falta woo_product_id");
-      if (u.core_variant_id && !u.woo_variation_id) reasons.push("Falta woo_variation_id");
+      if ((u.core_variant_id || u._variant_issue) && !u.woo_variation_id) {
+        reasons.push(
+          `Falta woo_variation_id${u._variant_issue ? ` (${u._variant_issue})` : ""} — revisa el vínculo en Catálogo / Mapa Woo-Core`,
+        );
+      }
       if (successKeys.has(`${u.unit_code}::stock_increase`)) reasons.push("Ya ingresada (idempotency)");
       if (reasons.length > 0) {
         blocked.push({ ...u, reason: reasons.join(" · ") });
