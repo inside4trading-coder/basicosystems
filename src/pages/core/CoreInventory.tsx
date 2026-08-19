@@ -62,6 +62,8 @@ type Unit = {
   woo_product_id?: number | null;
   woo_variation_id?: number | null;
   woo_stock_quantity?: number | null;
+  _variant_issue?: string | null;
+  _variant_recovered?: boolean;
 };
 
 type WooLog = {
