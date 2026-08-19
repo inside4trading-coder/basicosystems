@@ -544,6 +544,10 @@ export default function CoreInventory() {
           <Badge variant="outline" className="border-primary/40 text-primary">
             Modo Woo: {writeMode}
           </Badge>
+          <Button variant="outline" size="sm" onClick={repairVariantLinks} disabled={repairing || loading}>
+            <ShieldCheck className={`h-4 w-4 ${repairing ? "animate-pulse" : ""}`} />
+            Reparar Woo Variation IDs pendientes
+          </Button>
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refrescar
