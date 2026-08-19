@@ -423,9 +423,47 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         {r.action === "missing_map" && (
                           <>
                             {r._kind === "internal_missing_core" && r.sourceMovementId && (
-                              <Button size="sm" onClick={() => setUnlinkedRow(r)}>
-                                <Layers className="w-3 h-3 mr-1" /> Decidir reserva
-                              </Button>
+                              r._unlinkedRoute === "external_supplier" ? (
+                                <>
+                                  <div className="text-[11px] text-muted-foreground">
+                                    Ya tiene ruta proveedor externo y costo operativo: puede resolverse sin
+                                    vincularla a fabricación interna.
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    disabled={!!externalBusy[r.id]}
+                                    onClick={() => handleExternalResolve(r, "external_supplier")}
+                                  >
+                                    {externalBusy[r.id] ? (
+                                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                    ) : (
+                                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    )}
+                                    Confirmar reposición externa
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={!!externalBusy[r.id]}
+                                    onClick={() => handleExternalResolve(r, "mark_reviewed")}
+                                  >
+                                    Marcar revisado
+                                  </Button>
+                                  <Button size="sm" variant="outline" asChild>
+                                    <Link
+                                      to={`/core/mapa-woo-core?tab=external${
+                                        r.woo_product_id ? `&woo_product_id=${r.woo_product_id}` : ""
+                                      }`}
+                                    >
+                                      <ExternalLink className="w-3 h-3 mr-1" /> Abrir reposición externa
+                                    </Link>
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button size="sm" onClick={() => setUnlinkedRow(r)}>
+                                  <Layers className="w-3 h-3 mr-1" /> Decidir reserva
+                                </Button>
+                              )
                             )}
                             {r._kind === "pending_item" && r.sourcePendingItemId && (
                               <Button
