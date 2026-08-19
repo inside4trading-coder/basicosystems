@@ -111,7 +111,7 @@ export function UnitInventorySection({ unit, processes }: Props) {
     processes.every((p) => p.status === "completed" || p.status === "skipped");
   const enteredInventory = unit.status === "entered_inventory";
   const invalidStatus = unit.status === "cancelled" || unit.status === "lost";
-  const missingVariant = !unit.core_variant_id;
+  const missingVariant = !unit.core_variant_id && !wooVariationId;
   const missingWooProduct = !wooProductId;
   const missingWooVariation = hasVariants && !wooVariationId;
 
@@ -124,7 +124,12 @@ export function UnitInventorySection({ unit, processes }: Props) {
   }
   if (missingVariant) blockers.push("Falta variante asociada.");
   if (missingWooProduct) blockers.push("Falta Woo Product ID.");
-  if (missingWooVariation) blockers.push("Falta Woo Variation ID.");
+  if (missingWooVariation) {
+    blockers.push(
+      `Falta Woo Variation ID${variantIssue ? ` (${variantIssue})` : ""}. Revisa el vínculo de esta variante en Catálogo / Mapa Woo-Core.`,
+    );
+  }
+
 
   const canEnter = blockers.length === 0 && !enteredInventory;
 
