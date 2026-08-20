@@ -201,7 +201,14 @@ export function OperatorScanSheet({
                       } ${disabled ? "opacity-50" : "hover:bg-accent"}`}
                     >
                       <div className="min-w-0">
-                        <div className="truncate font-medium">{p.process_name ?? p.process_type}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="truncate font-medium">{p.process_name ?? p.process_type}</span>
+                          {p.out_of_order && !disabled && (
+                            <Badge variant="outline" className="shrink-0 text-[10px]">
+                              Fuera de orden
+                            </Badge>
+                          )}
+                        </div>
                         {p.blocked_reason ? (
                           <div className="text-xs text-muted-foreground">{p.blocked_reason}</div>
                         ) : (
@@ -210,6 +217,7 @@ export function OperatorScanSheet({
                           </div>
                         )}
                       </div>
+
                       {p.status === "completed" ? (
                         <Badge variant="secondary" className="shrink-0">
                           Completado

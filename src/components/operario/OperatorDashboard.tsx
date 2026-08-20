@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,11 @@ export function OperatorDashboard({
 }: Props) {
   const today = dashboard?.today;
   const week = dashboard?.week_totals;
+  const [showAll, setShowAll] = useState(false);
+  const todayList = dashboard?.recent_today ?? dashboard?.recent ?? [];
+  const weekList = dashboard?.recent_week ?? todayList;
+  const list = showAll ? weekList : todayList.slice(0, 10);
+
 
   return (
     <div className="space-y-4 pb-28">
@@ -166,13 +172,33 @@ export function OperatorDashboard({
       {/* Últimos escaneos */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Últimos escaneos</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-base">
+              {showAll ? "Acumulado de la semana" : "Últimos escaneos de hoy"}
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => setShowAll((v) => !v)}>
+              {showAll ? "Ver menos" : "Ver todo"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3 p-4 pt-0">
-          {(dashboard?.recent ?? []).length === 0 && (
-            <p className="text-sm text-muted-foreground">Aún no tienes escaneos esta semana.</p>
+          {list.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              {showAll ? "Aún no tienes escaneos esta semana." : "Aún no tienes escaneos hoy."}
+            </p>
           )}
-          {(dashboard?.recent ?? []).map((r) => (
+          {showAll && list.length > 0 && (
+            <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
+              <span className="font-medium">{list.length} procesos en la semana</span>
+              <span className="font-semibold tabular-nums">
+                {formatAmount(
+                  list.reduce((a, r) => a + Number(r.amount ?? 0), 0),
+                  amountsVisible,
+                )}
+              </span>
+            </div>
+          )}
+          {list.map((r) => (
             <div key={r.id} className="flex items-start justify-between gap-3 border-b pb-2 last:border-0 last:pb-0">
               <div className="min-w-0">
                 <div className="truncate text-sm font-medium">{r.product_name ?? r.unit_code}</div>
@@ -197,6 +223,7 @@ export function OperatorDashboard({
           ))}
         </CardContent>
       </Card>
+
 
       {/* Botón fijo escanear */}
       <div className="fixed inset-x-0 bottom-0 border-t bg-background/95 p-4 backdrop-blur">
