@@ -4,6 +4,7 @@ import { OperatorPicker } from "@/components/operario/OperatorPicker";
 import { OperatorPinPad } from "@/components/operario/OperatorPinPad";
 import { OperatorDashboard } from "@/components/operario/OperatorDashboard";
 import { OperatorScanSheet } from "@/components/operario/OperatorScanSheet";
+import { OperatorInstallCard } from "@/components/operario/OperatorInstallCard";
 import {
   getAmountsVisible,
   getPortalToken,
@@ -30,6 +31,17 @@ export default function OperatorPortal() {
   const [amountsVisible, setAmountsVisibleState] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Mientras se está en /operario, el manifest instalable es el del portal.
+  useEffect(() => {
+    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (!link) return;
+    const prev = link.getAttribute("href");
+    link.setAttribute("href", "/manifest-operario.webmanifest");
+    return () => {
+      if (prev) link.setAttribute("href", prev);
+    };
+  }, []);
 
   const loadOperators = useCallback(async () => {
     setListLoading(true);
@@ -197,6 +209,8 @@ export default function OperatorPortal() {
             )}
           </>
         )}
+
+        {step !== "loading" && <OperatorInstallCard />}
       </main>
     </div>
   );
