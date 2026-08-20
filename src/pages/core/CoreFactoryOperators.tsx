@@ -389,6 +389,11 @@ export default function CoreFactoryOperators() {
             </div>
             {editing && (
               <div className="col-span-2 border-t pt-4">
+                <OperatorPortalSettings operatorId={editing.id} />
+              </div>
+            )}
+            {editing && (
+              <div className="col-span-2 border-t pt-4">
                 <OperatorDocuments operatorId={editing.id} />
               </div>
             )}
