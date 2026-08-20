@@ -33,6 +33,15 @@ type Unit = {
   variant_label: string | null;
   size: string | null;
   product_name?: string | null;
+  inventory_variant_override_enabled?: boolean | null;
+  inventory_override_variant_id?: string | null;
+  inventory_override_variant_sku?: string | null;
+  inventory_override_color?: string | null;
+  inventory_override_size?: string | null;
+  inventory_override_woo_variation_id?: number | null;
+  inventory_override_reason?: string | null;
+  inventory_override_by?: string | null;
+  inventory_override_at?: string | null;
 };
 
 type UnitProcess = {
