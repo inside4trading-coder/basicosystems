@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { UnitInventorySection } from "@/components/core/UnitInventorySection";
+import { UnitInventoryVariantOverride } from "@/components/core/UnitInventoryVariantOverride";
+import { useAuth } from "@/hooks/useAuth";
 
 type Unit = {
   id: string;
@@ -111,6 +113,7 @@ function extractRate(snap: any): number | null {
 }
 
 export default function CoreScanning() {
+  const { role } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [unit, setUnit] = useState<Unit | null>(null);
   const [processes, setProcesses] = useState<UnitProcess[]>([]);
@@ -696,6 +699,12 @@ export default function CoreScanning() {
               </div>
             </div>
           )}
+
+          <UnitInventoryVariantOverride
+            unit={unit}
+            canEdit={role === "admin" || role === "partner"}
+            onSaved={() => loadByToken(unit.qr_token || unit.unit_code)}
+          />
 
           <UnitInventorySection unit={unit} processes={processes} />
 
