@@ -383,7 +383,65 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Primer ingreso: el operario define su propio PIN (solo si aún no tiene uno).
+    if (action === "set_pin") {
+      const operatorId = String((body as any).operator_id ?? "");
+      const pin = String((body as any).pin ?? "").trim();
+      const deviceLabel = (body as any).device_label ? String((body as any).device_label).slice(0, 120) : null;
+      if (!/^[0-9a-f-]{36}$/i.test(operatorId)) return json({ ok: false, error: "Operario inválido" }, 400);
+      if (!/^\d{6}$/.test(pin)) return json({ ok: false, error: "El PIN debe tener 6 dígitos" }, 400);
+      if (/^(\d)\1{5}$/.test(pin) || pin === "123456" || pin === "654321") {
+        return json({ ok: false, error: "Elige un PIN menos fácil de adivinar." }, 200);
+      }
+
+      const { data: opRaw } = await admin
+        .from("core_factory_operators")
+        .select("id, first_name, last_name, alias, photo_url, status, payroll_multiplier, portal_active, allowed_processes, pin_hash, pin_failed_attempts, pin_locked_until")
+        .eq("id", operatorId)
+        .maybeSingle();
+      const op = opRaw as OperatorRow | null;
+      if (!op || op.status !== "active" || !op.portal_active) {
+        return json({ ok: false, error: "Perfil no disponible" }, 200);
+      }
+      if (op.pin_hash) {
+        return json({ ok: false, error: "Este perfil ya tiene PIN. Ingrésalo o pide ayuda a tu supervisor." }, 200);
+      }
+
+      const { error: uErr } = await admin
+        .from("core_factory_operators")
+        .update({
+          pin_hash: await hashPin(op.id, pin),
+          pin_set_at: new Date().toISOString(),
+          pin_failed_attempts: 0,
+          pin_locked_until: null,
+          portal_last_login_at: new Date().toISOString(),
+        })
+        .eq("id", op.id)
+        .is("pin_hash", null);
+      if (uErr) throw uErr;
+
+      const plain = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, "");
+      const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+      const { error: sErr } = await admin.from("core_operator_portal_sessions").insert({
+        operator_id: op.id,
+        session_token_hash: await hashToken(plain),
+        device_label: deviceLabel,
+        expires_at: expiresAt,
+      });
+      if (sErr) throw sErr;
+
+      const roles = await rolesOf(op.id);
+      return json({
+        ok: true,
+        token: plain,
+        expires_at: expiresAt,
+        operator: publicOperator(op, roles),
+        dashboard: await buildDashboard(op.id),
+      });
+    }
+
     if (action === "session") {
+
       const s = await resolveSession(token);
       if (!s) return json({ ok: false, error: "Sesión expirada" }, 200);
       return json({
