@@ -32,6 +32,17 @@ export default function OperatorPortal() {
   const [scanOpen, setScanOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Mientras se está en /operario, el manifest instalable es el del portal.
+  useEffect(() => {
+    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (!link) return;
+    const prev = link.getAttribute("href");
+    link.setAttribute("href", "/manifest-operario.webmanifest");
+    return () => {
+      if (prev) link.setAttribute("href", prev);
+    };
+  }, []);
+
   const loadOperators = useCallback(async () => {
     setListLoading(true);
     const res = await portalApi.listOperators();
