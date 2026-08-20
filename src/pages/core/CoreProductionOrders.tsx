@@ -387,12 +387,15 @@ export default function CoreProductionOrders() {
       else if (b === "cancelled") cancelled.push(o);
     }
     return {
-      open: open.length,
-      open_units: open.reduce((a, o) => a + Number(o.pending_quantity), 0),
-      prod_units: prod.reduce((a, o) => a + Number(o.pending_quantity), 0),
-      done_units: done.reduce((a, o) => a + Number(o.completed_quantity), 0),
+      // Órdenes (OP)
+      open_orders: open.length,
+      prod_orders: prod.length,
+      done_orders: done.length,
       closed: closed.length,
       cancelled: cancelled.length,
+      // Unidades (prendas)
+      prod_pending_units: prod.reduce((a, o) => a + Number(o.pending_quantity ?? 0), 0),
+      prod_completed_units: prod.reduce((a, o) => a + Number(o.completed_quantity ?? 0), 0),
       last: orders[0]?.created_at ?? null,
     };
   }, [orders, productionDoneByOrder]);
@@ -807,7 +810,15 @@ export default function CoreProductionOrders() {
             aria-label="Seleccionar orden"
           />
         </TableCell>
-        <TableCell className="font-mono text-sm">{o.order_code}</TableCell>
+        <TableCell className="font-mono text-sm">
+          <div>{o.order_code}</div>
+          <div className="text-[10px] font-sans text-muted-foreground whitespace-nowrap">
+            Terminadas {o.completed_quantity} ·{" "}
+            <span className={Number(o.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
+              Faltantes {o.pending_quantity}
+            </span>
+          </div>
+        </TableCell>
         <TableCell>
           <Badge variant="outline" className={STATUS_BADGE[o.status]}>
             {STATUS_LABEL[o.status] ?? o.status}
@@ -931,8 +942,8 @@ export default function CoreProductionOrders() {
               <TableHead>Producto</TableHead>
               <TableHead>Tallas</TableHead>
               <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Pend.</TableHead>
-              <TableHead className="text-right">Compl.</TableHead>
+              <TableHead className="text-right">Faltantes</TableHead>
+              <TableHead className="text-right">Terminadas</TableHead>
               <TableHead>Inventario</TableHead>
               <TableHead>Origen</TableHead>
               <TableHead>Creada</TableHead>
@@ -976,10 +987,10 @@ export default function CoreProductionOrders() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Abiertas</div><div className="text-2xl font-bold">{kpis.open}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Unid. pendientes</div><div className="text-2xl font-bold">{kpis.open_units}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">En producción</div><div className="text-2xl font-bold">{kpis.prod_units}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Completadas prod.</div><div className="text-2xl font-bold">{kpis.done_units}</div></Card>
+        <Card className="p-3"><div className="text-xs text-muted-foreground">OP abiertas</div><div className="text-2xl font-bold">{kpis.open_orders}</div><div className="text-[10px] text-muted-foreground">órdenes</div></Card>
+        <Card className="p-3"><div className="text-xs text-muted-foreground">OP en producción</div><div className="text-2xl font-bold">{kpis.prod_orders}</div><div className="text-[10px] text-muted-foreground">órdenes activas/parciales</div></Card>
+        <Card className="p-3"><div className="text-xs text-muted-foreground">Unid. pendientes prod.</div><div className="text-2xl font-bold">{kpis.prod_pending_units}</div><div className="text-[10px] text-muted-foreground">faltantes en OP en producción</div></Card>
+        <Card className="p-3"><div className="text-xs text-muted-foreground">Unid. completadas prod.</div><div className="text-2xl font-bold">{kpis.prod_completed_units}</div><div className="text-[10px] text-muted-foreground">terminadas en OP en producción</div></Card>
         <Card className={`p-3 ${pendingInventoryUnits > 0 ? "border-red-300 bg-red-50" : ""}`}>
           <div className="text-xs text-muted-foreground flex items-center gap-1">
             <ShieldAlert className="h-3 w-3" /> Sin ingresar
@@ -1350,10 +1361,21 @@ export default function CoreProductionOrders() {
                 <Card className="p-3 min-w-0">
                   <div className="font-medium break-words">{detailOrder.product_name}</div>
                   <div className="text-xs text-muted-foreground font-mono break-all">{detailOrder.sku}</div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Total {detailOrder.total_quantity} · Terminadas {detailOrder.completed_quantity} ·{" "}
+                    <span className={Number(detailOrder.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
+                      Faltantes {detailOrder.pending_quantity}
+                    </span>
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-sm">
                     <div><div className="text-xs text-muted-foreground">Total</div>{detailOrder.total_quantity}</div>
-                    <div><div className="text-xs text-muted-foreground">Pendientes prod.</div>{detailOrder.pending_quantity}</div>
-                    <div><div className="text-xs text-muted-foreground">Completadas prod.</div>{detailOrder.completed_quantity}</div>
+                    <div><div className="text-xs text-muted-foreground">Terminadas prod.</div>{detailOrder.completed_quantity}</div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Faltantes prod.</div>
+                      <span className={Number(detailOrder.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
+                        {detailOrder.pending_quantity}
+                      </span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 text-sm">
                     <div>
