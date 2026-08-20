@@ -22,7 +22,18 @@ export type UnitLike = {
   variant_sku?: string | null;
   size?: string | null;
   variant_label?: string | null;
+  /** Corrección manual de variante para inventario (admin/partner). */
+  inventory_variant_override_enabled?: boolean | null;
+  inventory_override_variant_id?: string | null;
 };
+
+/** Variante efectiva que debe entrar a inventario: override manual o la original. */
+export function effectiveInventoryVariantId(unit: UnitLike): string | null {
+  if (unit.inventory_variant_override_enabled && unit.inventory_override_variant_id) {
+    return unit.inventory_override_variant_id;
+  }
+  return unit.core_variant_id ?? null;
+}
 
 export type ResolvedVariant = {
   status: "resolved" | "ambiguous" | "not_found";
@@ -90,11 +101,12 @@ export function pickVariant(unit: UnitLike, variants: VariantRow[]): ResolvedVar
 
 /** Resolución con lecturas a base de datos, para una sola unidad (ficha viajera / escaneo). */
 export async function resolveUnitVariant(unit: UnitLike): Promise<ResolvedVariant> {
-  if (unit.core_variant_id) {
+  const effectiveId = effectiveInventoryVariantId(unit);
+  if (effectiveId) {
     const { data } = await supabase
       .from("core_product_variants")
       .select(VARIANT_SELECT)
-      .eq("id", unit.core_variant_id)
+      .eq("id", effectiveId)
       .maybeSingle();
     if (data) return { status: "resolved", variant: data as any, recovered: false };
   }
