@@ -209,6 +209,8 @@ export default function OperatorPortal() {
             )}
           </>
         )}
+
+        {step !== "loading" && <OperatorInstallCard />}
       </main>
     </div>
   );
