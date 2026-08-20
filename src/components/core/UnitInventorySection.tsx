@@ -39,6 +39,8 @@ type Unit = {
   status: string;
   core_product_id: string | null;
   core_variant_id: string | null;
+  inventory_variant_override_enabled?: boolean | null;
+  inventory_override_variant_id?: string | null;
 };
 
 type UnitProcess = { status: string };
@@ -61,6 +63,7 @@ export function UnitInventorySection({ unit, processes }: Props) {
   const [lastResult, setLastResult] = useState<InventoryVerification | null>(null);
   const [variantIssue, setVariantIssue] = useState<string | null>(null);
   const [recoveredVariationId, setRecoveredVariationId] = useState<number | null>(null);
+  const [overrideLabel, setOverrideLabel] = useState<string | null>(null);
 
 
   async function reload() {
@@ -86,7 +89,9 @@ export function UnitInventorySection({ unit, processes }: Props) {
     setHasVariants(!!unit.core_variant_id || !!resolved.variant);
     setWooVariationId(resolved.variant?.woo_variation_id ?? null);
     setVariantIssue(resolved.status === "resolved" ? null : resolved.reason ?? null);
-    if (resolved.status === "resolved" && resolved.recovered && resolved.variant) {
+    const overrideActive = !!unit.inventory_variant_override_enabled && !!unit.inventory_override_variant_id;
+    setOverrideLabel(overrideActive ? (resolved.variant?.variant_label ?? resolved.variant?.variant_sku ?? resolved.variant?.woo_sku ?? null) : null);
+    if (!overrideActive && resolved.status === "resolved" && resolved.recovered && resolved.variant) {
       setRecoveredVariationId(resolved.variant.woo_variation_id ?? null);
       await persistUnitVariantLink(unit.id, resolved.variant);
     } else {
@@ -103,7 +108,7 @@ export function UnitInventorySection({ unit, processes }: Props) {
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unit.id]);
+  }, [unit.id, unit.inventory_variant_override_enabled, unit.inventory_override_variant_id]);
 
   // Validaciones
   const allComplete =
@@ -111,7 +116,7 @@ export function UnitInventorySection({ unit, processes }: Props) {
     processes.every((p) => p.status === "completed" || p.status === "skipped");
   const enteredInventory = unit.status === "entered_inventory";
   const invalidStatus = unit.status === "cancelled" || unit.status === "lost";
-  const missingVariant = !unit.core_variant_id && !wooVariationId;
+  const missingVariant = !unit.core_variant_id && !unit.inventory_override_variant_id && !wooVariationId;
   const missingWooProduct = !wooProductId;
   const missingWooVariation = hasVariants && !wooVariationId;
 
@@ -341,6 +346,13 @@ export function UnitInventorySection({ unit, processes }: Props) {
               <span className="text-amber-700 text-xs">No lista para inventario</span>
             )}
           </div>
+
+          {overrideLabel && (
+            <p className="text-xs text-amber-700 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> Entrará a inventario como variante corregida: {overrideLabel}
+              {wooVariationId ? ` (variation_id ${wooVariationId})` : ""}
+            </p>
+          )}
 
           {recoveredVariationId != null && (
             <p className="text-xs text-green-700 flex items-center gap-1">

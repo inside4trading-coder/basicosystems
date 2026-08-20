@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { logCoreAudit } from "@/lib/coreAudit";
 import { UnitInventorySection } from "@/components/core/UnitInventorySection";
+import { UnitInventoryVariantOverride } from "@/components/core/UnitInventoryVariantOverride";
+import { useAuth } from "@/hooks/useAuth";
 
 type Unit = {
   id: string;
@@ -33,6 +35,15 @@ type Unit = {
   variant_label: string | null;
   size: string | null;
   product_name?: string | null;
+  inventory_variant_override_enabled?: boolean | null;
+  inventory_override_variant_id?: string | null;
+  inventory_override_variant_sku?: string | null;
+  inventory_override_color?: string | null;
+  inventory_override_size?: string | null;
+  inventory_override_woo_variation_id?: number | null;
+  inventory_override_reason?: string | null;
+  inventory_override_by?: string | null;
+  inventory_override_at?: string | null;
 };
 
 type UnitProcess = {
@@ -102,6 +113,7 @@ function extractRate(snap: any): number | null {
 }
 
 export default function CoreScanning() {
+  const { role } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [unit, setUnit] = useState<Unit | null>(null);
   const [processes, setProcesses] = useState<UnitProcess[]>([]);
@@ -687,6 +699,12 @@ export default function CoreScanning() {
               </div>
             </div>
           )}
+
+          <UnitInventoryVariantOverride
+            unit={unit}
+            canEdit={role === "admin" || role === "partner"}
+            onSaved={() => loadByToken(unit.qr_token || unit.unit_code)}
+          />
 
           <UnitInventorySection unit={unit} processes={processes} />
 

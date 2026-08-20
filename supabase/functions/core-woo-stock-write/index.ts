@@ -489,11 +489,22 @@ Deno.serve(async (req) => {
     const { data: unit, error: unitErr } = await admin
       .from("core_production_units")
       .select(
-        "id, unit_code, status, production_order_id, core_product_id, core_variant_id, sku, variant_sku",
+        "id, unit_code, status, production_order_id, core_product_id, core_variant_id, sku, variant_sku, inventory_variant_override_enabled, inventory_override_variant_id, inventory_override_variant_sku",
       )
       .eq("id", body.production_unit_id)
       .maybeSingle();
     if (unitErr || !unit) return json({ error: "Unidad no encontrada" }, 404);
+
+    // Variante efectiva para inventario: override manual (admin/partner) o la original.
+    const overrideOn =
+      (unit as any).inventory_variant_override_enabled === true &&
+      !!(unit as any).inventory_override_variant_id;
+    const effVariantId = overrideOn
+      ? (unit as any).inventory_override_variant_id
+      : (unit as any).core_variant_id;
+    const effVariantSku = overrideOn
+      ? ((unit as any).inventory_override_variant_sku ?? (unit as any).variant_sku)
+      : (unit as any).variant_sku;
 
     const { data: product } = await admin
       .from("core_products")
@@ -501,11 +512,13 @@ Deno.serve(async (req) => {
       .eq("id", (unit as any).core_product_id)
       .maybeSingle();
 
-    const { data: variant } = await admin
-      .from("core_product_variants")
-      .select("id, woo_variation_id, woo_sku, woo_stock_quantity, size, variant_label")
-      .eq("id", (unit as any).core_variant_id)
-      .maybeSingle();
+    const { data: variant } = effVariantId
+      ? await admin
+        .from("core_product_variants")
+        .select("id, woo_variation_id, woo_sku, woo_stock_quantity, size, variant_label")
+        .eq("id", effVariantId)
+        .maybeSingle()
+      : { data: null as any };
 
     // === Stock real de WooCommerce (fuente de verdad para el preview) ===
     const consumerKey = Deno.env.get("WC_CONSUMER_KEY");
@@ -537,11 +550,11 @@ Deno.serve(async (req) => {
           usedLiveWoo = true;
           wooCheckedBeforeAt = new Date().toISOString();
           // Sincronizar caché local para que la UI no muestre valores viejos
-          if (wooVariationId && (unit as any).core_variant_id) {
+          if (wooVariationId && effVariantId) {
             await admin
               .from("core_product_variants")
               .update({ woo_stock_quantity: stock_before })
-              .eq("id", (unit as any).core_variant_id);
+              .eq("id", effVariantId);
           } else if ((unit as any).core_product_id) {
             await admin
               .from("core_products")
@@ -598,11 +611,11 @@ Deno.serve(async (req) => {
           production_unit_id: (unit as any).id,
           production_order_id: (unit as any).production_order_id,
           core_product_id: (unit as any).core_product_id,
-          core_variant_id: (unit as any).core_variant_id,
+          core_variant_id: effVariantId,
           woo_product_id: wooProductId,
           woo_variation_id: wooVariationId,
           sku: (unit as any).sku,
-          variant_sku: (unit as any).variant_sku,
+          variant_sku: effVariantSku,
           stock_before,
           quantity_delta:
             action_type === "stock_set" ? null : (action_type === "stock_decrease" ? -quantity : quantity),
@@ -693,11 +706,11 @@ Deno.serve(async (req) => {
         production_unit_id: (unit as any).id,
         production_order_id: (unit as any).production_order_id,
         core_product_id: (unit as any).core_product_id,
-        core_variant_id: (unit as any).core_variant_id,
+        core_variant_id: effVariantId,
         woo_product_id: (product as any)?.woo_product_id ?? null,
         woo_variation_id: (variant as any)?.woo_variation_id ?? null,
         sku: (unit as any).sku,
-        variant_sku: (unit as any).variant_sku,
+        variant_sku: effVariantSku,
         stock_before,
         quantity_delta:
           action_type === "stock_set" ? null : (action_type === "stock_decrease" ? -quantity : quantity),
