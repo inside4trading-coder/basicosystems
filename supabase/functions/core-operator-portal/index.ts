@@ -608,6 +608,45 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ---- Acciones administrativas (requieren JWT de admin/manager) ----
+    if (action === "admin_set_pin" || action === "admin_revoke_sessions") {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const jwt = authHeader.replace("Bearer ", "").trim();
+      if (!jwt) return json({ ok: false, error: "No autorizado" }, 401);
+      const { data: userData } = await admin.auth.getUser(jwt);
+      const uid = userData?.user?.id;
+      if (!uid) return json({ ok: false, error: "No autorizado" }, 401);
+      const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", uid);
+      const isAdmin = ((roles as any[]) ?? []).some((r) => r.role === "admin" || r.role === "manager");
+      if (!isAdmin) return json({ ok: false, error: "No autorizado" }, 403);
+
+      const operatorId = String((body as any).operator_id ?? "");
+      if (!/^[0-9a-f-]{36}$/i.test(operatorId)) return json({ ok: false, error: "Operario inválido" }, 400);
+
+      if (action === "admin_revoke_sessions") {
+        await admin
+          .from("core_operator_portal_sessions")
+          .update({ revoked_at: new Date().toISOString() })
+          .eq("operator_id", operatorId)
+          .is("revoked_at", null);
+        return json({ ok: true });
+      }
+
+      const pin = String((body as any).pin ?? "").trim();
+      if (!/^\d{6}$/.test(pin)) return json({ ok: false, error: "El PIN debe tener 6 dígitos" }, 400);
+      const { error: upErr } = await admin
+        .from("core_factory_operators")
+        .update({
+          pin_hash: await hashPin(operatorId, pin),
+          pin_set_at: new Date().toISOString(),
+          pin_failed_attempts: 0,
+          pin_locked_until: null,
+        })
+        .eq("id", operatorId);
+      if (upErr) throw upErr;
+      return json({ ok: true });
+    }
+
     return json({ ok: false, error: "Acción desconocida" }, 400);
   } catch (err) {
     return json({ ok: false, error: err instanceof Error ? err.message : String(err) }, 500);
