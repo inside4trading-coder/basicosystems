@@ -1382,9 +1382,9 @@ export default function CoreProductionOrders() {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-sm">
                     <div><div className="text-xs text-muted-foreground">Total</div>{detailOrder.total_quantity}</div>
-                    <div><div className="text-xs text-muted-foreground">Terminadas prod.</div>{detailOrder.completed_quantity}</div>
+                    <div><div className="text-xs text-muted-foreground">Terminadas</div>{detailOrder.completed_quantity}</div>
                     <div>
-                      <div className="text-xs text-muted-foreground">Faltantes prod.</div>
+                      <div className="text-xs text-muted-foreground">Faltantes</div>
                       <span className={Number(detailOrder.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
                         {detailOrder.pending_quantity}
                       </span>
@@ -1392,11 +1392,11 @@ export default function CoreProductionOrders() {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 text-sm">
                     <div>
-                      <div className="text-xs text-muted-foreground">Ingresadas inventario</div>
+                      <div className="text-xs text-muted-foreground">Ingresadas a inventario</div>
                       <span className="text-emerald-700 font-semibold">{invByOrder[detailOrder.id]?.entered ?? 0}</span>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground">Pendientes inventario</div>
+                      <div className="text-xs text-muted-foreground">Listas sin ingresar</div>
                       <span className={(invByOrder[detailOrder.id]?.pending_inventory ?? 0) > 0 ? "text-red-700 font-semibold" : ""}>
                         {invByOrder[detailOrder.id]?.pending_inventory ?? 0}
                       </span>
@@ -1450,7 +1450,7 @@ export default function CoreProductionOrders() {
                         <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
                           <div><div className="text-muted-foreground">Ord.</div>{l.quantity_ordered}</div>
                           <div><div className="text-muted-foreground">Compl.</div>{l.quantity_completed}</div>
-                          <div><div className="text-muted-foreground">Pend.</div>{l.quantity_pending}</div>
+                          <div><div className="text-muted-foreground">Faltantes</div>{l.quantity_pending}</div>
                         </div>
                       </div>
                     ))}
@@ -1465,7 +1465,7 @@ export default function CoreProductionOrders() {
                           <TableHead>SKU variante</TableHead>
                           <TableHead className="text-right">Ord.</TableHead>
                           <TableHead className="text-right">Compl.</TableHead>
-                          <TableHead className="text-right">Pend.</TableHead>
+                          <TableHead className="text-right">Faltantes</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
