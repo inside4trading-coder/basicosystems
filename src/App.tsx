@@ -97,6 +97,7 @@ const App = () => (
             />
             <Route path="/login" element={<Login />} />
             <Route path="/pos/:locationSlug/:publicToken" element={<PosPublico />} />
+            <Route path="/operario" element={<OperatorPortal />} />
             <Route
               element={
                 <ProtectedRoute>
