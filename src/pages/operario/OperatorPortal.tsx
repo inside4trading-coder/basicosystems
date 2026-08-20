@@ -152,6 +152,8 @@ export default function OperatorPortal() {
             operator={selected}
             loading={pinLoading}
             error={pinError}
+            isNew={selected.pin_set === false}
+            onClearError={() => setPinError(null)}
             onBack={() => {
               setSelected(null);
               setPinError(null);
@@ -160,6 +162,7 @@ export default function OperatorPortal() {
             onSubmit={handleLogin}
           />
         )}
+
 
         {step === "dashboard" && operator && (
           <>
