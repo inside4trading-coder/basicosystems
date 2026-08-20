@@ -108,7 +108,7 @@ export function UnitInventorySection({ unit, processes }: Props) {
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unit.id]);
+  }, [unit.id, unit.inventory_variant_override_enabled, unit.inventory_override_variant_id]);
 
   // Validaciones
   const allComplete =
