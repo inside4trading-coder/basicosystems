@@ -3,15 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, UserRound } from "lucide-react";
 import type { PortalOperator } from "@/lib/operatorPortal";
 
-const ROLE_LABELS: Record<string, string> = {
-  cutter: "Corte",
-  sewer: "Costura",
-  printer: "Estampado",
-  embroiderer: "Bordado",
-  packing: "Empaque",
-  logistics: "Logística",
-  quality: "Calidad",
-};
 
 interface Props {
   operators: PortalOperator[];
