@@ -986,26 +986,39 @@ export default function CoreProductionOrders() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        <Card className="p-3"><div className="text-xs text-muted-foreground">OP abiertas</div><div className="text-2xl font-bold">{kpis.open_orders}</div><div className="text-[10px] text-muted-foreground">órdenes</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">OP en producción</div><div className="text-2xl font-bold">{kpis.prod_orders}</div><div className="text-[10px] text-muted-foreground">órdenes activas/parciales</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Unid. pendientes prod.</div><div className="text-2xl font-bold">{kpis.prod_pending_units}</div><div className="text-[10px] text-muted-foreground">faltantes en OP en producción</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Unid. completadas prod.</div><div className="text-2xl font-bold">{kpis.prod_completed_units}</div><div className="text-[10px] text-muted-foreground">terminadas en OP en producción</div></Card>
-        <Card className={`p-3 ${pendingInventoryUnits > 0 ? "border-red-300 bg-red-50" : ""}`}>
-          <div className="text-xs text-muted-foreground flex items-center gap-1">
-            <ShieldAlert className="h-3 w-3" /> Sin ingresar
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="col-span-2 md:col-span-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Órdenes</div>
+          <Card className="p-3"><div className="text-xs text-muted-foreground">OP abiertas</div><div className="text-2xl font-bold">{kpis.open_orders}</div><div className="text-[10px] text-muted-foreground">órdenes</div></Card>
+          <Card className="p-3"><div className="text-xs text-muted-foreground">OP en producción</div><div className="text-2xl font-bold">{kpis.prod_orders}</div><div className="text-[10px] text-muted-foreground">órdenes activas/parciales</div></Card>
+          <Card className="p-3"><div className="text-xs text-muted-foreground">OP cerradas / canceladas</div><div className="text-xl font-bold">{kpis.closed} / {kpis.cancelled}</div><div className="text-[10px] text-muted-foreground">órdenes</div></Card>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
+          <div className="col-span-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Producción activa</div>
+          <Card className="p-3"><div className="text-xs text-muted-foreground">Unid. faltantes prod.</div><div className="text-2xl font-bold">{kpis.prod_pending_units}</div><div className="text-[10px] text-muted-foreground">faltantes en OP en producción</div></Card>
+          <Card className="p-3"><div className="text-xs text-muted-foreground">Unid. terminadas prod.</div><div className="text-2xl font-bold">{kpis.prod_completed_units}</div><div className="text-[10px] text-muted-foreground">terminadas en OP en producción</div></Card>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-3 border-l-4 border-amber-200 pl-3 -ml-1">
+          <div className="col-span-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+            <ShieldAlert className="h-3 w-3" /> Inventario / custodia — global de OP cargadas
           </div>
-          <div className={`text-2xl font-bold ${pendingInventoryUnits > 0 ? "text-red-700" : ""}`}>{pendingInventoryUnits}</div>
-          <div className="text-[10px] text-muted-foreground">prendas listas sin inventario</div>
-        </Card>
-        <Card className="p-3">
-          <div className="text-xs text-muted-foreground flex items-center gap-1">
-            <PackageCheck className="h-3 w-3" /> Ingresadas
-          </div>
-          <div className="text-2xl font-bold text-emerald-700">{enteredInventoryUnits}</div>
-          <div className="text-[10px] text-muted-foreground">a inventario</div>
-        </Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Cerradas / Canc.</div><div className="text-xl font-bold">{kpis.closed} / {kpis.cancelled}</div></Card>
+          <Card className={`p-3 ${pendingInventoryUnits > 0 ? "border-red-300 bg-red-50" : ""}`}>
+            <div className="text-xs text-muted-foreground flex items-center gap-1">
+              <ShieldAlert className="h-3 w-3" /> Listas sin ingresar
+            </div>
+            <div className={`text-2xl font-bold ${pendingInventoryUnits > 0 ? "text-red-700" : ""}`}>{pendingInventoryUnits}</div>
+            <div className="text-[10px] text-muted-foreground">Global de OP cargadas</div>
+          </Card>
+          <Card className="p-3">
+            <div className="text-xs text-muted-foreground flex items-center gap-1">
+              <PackageCheck className="h-3 w-3" /> Ingresadas a inventario
+            </div>
+            <div className="text-2xl font-bold text-emerald-700">{enteredInventoryUnits}</div>
+            <div className="text-[10px] text-muted-foreground">Global de OP cargadas</div>
+          </Card>
+        </div>
       </div>
 
       {selectedOrders.size > 0 && (
