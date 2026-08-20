@@ -469,9 +469,9 @@ Deno.serve(async (req) => {
         let blockedReason: string | null = null;
         if (p.status === "completed") blockedReason = "Este proceso ya fue completado.";
         else if (!allowed) blockedReason = "Este proceso no está habilitado para tu perfil.";
-        else if (firstPendingOrder !== null && p.process_order > firstPendingOrder) {
-          blockedReason = "Hay un proceso anterior pendiente.";
-        }
+        // Nota: los procesos fuera de orden ya no se bloquean, solo se marcan.
+        const outOfOrder =
+          !isDone(p.status) && firstPendingOrder !== null && p.process_order > firstPendingOrder;
         return {
           id: p.id,
           process_name: p.process_name,
@@ -482,7 +482,9 @@ Deno.serve(async (req) => {
           rate,
           amount: rate != null ? Number((rate * multiplier).toFixed(2)) : null,
           allowed,
+          out_of_order: outOfOrder,
           blocked_reason: blockedReason,
+
           completed_at: p.completed_at,
         };
       });
