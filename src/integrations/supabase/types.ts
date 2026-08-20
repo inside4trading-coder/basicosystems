@@ -3406,6 +3406,15 @@ export type Database = {
           entered_inventory_by: string | null
           id: string
           inventory_entry_source: string | null
+          inventory_override_at: string | null
+          inventory_override_by: string | null
+          inventory_override_color: string | null
+          inventory_override_reason: string | null
+          inventory_override_size: string | null
+          inventory_override_variant_id: string | null
+          inventory_override_variant_sku: string | null
+          inventory_override_woo_variation_id: number | null
+          inventory_variant_override_enabled: boolean
           notes: string | null
           print_count: number
           printed_at: string | null
@@ -3437,6 +3446,15 @@ export type Database = {
           entered_inventory_by?: string | null
           id?: string
           inventory_entry_source?: string | null
+          inventory_override_at?: string | null
+          inventory_override_by?: string | null
+          inventory_override_color?: string | null
+          inventory_override_reason?: string | null
+          inventory_override_size?: string | null
+          inventory_override_variant_id?: string | null
+          inventory_override_variant_sku?: string | null
+          inventory_override_woo_variation_id?: number | null
+          inventory_variant_override_enabled?: boolean
           notes?: string | null
           print_count?: number
           printed_at?: string | null
@@ -3468,6 +3486,15 @@ export type Database = {
           entered_inventory_by?: string | null
           id?: string
           inventory_entry_source?: string | null
+          inventory_override_at?: string | null
+          inventory_override_by?: string | null
+          inventory_override_color?: string | null
+          inventory_override_reason?: string | null
+          inventory_override_size?: string | null
+          inventory_override_variant_id?: string | null
+          inventory_override_variant_sku?: string | null
+          inventory_override_woo_variation_id?: number | null
+          inventory_variant_override_enabled?: boolean
           notes?: string | null
           print_count?: number
           printed_at?: string | null
@@ -3487,7 +3514,15 @@ export type Database = {
           variant_label?: string | null
           variant_sku?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "core_production_units_inventory_override_variant_id_fkey"
+            columns: ["inventory_override_variant_id"]
+            isOneToOne: false
+            referencedRelation: "core_product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       core_production_units_backup_reset_op000008_20260731: {
         Row: {
