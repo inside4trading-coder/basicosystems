@@ -148,6 +148,45 @@ async function resolveSession(token: string): Promise<{ operator: OperatorRow; r
   return { operator: op as OperatorRow, roles: await rolesOf(sess.operator_id), sessionId: sess.id };
 }
 
+async function refreshOrderCounts(orderId: string) {
+  const { data: lines } = await admin
+    .from("core_production_order_lines")
+    .select("id, quantity_ordered")
+    .eq("production_order_id", orderId);
+  let totalCompleted = 0;
+  let totalOrdered = 0;
+  for (const ln of ((lines as any[]) ?? [])) {
+    const { count } = await admin
+      .from("core_production_units")
+      .select("id", { count: "exact", head: true })
+      .eq("production_order_line_id", ln.id)
+      .eq("status", "completed");
+    const qc = count || 0;
+    totalCompleted += qc;
+    totalOrdered += ln.quantity_ordered || 0;
+    await admin
+      .from("core_production_order_lines")
+      .update({ quantity_completed: qc, quantity_pending: Math.max(0, (ln.quantity_ordered || 0) - qc) })
+      .eq("id", ln.id);
+  }
+  const { data: ord } = await admin
+    .from("core_production_orders")
+    .select("status, total_quantity")
+    .eq("id", orderId)
+    .maybeSingle();
+  const total = (ord as any)?.total_quantity || totalOrdered;
+  let newStatus = (ord as any)?.status;
+  if (totalCompleted > 0) newStatus = totalCompleted >= total ? "completed" : "partially_completed";
+  await admin
+    .from("core_production_orders")
+    .update({
+      completed_quantity: totalCompleted,
+      pending_quantity: Math.max(0, total - totalCompleted),
+      status: newStatus,
+    })
+    .eq("id", orderId);
+}
+
 async function buildDashboard(operatorId: string) {
   const week = payrollWeek();
   const todayStart = new Date();
