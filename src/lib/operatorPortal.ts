@@ -83,13 +83,18 @@ export function setPortalToken(token: string | null) {
   }
 }
 
-/** Privacidad de montos: oculta por defecto, por dispositivo y por operario. */
+/** Privacidad de montos: oculta por defecto, persistente por dispositivo y por operario. */
+const AMOUNTS_DEVICE_KEY = "operator_amounts_visible_device";
 export function amountsVisibleKey(operatorId: string) {
   return `operator_amounts_visible_${operatorId}`;
 }
 export function getAmountsVisible(operatorId: string): boolean {
   try {
-    return localStorage.getItem(amountsVisibleKey(operatorId)) === "1";
+    const own = localStorage.getItem(amountsVisibleKey(operatorId));
+    if (own === "1") return true;
+    if (own === "0") return false;
+    // Sin preferencia guardada para este operario: hereda la del dispositivo.
+    return localStorage.getItem(AMOUNTS_DEVICE_KEY) === "1";
   } catch {
     return false;
   }
@@ -97,9 +102,11 @@ export function getAmountsVisible(operatorId: string): boolean {
 export function setAmountsVisible(operatorId: string, visible: boolean) {
   try {
     localStorage.setItem(amountsVisibleKey(operatorId), visible ? "1" : "0");
+    localStorage.setItem(AMOUNTS_DEVICE_KEY, visible ? "1" : "0");
   } catch {
     /* ignore */
   }
+
 }
 
 export const MASK = "******";
