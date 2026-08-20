@@ -543,14 +543,18 @@ Deno.serve(async (req) => {
         if (weErr && !weErr.message.includes("duplicate")) throw weErr;
       }
 
-      // Cerrar unidad si todos sus procesos quedaron completados
+      // Estado de la unidad: in_production / completed (mismo criterio que el escaneo admin)
       const { data: after } = await admin
         .from("core_production_unit_processes")
         .select("status")
         .eq("production_unit_id", unit.id);
-      const allDone = ((after as any[]) ?? []).every((p) => p.status === "completed");
-      if (allDone && unit.status !== "completed") {
-        await admin.from("core_production_units").update({ status: "completed" }).eq("id", unit.id);
+      const allProcs = ((after as any[]) ?? []);
+      const anyDone = allProcs.some((p) => p.status === "completed");
+      const allDone = allProcs.length > 0 && allProcs.every((p) => isDone(p.status));
+      const newUnitStatus = allDone ? "completed" : anyDone ? "in_production" : unit.status;
+      if (newUnitStatus !== unit.status) {
+        await admin.from("core_production_units").update({ status: newUnitStatus }).eq("id", unit.id);
+        if (allDone) await refreshOrderCounts(unit.production_order_id);
       }
 
       return json({
