@@ -21,6 +21,7 @@ import { toast } from "@/hooks/use-toast";
 import { CombinedBirthdays } from "@/components/shared/CombinedBirthdays";
 import { useBirthdayPeople } from "@/hooks/useBirthdayPeople";
 import { OperatorDocuments } from "@/components/core/OperatorDocuments";
+import { OperatorPortalSettings } from "@/components/core/OperatorPortalSettings";
 
 export const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "cutter", label: "Cortador" },
@@ -387,6 +388,11 @@ export default function CoreFactoryOperators() {
               <Label>Notas</Label>
               <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
+            {editing && (
+              <div className="col-span-2 border-t pt-4">
+                <OperatorPortalSettings operatorId={editing.id} />
+              </div>
+            )}
             {editing && (
               <div className="col-span-2 border-t pt-4">
                 <OperatorDocuments operatorId={editing.id} />

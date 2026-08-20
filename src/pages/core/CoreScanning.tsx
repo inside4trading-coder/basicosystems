@@ -409,6 +409,7 @@ export default function CoreScanning() {
         scanned_by_user_id: user?.id || null,
         event_type: "process_completed",
         status: "valid",
+        source: "admin",
         notes: noteText || null,
       })
       .select()
@@ -454,6 +455,7 @@ export default function CoreScanning() {
           payroll_amount: payrollAmount,
           payroll_status: payrollStatus,
           scanned_by_user_id: user?.id || null,
+          source: "admin",
           notes: noteText || null,
         });
       if (weErr && !weErr.message.includes("duplicate")) {

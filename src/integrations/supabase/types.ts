@@ -1481,6 +1481,7 @@ export type Database = {
       core_factory_operators: {
         Row: {
           alias: string | null
+          allowed_processes: string[] | null
           base_rate: number | null
           birth_date: string | null
           created_at: string
@@ -1493,6 +1494,12 @@ export type Database = {
           payroll_multiplier: number
           phone: string | null
           photo_url: string | null
+          pin_failed_attempts: number
+          pin_hash: string | null
+          pin_locked_until: string | null
+          pin_set_at: string | null
+          portal_active: boolean
+          portal_last_login_at: string | null
           start_date: string | null
           status: string
           updated_at: string
@@ -1500,6 +1507,7 @@ export type Database = {
         }
         Insert: {
           alias?: string | null
+          allowed_processes?: string[] | null
           base_rate?: number | null
           birth_date?: string | null
           created_at?: string
@@ -1512,6 +1520,12 @@ export type Database = {
           payroll_multiplier?: number
           phone?: string | null
           photo_url?: string | null
+          pin_failed_attempts?: number
+          pin_hash?: string | null
+          pin_locked_until?: string | null
+          pin_set_at?: string | null
+          portal_active?: boolean
+          portal_last_login_at?: string | null
           start_date?: string | null
           status?: string
           updated_at?: string
@@ -1519,6 +1533,7 @@ export type Database = {
         }
         Update: {
           alias?: string | null
+          allowed_processes?: string[] | null
           base_rate?: number | null
           birth_date?: string | null
           created_at?: string
@@ -1531,6 +1546,12 @@ export type Database = {
           payroll_multiplier?: number
           phone?: string | null
           photo_url?: string | null
+          pin_failed_attempts?: number
+          pin_hash?: string | null
+          pin_locked_until?: string | null
+          pin_set_at?: string | null
+          portal_active?: boolean
+          portal_last_login_at?: string | null
           start_date?: string | null
           status?: string
           updated_at?: string
@@ -1822,6 +1843,44 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      core_operator_portal_sessions: {
+        Row: {
+          created_at: string
+          device_label: string | null
+          expires_at: string
+          id: string
+          operator_id: string
+          revoked_at: string | null
+          session_token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          device_label?: string | null
+          expires_at: string
+          id?: string
+          operator_id: string
+          revoked_at?: string | null
+          session_token_hash: string
+        }
+        Update: {
+          created_at?: string
+          device_label?: string | null
+          expires_at?: string
+          id?: string
+          operator_id?: string
+          revoked_at?: string | null
+          session_token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_operator_portal_sessions_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "core_factory_operators"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       core_payroll_adjustments: {
         Row: {
@@ -3057,6 +3116,7 @@ export type Database = {
           scanned_by_user_id: string | null
           size: string | null
           sku: string | null
+          source: string
           status: string
           unit_code: string | null
           variant_label: string | null
@@ -3081,6 +3141,7 @@ export type Database = {
           scanned_by_user_id?: string | null
           size?: string | null
           sku?: string | null
+          source?: string
           status?: string
           unit_code?: string | null
           variant_label?: string | null
@@ -3105,6 +3166,7 @@ export type Database = {
           scanned_by_user_id?: string | null
           size?: string | null
           sku?: string | null
+          source?: string
           status?: string
           unit_code?: string | null
           variant_label?: string | null
@@ -3546,6 +3608,7 @@ export type Database = {
           rate_snapshot: number | null
           scan_event_id: string | null
           scanned_by_user_id: string | null
+          source: string
           unit_code: string | null
           updated_at: string
         }
@@ -3571,6 +3634,7 @@ export type Database = {
           rate_snapshot?: number | null
           scan_event_id?: string | null
           scanned_by_user_id?: string | null
+          source?: string
           unit_code?: string | null
           updated_at?: string
         }
@@ -3596,6 +3660,7 @@ export type Database = {
           rate_snapshot?: number | null
           scan_event_id?: string | null
           scanned_by_user_id?: string | null
+          source?: string
           unit_code?: string | null
           updated_at?: string
         }
