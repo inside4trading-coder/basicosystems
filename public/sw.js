@@ -39,10 +39,14 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
 
   // NEVER intercept Supabase, auth, API, or cross-origin sensitive endpoints.
+  // Tampoco el portal de operario: PIN, sesión, dashboard, lookup_unit y
+  // register_process deben ir siempre a la red.
   if (
     url.origin !== self.location.origin ||
     url.pathname.startsWith("/auth") ||
     url.pathname.startsWith("/api") ||
+    url.pathname.startsWith("/operario") ||
+    url.pathname.includes("core-operator-portal") ||
     url.pathname.includes("supabase")
   ) {
     return;

@@ -4,6 +4,7 @@ import { OperatorPicker } from "@/components/operario/OperatorPicker";
 import { OperatorPinPad } from "@/components/operario/OperatorPinPad";
 import { OperatorDashboard } from "@/components/operario/OperatorDashboard";
 import { OperatorScanSheet } from "@/components/operario/OperatorScanSheet";
+import { OperatorInstallCard } from "@/components/operario/OperatorInstallCard";
 import {
   getAmountsVisible,
   getPortalToken,
