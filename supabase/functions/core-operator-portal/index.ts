@@ -414,7 +414,8 @@ Deno.serve(async (req) => {
       const procs = ((procsRaw as any[]) ?? []);
       const multiplier = Number(s.operator.payroll_multiplier ?? 1);
 
-      const firstPendingOrder = procs.find((p) => p.status !== "completed")?.process_order ?? null;
+      const isDone = (st: string) => st === "completed" || st === "skipped";
+      const firstPendingOrder = procs.find((p) => !isDone(p.status))?.process_order ?? null;
 
       const decorated = procs.map((p) => {
         const rate = extractRate(p.rate_snapshot);
