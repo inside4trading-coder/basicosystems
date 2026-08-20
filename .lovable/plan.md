@@ -13,6 +13,15 @@ Nueva experiencia móvil e independiente para que cada operario entre con PIN, v
 7. Pantalla de confirmación: unidad, producto, talla/color, OP, proceso disponible (preseleccionado si hay uno solo), tarifa y monto a generar → "Registrar proceso".
 8. El proceso queda completado, con el operario asociado, y entra automáticamente en la nómina de la semana actual usando exactamente las mismas tablas que hoy usa el escaneo admin.
 
+## Privacidad de montos
+
+Todos los montos del dashboard (total de hoy, total de la semana, montos por proceso y montos de los últimos escaneos) aparecen **ocultos por defecto** como `******`, con el texto "Montos ocultos por privacidad" y un botón con ícono de ojo: "Mostrar montos" / "Ocultar montos".
+
+Nunca se ocultan: nombre del operario, procesos permitidos, cantidad de prendas y procesos, fecha/hora, producto, OP, unidad ni estado.
+
+La preferencia se guarda por dispositivo y por operario en `localStorage` con la clave `operator_amounts_visible_{operator_id}`, así que cambiar de trabajador no hereda la preferencia del anterior. Es puramente frontend: no cambia cálculos, work entries ni nómina.
+
+
 ## Seguridad y validaciones
 
 Todo el registro pasa por una Edge Function con validación de token de sesión; el portal nunca escribe directo a la base de datos. Se rechaza:
