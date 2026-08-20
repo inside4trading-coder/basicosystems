@@ -19,22 +19,26 @@ export type PortalOperator = {
 
 export type DashboardProcess = { label: string; count: number; amount: number };
 
+export type PortalScan = {
+  id: string;
+  created_at: string;
+  unit_code: string | null;
+  product_name: string | null;
+  variant: string | null;
+  process_name: string | null;
+  amount: number;
+  payroll_status: string | null;
+  source: string | null;
+};
+
 export type PortalDashboard = {
   week: { start: string; end: string };
   today: { processes: number; units: number; amount: number; last_scan_at: string | null };
   week_totals: { processes: number; units: number; amount: number; pending: number };
   by_process: DashboardProcess[];
-  recent: {
-    id: string;
-    created_at: string;
-    unit_code: string | null;
-    product_name: string | null;
-    variant: string | null;
-    process_name: string | null;
-    amount: number;
-    payroll_status: string | null;
-    source: string | null;
-  }[];
+  recent: PortalScan[];
+  recent_today?: PortalScan[];
+  recent_week?: PortalScan[];
 };
 
 export type PortalUnit = {
@@ -57,9 +61,11 @@ export type PortalProcess = {
   rate: number | null;
   amount: number | null;
   allowed: boolean;
+  out_of_order?: boolean;
   blocked_reason: string | null;
   completed_at: string | null;
 };
+
 
 export function getPortalToken(): string | null {
   try {
