@@ -810,7 +810,15 @@ export default function CoreProductionOrders() {
             aria-label="Seleccionar orden"
           />
         </TableCell>
-        <TableCell className="font-mono text-sm">{o.order_code}</TableCell>
+        <TableCell className="font-mono text-sm">
+          <div>{o.order_code}</div>
+          <div className="text-[10px] font-sans text-muted-foreground whitespace-nowrap">
+            Terminadas {o.completed_quantity} ·{" "}
+            <span className={Number(o.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
+              Faltantes {o.pending_quantity}
+            </span>
+          </div>
+        </TableCell>
         <TableCell>
           <Badge variant="outline" className={STATUS_BADGE[o.status]}>
             {STATUS_LABEL[o.status] ?? o.status}
