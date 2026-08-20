@@ -132,6 +132,14 @@ export const portalApi = {
       pin,
       device_label: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 100) : null,
     }),
+  setPin: (operator_id: string, pin: string) =>
+    call<{ token: string; operator: PortalOperator; dashboard: PortalDashboard }>({
+      action: "set_pin",
+      operator_id,
+      pin,
+      device_label: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 100) : null,
+    }),
+
   session: (token: string) =>
     call<{ operator: PortalOperator; dashboard: PortalDashboard }>({ action: "session", token }),
   logout: (token: string) => call<{}>({ action: "logout", token }),

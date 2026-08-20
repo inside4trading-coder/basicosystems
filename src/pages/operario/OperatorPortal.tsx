@@ -62,12 +62,13 @@ export default function OperatorPortal() {
 
   async function handleLogin(pin: string) {
     if (!selected) return;
+    const isNew = selected.pin_set === false;
     setPinLoading(true);
     setPinError(null);
-    const res = await portalApi.login(selected.id, pin);
+    const res = isNew ? await portalApi.setPin(selected.id, pin) : await portalApi.login(selected.id, pin);
     setPinLoading(false);
     if (!res.ok) {
-      setPinError(res.error ?? "No se pudo iniciar sesión");
+      setPinError(res.error ?? (isNew ? "No se pudo guardar tu PIN" : "No se pudo iniciar sesión"));
       return;
     }
     setPortalToken(res.token);
@@ -76,7 +77,11 @@ export default function OperatorPortal() {
     setDashboard(res.dashboard);
     setAmountsVisibleState(getAmountsVisible(res.operator.id));
     setStep("dashboard");
+    if (isNew) {
+      toast({ title: "PIN creado", description: "Recuérdalo: lo usarás cada vez que entres." });
+    }
   }
+
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -152,6 +157,8 @@ export default function OperatorPortal() {
             operator={selected}
             loading={pinLoading}
             error={pinError}
+            isNew={selected.pin_set === false}
+            onClearError={() => setPinError(null)}
             onBack={() => {
               setSelected(null);
               setPinError(null);
@@ -160,6 +167,7 @@ export default function OperatorPortal() {
             onSubmit={handleLogin}
           />
         )}
+
 
         {step === "dashboard" && operator && (
           <>

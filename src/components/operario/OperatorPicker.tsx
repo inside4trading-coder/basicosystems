@@ -3,15 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, UserRound } from "lucide-react";
 import type { PortalOperator } from "@/lib/operatorPortal";
 
-const ROLE_LABELS: Record<string, string> = {
-  cutter: "Corte",
-  sewer: "Costura",
-  printer: "Estampado",
-  embroiderer: "Bordado",
-  packing: "Empaque",
-  logistics: "Logística",
-  quality: "Calidad",
-};
 
 interface Props {
   operators: PortalOperator[];
@@ -57,19 +48,13 @@ export function OperatorPicker({ operators, loading, onSelect }: Props) {
             <div className="min-w-0 flex-1">
               <div className="truncate text-lg font-semibold uppercase">{op.name}</div>
               {op.alias && <div className="truncate text-sm text-muted-foreground">{op.alias}</div>}
-              <div className="mt-1 flex flex-wrap gap-1">
-                {op.roles.map((r) => (
-                  <Badge key={r} variant="secondary" className="text-xs">
-                    {ROLE_LABELS[r] ?? r}
-                  </Badge>
-                ))}
-                {!op.pin_set && (
-                  <Badge variant="outline" className="text-xs">
-                    Sin PIN
-                  </Badge>
-                )}
-              </div>
+              {!op.pin_set && (
+                <Badge variant="outline" className="mt-1 text-xs">
+                  Crear PIN
+                </Badge>
+              )}
             </div>
+
           </button>
         ))}
       </div>
