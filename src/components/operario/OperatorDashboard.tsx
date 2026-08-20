@@ -46,6 +46,11 @@ export function OperatorDashboard({
 }: Props) {
   const today = dashboard?.today;
   const week = dashboard?.week_totals;
+  const [showAll, setShowAll] = useState(false);
+  const todayList = dashboard?.recent_today ?? dashboard?.recent ?? [];
+  const weekList = dashboard?.recent_week ?? todayList;
+  const list = showAll ? weekList : todayList.slice(0, 10);
+
 
   return (
     <div className="space-y-4 pb-28">
