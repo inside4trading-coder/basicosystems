@@ -979,10 +979,10 @@ export default function CoreProductionOrders() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Abiertas</div><div className="text-2xl font-bold">{kpis.open}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Unid. pendientes</div><div className="text-2xl font-bold">{kpis.open_units}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">En producción</div><div className="text-2xl font-bold">{kpis.prod_units}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Completadas prod.</div><div className="text-2xl font-bold">{kpis.done_units}</div></Card>
+        <Card className="p-3"><div className="text-xs text-muted-foreground">OP abiertas</div><div className="text-2xl font-bold">{kpis.open_orders}</div><div className="text-[10px] text-muted-foreground">órdenes</div></Card>
+        <Card className="p-3"><div className="text-xs text-muted-foreground">OP en producción</div><div className="text-2xl font-bold">{kpis.prod_orders}</div><div className="text-[10px] text-muted-foreground">órdenes activas/parciales</div></Card>
+        <Card className="p-3"><div className="text-xs text-muted-foreground">Unid. pendientes prod.</div><div className="text-2xl font-bold">{kpis.prod_pending_units}</div><div className="text-[10px] text-muted-foreground">faltantes en OP en producción</div></Card>
+        <Card className="p-3"><div className="text-xs text-muted-foreground">Unid. completadas prod.</div><div className="text-2xl font-bold">{kpis.prod_completed_units}</div><div className="text-[10px] text-muted-foreground">terminadas en OP en producción</div></Card>
         <Card className={`p-3 ${pendingInventoryUnits > 0 ? "border-red-300 bg-red-50" : ""}`}>
           <div className="text-xs text-muted-foreground flex items-center gap-1">
             <ShieldAlert className="h-3 w-3" /> Sin ingresar
