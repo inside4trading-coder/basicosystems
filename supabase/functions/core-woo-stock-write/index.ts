@@ -489,11 +489,22 @@ Deno.serve(async (req) => {
     const { data: unit, error: unitErr } = await admin
       .from("core_production_units")
       .select(
-        "id, unit_code, status, production_order_id, core_product_id, core_variant_id, sku, variant_sku",
+        "id, unit_code, status, production_order_id, core_product_id, core_variant_id, sku, variant_sku, inventory_variant_override_enabled, inventory_override_variant_id, inventory_override_variant_sku",
       )
       .eq("id", body.production_unit_id)
       .maybeSingle();
     if (unitErr || !unit) return json({ error: "Unidad no encontrada" }, 404);
+
+    // Variante efectiva para inventario: override manual (admin/partner) o la original.
+    const overrideOn =
+      (unit as any).inventory_variant_override_enabled === true &&
+      !!(unit as any).inventory_override_variant_id;
+    const effVariantId = overrideOn
+      ? (unit as any).inventory_override_variant_id
+      : (unit as any).core_variant_id;
+    const effVariantSku = overrideOn
+      ? ((unit as any).inventory_override_variant_sku ?? (unit as any).variant_sku)
+      : (unit as any).variant_sku;
 
     const { data: product } = await admin
       .from("core_products")
@@ -501,11 +512,13 @@ Deno.serve(async (req) => {
       .eq("id", (unit as any).core_product_id)
       .maybeSingle();
 
-    const { data: variant } = await admin
-      .from("core_product_variants")
-      .select("id, woo_variation_id, woo_sku, woo_stock_quantity, size, variant_label")
-      .eq("id", (unit as any).core_variant_id)
-      .maybeSingle();
+    const { data: variant } = effVariantId
+      ? await admin
+        .from("core_product_variants")
+        .select("id, woo_variation_id, woo_sku, woo_stock_quantity, size, variant_label")
+        .eq("id", effVariantId)
+        .maybeSingle()
+      : { data: null as any };
 
     // === Stock real de WooCommerce (fuente de verdad para el preview) ===
     const consumerKey = Deno.env.get("WC_CONSUMER_KEY");
