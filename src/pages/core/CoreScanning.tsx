@@ -409,6 +409,7 @@ export default function CoreScanning() {
         scanned_by_user_id: user?.id || null,
         event_type: "process_completed",
         status: "valid",
+        source: "admin",
         notes: noteText || null,
       })
       .select()

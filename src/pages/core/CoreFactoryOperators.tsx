@@ -21,6 +21,7 @@ import { toast } from "@/hooks/use-toast";
 import { CombinedBirthdays } from "@/components/shared/CombinedBirthdays";
 import { useBirthdayPeople } from "@/hooks/useBirthdayPeople";
 import { OperatorDocuments } from "@/components/core/OperatorDocuments";
+import { OperatorPortalSettings } from "@/components/core/OperatorPortalSettings";
 
 export const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "cutter", label: "Cortador" },
