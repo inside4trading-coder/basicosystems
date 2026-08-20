@@ -1361,10 +1361,21 @@ export default function CoreProductionOrders() {
                 <Card className="p-3 min-w-0">
                   <div className="font-medium break-words">{detailOrder.product_name}</div>
                   <div className="text-xs text-muted-foreground font-mono break-all">{detailOrder.sku}</div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Total {detailOrder.total_quantity} · Terminadas {detailOrder.completed_quantity} ·{" "}
+                    <span className={Number(detailOrder.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
+                      Faltantes {detailOrder.pending_quantity}
+                    </span>
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-sm">
                     <div><div className="text-xs text-muted-foreground">Total</div>{detailOrder.total_quantity}</div>
-                    <div><div className="text-xs text-muted-foreground">Pendientes prod.</div>{detailOrder.pending_quantity}</div>
-                    <div><div className="text-xs text-muted-foreground">Completadas prod.</div>{detailOrder.completed_quantity}</div>
+                    <div><div className="text-xs text-muted-foreground">Terminadas prod.</div>{detailOrder.completed_quantity}</div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Faltantes prod.</div>
+                      <span className={Number(detailOrder.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
+                        {detailOrder.pending_quantity}
+                      </span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 text-sm">
                     <div>
