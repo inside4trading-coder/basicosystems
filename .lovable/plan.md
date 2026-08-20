@@ -13,6 +13,15 @@ Nueva experiencia móvil e independiente para que cada operario entre con PIN, v
 7. Pantalla de confirmación: unidad, producto, talla/color, OP, proceso disponible (preseleccionado si hay uno solo), tarifa y monto a generar → "Registrar proceso".
 8. El proceso queda completado, con el operario asociado, y entra automáticamente en la nómina de la semana actual usando exactamente las mismas tablas que hoy usa el escaneo admin.
 
+## Privacidad de montos
+
+Todos los montos del dashboard (total de hoy, total de la semana, montos por proceso y montos de los últimos escaneos) aparecen **ocultos por defecto** como `******`, con el texto "Montos ocultos por privacidad" y un botón con ícono de ojo: "Mostrar montos" / "Ocultar montos".
+
+Nunca se ocultan: nombre del operario, procesos permitidos, cantidad de prendas y procesos, fecha/hora, producto, OP, unidad ni estado.
+
+La preferencia se guarda por dispositivo y por operario en `localStorage` con la clave `operator_amounts_visible_{operator_id}`, así que cambiar de trabajador no hereda la preferencia del anterior. Es puramente frontend: no cambia cálculos, work entries ni nómina.
+
+
 ## Seguridad y validaciones
 
 Todo el registro pasa por una Edge Function con validación de token de sesión; el portal nunca escribe directo a la base de datos. Se rechaza:
@@ -51,7 +60,7 @@ Acciones:
 - `login` → valida PIN, bloquea tras 5 intentos por 30 min, crea sesión (token aleatorio, hash en BD, 7 días) y devuelve token + perfil.
 - `session` → valida token y devuelve perfil + dashboard (hoy, semana de nómina, últimos escaneos).
 - `lookup_unit` → resuelve `qr_token` o `unit_code`, devuelve unidad, producto, talla/color, OP y procesos con su estado, tarifa y si están permitidos.
-- `register_process` → replica la lógica de `CoreScanning.doRegister`: inserta en `core_production_scan_events`, marca `core_production_unit_processes` como `completed` con `completed_by_operator_id`, e inserta en `core_production_work_entries` con `rate_snapshot`, `payroll_multiplier_snapshot`, `payroll_amount`, `payroll_status` (`pending` o `missing_rate`), y actualiza contadores de la OP. Rechaza si la unidad tiene una nómina ya cerrada/pagada asociada.
+- `register_process` → replica la lógica de `CoreScanning.doRegister`: inserta en `core_production_scan_events`, marca `core_production_unit_processes` como `completed` con `completed_by_operator_id`, e inserta en `core_production_work_entries` con `rate_snapshot`, `payroll_multiplier_snapshot`, `payroll_amount`, `payroll_status` (`pending` o `missing_rate`) y `source = 'portal_operario'`, y actualiza contadores de la OP. Solo se bloquea si **ese proceso concreto** ya está registrado o ya entró en una nómina cerrada/pagada; nunca se bloquea la unidad entera por otros procesos suyos.
 - `logout` → revoca la sesión.
 
 Toda entrada validada con Zod; todas las respuestas con CORS.
@@ -66,9 +75,9 @@ Archivos nuevos:
 - `src/pages/operario/OperatorPortal.tsx` — shell del portal, gestiona sesión en `localStorage` y enruta entre selección / PIN / dashboard.
 - `src/components/operario/OperatorPicker.tsx` — tarjetas de operarios.
 - `src/components/operario/OperatorPinPad.tsx` — teclado numérico grande.
-- `src/components/operario/OperatorDashboard.tsx` — encabezado "Escaneando como", KPIs de hoy, desglose por proceso, semana y últimos escaneos.
+- `src/components/operario/OperatorDashboard.tsx` — encabezado "Escaneando como", KPIs de hoy, desglose por proceso, semana y últimos escaneos, con el toggle "Mostrar / Ocultar montos".
 - `src/components/operario/OperatorScanSheet.tsx` — cámara QR + entrada manual + confirmación de proceso.
-- `src/lib/operatorPortal.ts` — cliente tipado de la edge function y manejo del token.
+- `src/lib/operatorPortal.ts` — cliente tipado de la edge function, manejo del token y helpers de privacidad de montos por `operator_id`.
 
 Archivos modificados:
 - `src/App.tsx` — ruta pública `/operario` (fuera de `ProtectedRoute`).
@@ -80,5 +89,6 @@ Estética BASICO: blanco/negro/rojo con tokens existentes, tarjetas y botones gr
 ### Verificación
 
 - Typecheck con `tsgo`.
-- Prueba end-to-end con Playwright sobre `/operario`: seleccionar a Luis Cira, PIN, dashboard, escaneo manual de una unidad con proceso pendiente, confirmación, y segundo intento que debe rechazarse por duplicado.
-- Consulta de comprobación de que la work entry queda con `operator_id` correcto y `payroll_status = 'pending'` dentro de la semana vigente.
+- Prueba end-to-end con Playwright sobre `/operario`: seleccionar a Luis Cira, PIN, dashboard con montos ocultos por defecto, mostrar/ocultar montos y persistencia en `localStorage`, escaneo manual de una unidad con proceso pendiente, confirmación y segundo intento rechazado por duplicado.
+- Casos de error: PIN incorrecto con bloqueo tras 5 intentos, proceso no permitido, unidad cancelada, orden de procesos bloqueado y logout.
+- Consulta de comprobación de que la work entry queda con `operator_id` correcto, `source = 'portal_operario'` y `payroll_status = 'pending'` dentro de la semana vigente.
