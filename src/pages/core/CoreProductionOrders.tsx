@@ -387,12 +387,15 @@ export default function CoreProductionOrders() {
       else if (b === "cancelled") cancelled.push(o);
     }
     return {
-      open: open.length,
-      open_units: open.reduce((a, o) => a + Number(o.pending_quantity), 0),
-      prod_units: prod.reduce((a, o) => a + Number(o.pending_quantity), 0),
-      done_units: done.reduce((a, o) => a + Number(o.completed_quantity), 0),
+      // Órdenes (OP)
+      open_orders: open.length,
+      prod_orders: prod.length,
+      done_orders: done.length,
       closed: closed.length,
       cancelled: cancelled.length,
+      // Unidades (prendas)
+      prod_pending_units: prod.reduce((a, o) => a + Number(o.pending_quantity ?? 0), 0),
+      prod_completed_units: prod.reduce((a, o) => a + Number(o.completed_quantity ?? 0), 0),
       last: orders[0]?.created_at ?? null,
     };
   }, [orders, productionDoneByOrder]);
