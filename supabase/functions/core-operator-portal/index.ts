@@ -214,10 +214,9 @@ async function buildDashboard(operatorId: string) {
     byProcess[key].amount += Number(e.payroll_amount ?? 0);
   }
 
-  // Últimos escaneos enriquecidos
-  const recent = all.slice(0, 20);
-  const productIds = Array.from(new Set(recent.map((r) => r.core_product_id).filter(Boolean)));
-  const variantIds = Array.from(new Set(recent.map((r) => r.core_variant_id).filter(Boolean)));
+  // Escaneos enriquecidos (toda la semana)
+  const productIds = Array.from(new Set(all.map((r) => r.core_product_id).filter(Boolean)));
+  const variantIds = Array.from(new Set(all.map((r) => r.core_variant_id).filter(Boolean)));
   const [{ data: prods }, { data: vars }] = await Promise.all([
     productIds.length
       ? admin.from("core_products").select("id, name").in("id", productIds)
@@ -228,6 +227,24 @@ async function buildDashboard(operatorId: string) {
   ]);
   const pMap = new Map(((prods as any[]) ?? []).map((p) => [p.id, p]));
   const vMap = new Map(((vars as any[]) ?? []).map((v) => [v.id, v]));
+
+  const shape = (e: any) => {
+    const v = e.core_variant_id ? vMap.get(e.core_variant_id) : null;
+    return {
+      id: e.id,
+      created_at: e.created_at,
+      unit_code: e.unit_code,
+      product_name: e.core_product_id ? pMap.get(e.core_product_id)?.name ?? null : null,
+      variant: v ? [v.size, v.color].filter(Boolean).join(" / ") || v.variant_label : null,
+      process_name: e.process_name,
+      amount: Number(e.payroll_amount ?? 0),
+      payroll_status: e.payroll_status,
+      source: e.source,
+    };
+  };
+
+  const recentToday = today.map(shape);
+  const recentWeek = all.map(shape);
 
   return {
     week: { start: week.start, end: week.end },
@@ -244,22 +261,12 @@ async function buildDashboard(operatorId: string) {
       pending: all.filter((e) => e.payroll_status === "pending").length,
     },
     by_process: Object.values(byProcess).sort((a, b) => b.amount - a.amount),
-    recent: recent.map((e) => {
-      const v = e.core_variant_id ? vMap.get(e.core_variant_id) : null;
-      return {
-        id: e.id,
-        created_at: e.created_at,
-        unit_code: e.unit_code,
-        product_name: e.core_product_id ? pMap.get(e.core_product_id)?.name ?? null : null,
-        variant: v ? [v.size, v.color].filter(Boolean).join(" / ") || v.variant_label : null,
-        process_name: e.process_name,
-        amount: Number(e.payroll_amount ?? 0),
-        payroll_status: e.payroll_status,
-        source: e.source,
-      };
-    }),
+    recent: recentToday.slice(0, 10),
+    recent_today: recentToday,
+    recent_week: recentWeek,
   };
 }
+
 
 function publicOperator(op: OperatorRow, roles: string[]) {
   return {
