@@ -57,8 +57,6 @@ Deno.serve(async (req) => {
   const userId = authz.userId!;
 
 
-  const body = await req.json().catch(() => ({}));
-  const action = body.action || "sync";
 
   const cfg = getWooConfig();
   if (!cfg) {
