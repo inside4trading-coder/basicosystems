@@ -76,6 +76,9 @@ export default function EspanaWooOrders() {
   const [itemsByOrder, setItemsByOrder] = useState<Record<string, ItemRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const { role } = useAuth();
+  const canSync = canRunAction(role, "espana.orders.sync");
+
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
