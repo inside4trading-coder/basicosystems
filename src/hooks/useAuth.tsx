@@ -77,6 +77,34 @@ export function canAccessRoute(role: ProfileRole | null, path: string): boolean 
   return allowed.some((r) => path === r || path.startsWith(r + "/"));
 }
 
+/**
+ * Acciones funcionales -> módulo. Debe coincidir con
+ * supabase/functions/_shared/authz.ts (validación real en backend).
+ */
+export const ACTION_MODULE: Record<string, string> = {
+  "espana.orders.view": "/espana",
+  "espana.orders.read": "/espana",
+  "espana.orders.sync": "/espana",
+  "espana.orders.reclassify": "/espana",
+  "espana.orders.create_fabrication_queue": "/espana",
+  "espana.orders.manage_problems": "/espana",
+  "espana.catalog.sync": "/espana",
+  "core.woo.sync": "/core",
+  "core.production.manage": "/core",
+  "sublime.manage": "/sublime",
+  "estudio.generate": "/estudio-visual",
+};
+
+/** Permiso funcional (mismo criterio que el helper de Edge Functions). */
+export function canRunAction(role: ProfileRole | null, permission: string): boolean {
+  if (!role) return false;
+  if (role === "admin") return true;
+  const module = ACTION_MODULE[permission];
+  if (!module) return false;
+  return canAccessRoute(role, module);
+}
+
+
 export function defaultRouteForRole(role: ProfileRole | null): string {
   if (!role) return "/login";
   if (role === "admin") return "/dashboard";
