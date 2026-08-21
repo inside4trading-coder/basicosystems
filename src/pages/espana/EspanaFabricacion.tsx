@@ -102,8 +102,11 @@ export default function EspanaFabricacion() {
   const [view, setView] = useState<ViewFilter>("real");
   const [origin, setOrigin] = useState<OriginFilter>("all");
   const [manualOpen, setManualOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [preflight, setPreflight] = useState<{ open: boolean; request?: FabRow; data?: any; loading?: boolean }>({ open: false });
+  const [notePre, setNotePre] = useState<{ open: boolean; request?: FabRow; lines?: any[]; loading?: boolean }>({ open: false });
+
 
   const load = async () => {
     setLoading(true);
