@@ -280,8 +280,10 @@ export default function EspanaFabricacion() {
         base = rows;
     }
     if (origin === "manual") return base.filter(r => r.source_type === "manual");
+    if (origin === "note") return base.filter(r => r.source_type === "production_note");
     if (origin === "pos" || origin === "restock") return base.filter(r => r.source_type === "pos_restock");
-    if (origin === "woo") return base.filter(r => r.source_type !== "manual" && r.source_type !== "pos_restock");
+    if (origin === "woo") return base.filter(r => !["manual", "pos_restock", "production_note"].includes(r.source_type));
+
     return base;
   }, [rows, view, origin]);
 
