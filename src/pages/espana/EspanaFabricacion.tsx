@@ -596,7 +596,73 @@ export default function EspanaFabricacion() {
         </DialogContent>
       </Dialog>
 
+      {/* Preflight de nota de producción */}
+      <Dialog open={notePre.open} onOpenChange={(o) => !o && setNotePre({ open: false })}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <NotebookPen className="h-5 w-5 text-primary" /> Fabricar nota de producción
+            </DialogTitle>
+          </DialogHeader>
+          {notePre.loading && !notePre.lines && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-4"><Loader2 className="h-4 w-4 animate-spin" /> Cargando materiales…</div>
+          )}
+          {notePre.lines && (
+            <div className="space-y-3 text-sm">
+              <div className="bg-muted/40 p-3 rounded text-xs">
+                <span className="font-semibold">{notePre.request?.product_name}</span> · {notePre.request?.quantity} unidad{notePre.request?.quantity === 1 ? "" : "es"}
+              </div>
+              <div className="border rounded overflow-hidden">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead className="text-xs">Material</TableHead>
+                    <TableHead className="text-xs">Sede</TableHead>
+                    <TableHead className="text-xs text-right">Requerido</TableHead>
+                    <TableHead className="text-xs text-right">Disponible</TableHead>
+                    <TableHead className="text-xs text-center">OK</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {notePre.lines.map((m: any) => (
+                      <TableRow key={m.id}>
+                        <TableCell className="text-xs">
+                          <span className="font-medium">{m.material_name}</span>
+                          {[m.material_size, m.material_color].filter(Boolean).length > 0 && (
+                            <span className="text-muted-foreground"> · {[m.material_size, m.material_color].filter(Boolean).join(" / ")}</span>
+                          )}
+                          {m.material_movement_id && <div className="text-[10px] text-emerald-600">Ya descontado</div>}
+                        </TableCell>
+                        <TableCell className="text-xs">{m.location_name || "—"}</TableCell>
+                        <TableCell className="text-right text-xs font-mono">{Number(m.total_quantity)}</TableCell>
+                        <TableCell className="text-right text-xs font-mono">{Number(m.available)}</TableCell>
+                        <TableCell className="text-center">
+                          {m.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600 inline" /> : <AlertTriangle className="h-4 w-4 text-amber-600 inline" />}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {notePre.lines.every((m: any) => m.material_movement_id) && (
+                <p className="text-xs text-amber-600">⚠ Los materiales de esta nota ya fueron descontados. Al confirmar solo pasa a fabricación, sin volver a descontar.</p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setNotePre({ open: false })}>Cancelar</Button>
+            <Button
+              onClick={confirmConsumeNote}
+              disabled={notePre.loading || !notePre.lines || !notePre.lines.every((m: any) => m.ok)}
+            >
+              {notePre.loading && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Consumir materiales y fabricar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <ManualFabricationDialog open={manualOpen} onOpenChange={setManualOpen} onCreated={() => { setOrigin("manual"); setView("real"); load(); }} />
+      <ProductionNoteDialog open={noteOpen} onOpenChange={setNoteOpen} onCreated={() => { setOrigin("note"); setView("real"); load(); }} />
+
     </div>
   );
 }
