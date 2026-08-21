@@ -83,16 +83,17 @@ export function normalizeSize(label: string | null | undefined): string {
 }
 
 type ViewFilter = "real" | "delivered" | "test" | "legacy" | "cancelled" | "all";
-type OriginFilter = "all" | "woo" | "pos" | "restock" | "manual";
+type OriginFilter = "all" | "woo" | "pos" | "restock" | "manual" | "note";
 
 const ORIGIN_CHIPS: { key: OriginFilter; label: string }[] = [
-
   { key: "all", label: "Todos" },
   { key: "woo", label: "WooCommerce" },
   { key: "pos", label: "POS" },
   { key: "restock", label: "RESTOCK" },
   { key: "manual", label: "Manual" },
+  { key: "note", label: "Nota de producción" },
 ];
+
 
 const PRIORITY_LABEL: Record<string, string> = { normal: "Normal", alta: "Alta", urgente: "Urgente", high: "Alta", urgent: "Urgente", low: "Baja" };
 const PRIORITY_CLASS: Record<string, string> = { alta: "bg-amber-600", high: "bg-amber-600", urgente: "bg-red-600", urgent: "bg-red-600" };
