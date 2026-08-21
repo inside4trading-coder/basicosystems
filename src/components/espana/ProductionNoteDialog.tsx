@@ -398,9 +398,9 @@ export default function ProductionNoteDialog({
             </div>
 
             {shortages.length > 0 && (
-              <Card className="p-3 border-l-4 border-l-destructive bg-destructive/5 text-xs">
-                <p className="font-bold flex items-center gap-1 text-destructive">
-                  <AlertTriangle className="h-3.5 w-3.5" /> Stock insuficiente
+              <Card className="p-3 border-l-4 border-l-amber-500 bg-amber-500/5 text-xs">
+                <p className="font-bold flex items-center gap-1 text-amber-600">
+                  <AlertTriangle className="h-3.5 w-3.5" /> Stock actual insuficiente
                 </p>
                 <ul className="mt-1 list-disc pl-4 text-muted-foreground">
                   {shortages.map((c) => (
@@ -409,6 +409,7 @@ export default function ProductionNoteDialog({
                     </li>
                   ))}
                 </ul>
+                <p className="mt-1 text-muted-foreground">Puedes crear la nota igualmente; el stock se valida al pulsar “Fabricar”.</p>
               </Card>
             )}
 
@@ -419,7 +420,8 @@ export default function ProductionNoteDialog({
 
             <p className="text-[11px] text-muted-foreground">
               {totalCost > 0 && <span className="font-bold text-foreground">Coste estimado {totalCost.toFixed(2)} €. </span>}
-              Al confirmar se descuenta cada línea con su propio movimiento de inventario referenciado a la nota.
+              La nota entra al listado de fabricación como solicitud <span className="font-bold text-foreground">pendiente</span>.
+              Los materiales se descuentan al pulsar “Fabricar”, igual que un pedido normal.
               No se crea producto de catálogo ni nada en WooCommerce.
             </p>
           </div>
@@ -427,16 +429,12 @@ export default function ProductionNoteDialog({
 
         <DialogFooter className="gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          {shortages.length > 0 && valid && (
-            <Button variant="outline" onClick={() => submit(true)} disabled={saving}>
-              Descontar igualmente
-            </Button>
-          )}
-          <Button onClick={() => submit(false)} disabled={!valid || saving || shortages.length > 0}>
+          <Button onClick={() => submit()} disabled={!valid || saving}>
             {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-            Crear y descontar{computed.length > 0 ? ` (${computed.length})` : ""}
+            Crear nota pendiente{computed.length > 0 ? ` (${computed.length})` : ""}
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
