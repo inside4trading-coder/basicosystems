@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 
 import { formatDMY } from "@/lib/dateUtils";
 import ManualFabricationDialog, { MANUAL_REASON_LABEL } from "@/components/espana/ManualFabricationDialog";
+import ProductionNotesSection from "@/components/espana/ProductionNotesSection";
 
 interface FabRow {
   id: string;
@@ -240,6 +241,8 @@ export default function EspanaFabricacion() {
       <Card className="p-3 border-l-4 border-l-emerald-500 text-xs">
         <span className="font-semibold">BLOQUE 5B activo:</span> al pulsar <span className="font-semibold">Fabricar</span> se valida la receta, se calcula el stock requerido y se consumen los materiales atómicamente. No se toca WooCommerce, ni inventario físico, ni POS.
       </Card>
+
+      <ProductionNotesSection />
 
       {/* KPIs separados: real / restock / pruebas / legacy */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">

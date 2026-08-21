@@ -5954,6 +5954,151 @@ export type Database = {
           },
         ]
       }
+      esp_production_note_materials: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          line_cost_eur: number | null
+          location_id: string
+          location_name: string | null
+          material_color: string | null
+          material_id: string
+          material_movement_id: string | null
+          material_name: string | null
+          material_size: string | null
+          material_sku: string | null
+          material_type: string | null
+          note_id: string
+          quantity_per_unit: number
+          total_quantity: number
+          unit_cost_eur: number | null
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          line_cost_eur?: number | null
+          location_id: string
+          location_name?: string | null
+          material_color?: string | null
+          material_id: string
+          material_movement_id?: string | null
+          material_name?: string | null
+          material_size?: string | null
+          material_sku?: string | null
+          material_type?: string | null
+          note_id: string
+          quantity_per_unit: number
+          total_quantity: number
+          unit_cost_eur?: number | null
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          line_cost_eur?: number | null
+          location_id?: string
+          location_name?: string | null
+          material_color?: string | null
+          material_id?: string
+          material_movement_id?: string | null
+          material_name?: string | null
+          material_size?: string | null
+          material_sku?: string | null
+          material_type?: string | null
+          note_id?: string
+          quantity_per_unit?: number
+          total_quantity?: number
+          unit_cost_eur?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_production_note_materials_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_production_note_materials_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "esp_material_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_production_note_materials_material_movement_id_fkey"
+            columns: ["material_movement_id"]
+            isOneToOne: false
+            referencedRelation: "esp_material_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_production_note_materials_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "esp_production_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esp_production_notes: {
+        Row: {
+          consumed_at: string | null
+          consumed_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          location_id: string | null
+          notes: string | null
+          status: string
+          title: string
+          total_cost_eur: number | null
+          units: number
+          updated_at: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          consumed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location_id?: string | null
+          notes?: string | null
+          status?: string
+          title: string
+          total_cost_eur?: number | null
+          units?: number
+          updated_at?: string
+        }
+        Update: {
+          consumed_at?: string | null
+          consumed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location_id?: string | null
+          notes?: string | null
+          status?: string
+          title?: string
+          total_cost_eur?: number | null
+          units?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esp_production_notes_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "esp_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       esp_products: {
         Row: {
           category: string | null
@@ -9579,6 +9724,10 @@ export type Database = {
       }
       esp_consume_materials_for_fabrication_request: {
         Args: { p_location_id?: string; p_notes?: string; p_request_id: string }
+        Returns: Json
+      }
+      esp_consume_production_note: {
+        Args: { p_allow_negative?: boolean; p_note_id: string }
         Returns: Json
       }
       esp_fabrication_request_mark_ready: {
