@@ -30,6 +30,7 @@ export const ALL_ROUTES: { path: string; label: string }[] = [
   { path: "/llamadas", label: "Llamadas" },
   { path: "/campaigns", label: "Campañas" },
   { path: "/crm", label: "CRM" },
+  { path: "/sublime", label: "Sublime" },
   { path: "/configuracion", label: "Configuración" },
   { path: "/core", label: "BASICO CORE" },
   { path: "/espana", label: "BASICO ESPAÑA" },
