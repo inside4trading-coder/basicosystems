@@ -393,6 +393,7 @@ export default function EspanaFabricacion() {
               const norm = normalizeSize(raw);
               const isManual = r.source_type === "manual";
               const isRestock = r.source_type === "pos_restock";
+              const isNote = r.source_type === "production_note";
               return (
                 <TableRow key={r.id} className={r.is_legacy ? "opacity-60" : ""}>
                   <TableCell className="text-xs">{formatDMY(r.created_at)}</TableCell>
@@ -402,7 +403,9 @@ export default function EspanaFabricacion() {
                         <span className="font-semibold">{r.pos_sale_number || "—"}</span>
                         <div className="text-[11px] font-sans text-muted-foreground">{r.pos_location_name || "—"}</div>
                       </div>
-                    ) : isManual ? <span className="text-muted-foreground">Manual</span> : `#${r.esp_woo_orders?.order_number || r.woo_order_id || "—"}`}
+                    ) : isNote ? <span className="text-muted-foreground font-sans">Nota</span>
+                      : isManual ? <span className="text-muted-foreground">Manual</span> : `#${r.esp_woo_orders?.order_number || r.woo_order_id || "—"}`}
+
                   </TableCell>
                   <TableCell className="text-sm font-medium">
                     {r.product_name || "—"}
