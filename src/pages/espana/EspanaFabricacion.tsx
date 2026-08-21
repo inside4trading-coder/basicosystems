@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2, Plus, Wrench, Store, ThumbsUp, Ban } from "lucide-react";
+import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2, Plus, Wrench, Store, ThumbsUp, Ban, NotebookPen } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 
 import { formatDMY } from "@/lib/dateUtils";
 import ManualFabricationDialog, { MANUAL_REASON_LABEL } from "@/components/espana/ManualFabricationDialog";
-import ProductionNotesSection from "@/components/espana/ProductionNotesSection";
+import ProductionNoteDialog from "@/components/espana/ProductionNoteDialog";
+
 
 interface FabRow {
   id: string;
@@ -46,7 +47,9 @@ interface FabRow {
   pos_sale_number: string | null;
   pos_location_id: string | null;
   pos_location_name: string | null;
+  production_note_id: string | null;
   esp_woo_orders?: { order_number: string | null; customer_name: string | null } | null;
+
 }
 
 
@@ -80,7 +83,7 @@ export function normalizeSize(label: string | null | undefined): string {
 }
 
 type ViewFilter = "real" | "delivered" | "test" | "legacy" | "cancelled" | "all";
-type OriginFilter = "all" | "woo" | "pos" | "restock" | "manual";
+type OriginFilter = "all" | "woo" | "pos" | "restock" | "manual" | "note";
 
 const ORIGIN_CHIPS: { key: OriginFilter; label: string }[] = [
   { key: "all", label: "Todos" },
@@ -88,7 +91,9 @@ const ORIGIN_CHIPS: { key: OriginFilter; label: string }[] = [
   { key: "pos", label: "POS" },
   { key: "restock", label: "RESTOCK" },
   { key: "manual", label: "Manual" },
+  { key: "note", label: "Nota de producción" },
 ];
+
 
 const PRIORITY_LABEL: Record<string, string> = { normal: "Normal", alta: "Alta", urgente: "Urgente", high: "Alta", urgent: "Urgente", low: "Baja" };
 const PRIORITY_CLASS: Record<string, string> = { alta: "bg-amber-600", high: "bg-amber-600", urgente: "bg-red-600", urgent: "bg-red-600" };
@@ -99,14 +104,18 @@ export default function EspanaFabricacion() {
   const [view, setView] = useState<ViewFilter>("real");
   const [origin, setOrigin] = useState<OriginFilter>("all");
   const [manualOpen, setManualOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [preflight, setPreflight] = useState<{ open: boolean; request?: FabRow; data?: any; loading?: boolean }>({ open: false });
+  const [notePre, setNotePre] = useState<{ open: boolean; request?: FabRow; lines?: any[]; loading?: boolean }>({ open: false });
+
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase.from("esp_fabrication_requests")
-      .select("id,woo_order_id,product_name,variant_label,sku,quantity,status,priority,due_date,created_at,source_order_id,source_type,is_legacy,is_test,legacy_reason,test_reason,notes,manual_reason,manual_reason_detail,requires_shipping,ship_to_name,ship_to_phone,ship_to_address,ship_to_city,ship_to_province,ship_to_postal_code,ship_to_country,pos_sale_id,pos_sale_item_id,pos_sale_number,pos_location_id,pos_location_name,esp_woo_orders:source_order_id(order_number,customer_name)")
+      .select("id,woo_order_id,product_name,variant_label,sku,quantity,status,priority,due_date,created_at,source_order_id,source_type,is_legacy,is_test,legacy_reason,test_reason,notes,manual_reason,manual_reason_detail,requires_shipping,ship_to_name,ship_to_phone,ship_to_address,ship_to_city,ship_to_province,ship_to_postal_code,ship_to_country,pos_sale_id,pos_sale_item_id,pos_sale_number,pos_location_id,pos_location_name,production_note_id,esp_woo_orders:source_order_id(order_number,customer_name)")
       .order("created_at", { ascending: false }).limit(1000);
+
     if (error) toast.error(error.message);
     setRows((data || []) as any);
     setLoading(false);
@@ -148,6 +157,60 @@ export default function EspanaFabricacion() {
     setPreflight({ open: false });
     load();
   };
+
+  // --- Notas de producción: mismo pipeline, consumo al pulsar "Fabricar" ---
+  const openNotePreflight = async (r: FabRow) => {
+    if (!r.production_note_id) { toast.error("La nota asociada no existe"); return; }
+    setNotePre({ open: true, request: r, loading: true });
+    const { data, error } = await supabase
+      .from("esp_production_note_materials")
+      .select("id,material_id,location_id,material_name,material_size,material_color,material_sku,location_name,total_quantity,line_cost_eur,material_movement_id")
+      .eq("note_id", r.production_note_id);
+    if (error) { toast.error(error.message); setNotePre({ open: false }); return; }
+    const mats = (data || []) as any[];
+    const { data: stockRows } = await supabase
+      .from("esp_material_stock")
+      .select("material_id,location_id,quantity_on_hand")
+      .in("material_id", mats.map((m) => m.material_id));
+    const stockMap: Record<string, number> = {};
+    for (const s of (stockRows || []) as any[]) stockMap[`${s.material_id}|${s.location_id}`] = Number(s.quantity_on_hand || 0);
+    const lines = mats.map((m) => {
+      const available = stockMap[`${m.material_id}|${m.location_id}`] ?? 0;
+      return { ...m, available, ok: m.material_movement_id ? true : available >= Number(m.total_quantity || 0) };
+    });
+    setNotePre({ open: true, request: r, lines, loading: false });
+  };
+
+  const confirmConsumeNote = async () => {
+    const req = notePre.request;
+    if (!req?.production_note_id) return;
+    setNotePre((p) => ({ ...p, loading: true }));
+    const alreadyConsumed = (notePre.lines || []).every((l) => !!l.material_movement_id);
+    if (!alreadyConsumed) {
+      const { data, error } = await supabase.rpc("esp_consume_production_note" as any, {
+        p_note_id: req.production_note_id,
+        p_allow_negative: false,
+      });
+      if (error) { toast.error(error.message); setNotePre((p) => ({ ...p, loading: false })); return; }
+      const out = data as any;
+      if (out?.ok === false && out?.error === "insufficient_stock") {
+        const list = (out.shortages || []).map((s: any) => `${s.name}${s.variant ? " / " + s.variant : ""} (req. ${s.required}, disp. ${s.available})`).join(" · ");
+        toast.error(`Stock insuficiente: ${list}`);
+        setNotePre((p) => ({ ...p, loading: false }));
+        return;
+      }
+    }
+    const { error: upErr } = await supabase
+      .from("esp_fabrication_requests")
+      .update({ status: "in_progress" })
+      .eq("id", req.id);
+    if (upErr) { toast.error(upErr.message); setNotePre((p) => ({ ...p, loading: false })); return; }
+    toast.success(alreadyConsumed ? "Materiales ya descontados · nota en fabricación" : "Materiales descontados · nota en fabricación");
+    setNotePre({ open: false });
+    load();
+  };
+
+
 
   const markReady = async (id: string) => {
     setBusyId(id);
@@ -217,8 +280,10 @@ export default function EspanaFabricacion() {
         base = rows;
     }
     if (origin === "manual") return base.filter(r => r.source_type === "manual");
+    if (origin === "note") return base.filter(r => r.source_type === "production_note");
     if (origin === "pos" || origin === "restock") return base.filter(r => r.source_type === "pos_restock");
-    if (origin === "woo") return base.filter(r => r.source_type !== "manual" && r.source_type !== "pos_restock");
+    if (origin === "woo") return base.filter(r => !["manual", "pos_restock", "production_note"].includes(r.source_type));
+
     return base;
   }, [rows, view, origin]);
 
@@ -233,6 +298,7 @@ export default function EspanaFabricacion() {
           <p className="text-sm text-muted-foreground">Cola generada desde pedidos WooCommerce España cuando el producto requiere fabricación.</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button size="sm" variant="outline" onClick={() => setNoteOpen(true)}><NotebookPen className="h-4 w-4 mr-1" />Nueva nota de producción</Button>
           <Button size="sm" onClick={() => setManualOpen(true)}><Plus className="h-4 w-4 mr-1" />Nueva orden manual</Button>
           <a href="/espana/blanks-dtf" className="text-sm text-primary font-semibold underline-offset-2 hover:underline">Blanks / DTF →</a>
         </div>
@@ -242,7 +308,7 @@ export default function EspanaFabricacion() {
         <span className="font-semibold">BLOQUE 5B activo:</span> al pulsar <span className="font-semibold">Fabricar</span> se valida la receta, se calcula el stock requerido y se consumen los materiales atómicamente. No se toca WooCommerce, ni inventario físico, ni POS.
       </Card>
 
-      <ProductionNotesSection />
+
 
       {/* KPIs separados: real / restock / pruebas / legacy */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -327,6 +393,7 @@ export default function EspanaFabricacion() {
               const norm = normalizeSize(raw);
               const isManual = r.source_type === "manual";
               const isRestock = r.source_type === "pos_restock";
+              const isNote = r.source_type === "production_note";
               return (
                 <TableRow key={r.id} className={r.is_legacy ? "opacity-60" : ""}>
                   <TableCell className="text-xs">{formatDMY(r.created_at)}</TableCell>
@@ -336,7 +403,9 @@ export default function EspanaFabricacion() {
                         <span className="font-semibold">{r.pos_sale_number || "—"}</span>
                         <div className="text-[11px] font-sans text-muted-foreground">{r.pos_location_name || "—"}</div>
                       </div>
-                    ) : isManual ? <span className="text-muted-foreground">Manual</span> : `#${r.esp_woo_orders?.order_number || r.woo_order_id || "—"}`}
+                    ) : isNote ? <span className="text-muted-foreground font-sans">Nota</span>
+                      : isManual ? <span className="text-muted-foreground">Manual</span> : `#${r.esp_woo_orders?.order_number || r.woo_order_id || "—"}`}
+
                   </TableCell>
                   <TableCell className="text-sm font-medium">
                     {r.product_name || "—"}
@@ -391,11 +460,13 @@ export default function EspanaFabricacion() {
                         </>
                       )}
                       {isManual && <Badge className="bg-purple-600"><Wrench className="h-3 w-3 mr-1" />MANUAL</Badge>}
+                      {isNote && <Badge className="bg-indigo-600"><NotebookPen className="h-3 w-3 mr-1" />NOTA</Badge>}
                       {r.is_test && <Badge className="bg-blue-600" title={r.test_reason || ""}><FlaskConical className="h-3 w-3 mr-1" />Prueba</Badge>}
                       {r.is_legacy && <Badge variant="secondary" title={r.legacy_reason || ""}><Archive className="h-3 w-3 mr-1" />Legacy</Badge>}
-                      {!isManual && !isRestock && !r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">WooCommerce</span>}
+                      {!isManual && !isRestock && !isNote && !r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">WooCommerce</span>}
                     </div>
                   </TableCell>
+
 
                   <TableCell>
                     <div className="flex items-center gap-1 flex-wrap">
@@ -411,10 +482,11 @@ export default function EspanaFabricacion() {
                         </>
                       )}
                       {r.status === "pending" && !r.is_legacy && (
-                        <Button size="sm" variant="outline" onClick={() => openPreflight(r)}>
+                        <Button size="sm" variant="outline" onClick={() => (isNote ? openNotePreflight(r) : openPreflight(r))}>
                           <Play className="h-3 w-3 mr-1" />Fabricar
                         </Button>
                       )}
+
                       {r.status === "in_progress" && !r.is_legacy && (
                         <Button size="sm" variant="outline" onClick={() => markReady(r.id)}>
                           <Check className="h-3 w-3 mr-1" />Marcar listo
@@ -524,7 +596,73 @@ export default function EspanaFabricacion() {
         </DialogContent>
       </Dialog>
 
+      {/* Preflight de nota de producción */}
+      <Dialog open={notePre.open} onOpenChange={(o) => !o && setNotePre({ open: false })}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <NotebookPen className="h-5 w-5 text-primary" /> Fabricar nota de producción
+            </DialogTitle>
+          </DialogHeader>
+          {notePre.loading && !notePre.lines && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-4"><Loader2 className="h-4 w-4 animate-spin" /> Cargando materiales…</div>
+          )}
+          {notePre.lines && (
+            <div className="space-y-3 text-sm">
+              <div className="bg-muted/40 p-3 rounded text-xs">
+                <span className="font-semibold">{notePre.request?.product_name}</span> · {notePre.request?.quantity} unidad{notePre.request?.quantity === 1 ? "" : "es"}
+              </div>
+              <div className="border rounded overflow-hidden">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead className="text-xs">Material</TableHead>
+                    <TableHead className="text-xs">Sede</TableHead>
+                    <TableHead className="text-xs text-right">Requerido</TableHead>
+                    <TableHead className="text-xs text-right">Disponible</TableHead>
+                    <TableHead className="text-xs text-center">OK</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {notePre.lines.map((m: any) => (
+                      <TableRow key={m.id}>
+                        <TableCell className="text-xs">
+                          <span className="font-medium">{m.material_name}</span>
+                          {[m.material_size, m.material_color].filter(Boolean).length > 0 && (
+                            <span className="text-muted-foreground"> · {[m.material_size, m.material_color].filter(Boolean).join(" / ")}</span>
+                          )}
+                          {m.material_movement_id && <div className="text-[10px] text-emerald-600">Ya descontado</div>}
+                        </TableCell>
+                        <TableCell className="text-xs">{m.location_name || "—"}</TableCell>
+                        <TableCell className="text-right text-xs font-mono">{Number(m.total_quantity)}</TableCell>
+                        <TableCell className="text-right text-xs font-mono">{Number(m.available)}</TableCell>
+                        <TableCell className="text-center">
+                          {m.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600 inline" /> : <AlertTriangle className="h-4 w-4 text-amber-600 inline" />}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {notePre.lines.every((m: any) => m.material_movement_id) && (
+                <p className="text-xs text-amber-600">⚠ Los materiales de esta nota ya fueron descontados. Al confirmar solo pasa a fabricación, sin volver a descontar.</p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setNotePre({ open: false })}>Cancelar</Button>
+            <Button
+              onClick={confirmConsumeNote}
+              disabled={notePre.loading || !notePre.lines || !notePre.lines.every((m: any) => m.ok)}
+            >
+              {notePre.loading && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Consumir materiales y fabricar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <ManualFabricationDialog open={manualOpen} onOpenChange={setManualOpen} onCreated={() => { setOrigin("manual"); setView("real"); load(); }} />
+      <ProductionNoteDialog open={noteOpen} onOpenChange={setNoteOpen} onCreated={() => { setOrigin("note"); setView("real"); load(); }} />
+
     </div>
   );
 }

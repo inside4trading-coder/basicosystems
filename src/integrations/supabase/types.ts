@@ -5153,6 +5153,7 @@ export type Database = {
           priority: string
           product_id: string | null
           product_name: string | null
+          production_note_id: string | null
           quantity: number
           requires_shipping: boolean
           ship_to_address: string | null
@@ -5197,6 +5198,7 @@ export type Database = {
           priority?: string
           product_id?: string | null
           product_name?: string | null
+          production_note_id?: string | null
           quantity?: number
           requires_shipping?: boolean
           ship_to_address?: string | null
@@ -5241,6 +5243,7 @@ export type Database = {
           priority?: string
           product_id?: string | null
           product_name?: string | null
+          production_note_id?: string | null
           quantity?: number
           requires_shipping?: boolean
           ship_to_address?: string | null
@@ -5269,6 +5272,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "esp_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esp_fabrication_requests_production_note_id_fkey"
+            columns: ["production_note_id"]
+            isOneToOne: false
+            referencedRelation: "esp_production_notes"
             referencedColumns: ["id"]
           },
           {
