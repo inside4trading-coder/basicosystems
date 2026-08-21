@@ -298,6 +298,7 @@ export default function EspanaFabricacion() {
           <p className="text-sm text-muted-foreground">Cola generada desde pedidos WooCommerce España cuando el producto requiere fabricación.</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button size="sm" variant="outline" onClick={() => setNoteOpen(true)}><NotebookPen className="h-4 w-4 mr-1" />Nueva nota de producción</Button>
           <Button size="sm" onClick={() => setManualOpen(true)}><Plus className="h-4 w-4 mr-1" />Nueva orden manual</Button>
           <a href="/espana/blanks-dtf" className="text-sm text-primary font-semibold underline-offset-2 hover:underline">Blanks / DTF →</a>
         </div>
@@ -307,7 +308,7 @@ export default function EspanaFabricacion() {
         <span className="font-semibold">BLOQUE 5B activo:</span> al pulsar <span className="font-semibold">Fabricar</span> se valida la receta, se calcula el stock requerido y se consumen los materiales atómicamente. No se toca WooCommerce, ni inventario físico, ni POS.
       </Card>
 
-      <ProductionNotesSection />
+
 
       {/* KPIs separados: real / restock / pruebas / legacy */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
