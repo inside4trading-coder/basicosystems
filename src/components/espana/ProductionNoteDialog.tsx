@@ -267,10 +267,16 @@ export default function ProductionNoteDialog({
                               <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[560px]" align="start">
+                          <PopoverContent
+                            className="p-0 w-[--radix-popover-trigger-width] max-w-[560px]"
+                            align="start"
+                            onWheel={(e) => e.stopPropagation()}
+                            onTouchMove={(e) => e.stopPropagation()}
+                          >
                             <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
                               <CommandInput placeholder="Nombre, SKU, talla o color…" />
-                              <CommandList>
+                              <CommandList className="max-h-[260px] overflow-y-auto overscroll-contain">
+
                                 <CommandEmpty>Sin materiales.</CommandEmpty>
                                 <CommandGroup>
                                   {groupList.map((g) => {
