@@ -47,7 +47,9 @@ interface FabRow {
   pos_sale_number: string | null;
   pos_location_id: string | null;
   pos_location_name: string | null;
+  production_note_id: string | null;
   esp_woo_orders?: { order_number: string | null; customer_name: string | null } | null;
+
 }
 
 
