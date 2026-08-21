@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.esp_consume_production_note(uuid, boolean) FROM anon;
