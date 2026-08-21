@@ -460,11 +460,13 @@ export default function EspanaFabricacion() {
                         </>
                       )}
                       {isManual && <Badge className="bg-purple-600"><Wrench className="h-3 w-3 mr-1" />MANUAL</Badge>}
+                      {isNote && <Badge className="bg-indigo-600"><NotebookPen className="h-3 w-3 mr-1" />NOTA</Badge>}
                       {r.is_test && <Badge className="bg-blue-600" title={r.test_reason || ""}><FlaskConical className="h-3 w-3 mr-1" />Prueba</Badge>}
                       {r.is_legacy && <Badge variant="secondary" title={r.legacy_reason || ""}><Archive className="h-3 w-3 mr-1" />Legacy</Badge>}
-                      {!isManual && !isRestock && !r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">WooCommerce</span>}
+                      {!isManual && !isRestock && !isNote && !r.is_test && !r.is_legacy && <span className="text-xs text-muted-foreground">WooCommerce</span>}
                     </div>
                   </TableCell>
+
 
                   <TableCell>
                     <div className="flex items-center gap-1 flex-wrap">
