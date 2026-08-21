@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 
 import { formatDMY } from "@/lib/dateUtils";
 import ManualFabricationDialog, { MANUAL_REASON_LABEL } from "@/components/espana/ManualFabricationDialog";
-import ProductionNotesSection from "@/components/espana/ProductionNotesSection";
+import ProductionNoteDialog from "@/components/espana/ProductionNoteDialog";
+
 
 interface FabRow {
   id: string;
