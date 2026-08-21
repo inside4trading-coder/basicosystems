@@ -1,6 +1,6 @@
 // Sincronización de catálogo WooCommerce España -> esp_products / esp_product_variants
 // READ-ONLY contra Woo. Nunca escribe en WooCommerce.
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { authorizeAction } from "../_shared/authz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,40 +53,22 @@ function extractAttr(attrs: any[], names: string[]): string | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: req.headers.get("Authorization") || "" } } }
-  );
-
-  // Auth
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-  const token = authHeader.replace("Bearer ", "");
-  const { data: claims, error: claimsErr } = await supabase.auth.getClaims(token);
-  if (claimsErr || !claims?.claims?.sub) {
-    return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-  const userId = claims.claims.sub as string;
-
-  // Role check
-  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userId);
-  const ok = (roles || []).some(r => r.role === "admin" || r.role === "manager");
-  if (!ok) {
-    return new Response(JSON.stringify({ ok: false, error: "forbidden" }), {
-      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
   const body = await req.json().catch(() => ({}));
   const action = body.action || "sync";
+
+  // Autorización funcional: admin siempre; otros roles requieren permiso de módulo.
+  const { result: authz, admin } = await authorizeAction(req, "espana.catalog.sync", action);
+  if (!authz.ok) {
+    return new Response(JSON.stringify({
+      ok: false,
+      error: authz.errorCode,
+      message: authz.errorCode === "forbidden"
+        ? "No tienes permiso para sincronizar el catálogo WooCommerce España."
+        : "Sesión no válida. Vuelve a iniciar sesión.",
+    }), { status: authz.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  const userId = authz.userId!;
+
 
   const cfg = getWooConfig();
   if (!cfg) {

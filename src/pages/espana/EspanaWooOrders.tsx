@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Globe, RefreshCw, Loader2, Hammer, Receipt, CheckCircle2, XCircle, AlertCircle, PackageCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { canRunAction, useAuth } from "@/hooks/useAuth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface WooOrder {
@@ -75,6 +76,9 @@ export default function EspanaWooOrders() {
   const [itemsByOrder, setItemsByOrder] = useState<Record<string, ItemRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const { role } = useAuth();
+  const canSync = canRunAction(role, "espana.orders.sync");
+
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -125,16 +129,29 @@ export default function EspanaWooOrders() {
   useEffect(() => { load(); }, [statusFilter]);
 
   const sync = async () => {
+    if (!canSync) { toast.error("No tienes permiso para sincronizar pedidos WooCommerce España."); return; }
     setSyncing(true);
     const { data, error } = await supabase.functions.invoke("esp-woo-sync-orders", {
       body: { action: "sync", status: "any", per_page: 50, max_pages: 10 },
     });
     setSyncing(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      // El body de la función trae el motivo real; el error genérico no sirve.
+      const code = (data as any)?.error;
+      if (code === "forbidden") toast.error("No tienes permiso para sincronizar pedidos WooCommerce España.");
+      else if (code === "unauthorized") toast.error("Sesión no válida. Vuelve a iniciar sesión.");
+      else if (code === "missing_credentials" || String(code).includes("woo")) toast.error("No se pudo sincronizar con WooCommerce. Revisa conexión o logs.");
+      else toast.error((data as any)?.message || "No se pudo completar la sincronización. Intenta nuevamente o revisa logs.");
+      return;
+    }
     if (data?.ok) {
       toast.success(`Pedidos: ${data.orders_created}+/${data.orders_updated}↻ · Ventas: ${data.sales_created}+/${data.sales_updated}↻ · Fabricación: ${data.fabrication_requests_created}`);
     } else {
-      toast.error(data?.error || "Error en sincronización");
+      const code = (data as any)?.error;
+      if (code === "forbidden") toast.error("No tienes permiso para sincronizar pedidos WooCommerce España.");
+      else if (code === "unauthorized") toast.error("Sesión no válida. Vuelve a iniciar sesión.");
+      else if (code === "missing_credentials" || code === "woo_error") toast.error("No se pudo sincronizar con WooCommerce. Revisa conexión o logs.");
+      else toast.error((data as any)?.message || "No se pudo completar la sincronización. Intenta nuevamente o revisa logs.");
     }
     load();
   };
@@ -192,10 +209,16 @@ export default function EspanaWooOrders() {
             </SelectContent>
           </Select>
           <Input placeholder="Buscar pedido, cliente…" value={search} onChange={e => setSearch(e.target.value)} className="w-56" />
-          <Button onClick={sync} disabled={syncing}>
-            {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Sincronizar pedidos
-          </Button>
+          {canSync ? (
+            <Button onClick={sync} disabled={syncing}>
+              {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              Sincronizar pedidos
+            </Button>
+          ) : (
+            <Button disabled title="No tienes permiso para sincronizar pedidos.">
+              <RefreshCw className="h-4 w-4 mr-2" /> Sincronizar pedidos
+            </Button>
+          )}
         </div>
       </div>
 
