@@ -143,9 +143,8 @@ export default function ProductionNoteDialog({
 
   const reset = () => { setTitle(""); setUnits("1"); setNotes(""); setLines([newLine(locations[0]?.id || "")]); };
 
-  const submit = async (allowNegative = false) => {
+  const submit = async () => {
     if (!valid || saving) return;
-    if (shortages.length > 0 && !allowNegative) return;
     setSaving(true);
     const { data: userRes } = await supabase.auth.getUser();
     const createdBy = userRes?.user?.id || null;
@@ -191,23 +190,33 @@ export default function ProductionNoteDialog({
       setSaving(false); toast.error(linesErr.message); return;
     }
 
-    const { data: res, error: rpcErr } = await supabase.rpc("esp_consume_production_note" as any, {
-      p_note_id: note.id,
-      p_allow_negative: allowNegative,
-    });
+    // La nota entra al pipeline normal: solicitud de fabricación pendiente.
+    // Los materiales se descuentan al pulsar "Fabricar", igual que un pedido.
+    const { error: reqErr } = await supabase.from("esp_fabrication_requests").insert({
+      source_type: "production_note",
+      production_note_id: note.id,
+      product_name: title.trim(),
+      quantity: unitsNum,
+      status: "pending",
+      priority: "normal",
+      notes: notes.trim() || null,
+      requires_shipping: false,
+      ...(createdBy ? { created_by: createdBy } : {}),
+    } as any);
     setSaving(false);
-    if (rpcErr) { toast.error(rpcErr.message); return; }
-    const out = res as any;
-    if (out?.ok === false && out?.error === "insufficient_stock") {
-      const list = (out.shortages || []).map((s: any) => `${s.name}${s.variant ? " / " + s.variant : ""} (req. ${s.required}, disp. ${s.available})`).join(" · ");
-      toast.error(`Stock insuficiente: ${list}`);
+    if (reqErr) {
+      await supabase.from("esp_production_note_materials").delete().eq("note_id", note.id);
+      await supabase.from("esp_production_notes").delete().eq("id", note.id);
+      toast.error(reqErr.message);
       return;
     }
-    toast.success(`Nota creada · ${out?.movements ?? payload.length} materiales descontados`);
+
+    toast.success("Nota creada · pendiente de fabricar en el listado");
     reset();
     onOpenChange(false);
     onCreated();
   };
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
