@@ -156,6 +156,60 @@ export default function EspanaFabricacion() {
     load();
   };
 
+  // --- Notas de producción: mismo pipeline, consumo al pulsar "Fabricar" ---
+  const openNotePreflight = async (r: FabRow) => {
+    if (!r.production_note_id) { toast.error("La nota asociada no existe"); return; }
+    setNotePre({ open: true, request: r, loading: true });
+    const { data, error } = await supabase
+      .from("esp_production_note_materials")
+      .select("id,material_id,location_id,material_name,material_size,material_color,material_sku,location_name,total_quantity,line_cost_eur,material_movement_id")
+      .eq("note_id", r.production_note_id);
+    if (error) { toast.error(error.message); setNotePre({ open: false }); return; }
+    const mats = (data || []) as any[];
+    const { data: stockRows } = await supabase
+      .from("esp_material_stock")
+      .select("material_id,location_id,quantity_on_hand")
+      .in("material_id", mats.map((m) => m.material_id));
+    const stockMap: Record<string, number> = {};
+    for (const s of (stockRows || []) as any[]) stockMap[`${s.material_id}|${s.location_id}`] = Number(s.quantity_on_hand || 0);
+    const lines = mats.map((m) => {
+      const available = stockMap[`${m.material_id}|${m.location_id}`] ?? 0;
+      return { ...m, available, ok: m.material_movement_id ? true : available >= Number(m.total_quantity || 0) };
+    });
+    setNotePre({ open: true, request: r, lines, loading: false });
+  };
+
+  const confirmConsumeNote = async () => {
+    const req = notePre.request;
+    if (!req?.production_note_id) return;
+    setNotePre((p) => ({ ...p, loading: true }));
+    const alreadyConsumed = (notePre.lines || []).every((l) => !!l.material_movement_id);
+    if (!alreadyConsumed) {
+      const { data, error } = await supabase.rpc("esp_consume_production_note" as any, {
+        p_note_id: req.production_note_id,
+        p_allow_negative: false,
+      });
+      if (error) { toast.error(error.message); setNotePre((p) => ({ ...p, loading: false })); return; }
+      const out = data as any;
+      if (out?.ok === false && out?.error === "insufficient_stock") {
+        const list = (out.shortages || []).map((s: any) => `${s.name}${s.variant ? " / " + s.variant : ""} (req. ${s.required}, disp. ${s.available})`).join(" · ");
+        toast.error(`Stock insuficiente: ${list}`);
+        setNotePre((p) => ({ ...p, loading: false }));
+        return;
+      }
+    }
+    const { error: upErr } = await supabase
+      .from("esp_fabrication_requests")
+      .update({ status: "in_progress" })
+      .eq("id", req.id);
+    if (upErr) { toast.error(upErr.message); setNotePre((p) => ({ ...p, loading: false })); return; }
+    toast.success(alreadyConsumed ? "Materiales ya descontados · nota en fabricación" : "Materiales descontados · nota en fabricación");
+    setNotePre({ open: false });
+    load();
+  };
+
+
+
   const markReady = async (id: string) => {
     setBusyId(id);
     const { error } = await supabase.rpc("esp_fabrication_request_mark_ready" as any, { p_request_id: id });
