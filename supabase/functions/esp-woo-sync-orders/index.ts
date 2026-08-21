@@ -1,7 +1,7 @@
 // Sincronización READ-ONLY de pedidos WooCommerce España -> esp_woo_orders / esp_woo_order_items
 // + esp_sales (venta web) + esp_fabrication_requests (cuando aplica).
 // Nunca escribe en WooCommerce. No descuenta inventario por sedes.
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { authorizeAction } from "../_shared/authz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
