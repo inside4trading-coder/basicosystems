@@ -86,6 +86,7 @@ type ViewFilter = "real" | "delivered" | "test" | "legacy" | "cancelled" | "all"
 type OriginFilter = "all" | "woo" | "pos" | "restock" | "manual";
 
 const ORIGIN_CHIPS: { key: OriginFilter; label: string }[] = [
+
   { key: "all", label: "Todos" },
   { key: "woo", label: "WooCommerce" },
   { key: "pos", label: "POS" },
