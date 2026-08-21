@@ -482,10 +482,11 @@ export default function EspanaFabricacion() {
                         </>
                       )}
                       {r.status === "pending" && !r.is_legacy && (
-                        <Button size="sm" variant="outline" onClick={() => openPreflight(r)}>
+                        <Button size="sm" variant="outline" onClick={() => (isNote ? openNotePreflight(r) : openPreflight(r))}>
                           <Play className="h-3 w-3 mr-1" />Fabricar
                         </Button>
                       )}
+
                       {r.status === "in_progress" && !r.is_legacy && (
                         <Button size="sm" variant="outline" onClick={() => markReady(r.id)}>
                           <Check className="h-3 w-3 mr-1" />Marcar listo
