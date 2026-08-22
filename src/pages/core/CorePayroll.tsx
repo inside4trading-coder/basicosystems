@@ -300,7 +300,12 @@ export default function CorePayroll() {
                       const meta = (r.merge_metadata ?? {}) as Record<string, any>;
                       return (
                       <TableRow key={r.id} className={r.status === "merged" ? "opacity-70" : undefined}>
-                        <TableCell className="font-mono text-xs">{r.payroll_code}</TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {r.payroll_code}
+                          {r.generated_by_system && (
+                            <Badge variant="outline" className="ml-1 text-[10px]">Automática</Badge>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm">
                           {r.status === "merged" ? (
                             <span className="text-muted-foreground">
