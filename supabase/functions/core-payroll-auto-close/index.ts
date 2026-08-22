@@ -194,14 +194,15 @@ Deno.serve(async (req) => {
       table_name: "core_payroll_runs",
       record_id: run.id,
       action: "payroll_auto_generated",
-      new_value: {
+      new_value: JSON.stringify({
         period_start: week.start,
         period_end: week.end,
         payment_date: week.payment,
         total: subtotal,
         operators: byOp.size,
         entries: valid.length,
-      },
+      }),
+      performed_by: "system:auto_close",
     });
 
     const res = await finish("created", `Nómina ${run.payroll_code ?? run.id} generada automáticamente`, {
