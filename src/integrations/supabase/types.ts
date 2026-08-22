@@ -1939,6 +1939,62 @@ export type Database = {
           },
         ]
       }
+      core_payroll_auto_close_runs: {
+        Row: {
+          created_at: string
+          finished_at: string | null
+          id: string
+          lock_expires_at: string | null
+          message: string | null
+          operators_count: number
+          payment_date: string | null
+          payroll_run_id: string | null
+          period_end: string
+          period_start: string
+          status: string
+          total_amount: number
+          work_entries_count: number
+        }
+        Insert: {
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          lock_expires_at?: string | null
+          message?: string | null
+          operators_count?: number
+          payment_date?: string | null
+          payroll_run_id?: string | null
+          period_end: string
+          period_start: string
+          status?: string
+          total_amount?: number
+          work_entries_count?: number
+        }
+        Update: {
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          lock_expires_at?: string | null
+          message?: string | null
+          operators_count?: number
+          payment_date?: string | null
+          payroll_run_id?: string | null
+          period_end?: string
+          period_start?: string
+          status?: string
+          total_amount?: number
+          work_entries_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_payroll_auto_close_runs_payroll_run_id_fkey"
+            columns: ["payroll_run_id"]
+            isOneToOne: false
+            referencedRelation: "core_payroll_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       core_payroll_operator_lines: {
         Row: {
           adjustments_amount: number
@@ -2067,6 +2123,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string
+          generated_by_system: boolean
+          generation_source: string | null
           id: string
           is_merged_period: boolean
           merge_metadata: Json | null
@@ -2097,6 +2155,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          generated_by_system?: boolean
+          generation_source?: string | null
           id?: string
           is_merged_period?: boolean
           merge_metadata?: Json | null
@@ -2127,6 +2187,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          generated_by_system?: boolean
+          generation_source?: string | null
           id?: string
           is_merged_period?: boolean
           merge_metadata?: Json | null
