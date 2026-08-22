@@ -64,7 +64,18 @@ type PayrollRun = {
   merged_reason: string | null;
   merge_metadata: any;
   is_merged_period: boolean;
+  generated_by_system?: boolean | null;
 };
+
+type AutoCloseRun = {
+  period_start: string;
+  period_end: string;
+  status: string;
+  message: string | null;
+  finished_at: string | null;
+  created_at: string;
+};
+
 
 
 type OperatorLine = {
@@ -127,19 +138,25 @@ export default function CorePayroll() {
 
 
 
+  const [autoClose, setAutoClose] = useState<AutoCloseRun | null>(null);
+
+
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [r1, r2, r3] = await Promise.all([
+    const [r1, r2, r3, r4] = await Promise.all([
       supabase.from("core_payroll_runs").select("*").order("period_start", { ascending: false }),
       supabase.from("core_production_work_entries").select("*").eq("payroll_status", "pending").order("created_at", { ascending: false }),
       supabase.from("core_production_work_entries").select("*").eq("payroll_status", "missing_rate").order("created_at", { ascending: false }),
+      supabase.from("core_payroll_auto_close_runs").select("period_start,period_end,status,message,finished_at,created_at").order("period_start", { ascending: false }).limit(1),
     ]);
     if (r1.error) toast({ title: "Error cargando nóminas", description: r1.error.message, variant: "destructive" });
     setRuns((r1.data ?? []) as PayrollRun[]);
     setPendingEntries((r2.data ?? []) as WorkEntry[]);
     setMissingRateEntries((r3.data ?? []) as WorkEntry[]);
+    setAutoClose(((r4.data ?? [])[0] ?? null) as AutoCloseRun | null);
     setLoading(false);
   }, []);
+
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -208,8 +225,21 @@ export default function CorePayroll() {
             <h1 className="text-2xl font-black tracking-tight">Nómina de Producción</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Cierre semanal de trabajos escaneados. Cierre: jueves · Pago: viernes.
+            Cierre semanal de trabajos escaneados. Cierre automático: jueves 11:59 pm (hora Venezuela) · Pago: viernes.
           </p>
+          {autoClose && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Último cierre automático: {formatDMY(autoClose.period_start)} → {formatDMY(autoClose.period_end)} ·{" "}
+              {autoClose.status === "created"
+                ? "nómina generada"
+                : autoClose.status === "skipped_existing"
+                ? "ya existía nómina"
+                : autoClose.status === "skipped_empty"
+                ? "sin trabajos pendientes"
+                : autoClose.status}
+              {autoClose.message ? ` — ${autoClose.message}` : ""}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={loadAll} disabled={loading}>
@@ -283,7 +313,12 @@ export default function CorePayroll() {
                       const meta = (r.merge_metadata ?? {}) as Record<string, any>;
                       return (
                       <TableRow key={r.id} className={r.status === "merged" ? "opacity-70" : undefined}>
-                        <TableCell className="font-mono text-xs">{r.payroll_code}</TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {r.payroll_code}
+                          {r.generated_by_system && (
+                            <Badge variant="outline" className="ml-1 text-[10px]">Automática</Badge>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm">
                           {r.status === "merged" ? (
                             <span className="text-muted-foreground">
