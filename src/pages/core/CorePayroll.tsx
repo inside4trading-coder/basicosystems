@@ -64,7 +64,18 @@ type PayrollRun = {
   merged_reason: string | null;
   merge_metadata: any;
   is_merged_period: boolean;
+  generated_by_system?: boolean | null;
 };
+
+type AutoCloseRun = {
+  period_start: string;
+  period_end: string;
+  status: string;
+  message: string | null;
+  finished_at: string | null;
+  created_at: string;
+};
+
 
 
 type OperatorLine = {
