@@ -148,9 +148,24 @@ export default function CorePayroll() {
     if (r1.error) toast({ title: "Error cargando nóminas", description: r1.error.message, variant: "destructive" });
     setRuns((r1.data ?? []) as PayrollRun[]);
     setPendingEntries((r2.data ?? []) as WorkEntry[]);
+  const [autoClose, setAutoClose] = useState<AutoCloseRun | null>(null);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    const [r1, r2, r3, r4] = await Promise.all([
+      supabase.from("core_payroll_runs").select("*").order("period_start", { ascending: false }),
+      supabase.from("core_production_work_entries").select("*").eq("payroll_status", "pending").order("created_at", { ascending: false }),
+      supabase.from("core_production_work_entries").select("*").eq("payroll_status", "missing_rate").order("created_at", { ascending: false }),
+      supabase.from("core_payroll_auto_close_runs").select("period_start,period_end,status,message,finished_at,created_at").order("period_start", { ascending: false }).limit(1),
+    ]);
+    if (r1.error) toast({ title: "Error cargando nóminas", description: r1.error.message, variant: "destructive" });
+    setRuns((r1.data ?? []) as PayrollRun[]);
+    setPendingEntries((r2.data ?? []) as WorkEntry[]);
     setMissingRateEntries((r3.data ?? []) as WorkEntry[]);
+    setAutoClose(((r4.data ?? [])[0] ?? null) as AutoCloseRun | null);
     setLoading(false);
   }, []);
+
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
