@@ -225,8 +225,21 @@ export default function CorePayroll() {
             <h1 className="text-2xl font-black tracking-tight">Nómina de Producción</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Cierre semanal de trabajos escaneados. Cierre: jueves · Pago: viernes.
+            Cierre semanal de trabajos escaneados. Cierre automático: jueves 11:59 pm (hora Venezuela) · Pago: viernes.
           </p>
+          {autoClose && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Último cierre automático: {formatDMY(autoClose.period_start)} → {formatDMY(autoClose.period_end)} ·{" "}
+              {autoClose.status === "created"
+                ? "nómina generada"
+                : autoClose.status === "skipped_existing"
+                ? "ya existía nómina"
+                : autoClose.status === "skipped_empty"
+                ? "sin trabajos pendientes"
+                : autoClose.status}
+              {autoClose.message ? ` — ${autoClose.message}` : ""}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={loadAll} disabled={loading}>
