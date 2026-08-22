@@ -138,17 +138,8 @@ export default function CorePayroll() {
 
 
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
-    const [r1, r2, r3] = await Promise.all([
-      supabase.from("core_payroll_runs").select("*").order("period_start", { ascending: false }),
-      supabase.from("core_production_work_entries").select("*").eq("payroll_status", "pending").order("created_at", { ascending: false }),
-      supabase.from("core_production_work_entries").select("*").eq("payroll_status", "missing_rate").order("created_at", { ascending: false }),
-    ]);
-    if (r1.error) toast({ title: "Error cargando nóminas", description: r1.error.message, variant: "destructive" });
-    setRuns((r1.data ?? []) as PayrollRun[]);
-    setPendingEntries((r2.data ?? []) as WorkEntry[]);
   const [autoClose, setAutoClose] = useState<AutoCloseRun | null>(null);
+
 
   const loadAll = useCallback(async () => {
     setLoading(true);
