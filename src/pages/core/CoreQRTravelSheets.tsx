@@ -523,7 +523,7 @@ ${units_.map((u, i) => {
               </TableHeader>
               <TableBody>
                 {units.length === 0 ? (
-                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Sin unidades generadas todavía.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Sin unidades generadas todavía.</TableCell></TableRow>
                 ) : units.map((u) => {
                   const ord = orders.find((o) => o.id === u.production_order_id);
                   const checked = selectedUnits.has(u.id);
