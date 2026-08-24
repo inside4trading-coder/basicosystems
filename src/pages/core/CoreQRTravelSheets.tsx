@@ -510,7 +510,9 @@ ${units_.map((u, i) => {
                   </TableHead>
                   <TableHead>Código unidad</TableHead>
                   <TableHead>OP</TableHead>
+                  <TableHead>Código variante</TableHead>
                   <TableHead>SKU variante</TableHead>
+
                   <TableHead>Talla</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>QR</TableHead>
