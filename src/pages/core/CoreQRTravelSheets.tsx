@@ -258,7 +258,10 @@ ${units_.map((u, i) => {
         <div class="size">${u.size ?? u.variant_label ?? "—"}</div>
       </div>
     </div>
+    <div class="vcode-label">Código variante</div>
+    <div class="vcode">${variantCodeOf(u)}</div>
     <div class="product">${(u.core_product_id ? productNameById[u.core_product_id] : "") || ord?.product_name || ""}</div>
+
     <h4>Procesos requeridos</h4>
     ${procs.length === 0
       ? '<div class="proc-empty">Sin procesos asociados.</div>'
