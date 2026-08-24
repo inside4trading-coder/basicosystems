@@ -625,7 +625,7 @@ ${units_.map((u, i) => {
   );
 }
 
-function UnitPreview({ unit, processes, order }: { unit: Unit; processes: UnitProcess[]; order: Order | null }) {
+function UnitPreview({ unit, processes, order, variantCode }: { unit: Unit; processes: UnitProcess[]; order: Order | null; variantCode: string }) {
   const [qrUrl, setQrUrl] = useState<string>("");
   useEffect(() => {
     QRCode.toDataURL(unit.qr_payload ?? unit.unit_code, { width: 220, margin: 1 })
@@ -636,11 +636,14 @@ function UnitPreview({ unit, processes, order }: { unit: Unit; processes: UnitPr
       <div className="flex items-center gap-3">
         {qrUrl && <img src={qrUrl} alt="QR" className="w-32 h-32 border rounded" />}
         <div className="space-y-1">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">Código variante</div>
+          <div className="text-xl font-black font-mono">{variantCode}</div>
           <div className="text-2xl font-black">Talla {unit.size ?? "—"}</div>
-          <div className="text-xs font-mono">{unit.variant_sku}</div>
+          <div className="text-xs font-mono">{unit.variant_sku ?? ""}</div>
           <div className="text-xs text-muted-foreground">OP: {order?.order_code}</div>
         </div>
       </div>
+
       <div className="text-sm">
         <div><b>Producto:</b> {order?.product_name}</div>
         <div><b>Estado:</b> {STATUS_LABEL[unit.status] ?? unit.status}</div>
