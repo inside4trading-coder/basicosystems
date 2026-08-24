@@ -231,7 +231,10 @@ html, body { margin: 0; padding: 0; font-family: Inter, system-ui, sans-serif; c
 .code { font-weight: 900; font-size: 9pt; word-break: break-all; line-height: 1.1; }
 .sku { font-family: ui-monospace, Menlo, monospace; font-size: 7pt; }
 .size { font-weight: 900; font-size: 22pt; line-height: 1; margin-top: 1mm; }
-.product { font-size: 8pt; margin-top: 2mm; font-weight: 600; line-height: 1.15; }
+.product { font-size: 8pt; margin-top: 1mm; font-weight: 600; line-height: 1.15; }
+.vcode-label { font-size: 6.5pt; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; margin-top: 2mm; }
+.vcode { font-family: ui-monospace, Menlo, monospace; font-weight: 900; font-size: 15pt; line-height: 1.05; word-break: break-all; }
+
 h4 { font-size: 7.5pt; margin: 2.5mm 0 1mm; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 0.5px solid #999; padding-bottom: 0.5mm; }
 .proc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2mm; flex: 1; align-content: start; }
 .proc-cell { border: 1px solid #0a0a0a; border-radius: 1mm; padding: 1.2mm 1.5mm; display: flex; align-items: center; gap: 1.2mm; font-size: 7pt; line-height: 1.1; min-height: 6.5mm; box-sizing: border-box; }
