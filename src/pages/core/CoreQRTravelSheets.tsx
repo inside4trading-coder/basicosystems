@@ -17,6 +17,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { QrCode, Printer, FileText, Ban, RefreshCw, Eye } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "qrcode";
+import { resolveVariantCode } from "@/lib/coreVariantCode";
+
 
 type Order = {
   id: string;
