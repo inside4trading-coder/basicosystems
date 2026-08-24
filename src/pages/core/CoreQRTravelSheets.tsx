@@ -37,6 +37,8 @@ type Unit = {
   production_order_id: string;
   production_order_line_id: string | null;
   core_product_id: string | null;
+  core_variant_id: string | null;
+
   sku: string | null;
   variant_sku: string | null;
   variant_label: string | null;
