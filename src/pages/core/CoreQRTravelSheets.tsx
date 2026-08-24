@@ -92,10 +92,21 @@ export default function CoreQRTravelSheets() {
   const [detailUnit, setDetailUnit] = useState<Unit | null>(null);
 
   const [productNameById, setProductNameById] = useState<Record<string, string>>({});
+  const [variantById, setVariantById] = useState<Record<string, { variant_sku: string | null; woo_sku: string | null }>>({});
+
+  const variantCodeOf = (u: Unit) => {
+    const v = u.core_variant_id ? variantById[u.core_variant_id] : undefined;
+    return resolveVariantCode({
+      unit_variant_sku: u.variant_sku,
+      variant_variant_sku: v?.variant_sku ?? null,
+      variant_woo_sku: v?.woo_sku ?? null,
+      unit_code: u.unit_code,
+    });
+  };
 
   const load = async () => {
     setLoading(true);
-    const [{ data: ords }, { data: us }, { data: ps }, { data: prods }] = await Promise.all([
+    const [{ data: ords }, { data: us }, { data: ps }, { data: prods }, { data: vars }] = await Promise.all([
       supabase.from("core_production_orders")
         .select("id, order_code, status, sku, product_name, total_quantity, pending_quantity, completed_quantity, created_at")
         .order("created_at", { ascending: false })
@@ -108,6 +119,7 @@ export default function CoreQRTravelSheets() {
         .select("*")
         .order("process_order"),
       supabase.from("core_products").select("id, name"),
+      supabase.from("core_product_variants").select("id, variant_sku, woo_sku"),
     ]);
     setOrders((ords as any) ?? []);
     setUnits((us as any) ?? []);
@@ -115,10 +127,14 @@ export default function CoreQRTravelSheets() {
     const map: Record<string, string> = {};
     for (const p of (prods as any[]) ?? []) map[p.id] = p.name;
     setProductNameById(map);
+    const vmap: Record<string, { variant_sku: string | null; woo_sku: string | null }> = {};
+    for (const v of (vars as any[]) ?? []) vmap[v.id] = { variant_sku: v.variant_sku ?? null, woo_sku: v.woo_sku ?? null };
+    setVariantById(vmap);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
+
 
   const unitsByOrder = useMemo(() => {
     const m: Record<string, Unit[]> = {};
