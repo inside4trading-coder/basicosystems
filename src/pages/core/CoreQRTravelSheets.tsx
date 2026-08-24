@@ -541,7 +541,9 @@ ${units_.map((u, i) => {
                       </TableCell>
                       <TableCell className="font-mono text-xs font-bold">{u.unit_code}</TableCell>
                       <TableCell className="font-mono text-xs">{ord?.order_code}</TableCell>
+                      <TableCell className="font-mono text-xs font-bold">{variantCodeOf(u)}</TableCell>
                       <TableCell className="font-mono text-xs">{u.variant_sku}</TableCell>
+
                       <TableCell>
                         <Badge className="bg-primary text-primary-foreground font-bold">{u.size ?? "—"}</Badge>
                       </TableCell>
