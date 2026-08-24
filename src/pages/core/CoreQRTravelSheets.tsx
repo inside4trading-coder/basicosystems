@@ -17,6 +17,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { QrCode, Printer, FileText, Ban, RefreshCw, Eye } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "qrcode";
+import { resolveVariantCode } from "@/lib/coreVariantCode";
+
 
 type Order = {
   id: string;
@@ -35,6 +37,8 @@ type Unit = {
   production_order_id: string;
   production_order_line_id: string | null;
   core_product_id: string | null;
+  core_variant_id: string | null;
+
   sku: string | null;
   variant_sku: string | null;
   variant_label: string | null;
@@ -90,10 +94,21 @@ export default function CoreQRTravelSheets() {
   const [detailUnit, setDetailUnit] = useState<Unit | null>(null);
 
   const [productNameById, setProductNameById] = useState<Record<string, string>>({});
+  const [variantById, setVariantById] = useState<Record<string, { variant_sku: string | null; woo_sku: string | null }>>({});
+
+  const variantCodeOf = (u: Unit) => {
+    const v = u.core_variant_id ? variantById[u.core_variant_id] : undefined;
+    return resolveVariantCode({
+      unit_variant_sku: u.variant_sku,
+      variant_variant_sku: v?.variant_sku ?? null,
+      variant_woo_sku: v?.woo_sku ?? null,
+      unit_code: u.unit_code,
+    });
+  };
 
   const load = async () => {
     setLoading(true);
-    const [{ data: ords }, { data: us }, { data: ps }, { data: prods }] = await Promise.all([
+    const [{ data: ords }, { data: us }, { data: ps }, { data: prods }, { data: vars }] = await Promise.all([
       supabase.from("core_production_orders")
         .select("id, order_code, status, sku, product_name, total_quantity, pending_quantity, completed_quantity, created_at")
         .order("created_at", { ascending: false })
@@ -106,6 +121,7 @@ export default function CoreQRTravelSheets() {
         .select("*")
         .order("process_order"),
       supabase.from("core_products").select("id, name"),
+      supabase.from("core_product_variants").select("id, variant_sku, woo_sku"),
     ]);
     setOrders((ords as any) ?? []);
     setUnits((us as any) ?? []);
@@ -113,10 +129,14 @@ export default function CoreQRTravelSheets() {
     const map: Record<string, string> = {};
     for (const p of (prods as any[]) ?? []) map[p.id] = p.name;
     setProductNameById(map);
+    const vmap: Record<string, { variant_sku: string | null; woo_sku: string | null }> = {};
+    for (const v of (vars as any[]) ?? []) vmap[v.id] = { variant_sku: v.variant_sku ?? null, woo_sku: v.woo_sku ?? null };
+    setVariantById(vmap);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
+
 
   const unitsByOrder = useMemo(() => {
     const m: Record<string, Unit[]> = {};
@@ -229,7 +249,10 @@ html, body { margin: 0; padding: 0; font-family: Inter, system-ui, sans-serif; c
 .code { font-weight: 900; font-size: 9pt; word-break: break-all; line-height: 1.1; }
 .sku { font-family: ui-monospace, Menlo, monospace; font-size: 7pt; }
 .size { font-weight: 900; font-size: 22pt; line-height: 1; margin-top: 1mm; }
-.product { font-size: 8pt; margin-top: 2mm; font-weight: 600; line-height: 1.15; }
+.product { font-size: 8pt; margin-top: 1mm; font-weight: 600; line-height: 1.15; }
+.vcode-label { font-size: 6.5pt; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; margin-top: 2mm; }
+.vcode { font-family: ui-monospace, Menlo, monospace; font-weight: 900; font-size: 15pt; line-height: 1.05; word-break: break-all; }
+
 h4 { font-size: 7.5pt; margin: 2.5mm 0 1mm; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 0.5px solid #999; padding-bottom: 0.5mm; }
 .proc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2mm; flex: 1; align-content: start; }
 .proc-cell { border: 1px solid #0a0a0a; border-radius: 1mm; padding: 1.2mm 1.5mm; display: flex; align-items: center; gap: 1.2mm; font-size: 7pt; line-height: 1.1; min-height: 6.5mm; box-sizing: border-box; }
@@ -256,7 +279,10 @@ ${units_.map((u, i) => {
         <div class="size">${u.size ?? u.variant_label ?? "—"}</div>
       </div>
     </div>
+    <div class="vcode-label">Código variante</div>
+    <div class="vcode">${variantCodeOf(u)}</div>
     <div class="product">${(u.core_product_id ? productNameById[u.core_product_id] : "") || ord?.product_name || ""}</div>
+
     <h4>Procesos requeridos</h4>
     ${procs.length === 0
       ? '<div class="proc-empty">Sin procesos asociados.</div>'
@@ -326,10 +352,12 @@ ${units_.map((u, i) => {
         <div class="size">${u.size ?? u.variant_label ?? "—"}</div>
       </div>
     </div>
+    <div class="row"><b>Código variante:</b> <span style="font-family:ui-monospace,Menlo,monospace;font-weight:900;font-size:13pt">${variantCodeOf(u)}</span></div>
     <div class="row"><b>Producto:</b> ${(u.core_product_id ? productNameById[u.core_product_id] : "") || ord?.product_name || ""}</div>
     <div class="row"><b>SKU padre:</b> ${u.sku ?? ord?.sku ?? ""}</div>
     <div class="row"><b>SKU variante:</b> ${u.variant_sku ?? ""}</div>
     <div class="row"><b>Cantidad:</b> 1 unidad</div>
+
     <h3>Procesos requeridos</h3>
     <ul class="proc">
       ${procs.length === 0
@@ -508,7 +536,9 @@ ${units_.map((u, i) => {
                   </TableHead>
                   <TableHead>Código unidad</TableHead>
                   <TableHead>OP</TableHead>
+                  <TableHead>Código variante</TableHead>
                   <TableHead>SKU variante</TableHead>
+
                   <TableHead>Talla</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>QR</TableHead>
@@ -519,7 +549,7 @@ ${units_.map((u, i) => {
               </TableHeader>
               <TableBody>
                 {units.length === 0 ? (
-                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Sin unidades generadas todavía.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Sin unidades generadas todavía.</TableCell></TableRow>
                 ) : units.map((u) => {
                   const ord = orders.find((o) => o.id === u.production_order_id);
                   const checked = selectedUnits.has(u.id);
@@ -539,7 +569,9 @@ ${units_.map((u, i) => {
                       </TableCell>
                       <TableCell className="font-mono text-xs font-bold">{u.unit_code}</TableCell>
                       <TableCell className="font-mono text-xs">{ord?.order_code}</TableCell>
+                      <TableCell className="font-mono text-xs font-bold">{variantCodeOf(u)}</TableCell>
                       <TableCell className="font-mono text-xs">{u.variant_sku}</TableCell>
+
                       <TableCell>
                         <Badge className="bg-primary text-primary-foreground font-bold">{u.size ?? "—"}</Badge>
                       </TableCell>
@@ -587,7 +619,9 @@ ${units_.map((u, i) => {
               unit={detailUnit}
               processes={processesByUnit[detailUnit.id] ?? []}
               order={orders.find((o) => o.id === detailUnit.production_order_id) ?? null}
+              variantCode={variantCodeOf(detailUnit)}
             />
+
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => detailUnit && printLabels([detailUnit])}>
@@ -623,7 +657,7 @@ ${units_.map((u, i) => {
   );
 }
 
-function UnitPreview({ unit, processes, order }: { unit: Unit; processes: UnitProcess[]; order: Order | null }) {
+function UnitPreview({ unit, processes, order, variantCode }: { unit: Unit; processes: UnitProcess[]; order: Order | null; variantCode: string }) {
   const [qrUrl, setQrUrl] = useState<string>("");
   useEffect(() => {
     QRCode.toDataURL(unit.qr_payload ?? unit.unit_code, { width: 220, margin: 1 })
@@ -634,11 +668,14 @@ function UnitPreview({ unit, processes, order }: { unit: Unit; processes: UnitPr
       <div className="flex items-center gap-3">
         {qrUrl && <img src={qrUrl} alt="QR" className="w-32 h-32 border rounded" />}
         <div className="space-y-1">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">Código variante</div>
+          <div className="text-xl font-black font-mono">{variantCode}</div>
           <div className="text-2xl font-black">Talla {unit.size ?? "—"}</div>
-          <div className="text-xs font-mono">{unit.variant_sku}</div>
+          <div className="text-xs font-mono">{unit.variant_sku ?? ""}</div>
           <div className="text-xs text-muted-foreground">OP: {order?.order_code}</div>
         </div>
       </div>
+
       <div className="text-sm">
         <div><b>Producto:</b> {order?.product_name}</div>
         <div><b>Estado:</b> {STATUS_LABEL[unit.status] ?? unit.status}</div>
