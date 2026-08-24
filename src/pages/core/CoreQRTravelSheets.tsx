@@ -589,7 +589,9 @@ ${units_.map((u, i) => {
               unit={detailUnit}
               processes={processesByUnit[detailUnit.id] ?? []}
               order={orders.find((o) => o.id === detailUnit.production_order_id) ?? null}
+              variantCode={variantCodeOf(detailUnit)}
             />
+
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => detailUnit && printLabels([detailUnit])}>
