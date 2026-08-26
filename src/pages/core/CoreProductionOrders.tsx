@@ -830,13 +830,28 @@ export default function CoreProductionOrders() {
         </TableCell>
         <TableCell className="font-mono text-sm">
           <div>{o.order_code}</div>
-          <div className="text-[10px] font-sans text-muted-foreground whitespace-nowrap">
-            Terminadas {o.completed_quantity} ·{" "}
-            <span className={Number(o.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
-              Faltantes {o.pending_quantity}
-            </span>
-          </div>
+          {(() => {
+            const inv = invByOrder[o.id];
+            const summary = summarizeOrderUnits(inv);
+            if (!summary) {
+              return (
+                <div className="text-[10px] font-sans text-muted-foreground whitespace-nowrap">
+                  Sin unidades generadas · {o.total_quantity} planificadas
+                </div>
+              );
+            }
+            return (
+              <div className="text-[10px] font-sans text-muted-foreground whitespace-nowrap">
+                Inventario {inv!.entered}/{inv!.total} ·{" "}
+                <span className={inv!.pending > 0 ? "text-red-700 font-semibold" : ""}>
+                  Faltan {inv!.pending}
+                </span>
+                {inv!.pending_inventory > 0 && ` · ${inv!.pending_inventory} lista${inv!.pending_inventory === 1 ? "" : "s"} sin ingresar`}
+              </div>
+            );
+          })()}
         </TableCell>
+
         <TableCell>
           <Badge variant="outline" className={STATUS_BADGE[o.status]}>
             {STATUS_LABEL[o.status] ?? o.status}
