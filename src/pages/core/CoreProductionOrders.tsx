@@ -785,27 +785,37 @@ export default function CoreProductionOrders() {
     if (!inv || inv.total === 0) {
       return <span className="text-xs text-muted-foreground">—</span>;
     }
-    if (inv.status === "fully_entered") {
+    const title = `${inv.entered} ingresadas · ${inv.pending_inventory} listas sin ingresar · ${inv.pending} faltantes reales`;
+    if (inv.entered === inv.total && inv.pending_inventory === 0) {
       return (
-        <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300">
-          <PackageCheck className="h-3 w-3 mr-1" /> {inv.entered}/{inv.total} ingresadas
+        <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300" title={title}>
+          <PackageCheck className="h-3 w-3 mr-1" /> Completo {inv.entered}/{inv.total}
         </Badge>
       );
     }
-    if (inv.status === "pending_inventory") {
+    if (inv.entered === 0 && inv.pending_inventory === 0) {
       return (
-        <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300" title="Prendas listas sin ingresar">
-          <ShieldAlert className="h-3 w-3 mr-1" /> {inv.pending_inventory} sin ingresar
+        <Badge variant="outline" className="bg-muted text-muted-foreground border-border" title={title}>
+          Sin producir
         </Badge>
       );
     }
-    if (inv.status === "partially_entered") {
-      return (
-        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300" title="Parcialmente ingresadas a inventario">
-          <PackageOpen className="h-3 w-3 mr-1" /> {inv.entered}/{inv.total} · {inv.pending_inventory} pend.
-        </Badge>
-      );
-    }
+    const alert = inv.pending_inventory > 0;
+    return (
+      <Badge
+        variant="outline"
+        className={alert
+          ? "bg-red-100 text-red-800 border-red-300"
+          : "bg-amber-100 text-amber-800 border-amber-300"}
+        title={title}
+      >
+        {alert ? <ShieldAlert className="h-3 w-3 mr-1" /> : <PackageOpen className="h-3 w-3 mr-1" />}
+        {inv.entered}/{inv.total}
+        {inv.pending_inventory > 0 ? ` · ${inv.pending_inventory} pend.` : ""}
+      </Badge>
+    );
+  };
+
     return (
       <Badge variant="outline" className="bg-muted text-muted-foreground border-border">
         Sin producir
