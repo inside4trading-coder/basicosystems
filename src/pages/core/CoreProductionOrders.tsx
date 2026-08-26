@@ -1413,50 +1413,61 @@ export default function CoreProductionOrders() {
                 <Card className="p-3 min-w-0">
                   <div className="font-medium break-words">{detailOrder.product_name}</div>
                   <div className="text-xs text-muted-foreground font-mono break-all">{detailOrder.sku}</div>
-                  <div className="text-xs text-muted-foreground mt-2">
-                    Total {detailOrder.total_quantity} · Terminadas {detailOrder.completed_quantity} ·{" "}
-                    <span className={Number(detailOrder.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
-                      Faltantes {detailOrder.pending_quantity}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-sm">
-                    <div><div className="text-xs text-muted-foreground">Total</div>{detailOrder.total_quantity}</div>
-                    <div><div className="text-xs text-muted-foreground">Terminadas</div>{detailOrder.completed_quantity}</div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Faltantes</div>
-                      <span className={Number(detailOrder.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
-                        {detailOrder.pending_quantity}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 text-sm">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Ingresadas a inventario</div>
-                      <span className="text-emerald-700 font-semibold">{invByOrder[detailOrder.id]?.entered ?? 0}</span>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Listas sin ingresar</div>
-                      <span className={(invByOrder[detailOrder.id]?.pending_inventory ?? 0) > 0 ? "text-red-700 font-semibold" : ""}>
-                        {invByOrder[detailOrder.id]?.pending_inventory ?? 0}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Estado inventario</div>
-                      {renderInventoryBadge(invByOrder[detailOrder.id])}
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Cerradas / Pendientes</div>
-                      <span className="font-semibold">
-                        {invByOrder[detailOrder.id]?.closed ?? 0} / {invByOrder[detailOrder.id]?.pending ?? 0}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Canceladas</div>
-                      <span className={(invByOrder[detailOrder.id]?.cancelled ?? 0) > 0 ? "text-red-700 font-semibold" : ""}>
-                        {invByOrder[detailOrder.id]?.cancelled ?? 0}
-                      </span>
-                    </div>
-                  </div>
+                  {(() => {
+                    const inv = invByOrder[detailOrder.id];
+                    if (!inv?.has_units) {
+                      return (
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Sin unidades generadas · {detailOrder.total_quantity} planificadas
+                        </div>
+                      );
+                    }
+                    const estado =
+                      inv.pending === 0 && inv.pending_inventory === 0
+                        ? "Completa"
+                        : inv.pending === 0
+                          ? "Lista para inventario"
+                          : "Parcial";
+                    return (
+                      <>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          <span className="font-semibold text-foreground">{estado}</span> · Inventario {inv.entered}/{inv.total} ·{" "}
+                          <span className={inv.pending > 0 ? "text-red-700 font-semibold" : ""}>Faltan {inv.pending}</span>
+                          {inv.pending_inventory > 0 && ` · ${inv.pending_inventory} lista${inv.pending_inventory === 1 ? "" : "s"} sin ingresar`}
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-sm">
+                          <div><div className="text-xs text-muted-foreground">Total unidades</div>{inv.total}</div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Ingresadas a inventario</div>
+                            <span className="text-emerald-700 font-semibold">{inv.entered}</span>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Listas para ingresar</div>
+                            <span className={inv.pending_inventory > 0 ? "text-red-700 font-semibold" : ""}>{inv.pending_inventory}</span>
+                          </div>
+                          <div><div className="text-xs text-muted-foreground">En producción</div>{inv.in_production}</div>
+                          <div><div className="text-xs text-muted-foreground">Sin iniciar</div>{inv.not_started}</div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Faltantes reales</div>
+                            <span className={inv.pending > 0 ? "text-red-700 font-semibold" : ""}>{inv.pending}</span>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground" title="Ingresadas + listas para ingresar">Terminadas de producción</div>
+                            {inv.completed}
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Canceladas</div>
+                            <span className={inv.cancelled > 0 ? "text-red-700 font-semibold" : ""}>{inv.cancelled}</span>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Estado inventario</div>
+                            {renderInventoryBadge(inv)}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+
 
                   {detailOrder.is_overproduction && (
                     <Badge variant="outline" className="mt-2 bg-orange-100 text-orange-800 border-orange-300">
