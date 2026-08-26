@@ -50,34 +50,52 @@ type Unit = {
 
 type OrderInvStats = {
   total: number;              // unidades activas (excluye canceladas)
-  completed: number;          // status completed OR entered_inventory
-  entered: number;            // status entered_inventory
+  completed: number;          // terminadas de producción (listas + ingresadas)
+  entered: number;            // ingresadas a inventario
   cancelled: number;          // canceladas / descartadas
-  closed: number;             // completadas + ingresadas + canceladas
-  pending: number;            // activas sin cerrar
-  pending_inventory: number;  // completed but not entered
+  closed: number;             // terminadas + canceladas
+  pending: number;            // faltantes reales (en producción + sin iniciar)
+  pending_inventory: number;  // listas sin ingresar
+  in_production: number;      // con procesos iniciados, sin terminar
+  not_started: number;        // sin iniciar
+  has_units: boolean;
   status: "not_ready" | "pending_inventory" | "partially_entered" | "fully_entered";
 };
 
 const CANCELLED_UNIT_STATUSES = ["cancelled", "discarded"];
+const INVENTORIED_UNIT_STATUSES = ["entered_inventory", "sent_to_store"];
 
 function computeInvStats(units: Unit[], totalQuantityFallback: number): OrderInvStats {
   const cancelled = units.filter((u) => CANCELLED_UNIT_STATUSES.includes(u.status)).length;
   const active = units.filter((u) => !CANCELLED_UNIT_STATUSES.includes(u.status));
-  const total = active.length || (units.length ? 0 : totalQuantityFallback);
-  const entered = active.filter((u) => u.status === "entered_inventory").length;
-  const completed = active.filter(
-    (u) => u.status === "completed" || u.status === "entered_inventory",
-  ).length;
-  const pending_inventory = Math.max(0, completed - entered);
-  const closed = entered + Math.max(0, completed - entered) + cancelled;
-  const pending = Math.max(0, total - (completed));
+  const has_units = units.length > 0;
+  const total = has_units ? active.length : totalQuantityFallback;
+  const entered = active.filter((u) => INVENTORIED_UNIT_STATUSES.includes(u.status)).length;
+  const pending_inventory = active.filter((u) => u.status === "completed").length;
+  const in_production = active.filter((u) => u.status === "in_production").length;
+  const not_started = Math.max(0, active.length - entered - pending_inventory - in_production);
+  const completed = entered + pending_inventory;
+  const pending = in_production + not_started;
+  const closed = completed + cancelled;
   let status: OrderInvStats["status"] = "not_ready";
   if (total > 0 && entered === total) status = "fully_entered";
   else if (entered > 0) status = "partially_entered";
-  else if (completed > 0) status = "pending_inventory";
-  return { total, completed, entered, cancelled, closed, pending, pending_inventory, status };
+  else if (pending_inventory > 0) status = "pending_inventory";
+  return {
+    total, completed, entered, cancelled, closed, pending, pending_inventory,
+    in_production, not_started, has_units, status,
+  };
 }
+
+function summarizeOrderUnits(inv: OrderInvStats | undefined): string | null {
+  if (!inv || !inv.has_units) return null;
+  const parts = [`Inventario ${inv.entered}/${inv.total}`];
+  parts.push(`Faltan ${inv.pending}`);
+  if (inv.pending_inventory > 0) parts.push(`${inv.pending_inventory} lista${inv.pending_inventory === 1 ? "" : "s"} sin ingresar`);
+  if (inv.cancelled > 0) parts.push(`${inv.cancelled} cancelada${inv.cancelled === 1 ? "" : "s"}`);
+  return parts.join(" · ");
+}
+
 
 type Order = {
   id: string;
@@ -812,13 +830,28 @@ export default function CoreProductionOrders() {
         </TableCell>
         <TableCell className="font-mono text-sm">
           <div>{o.order_code}</div>
-          <div className="text-[10px] font-sans text-muted-foreground whitespace-nowrap">
-            Terminadas {o.completed_quantity} ·{" "}
-            <span className={Number(o.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
-              Faltantes {o.pending_quantity}
-            </span>
-          </div>
+          {(() => {
+            const inv = invByOrder[o.id];
+            const summary = summarizeOrderUnits(inv);
+            if (!summary) {
+              return (
+                <div className="text-[10px] font-sans text-muted-foreground whitespace-nowrap">
+                  Sin unidades generadas · {o.total_quantity} planificadas
+                </div>
+              );
+            }
+            return (
+              <div className="text-[10px] font-sans text-muted-foreground whitespace-nowrap">
+                Inventario {inv!.entered}/{inv!.total} ·{" "}
+                <span className={inv!.pending > 0 ? "text-red-700 font-semibold" : ""}>
+                  Faltan {inv!.pending}
+                </span>
+                {inv!.pending_inventory > 0 && ` · ${inv!.pending_inventory} lista${inv!.pending_inventory === 1 ? "" : "s"} sin ingresar`}
+              </div>
+            );
+          })()}
         </TableCell>
+
         <TableCell>
           <Badge variant="outline" className={STATUS_BADGE[o.status]}>
             {STATUS_LABEL[o.status] ?? o.status}
@@ -894,9 +927,14 @@ export default function CoreProductionOrders() {
             })()}
           </div>
         </TableCell>
-        <TableCell className="text-right">{o.total_quantity}</TableCell>
-        <TableCell className="text-right">{o.pending_quantity}</TableCell>
-        <TableCell className="text-right">{o.completed_quantity}</TableCell>
+        <TableCell className="text-right">{invByOrder[o.id]?.has_units ? invByOrder[o.id].total : o.total_quantity}</TableCell>
+        <TableCell className="text-right">
+          <span className={(invByOrder[o.id]?.pending ?? 0) > 0 ? "text-red-700 font-semibold" : ""}>
+            {invByOrder[o.id]?.has_units ? invByOrder[o.id].pending : o.pending_quantity}
+          </span>
+        </TableCell>
+        <TableCell className="text-right">{invByOrder[o.id]?.has_units ? invByOrder[o.id].completed : o.completed_quantity}</TableCell>
+
         <TableCell>{renderInventoryBadge(invByOrder[o.id])}</TableCell>
         <TableCell className="text-xs text-muted-foreground">{o.source}</TableCell>
         <TableCell className="text-xs">{new Date(o.created_at).toLocaleString()}</TableCell>
@@ -942,8 +980,9 @@ export default function CoreProductionOrders() {
               <TableHead>Producto</TableHead>
               <TableHead>Tallas</TableHead>
               <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Faltantes</TableHead>
-              <TableHead className="text-right">Terminadas</TableHead>
+              <TableHead className="text-right">Faltantes reales</TableHead>
+              <TableHead className="text-right">Terminadas prod.</TableHead>
+
               <TableHead>Inventario</TableHead>
               <TableHead>Origen</TableHead>
               <TableHead>Creada</TableHead>
@@ -1374,50 +1413,61 @@ export default function CoreProductionOrders() {
                 <Card className="p-3 min-w-0">
                   <div className="font-medium break-words">{detailOrder.product_name}</div>
                   <div className="text-xs text-muted-foreground font-mono break-all">{detailOrder.sku}</div>
-                  <div className="text-xs text-muted-foreground mt-2">
-                    Total {detailOrder.total_quantity} · Terminadas {detailOrder.completed_quantity} ·{" "}
-                    <span className={Number(detailOrder.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
-                      Faltantes {detailOrder.pending_quantity}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-sm">
-                    <div><div className="text-xs text-muted-foreground">Total</div>{detailOrder.total_quantity}</div>
-                    <div><div className="text-xs text-muted-foreground">Terminadas</div>{detailOrder.completed_quantity}</div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Faltantes</div>
-                      <span className={Number(detailOrder.pending_quantity) > 0 ? "text-red-700 font-semibold" : ""}>
-                        {detailOrder.pending_quantity}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 text-sm">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Ingresadas a inventario</div>
-                      <span className="text-emerald-700 font-semibold">{invByOrder[detailOrder.id]?.entered ?? 0}</span>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Listas sin ingresar</div>
-                      <span className={(invByOrder[detailOrder.id]?.pending_inventory ?? 0) > 0 ? "text-red-700 font-semibold" : ""}>
-                        {invByOrder[detailOrder.id]?.pending_inventory ?? 0}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Estado inventario</div>
-                      {renderInventoryBadge(invByOrder[detailOrder.id])}
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Cerradas / Pendientes</div>
-                      <span className="font-semibold">
-                        {invByOrder[detailOrder.id]?.closed ?? 0} / {invByOrder[detailOrder.id]?.pending ?? 0}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Canceladas</div>
-                      <span className={(invByOrder[detailOrder.id]?.cancelled ?? 0) > 0 ? "text-red-700 font-semibold" : ""}>
-                        {invByOrder[detailOrder.id]?.cancelled ?? 0}
-                      </span>
-                    </div>
-                  </div>
+                  {(() => {
+                    const inv = invByOrder[detailOrder.id];
+                    if (!inv?.has_units) {
+                      return (
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Sin unidades generadas · {detailOrder.total_quantity} planificadas
+                        </div>
+                      );
+                    }
+                    const estado =
+                      inv.pending === 0 && inv.pending_inventory === 0
+                        ? "Completa"
+                        : inv.pending === 0
+                          ? "Lista para inventario"
+                          : "Parcial";
+                    return (
+                      <>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          <span className="font-semibold text-foreground">{estado}</span> · Inventario {inv.entered}/{inv.total} ·{" "}
+                          <span className={inv.pending > 0 ? "text-red-700 font-semibold" : ""}>Faltan {inv.pending}</span>
+                          {inv.pending_inventory > 0 && ` · ${inv.pending_inventory} lista${inv.pending_inventory === 1 ? "" : "s"} sin ingresar`}
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-sm">
+                          <div><div className="text-xs text-muted-foreground">Total unidades</div>{inv.total}</div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Ingresadas a inventario</div>
+                            <span className="text-emerald-700 font-semibold">{inv.entered}</span>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Listas para ingresar</div>
+                            <span className={inv.pending_inventory > 0 ? "text-red-700 font-semibold" : ""}>{inv.pending_inventory}</span>
+                          </div>
+                          <div><div className="text-xs text-muted-foreground">En producción</div>{inv.in_production}</div>
+                          <div><div className="text-xs text-muted-foreground">Sin iniciar</div>{inv.not_started}</div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Faltantes reales</div>
+                            <span className={inv.pending > 0 ? "text-red-700 font-semibold" : ""}>{inv.pending}</span>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground" title="Ingresadas + listas para ingresar">Terminadas de producción</div>
+                            {inv.completed}
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Canceladas</div>
+                            <span className={inv.cancelled > 0 ? "text-red-700 font-semibold" : ""}>{inv.cancelled}</span>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Estado inventario</div>
+                            {renderInventoryBadge(inv)}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+
 
                   {detailOrder.is_overproduction && (
                     <Badge variant="outline" className="mt-2 bg-orange-100 text-orange-800 border-orange-300">
