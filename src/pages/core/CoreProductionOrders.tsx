@@ -310,16 +310,22 @@ export default function CoreProductionOrders() {
     return m;
   }, [orders, unitsByOrder]);
 
-  // Total de prendas terminadas en producción pero NO ingresadas a inventario.
-  // Es la alerta antirrobo / custodia: existen físicamente pero no están en sistema.
-  const pendingInventoryUnits = useMemo(
-    () => allUnits.filter((u) => u.status === "completed").length,
-    [allUnits],
-  );
-  const enteredInventoryUnits = useMemo(
-    () => allUnits.filter((u) => u.status === "entered_inventory").length,
-    [allUnits],
-  );
+  // Alerta de custodia global: derivada de la MISMA fuente (invByOrder),
+  // excluyendo OP canceladas para no inflar los totales.
+  const custody = useMemo(() => {
+    let ready = 0, entered = 0;
+    for (const o of orders) {
+      if (o.status === "cancelled") continue;
+      const inv = invByOrder[o.id];
+      if (!inv?.has_units) continue;
+      ready += inv.pending_inventory;
+      entered += inv.entered;
+    }
+    return { ready, entered };
+  }, [orders, invByOrder]);
+  const pendingInventoryUnits = custody.ready;
+  const enteredInventoryUnits = custody.entered;
+
 
   const runBulk = async () => {
     const ids = Array.from(selectedOrders);
