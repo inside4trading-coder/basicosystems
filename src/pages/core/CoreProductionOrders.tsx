@@ -927,9 +927,14 @@ export default function CoreProductionOrders() {
             })()}
           </div>
         </TableCell>
-        <TableCell className="text-right">{o.total_quantity}</TableCell>
-        <TableCell className="text-right">{o.pending_quantity}</TableCell>
-        <TableCell className="text-right">{o.completed_quantity}</TableCell>
+        <TableCell className="text-right">{invByOrder[o.id]?.has_units ? invByOrder[o.id].total : o.total_quantity}</TableCell>
+        <TableCell className="text-right">
+          <span className={(invByOrder[o.id]?.pending ?? 0) > 0 ? "text-red-700 font-semibold" : ""}>
+            {invByOrder[o.id]?.has_units ? invByOrder[o.id].pending : o.pending_quantity}
+          </span>
+        </TableCell>
+        <TableCell className="text-right">{invByOrder[o.id]?.has_units ? invByOrder[o.id].completed : o.completed_quantity}</TableCell>
+
         <TableCell>{renderInventoryBadge(invByOrder[o.id])}</TableCell>
         <TableCell className="text-xs text-muted-foreground">{o.source}</TableCell>
         <TableCell className="text-xs">{new Date(o.created_at).toLocaleString()}</TableCell>
