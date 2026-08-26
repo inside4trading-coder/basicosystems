@@ -816,12 +816,7 @@ export default function CoreProductionOrders() {
     );
   };
 
-    return (
-      <Badge variant="outline" className="bg-muted text-muted-foreground border-border">
-        Sin producir
-      </Badge>
-    );
-  };
+
 
   const renderRow = (o: Order) => {
     const lines = linesByOrder[o.id] ?? [];
