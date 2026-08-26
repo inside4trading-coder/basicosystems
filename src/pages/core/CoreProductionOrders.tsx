@@ -50,34 +50,52 @@ type Unit = {
 
 type OrderInvStats = {
   total: number;              // unidades activas (excluye canceladas)
-  completed: number;          // status completed OR entered_inventory
-  entered: number;            // status entered_inventory
+  completed: number;          // terminadas de producción (listas + ingresadas)
+  entered: number;            // ingresadas a inventario
   cancelled: number;          // canceladas / descartadas
-  closed: number;             // completadas + ingresadas + canceladas
-  pending: number;            // activas sin cerrar
-  pending_inventory: number;  // completed but not entered
+  closed: number;             // terminadas + canceladas
+  pending: number;            // faltantes reales (en producción + sin iniciar)
+  pending_inventory: number;  // listas sin ingresar
+  in_production: number;      // con procesos iniciados, sin terminar
+  not_started: number;        // sin iniciar
+  has_units: boolean;
   status: "not_ready" | "pending_inventory" | "partially_entered" | "fully_entered";
 };
 
 const CANCELLED_UNIT_STATUSES = ["cancelled", "discarded"];
+const INVENTORIED_UNIT_STATUSES = ["entered_inventory", "sent_to_store"];
 
 function computeInvStats(units: Unit[], totalQuantityFallback: number): OrderInvStats {
   const cancelled = units.filter((u) => CANCELLED_UNIT_STATUSES.includes(u.status)).length;
   const active = units.filter((u) => !CANCELLED_UNIT_STATUSES.includes(u.status));
-  const total = active.length || (units.length ? 0 : totalQuantityFallback);
-  const entered = active.filter((u) => u.status === "entered_inventory").length;
-  const completed = active.filter(
-    (u) => u.status === "completed" || u.status === "entered_inventory",
-  ).length;
-  const pending_inventory = Math.max(0, completed - entered);
-  const closed = entered + Math.max(0, completed - entered) + cancelled;
-  const pending = Math.max(0, total - (completed));
+  const has_units = units.length > 0;
+  const total = has_units ? active.length : totalQuantityFallback;
+  const entered = active.filter((u) => INVENTORIED_UNIT_STATUSES.includes(u.status)).length;
+  const pending_inventory = active.filter((u) => u.status === "completed").length;
+  const in_production = active.filter((u) => u.status === "in_production").length;
+  const not_started = Math.max(0, active.length - entered - pending_inventory - in_production);
+  const completed = entered + pending_inventory;
+  const pending = in_production + not_started;
+  const closed = completed + cancelled;
   let status: OrderInvStats["status"] = "not_ready";
   if (total > 0 && entered === total) status = "fully_entered";
   else if (entered > 0) status = "partially_entered";
-  else if (completed > 0) status = "pending_inventory";
-  return { total, completed, entered, cancelled, closed, pending, pending_inventory, status };
+  else if (pending_inventory > 0) status = "pending_inventory";
+  return {
+    total, completed, entered, cancelled, closed, pending, pending_inventory,
+    in_production, not_started, has_units, status,
+  };
 }
+
+function summarizeOrderUnits(inv: OrderInvStats | undefined): string | null {
+  if (!inv || !inv.has_units) return null;
+  const parts = [`Inventario ${inv.entered}/${inv.total}`];
+  parts.push(`Faltan ${inv.pending}`);
+  if (inv.pending_inventory > 0) parts.push(`${inv.pending_inventory} lista${inv.pending_inventory === 1 ? "" : "s"} sin ingresar`);
+  if (inv.cancelled > 0) parts.push(`${inv.cancelled} cancelada${inv.cancelled === 1 ? "" : "s"}`);
+  return parts.join(" · ");
+}
+
 
 type Order = {
   id: string;
