@@ -368,26 +368,17 @@ export default function CoreProductionOrders() {
     }
   };
 
-  // An order's production is "done" when every non-cancelled unit is either
-  // completed (ready_for_inventory) or already entered_inventory. Such orders
-  // belong in the "Completadas" tab even if order.status is still
-  // in_production/partially_completed (the auto-close trigger only fires once
-  // all units are entered_inventory).
+  // Una OP sale de "En producción" solo cuando no quedan faltantes reales
+  // (en producción + sin iniciar) NI listas sin ingresar. Derivado de la misma
+  // fuente única de cálculo (invByOrder / computeInvStats).
   const productionDoneByOrder = useMemo(() => {
     const m: Record<string, boolean> = {};
     for (const o of orders) {
-      const us = unitsByOrder[o.id] ?? [];
-      const active = us.filter(
-        (u) => u.status !== "cancelled" && u.status !== "discarded",
-      );
-      m[o.id] =
-        active.length > 0 &&
-        active.every(
-          (u) => u.status === "completed" || u.status === "entered_inventory",
-        );
+      const inv = invByOrder[o.id];
+      m[o.id] = !!inv?.has_units && inv.pending === 0 && inv.pending_inventory === 0;
     }
     return m;
-  }, [orders, unitsByOrder]);
+  }, [orders, invByOrder]);
 
   const bucketOf = (o: Order): "open" | "prod" | "done" | "closed" | "cancelled" => {
     if (o.status === "cancelled") return "cancelled";
@@ -410,6 +401,11 @@ export default function CoreProductionOrders() {
       else if (b === "closed") closed.push(o);
       else if (b === "cancelled") cancelled.push(o);
     }
+    const sumProd = (pick: (inv: OrderInvStats) => number) =>
+      prod.reduce((a, o) => {
+        const inv = invByOrder[o.id];
+        return a + (inv?.has_units ? pick(inv) : 0);
+      }, 0);
     return {
       // Órdenes (OP)
       open_orders: open.length,
@@ -417,12 +413,13 @@ export default function CoreProductionOrders() {
       done_orders: done.length,
       closed: closed.length,
       cancelled: cancelled.length,
-      // Unidades (prendas)
-      prod_pending_units: prod.reduce((a, o) => a + Number(o.pending_quantity ?? 0), 0),
-      prod_completed_units: prod.reduce((a, o) => a + Number(o.completed_quantity ?? 0), 0),
+      // Unidades (prendas) — misma definición que la tabla y el detalle
+      prod_pending_units: sumProd((inv) => inv.pending),                  // en producción + sin iniciar
+      prod_completed_units: sumProd((inv) => inv.completed),              // ingresadas + listas
       last: orders[0]?.created_at ?? null,
     };
-  }, [orders, productionDoneByOrder]);
+  }, [orders, productionDoneByOrder, invByOrder]);
+
 
   const openFromNeeds = async () => {
     const { data } = await supabase
