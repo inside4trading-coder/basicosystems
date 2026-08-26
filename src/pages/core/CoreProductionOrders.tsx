@@ -980,8 +980,9 @@ export default function CoreProductionOrders() {
               <TableHead>Producto</TableHead>
               <TableHead>Tallas</TableHead>
               <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Faltantes</TableHead>
-              <TableHead className="text-right">Terminadas</TableHead>
+              <TableHead className="text-right">Faltantes reales</TableHead>
+              <TableHead className="text-right">Terminadas prod.</TableHead>
+
               <TableHead>Inventario</TableHead>
               <TableHead>Origen</TableHead>
               <TableHead>Creada</TableHead>
