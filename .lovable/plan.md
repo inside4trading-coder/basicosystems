@@ -1,39 +1,62 @@
-# Agregar a inventario: preview fresco obligatorio y trazabilidad visible
+# Fix estado OP: no marcar "Completada" si faltan prendas por ingresar a inventario
 
-## Regla clave
+## Causa verificada
 
-Para crear o refrescar una entrada preparada destinada a WooCommerce, nunca usar fallback silencioso al stock cacheado local (`woo_stock_quantity`). Si no se puede leer el stock real de Woo:
+`OP-000014` tiene `core_production_orders.status = 'completed'` y sus 6 unidades están en estado `completed` (listas, 0 ingresadas). En `src/pages/core/CoreProductionOrders.tsx`:
 
-- no se crea entrada válida
-- no se confirma inventario
-- se responde error 502 con el mensaje: "No se pudo consultar el stock actual de WooCommerce. No se ingresó la prenda."
+- `bucketOf()` devuelve `"done"` en cuanto el estado guardado de la OP está en `DONE_STATUSES = ["completed"]`, **sin mirar las unidades**. Por eso cae en la pestaña Completadas.
+- El badge de estado de la fila usa `STATUS_LABEL[o.status]` (texto "Completada", verde), también sin mirar las unidades.
+- El detalle (drawer) ya calcula bien "Completa / Lista para inventario / Parcial" desde `invByOrder`, de ahí la inconsistencia entre listado y detalle.
 
-## 1. Backend (`supabase/functions/core-woo-stock-write/index.ts`)
+## Cambios (solo `src/pages/core/CoreProductionOrders.tsx`)
 
-- Crear/refrescar entrada preparada: si faltan credenciales Woo o el GET de stock falla, cortar con 502 y el mensaje exacto. Eliminar la caída silenciosa al stock cacheado.
-- Guardar en `request_payload` de la entrada:
-  - `preview_generated_at`
-  - `woo_stock_checked_before_at`
-  - `preview_source`: `generated_on_confirm` | `regenerated` | `reused_valid_preview`
-- En `confirm`: guardar `woo_stock_checked_before_at` (re-lectura previa al PUT), `woo_stock_checked_after_at` (verificación posterior) y `confirmed_at`.
-- Devolver en `verification`: `preview_source`, `woo_stock_checked_before_at`, `woo_stock_checked_after_at`, `confirmed_at`.
-- Se mantiene el bloqueo por entrada desactualizada (TTL 15 min) y por cambio de stock desde el snapshot.
-- Sin cambios de esquema: todo dentro del JSON `request_payload` existente.
+### 1. Estado operativo derivado (fuente única)
 
-## 2. Frontend
+Añadir un helper `operationalOrderState(order, inv)` que use `computeInvStats` ya existente y devuelva:
 
-- `src/components/core/UnitInventorySection.tsx` (Escaneo): al pulsar "Agregar a inventario" sin entrada previa, marcar el origen y propagar `preview_source` al resultado. Si la creación falla por Woo, mostrar el error exacto y no confirmar. Si la entrada existe pero está desactualizada, se mantiene el bloqueo actual con "Actualizar stock esperado".
-- `src/components/core/InventoryWriteResult.tsx`: en el banner verde agregar:
-  - Entrada preparada: generada ahora / reutilizada vigente / actualizada
-  - Stock Woo consultado: fecha y hora
-  - Stock anterior / Agregado / Stock esperado / Stock final real / Verificación
-  - Las mismas líneas en "Copiar reporte" y en el bloque rojo de discrepancia.
-- `src/pages/core/CoreInventory.tsx`: mismo banner enriquecido (usa el componente compartido).
+- `cancelled` — OP cancelada
+- `closed` — OP cerrada/cierre manual
+- `completed` — `has_units && pending === 0 && pending_inventory === 0 && entered === total`
+- `ready_for_inventory` — `pending === 0 && pending_inventory > 0`
+- `in_production` — `pending > 0`
+- si no hay unidades generadas: se mantiene el estado guardado (Borrador/Abierta)
+
+### 2. Badge de estado en la tabla
+
+El badge deja de leer solo `o.status`: si hay unidades, muestra el estado operativo.
+
+- `Completada` (verde) solo cuando todas las unidades están ingresadas.
+- `Lista para inventario` (ámbar/naranja) cuando la producción terminó pero quedan listas sin ingresar, con subtítulo `Inventario 0/6 · 6 pendientes`.
+- `Parcial / En producción` cuando hay faltantes reales, con detalle `X en producción · Y sin iniciar · Z listas para ingresar`.
+- Cerrada / Cancelada mantienen prioridad sobre el cálculo por unidades.
+
+### 3. Tabs / buckets
+
+`bucketOf()` pasa a decidir por el estado operativo, no por `DONE_STATUSES`:
+
+- Cancelada → `cancelled`; Cerrada/Cierre manual → `closed` (sin cambios).
+- Cualquier OP con `pending_inventory > 0` o `pending > 0` → `prod` ("En producción"), aunque su estado guardado sea `completed`.
+- `done` ("Completadas") solo con inventario completo.
+- OP sin unidades generadas conservan el comportamiento actual.
+
+### 4. Cards superiores
+
+- "OP completadas" cuenta solo el bucket `done` con la regla nueva (OP-000014 sale de ahí y entra a producción).
+- "Unid. terminadas prod." sigue sumando ingresadas + listas (la producción sí terminó).
+- Las cards de custodia (Listas sin ingresar / Ingresadas) no cambian.
+
+### 5. Detalle (drawer)
+
+Cuando `pending_inventory > 0`, añadir alerta naranja/roja:
+
+"6 prendas listas sin ingresar a inventario. Riesgo operativo: existen físicamente pero aún no están registradas como stock."
+
+El botón de Inventario por unidad se mantiene igual.
 
 ## No se toca
 
-OP, QR, procesos, nómina, partidas, costos, despachos, generación de unidades.
+QR, escaneo, inventario real, Woo write, nómina, costos, movimientos financieros, generación de unidades y procesos. No hay cambios de base de datos: el estado guardado de la OP no se reescribe, solo cambia su presentación y clasificación visual.
 
 ## Validación
 
-Unidad sin entrada preparada → "Agregar a inventario" consulta Woo real, genera preview fresco, confirma, re-verifica el stock final y muestra "Entrada preparada: generada ahora". Woo caído → error 502 y sin ingreso. Discrepancia → alerta roja con reporte copiable. Typecheck 0 errores.
+OP-000014 → badge "Lista para inventario", `Inventario 0/6 · 6 pendientes`, aparece en "En producción" y no en "Completadas". OP con 6/6 ingresadas → "Completada". OP con faltantes reales → "Parcial / En producción". Typecheck 0 errores.
