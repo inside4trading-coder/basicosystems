@@ -344,7 +344,9 @@
   font-size: 2.125rem;
   line-height: 1;
   margin-top: 0.9rem;
+  color: var(--ink);
 }
+.landing-bsystems .path.dark h3 { color: #ffffff; }
 .landing-bsystems .path .tag {
   font-family: var(--font-mono);
   font-size: 0.75rem;
