@@ -266,7 +266,7 @@ export default function Landing() {
               </div>
               <div className="path__body">
                 <p className="tag">Estudio</p>
-                <h3>Tailor-made</h3>
+                <h3>Hecho a medida</h3>
                 <p className="sub2">Construido para tu operación</p>
                 <ul>
                   {[
