@@ -1,58 +1,65 @@
 # Consistencia entre "Requieren atención" y "Órdenes a proveedor"
 
-## Diagnóstico (verificado en la base de datos)
+## A. Auditoría de las resoluciones no_restock (#34373 y #34519)
 
-`usePendingExternalEvents` (en `src/hooks/useExternalPurchaseOrders.ts`) arma la cola de reposición externa con un filtro rígido:
+Lo que existe realmente en la base de datos para la gorra `GORRA0001 T-U` (Woo 33910):
 
-`fund_bucket = 'external_supplier'` **AND** `movement_type = 'sale_generated'` **AND** `status = 'posted'`.
+| Dato | #34373 / item 29263 | #34519 / item 29372 |
+|---|---|---|
+| Acción registrada | `unlinked_core_resolution.action = no_restock` | `no_restock` |
+| Fecha | 2026-08-01 20:52:26 UTC | 2026-08-09 23:49:48 UTC |
+| Motivo guardado | "Venta con Woo vinculado pero sin Core. Marcada como no restock." (texto genérico de la función, no comentario del usuario) | idéntico |
+| Usuario | **no hay**: `created_by` nulo en los dos movimientos generados | **no hay** |
+| Comentario del operador | ninguno (`notes` nulo) | ninguno |
+| Movimiento financiero | out `5bc283bc…` (−5.34 en fabricación interna) + in `a1cbf17e…` (+5.34) | out `44ff8018…` + in `cc5ce43f…` (5.34) |
+| Partida destino | `non_restockable` (fondo `5ec1f93a…`) | `non_restockable` |
+| Registro en `core_audit_logs` | **0 registros** — la tabla no tiene ninguna entrada de `core_fabrication_fund_movements` ni de resoluciones de este tipo | **0 registros** |
 
-Lo que muestran los datos:
+Hallazgo adicional decisivo: el 2026-08-21 12:05 el sistema generó eventos `external_supplier_review` **abiertos** para esos mismos ítems (29263 y 29372), con el mensaje "Producto marcado como proveedor externo. No se fabrica internamente.". Es decir, la política vigente del producto es proveedor externo y hay eventos externos abiertos, pero el dinero sigue reservado en la partida "no reponible" por una resolución anterior sin autoría ni comentario.
 
-- **#35208 / item 29693 (PIN0003)** y **#35176 / item 29667 (BEANIE001)**: movimientos `sale_generated` en partida `external_supplier`. Por eso sí aparecen. Correcto.
-- **#34786 / item 29466 (GORRA0001)**: se resolvió desde "Requieren atención" con la acción *Confirmar como reposición externa*. Eso dejó el movimiento original en `internal_factory` marcado `unlinked_core_resolution.action = external_supplier` y creó el par out/in; el movimiento que quedó en la partida `external_supplier` es de tipo **`replacement_reclassification_in`**, no `sale_generated`. El filtro lo descarta → nunca llega a Órdenes a proveedor. **Esta es la causa principal (casos 7/8 de la lista).**
-- **#34519 / item 29372** y **#34373 / item 29263** (misma gorra): se resolvieron antes como **`no_restock`**; su dinero está en la partida `non_restockable`, no en proveedores. Operativamente **no deben** entrar a la cola externa; hoy la UI no explica por qué, y la fila puede leerse como "Proveedor externo" porque la etiqueta se deriva de la política vigente del producto (que hoy es `external_supplier`), no de la resolución ya aplicada.
+**Conclusión: no hay evidencia de una decisión manual válida y atribuible.** Los dos casos se tratan como **posible inconsistencia**, no se excluyen en silencio, y se habilita reabrir/reclasificar. En cambio, #34786 sí tiene su evento `external_supplier_review` marcado `resolved` el 2026-08-28 y su dinero en la partida proveedores.
 
-Resumen: no falta ningún evento; la cola externa depende de un `movement_type` demasiado estrecho y de eventos `external_supplier_review`, e ignora los movimientos externos generados por reclasificación.
+## B. Causa de que #34786 no aparezca en Órdenes a proveedor
 
-## Cambios
+`usePendingExternalEvents` (`src/hooks/useExternalPurchaseOrders.ts`) exige `fund_bucket = 'external_supplier'` **y** `movement_type = 'sale_generated'`. Cuando un ítem se resuelve como reposición externa, el movimiento que queda en la partida proveedores es `replacement_reclassification_in`, no `sale_generated`, así que el filtro lo descarta. #35208/29693 y #35176/29667 sí aparecen porque son ventas externas directas.
+
+## C. Cambios
 
 ### 1. Fuente única de pendientes externos — `src/hooks/useExternalPurchaseOrders.ts`
 
-Reescribir `usePendingExternalEvents` como cola unificada:
+- Aceptar `movement_type` en `('sale_generated','replacement_reclassification_in')` dentro de `fund_bucket = 'external_supplier'`, `status = 'posted'`.
+- Deduplicar por `source_order_id + source_order_item_id`, priorizando el movimiento más reciente.
+- Enlazar el evento `external_supplier_review` si existe; si no, la fila igual aparece.
+- Excluir solo si ya hay línea en una orden externa no cancelada (cruce por `policy_event_id` y por `woo_product_id + woo_variation_id + source_order_item_id`).
+- Nunca filtrar por proveedor: sin proveedor se mantiene el badge **Sin proveedor**.
+- Añadir `pending_source`: `venta_externa` | `reclasificada_externa`.
 
-- Leer movimientos `status = 'posted'` en `fund_bucket = 'external_supplier'` con `movement_type` en `('sale_generated', 'replacement_reclassification_in')`.
-- Deduplicar por `source_order_id + source_order_item_id` (si un ítem tiene venta externa y además reclasificación, se cuenta una sola vez, priorizando el movimiento más reciente).
-- Enlazar el evento `external_supplier_review` cuando exista (por `source_id` o `woo_order_item_id`); si no existe, la fila igual aparece (`event_id = null`), como hoy.
-- Excluir solo si ya está en una línea de orden externa **activa**: se cruza por `policy_event_id` y también por `woo_product_id + woo_variation_id + source_order_item_id` contra `core_external_purchase_order_lines`, ignorando las líneas de órdenes `cancelled`. Las recibidas siguen excluyendo la fila (ya se compró).
-- No filtrar por proveedor: sin proveedor la fila se muestra con el badge existente **Sin proveedor**.
-- Devolver además `pending_source`: `venta_externa` | `reclasificada_externa`, para trazabilidad en la tabla.
+### 2. Cola de inconsistencias externas
 
-### 2. Estado de sincronización en "Requieren atención"
+Incluir en la vista de reposición externa, en un bloque separado **"Posible inconsistencia"**, los ítems con evento `external_supplier_review` abierto cuyo dinero no está en la partida proveedores (caso #34373 y #34519). Cada fila muestra: partida actual, acción previa, fecha, usuario (o "sin autoría registrada") y motivo guardado.
 
-En `src/hooks/useReplenishmentPolicyEvents.ts` y `src/components/core/woocore/PolicyEventsAttentionPanel.tsx`, para filas con ruta/resolución externa, calcular y mostrar un badge de sincronización:
+### 3. Reabrir / reclasificar
 
-- **En cola externa** — hay movimiento externo pendiente sin orden.
-- **Ya en orden externa** — existe línea en una orden externa no cancelada (con el número de orden).
-- **Sin proveedor** — está en cola pero la política no tiene proveedor.
-- **Resuelto como no restock / reemplazo** — para los casos tipo #34519 y #34373, con el motivo y la fecha de la resolución, para que quede explícito por qué no está en Órdenes a proveedor.
-- **Error: no aparece en cola externa** — cumple regla externa pero no hay movimiento en la partida proveedores.
+Acción **"Reclasificar a proveedor externo"** en esas filas: usa la RPC existente `core_resolve_unlinked_core_movement` con acción `external_supplier`, que mueve el importe de la partida actual a proveedores con par out/in y sello de resolución. Se añade un campo de comentario obligatorio y, esta vez, se registra la operación en `core_audit_logs` con el usuario autenticado. También queda disponible **"Confirmar no restock"** para dejarlo como está, con comentario y autoría.
 
-### 3. Botón "Abrir Reposición externa"
+Nada se reclasifica automáticamente: cada caso requiere la acción explícita del usuario.
 
-En `PolicyEventsAttentionPanel.tsx`, el botón solo navega cuando la fila está realmente en la cola (o ya en una orden, en cuyo caso abre la pestaña Órdenes). Si el ítem cumple la regla externa pero no está en la cola, el botón pasa a **"Enviar a reposición externa"**, que ejecuta la resolución externa existente (`core_resolve_unlinked_core_movement`, acción `external_supplier`) y luego navega. Nunca se abre una pestaña donde el ítem no aparece.
+### 4. Estado de sincronización en "Requieren atención"
 
-### 4. Regla de inclusión (documentada en el hook)
+En `src/hooks/useReplenishmentPolicyEvents.ts` y `PolicyEventsAttentionPanel.tsx`, badge por fila externa: **En cola externa**, **Ya en orden externa** (con número), **Sin proveedor**, **Resuelto como no restock / reemplazo** (con fecha, autoría o "sin autoría registrada" y motivo) y **Posible inconsistencia: no aparece en cola externa**.
 
-Aparece en Órdenes a proveedor → Pendientes todo movimiento posteado en la partida proveedores (venta directa o reclasificación), que no esté cancelado, no esté recibido y no esté ya en una línea de orden externa activa — con o sin proveedor asignado, con costo manual o de política.
+### 5. Botón "Abrir Reposición externa"
+
+Navega solo si el ítem está en la cola o ya en una orden. Si cumple la regla externa pero no está en la cola, el botón pasa a **"Reclasificar a proveedor externo"** (mismo flujo con comentario del punto 3) y luego navega. Nunca abre una pestaña donde el ítem no aparece.
 
 ## No se toca
 
-Woo write, inventario, QR, nómina, costos, OP internas, generación de producción ni movimientos financieros existentes (no se crean ni reescriben movimientos como parte del fix; solo la resolución manual del punto 3, que ya existe hoy).
+Woo write, inventario, QR, nómina, costos, OP internas, generación de producción. No se reescriben movimientos existentes ni se ejecuta ninguna reclasificación automática.
 
 ## Validación
 
-- #34786 / item 29466 aparece en Órdenes a proveedor → Pendientes, con "Sin proveedor" si la política no lo tiene.
-- #35208 / 29693 y #35176 / 29667 siguen apareciendo, sin duplicados.
-- #34519 y #34373 no entran a la cola y en Requieren atención muestran "Resuelto como no restock" con su motivo.
-- Ítems ya incluidos en una orden externa no se duplican en Pendientes.
+- #34786 aparece en Órdenes a proveedor → Pendientes.
+- #35208 y #35176 siguen apareciendo, sin duplicados.
+- #34373 y #34519 aparecen como "Posible inconsistencia" con su auditoría visible y botón de reclasificar; nada cambia hasta que el usuario decida.
+- Ítems ya en una orden externa no se duplican.
 - Typecheck 0 errores.
