@@ -1,32 +1,24 @@
-# Acceso intermitente a basicosystems.lovable.app — nuevo diagnóstico
+# basicosystems.lovable.app inaccesible desde algunas redes — diagnóstico de red/hosting
 
-Tienes razón: si falla también en incógnito, la caché y el service worker no son la causa. Descarto el plan anterior (kill switch) y cambio el enfoque a diagnóstico de red/entrega.
+El modo incógnito descarta caché y service worker. El resultado de PageSpeed (`net::ERR_TIMED_OUT` desde los servidores de Google) confirma que el problema no es la app: hay redes desde las que el servidor de Lovable no responde.
 
-## Lo verificado ahora
+## Evidencia recogida
 
-- `https://basicosystems.lovable.app` responde **200** en 0.13s desde fuera.
-- La vista previa externa responde **302** (redirección a login de Lovable: es normal, las previews exigen sesión Lovable).
-- No hay error de servidor ni de dominio.
+- Desde el entorno de Lovable: `https://basicosystems.lovable.app` responde **200** en 0.09–0.19s.
+- Por IPv4 (`185.41.148.2`) → 200. Por IPv6 (`2a07:8240::1`) → 200. Ambos caminos funcionan desde aquí.
+- Desde los servidores de Google (PageSpeed, red externa): **timeout total**, no llega ni el HTML.
+- La vista previa externa devuelve 302 al login de Lovable: eso es comportamiento normal, no un fallo.
 
-Conclusión: el sitio está sano en origen. El fallo ocurre entre el equipo del usuario y el servidor, o es un bloqueo de sesión/permiso, no de la app.
+Diagnóstico: la app y el build están bien. El fallo está en la entrega de red del hosting hacia ciertos orígenes/regiones (probable ruta o nodo de borde), o en un bloqueo de red del lado de los equipos que fallan.
 
-## Hipótesis a descartar, en orden
+## Plan de acción
 
-1. **Red/DNS local del equipo**: DNS corporativo o del ISP que no resuelve `*.lovable.app`, o red que bloquea el dominio (firewall, filtrado de contenido, antivirus con inspección TLS).
-2. **IPv6**: el servidor responde por IPv6; equipos con IPv6 mal configurado pueden quedarse colgados sin error claro.
-3. **Confusión preview vs publicado**: las vistas previas externas siempre piden login de Lovable; sólo el link publicado es abierto. Puede que en los equipos "que no abren" se esté probando el link de preview.
-4. **Visibilidad de publicación**: si la publicación está en modo privado, el sitio pide iniciar sesión en Lovable y sólo entra quien es miembro del workspace. Esto explicaría exactamente "abre en unas computadoras y en otras no".
-
-## Pasos del plan
-
-1. Revisar la configuración de visibilidad de publicación del proyecto (pública vs privada). Si está privada, esa es la causa más probable del patrón por computadora, y se corrige cambiándola a pública (con tu aprobación).
-2. Confirmar contigo qué URL exacta se usa en los equipos que fallan y qué se ve: pantalla en blanco, error del navegador, o pantalla de login de Lovable.
-3. Si la visibilidad ya es pública, pedir en un equipo que falla:
-   - abrir `https://basicosystems.lovable.app` y decir el mensaje exacto de error;
-   - probar desde datos móviles / otra red;
-   - probar `ping basicosystems.lovable.app` para ver si resuelve DNS.
-4. Según el resultado, cerrar con la causa concreta (red del cliente, DNS, o visibilidad) — no se toca código de la app.
+1. **Comprobar la configuración de publicación** (pública vs privada). Si estuviera privada, los equipos sin sesión de Lovable verían login en vez del sitio. Se revisa y, si aplica y lo apruebas, se pasa a pública.
+2. **Republicar el proyecto** para forzar un despliegue nuevo y que se regenere la distribución en el borde. Es la acción con más probabilidad de corregir un nodo de borde en mal estado, y no toca código ni datos.
+3. **Reverificar** tras la republicación: respuesta por IPv4 e IPv6, y nueva ejecución de PageSpeed desde red externa (esa prueba la haces tú, sirve como testigo independiente).
+4. **Si sigue fallando desde fuera**: es un incidente de hosting de Lovable, no del proyecto. Se documenta la evidencia (IPs, códigos, timeouts, hora) para reportar a soporte de Lovable, y mientras tanto se puede usar `fundacionbasico.com` / `www.fundacionbasico.com` como acceso alternativo si esos sí responden en los equipos afectados.
+5. **Datos que necesito de un equipo que falla** para cerrar el caso: qué error exacto muestra el navegador, si falla también con datos móviles, y si `fundacionbasico.com` abre o no.
 
 ## Fuera de alcance
 
-No se modifica ningún módulo: ni Woo, ni inventario, ni QR, ni nómina, ni partidas, ni OP. Este bloque es sólo diagnóstico y, como mucho, un cambio de ajuste de publicación.
+No se toca código de la aplicación: ni Woo, ni inventario, ni QR, ni nómina, ni partidas, ni OP, ni base de datos. Sólo ajuste de publicación, republicación y verificación.
