@@ -11,7 +11,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import ConfettiSphere from "@/components/landing/ConfettiSphere";
-import "@/components/landing/landing-bsod.css";
+import BrandMark from "@/components/BrandMark";
+import "@/components/landing/landing-bsystems.css";
 
 const leadSchema = z.object({
   name: z.string().trim().min(2, "Nombre muy corto").max(100),
@@ -22,16 +23,16 @@ const leadSchema = z.object({
 });
 
 const modules = [
-  { n: "01", title: "Pedidos", desc: "Sync con tu e-commerce, estados, costos y márgenes en vivo." },
-  { n: "02", title: "CRM", desc: "Clientes unificados, segmentación y comportamiento de compra." },
-  { n: "03", title: "Planning", desc: "Calendario editorial sincronizado con Notion y tu equipo." },
-  { n: "04", title: "Crew", desc: "RRHH completo: nómina, documentos, incidencias y tareas." },
-  { n: "05", title: "RRPP", desc: "Red de influencers, colaboraciones, cupones y métricas." },
-  { n: "06", title: "Campañas", desc: "Email marketing, audiencias y resultados en un solo lugar." },
-  { n: "07", title: "Llamadas", desc: "Telefonía conectada, grabaciones y analítica por agente." },
-  { n: "08", title: "Administración", desc: "Obligaciones, vencimientos y control financiero." },
-  { n: "09", title: "Core", desc: "Fabricación completa: costos por prenda, órdenes de producción, partidas y nómina de taller.", wide: true },
-  { n: "10", title: "Retail", desc: "POS de tienda, catálogo sincronizado con WooCommerce e inventario en un solo stock.", wide: true },
+  { n: "01", title: "Pedidos", desc: "Sync con tu e-commerce, estados, costos y márgenes en vivo.", icon: "bsys-cart" },
+  { n: "02", title: "CRM", desc: "Clientes unificados, segmentación y comportamiento de compra.", icon: "bsys-user" },
+  { n: "03", title: "Planning", desc: "Calendario editorial sincronizado con Notion y tu equipo.", icon: "bsys-clock" },
+  { n: "04", title: "Crew", desc: "RRHH completo: nómina, documentos, incidencias y tareas.", icon: "bsys-users" },
+  { n: "05", title: "RRPP", desc: "Red de influencers, colaboraciones, cupones y métricas.", icon: "bsys-branch" },
+  { n: "06", title: "Campañas", desc: "Email marketing, audiencias y resultados en un solo lugar.", icon: "bsys-mail" },
+  { n: "07", title: "Llamadas", desc: "Telefonía conectada, grabaciones y analítica por agente.", icon: "bsys-chat" },
+  { n: "08", title: "Administración", desc: "Obligaciones, vencimientos y control financiero.", icon: "bsys-file" },
+  { n: "09", title: "Core", desc: "Fabricación completa: costos por prenda, órdenes de producción, partidas y nómina de taller.", icon: "bsys-terminal", wide: true },
+  { n: "10", title: "Retail", desc: "POS de tienda, catálogo sincronizado con WooCommerce e inventario en un solo stock.", icon: "bsys-tag", wide: true },
 ];
 
 const customization = [
@@ -115,12 +116,12 @@ export default function Landing() {
   const scrollTo = (id: string) => () => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
   return (
-    <div className="landing-bsod">
+    <div className="landing-bsystems">
       {/* NAV */}
       <header className="nav">
         <nav className="nav__inner">
           <Link to="/" className="nav__mark">
-            Basico <span>/</span> Systems
+            <BrandMark variant="negative" style={{ fontSize: "1.625rem" }} />
           </Link>
           <div className="nav__links">
             {navItems.map((item) => (
@@ -142,7 +143,7 @@ export default function Landing() {
                   <Menu size={22} />
                 </button>
               </SheetTrigger>
-              {/* El panel se monta en un portal fuera de `.landing-bsod`: sus
+              {/* El panel se monta en un portal fuera de `.landing-bsystems`: sus
                   estilos van en la sección `.landing-sheet` de la hoja. */}
               <SheetContent side="right" className="landing-sheet w-[80vw] max-w-sm pt-12">
                 {/* Radix exige un título en el diálogo para los lectores de
@@ -226,49 +227,65 @@ export default function Landing() {
           <h2>Dos formas de empezar</h2>
           <div className="paths">
             <article className="path">
-              <p className="tag">Producto</p>
-              <h3>Basico System</h3>
-              <p className="sub2">Arranca en días</p>
-              <ul>
-                {[
-                  "10 módulos listos: Pedidos, CRM, Planning, Crew, RRPP, Campañas, Llamadas, Administración, Core y Retail",
-                  "Personalizable: branding, roles, flujos y campos",
-                  "Integraciones nativas: WooCommerce, Brevo, Notion, Zadarma",
-                  "Onboarding guiado con tu equipo",
-                ].map((b) => (
-                  <li key={b}>{b}</li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                className="btn fill"
-                onClick={() => { setInterest("saas"); scrollTo("contacto")(); }}
-              >
-                Solicitar acceso
-              </button>
+              <div className="path__bar">
+                <span className="path__dot r" />
+                <span className="path__dot y" />
+                <span className="path__dot g" />
+                <span className="path__label">basico.systems</span>
+              </div>
+              <div className="path__body">
+                <p className="tag">Producto</p>
+                <h3>Basico System</h3>
+                <p className="sub2">Arranca en días</p>
+                <ul>
+                  {[
+                    "10 módulos listos: Pedidos, CRM, Planning, Crew, RRPP, Campañas, Llamadas, Administración, Core y Retail",
+                    "Personalizable: branding, roles, flujos y campos",
+                    "Integraciones nativas: WooCommerce, Brevo, Notion, Zadarma",
+                    "Onboarding guiado con tu equipo",
+                  ].map((b) => (
+                    <li key={b}>{b}</li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  className="btn fill"
+                  onClick={() => { setInterest("saas"); scrollTo("contacto")(); }}
+                >
+                  Solicitar acceso
+                </button>
+              </div>
             </article>
 
             <article className="path dark">
-              <p className="tag">Estudio</p>
-              <h3>Tailor-made</h3>
-              <p className="sub2">Construido para tu operación</p>
-              <ul>
-                {[
-                  "Discovery profundo de tu negocio",
-                  "Módulos nuevos diseñados desde cero",
-                  "Integraciones con cualquier herramienta",
-                  "Soporte y evolución continua",
-                ].map((b) => (
-                  <li key={b}>{b}</li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => { setInterest("tailor"); scrollTo("contacto")(); }}
-              >
-                Hablar con el estudio
-              </button>
+              <div className="path__bar">
+                <span className="path__dot r" />
+                <span className="path__dot y" />
+                <span className="path__dot g" />
+                <span className="path__label">estudio.basico.systems</span>
+              </div>
+              <div className="path__body">
+                <p className="tag">Estudio</p>
+                <h3>Tailor-made</h3>
+                <p className="sub2">Construido para tu operación</p>
+                <ul>
+                  {[
+                    "Discovery profundo de tu negocio",
+                    "Módulos nuevos diseñados desde cero",
+                    "Integraciones con cualquier herramienta",
+                    "Soporte y evolución continua",
+                  ].map((b) => (
+                    <li key={b}>{b}</li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => { setInterest("tailor"); scrollTo("contacto")(); }}
+                >
+                  Hablar con el estudio
+                </button>
+              </div>
             </article>
           </div>
         </section>
@@ -283,7 +300,14 @@ export default function Landing() {
           <div className="mods">
             {modules.map((m) => (
               <div key={m.n} className={m.wide ? "mod wide" : "mod"}>
-                <span className="n">{m.n}</span>
+                <div className="mod__head">
+                  <span className="mod__icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+                      <use href={`/icons.svg#${m.icon}`} />
+                    </svg>
+                  </span>
+                  <span className="n">{m.n}</span>
+                </div>
                 <h3>{m.title}</h3>
                 <p>{m.desc}</p>
               </div>
@@ -419,12 +443,17 @@ export default function Landing() {
 
         {/* FOOTER */}
         <footer className="foot">
-          <p>Basico System · Un área de Basico · {new Date().getFullYear()}</p>
-          <div className="foot__links">
-            <a href="https://basicoclothes.com" target="_blank" rel="noopener noreferrer">
-              basicoclothes.com
-            </a>
-            <Link to="/login">{user ? "Ir al panel" : "Acceso equipo"}</Link>
+          <div className="foot__inner">
+            <div className="foot__brand">
+              <BrandMark variant="negative" style={{ fontSize: "1.375rem" }} />
+              <p>Basico System · Un área de Basico · {new Date().getFullYear()}</p>
+            </div>
+            <div className="foot__links">
+              <a href="https://basicoclothes.com" target="_blank" rel="noopener noreferrer">
+                basicoclothes.com
+              </a>
+              <Link to="/login">{user ? "Ir al panel" : "Acceso equipo"}</Link>
+            </div>
           </div>
         </footer>
       </div>
