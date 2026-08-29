@@ -1,65 +1,34 @@
-# Consistencia entre "Requieren atención" y "Órdenes a proveedor"
+# Diagnóstico y fix: el sitio publicado no carga en algunas computadoras
 
-## A. Auditoría de las resoluciones no_restock (#34373 y #34519)
+## Lo que ya se verificó (solo lectura, desde fuera)
 
-Lo que existe realmente en la base de datos para la gorra `GORRA0001 T-U` (Woo 33910):
+- `https://basicosystems.lovable.app`, `https://fundacionbasico.com` y `https://www.fundacionbasico.com` responden **200 OK** con el HTML correcto.
+- El JS y el CSS que pide ese HTML (`/assets/index-BZ4F7yMQ.js`, `/assets/index-Bo374MRD.css`) también responden **200**.
 
-| Dato | #34373 / item 29263 | #34519 / item 29372 |
-|---|---|---|
-| Acción registrada | `unlinked_core_resolution.action = no_restock` | `no_restock` |
-| Fecha | 2026-08-01 20:52:26 UTC | 2026-08-09 23:49:48 UTC |
-| Motivo guardado | "Venta con Woo vinculado pero sin Core. Marcada como no restock." (texto genérico de la función, no comentario del usuario) | idéntico |
-| Usuario | **no hay**: `created_by` nulo en los dos movimientos generados | **no hay** |
-| Comentario del operador | ninguno (`notes` nulo) | ninguno |
-| Movimiento financiero | out `5bc283bc…` (−5.34 en fabricación interna) + in `a1cbf17e…` (+5.34) | out `44ff8018…` + in `cc5ce43f…` (5.34) |
-| Partida destino | `non_restockable` (fondo `5ec1f93a…`) | `non_restockable` |
-| Registro en `core_audit_logs` | **0 registros** — la tabla no tiene ninguna entrada de `core_fabrication_fund_movements` ni de resoluciones de este tipo | **0 registros** |
+Conclusión: el hosting y los dominios están bien. La caída de `basicoclothes.com` (hosting impago) no tiene relación: es otro servidor y solo afecta las llamadas a WooCommerce dentro del panel, no la carga del sitio.
 
-Hallazgo adicional decisivo: el 2026-08-21 12:05 el sistema generó eventos `external_supplier_review` **abiertos** para esos mismos ítems (29263 y 29372), con el mensaje "Producto marcado como proveedor externo. No se fabrica internamente.". Es decir, la política vigente del producto es proveedor externo y hay eventos externos abiertos, pero el dinero sigue reservado en la partida "no reponible" por una resolución anterior sin autoría ni comentario.
+El patrón "carga en unas computadoras y en otras no" con el servidor sano apunta a **caché local del navegador**: un Service Worker viejo (versión anterior de `sw.js`) instalado en esas máquinas sigue sirviendo archivos que ya no existen en el deploy actual, y la app queda en blanco. Las vistas previas externas fallan por la misma razón (mismo origen `*.lovable.app`).
 
-**Conclusión: no hay evidencia de una decisión manual válida y atribuible.** Los dos casos se tratan como **posible inconsistencia**, no se excluyen en silencio, y se habilita reabrir/reclasificar. En cambio, #34786 sí tiene su evento `external_supplier_review` marcado `resolved` el 2026-08-28 y su dinero en la partida proveedores.
+## Qué se va a hacer
 
-## B. Causa de que #34786 no aparezca en Órdenes a proveedor
+1. **Kill-switch del Service Worker**
+   Reescribir `public/sw.js` como worker de desinstalación: en `install` hace `skipWaiting`, en `activate` borra **todas** las cachés y hace `clients.claim()`, y no intercepta ningún `fetch`. Cualquier navegador con el SW viejo lo reemplaza en la primera visita y queda limpio.
 
-`usePendingExternalEvents` (`src/hooks/useExternalPurchaseOrders.ts`) exige `fund_bucket = 'external_supplier'` **y** `movement_type = 'sale_generated'`. Cuando un ítem se resuelve como reposición externa, el movimiento que queda en la partida proveedores es `replacement_reclassification_in`, no `sale_generated`, así que el filtro lo descarta. #35208/29693 y #35176/29667 sí aparecen porque son ventas externas directas.
+2. **Dejar de registrar el SW**
+   En `src/main.tsx`, quitar el registro y dejar solo la limpieza: en todos los contextos se desregistran los SW existentes y se borran las cachés (`caches.keys()` → `caches.delete`). Se pierde la instalabilidad PWA del panel, que hoy es la causa del problema y no un requisito operativo; el acceso directo del portal de operario se revisa aparte si lo quieres conservar.
 
-## C. Cambios
+3. **Recuperación inmediata para las máquinas ya afectadas**
+   Instrucción para el usuario: en la computadora que no carga, abrir el sitio y hacer recarga forzada (Cmd/Ctrl + Shift + R). Si sigue en blanco: DevTools → Application → Service Workers → Unregister + Clear storage. Después del deploy con el kill-switch esto deja de ser necesario para el resto.
 
-### 1. Fuente única de pendientes externos — `src/hooks/useExternalPurchaseOrders.ts`
+4. **Publicar**
+   El fix solo surte efecto una vez publicado, porque el `sw.js` viejo vive en el dominio publicado, no en la vista previa.
 
-- Aceptar `movement_type` en `('sale_generated','replacement_reclassification_in')` dentro de `fund_bucket = 'external_supplier'`, `status = 'posted'`.
-- Deduplicar por `source_order_id + source_order_item_id`, priorizando el movimiento más reciente.
-- Enlazar el evento `external_supplier_review` si existe; si no, la fila igual aparece.
-- Excluir solo si ya hay línea en una orden externa no cancelada (cruce por `policy_event_id` y por `woo_product_id + woo_variation_id + source_order_item_id`).
-- Nunca filtrar por proveedor: sin proveedor se mantiene el badge **Sin proveedor**.
-- Añadir `pending_source`: `venta_externa` | `reclasificada_externa`.
+## Detalles técnicos
 
-### 2. Cola de inconsistencias externas
+- Archivos tocados: `public/sw.js` y `src/main.tsx`. Nada más.
+- No se toca backend, Woo, inventario, nómina, OP, QR ni datos.
+- Verificación: build OK, typecheck 0 errores, y tras publicar, confirmar en una máquina afectada que la app carga y que en DevTools ya no aparece ningún Service Worker activo.
 
-Incluir en la vista de reposición externa, en un bloque separado **"Posible inconsistencia"**, los ítems con evento `external_supplier_review` abierto cuyo dinero no está en la partida proveedores (caso #34373 y #34519). Cada fila muestra: partida actual, acción previa, fecha, usuario (o "sin autoría registrada") y motivo guardado.
+## Pendiente de tu confirmación
 
-### 3. Reabrir / reclasificar
-
-Acción **"Reclasificar a proveedor externo"** en esas filas: usa la RPC existente `core_resolve_unlinked_core_movement` con acción `external_supplier`, que mueve el importe de la partida actual a proveedores con par out/in y sello de resolución. Se añade un campo de comentario obligatorio y, esta vez, se registra la operación en `core_audit_logs` con el usuario autenticado. También queda disponible **"Confirmar no restock"** para dejarlo como está, con comentario y autoría.
-
-Nada se reclasifica automáticamente: cada caso requiere la acción explícita del usuario.
-
-### 4. Estado de sincronización en "Requieren atención"
-
-En `src/hooks/useReplenishmentPolicyEvents.ts` y `PolicyEventsAttentionPanel.tsx`, badge por fila externa: **En cola externa**, **Ya en orden externa** (con número), **Sin proveedor**, **Resuelto como no restock / reemplazo** (con fecha, autoría o "sin autoría registrada" y motivo) y **Posible inconsistencia: no aparece en cola externa**.
-
-### 5. Botón "Abrir Reposición externa"
-
-Navega solo si el ítem está en la cola o ya en una orden. Si cumple la regla externa pero no está en la cola, el botón pasa a **"Reclasificar a proveedor externo"** (mismo flujo con comentario del punto 3) y luego navega. Nunca abre una pestaña donde el ítem no aparece.
-
-## No se toca
-
-Woo write, inventario, QR, nómina, costos, OP internas, generación de producción. No se reescriben movimientos existentes ni se ejecuta ninguna reclasificación automática.
-
-## Validación
-
-- #34786 aparece en Órdenes a proveedor → Pendientes.
-- #35208 y #35176 siguen apareciendo, sin duplicados.
-- #34373 y #34519 aparecen como "Posible inconsistencia" con su auditoría visible y botón de reclasificar; nada cambia hasta que el usuario decida.
-- Ítems ya en una orden externa no se duplican.
-- Typecheck 0 errores.
+Si quieres mantener el acceso directo instalable (PWA) del portal de operario, se puede volver a introducir después con un SW versionado que nunca cachee HTML, en un bloque separado.
