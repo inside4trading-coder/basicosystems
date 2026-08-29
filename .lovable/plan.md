@@ -13,12 +13,12 @@ Diagnóstico: la app y el build están bien. El fallo está en la entrega de red
 
 ## Plan de acción
 
-1. **Comprobar la configuración de publicación** (pública vs privada). Si estuviera privada, los equipos sin sesión de Lovable verían login en vez del sitio. Se revisa y, si aplica y lo apruebas, se pasa a pública.
-2. **Republicar el proyecto** para forzar un despliegue nuevo y que se regenere la distribución en el borde. Es la acción con más probabilidad de corregir un nodo de borde en mal estado, y no toca código ni datos.
-3. **Reverificar** tras la republicación: respuesta por IPv4 e IPv6, y nueva ejecución de PageSpeed desde red externa (esa prueba la haces tú, sirve como testigo independiente).
-4. **Si sigue fallando desde fuera**: es un incidente de hosting de Lovable, no del proyecto. Se documenta la evidencia (IPs, códigos, timeouts, hora) para reportar a soporte de Lovable, y mientras tanto se puede usar `fundacionbasico.com` / `www.fundacionbasico.com` como acceso alternativo si esos sí responden en los equipos afectados.
-5. **Datos que necesito de un equipo que falla** para cerrar el caso: qué error exacto muestra el navegador, si falla también con datos móviles, y si `fundacionbasico.com` abre o no.
+1. **Configuración confirmada**: el proyecto está publicado y su visibilidad efectiva es pública. No es un bloqueo de sesión o permisos.
+2. **Dominios confirmados**: `fundacionbasico.com` y `www.fundacionbasico.com` figuran activos y conectados. Probarlos desde el mismo equipo afectado permite separar un fallo exclusivo del subdominio `lovable.app` de un fallo general del hosting.
+3. **Republicar el proyecto** para forzar un despliegue nuevo y que se regenere la distribución en el borde. Es la única acción segura disponible desde el proyecto; no toca código ni datos.
+4. **Reverificar** tras la republicación: respuesta por IPv4 e IPv6 y nueva ejecución de PageSpeed desde red externa.
+5. **Si sigue fallando desde fuera**: escalar a soporte de Lovable como incidente de conectividad/CDN, adjuntando el `ERR_CONNECTION_TIMED_OUT` local y el `net::ERR_TIMED_OUT` independiente de PageSpeed, junto con fecha, hora y URL. Mientras tanto, usar el dominio personalizado si responde en esas redes.
 
 ## Fuera de alcance
 
-No se toca código de la aplicación: ni Woo, ni inventario, ni QR, ni nómina, ni partidas, ni OP, ni base de datos. Sólo ajuste de publicación, republicación y verificación.
+No se toca código de la aplicación: ni Woo, ni inventario, ni QR, ni nómina, ni partidas, ni OP, ni base de datos. Sólo republicación y verificación.
