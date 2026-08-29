@@ -1,24 +1,50 @@
-# basicosystems.lovable.app inaccesible desde algunas redes — diagnóstico de red/hosting
+# Ticket para soporte de Lovable — basicosystems.lovable.app inaccesible desde redes externas
 
-El modo incógnito descarta caché y service worker. El resultado de PageSpeed (`net::ERR_TIMED_OUT` desde los servidores de Google) confirma que el problema no es la app: hay redes desde las que el servidor de Lovable no responde.
+Publicar de nuevo no resolvió. La app está sana: el problema es de conectividad/entrega del hosting hacia ciertas redes. Abajo está el texto listo para el ticket.
 
-## Evidencia recogida
+## Evidencia recogida (29 ago 2026, 18:08 UTC)
 
-- Desde el entorno de Lovable: `https://basicosystems.lovable.app` responde **200** en 0.09–0.19s.
-- Por IPv4 (`185.41.148.2`) → 200. Por IPv6 (`2a07:8240::1`) → 200. Ambos caminos funcionan desde aquí.
-- Desde los servidores de Google (PageSpeed, red externa): **timeout total**, no llega ni el HTML.
-- La vista previa externa devuelve 302 al login de Lovable: eso es comportamiento normal, no un fallo.
+- Publicación: `is_published: true`, visibilidad efectiva `public`.
+- Dominios `fundacionbasico.com` y `www.fundacionbasico.com`: `active / connected`, y responden 200 desde `185.158.133.1`.
+- `basicosystems.lovable.app` resuelve a `185.41.148.1`, `185.41.148.2` (IPv4) y `2a07:8240::1`, `2a07:8240::2` (IPv6).
+- Desde la infraestructura de Lovable: 200 por las cuatro IPs, en 0.06–0.19s.
+- Desde el navegador del usuario (incluido incógnito, sin caché ni service worker): `ERR_CONNECTION_TIMED_OUT`.
+- Desde los servidores de Google (PageSpeed Insights, red independiente): `net::ERR_TIMED_OUT`, la página nunca carga.
+- El fallo es por equipo/red: en unas computadoras abre y en otras no. Republicar no lo cambió.
 
-Diagnóstico: la app y el build están bien. El fallo está en la entrega de red del hosting hacia ciertos orígenes/regiones (probable ruta o nodo de borde), o en un bloqueo de red del lado de los equipos que fallan.
+Conclusión: el origen sirve correctamente, pero el borde/red que atiende `*.lovable.app` no es alcanzable desde varias redes externas, incluida la de Google. No es caché, no es el código, no es visibilidad de publicación, no es DNS del cliente.
 
-## Plan de acción
+## Texto para el ticket (copiar y pegar)
 
-1. **Configuración confirmada**: el proyecto está publicado y su visibilidad efectiva es pública. No es un bloqueo de sesión o permisos.
-2. **Dominios confirmados**: `fundacionbasico.com` y `www.fundacionbasico.com` figuran activos y conectados. Probarlos desde el mismo equipo afectado permite separar un fallo exclusivo del subdominio `lovable.app` de un fallo general del hosting.
-3. **Republicar el proyecto** para forzar un despliegue nuevo y que se regenere la distribución en el borde. Es la única acción segura disponible desde el proyecto; no toca código ni datos.
-4. **Reverificar** tras la republicación: respuesta por IPv4 e IPv6 y nueva ejecución de PageSpeed desde red externa.
-5. **Si sigue fallando desde fuera**: escalar a soporte de Lovable como incidente de conectividad/CDN, adjuntando el `ERR_CONNECTION_TIMED_OUT` local y el `net::ERR_TIMED_OUT` independiente de PageSpeed, junto con fecha, hora y URL. Mientras tanto, usar el dominio personalizado si responde en esas redes.
+Asunto: basicosystems.lovable.app no es alcanzable desde varias redes externas (ERR_CONNECTION_TIMED_OUT)
+
+Proyecto: Basico Hub v1.1
+URL publicada: https://basicosystems.lovable.app
+Dominios personalizados: fundacionbasico.com y www.fundacionbasico.com (ambos activos)
+Fecha del reporte: 29 de agosto de 2026, 18:08 UTC
+
+Problema:
+El sitio publicado no carga desde varias computadoras y redes. El navegador muestra "ERR_CONNECTION_TIMED_OUT" (la conexión nunca se establece; no hay respuesta HTTP, no es un error de la aplicación).
+
+Qué ya descartamos:
+1. No es caché ni service worker: falla igual en modo incógnito, en equipos que nunca visitaron el sitio.
+2. No es la aplicación: el proyecto está publicado y su visibilidad es pública.
+3. No es el código ni el build: desde otras redes el mismo sitio devuelve HTTP 200 en menos de 0,2 s.
+4. No es un problema puntual de nuestra red: Google PageSpeed Insights, ejecutado desde la infraestructura de Google, también falla con "net::ERR_TIMED_OUT" al analizar https://basicosystems.lovable.app.
+5. Republicar el proyecto no cambió nada; el fallo persiste.
+
+Detalle técnico:
+- basicosystems.lovable.app resuelve a 185.41.148.1 y 185.41.148.2 (IPv4) y 2a07:8240::1 y 2a07:8240::2 (IPv6).
+- Desde redes donde sí funciona, las cuatro direcciones devuelven HTTP 200.
+- Desde las redes afectadas, la conexión TCP hacia esas direcciones expira sin respuesta.
+- Nuestros dominios personalizados apuntan a 185.158.133.1 y responden HTTP 200.
+
+Impacto:
+Es un panel operativo interno. El equipo no puede acceder al sistema desde varias oficinas y equipos, lo que bloquea la operación diaria.
+
+Solicitud:
+Revisar el enrutamiento/nodo de borde que atiende *.lovable.app hacia esas redes, ya que el origen sirve correctamente pero el destino no es alcanzable desde múltiples orígenes externos, incluida la red de Google.
 
 ## Fuera de alcance
 
-No se toca código de la aplicación: ni Woo, ni inventario, ni QR, ni nómina, ni partidas, ni OP, ni base de datos. Sólo republicación y verificación.
+No se modifica código de la aplicación. Este bloque es solo diagnóstico y documentación para soporte.
