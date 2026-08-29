@@ -156,17 +156,18 @@ export default function ConfettiSphere() {
     gl.useProgram(prog);
 
     /* Paleta cerrada de tres colores planos, sin mezclas intermedias.
-       El rojo va un punto más luminoso que el `--accent` de la interfaz:
-       #EA191D sobre #0000AA apenas se diferencia en luminancia —vibra pero no
-       separa—, y las piezas rojas se hundían más que las blancas. El rojo de
-       botones y kickers se queda en #EA191D; esto es sólo el confeti. */
-    const RED = hex("#FF3B3F"), GREY = hex("#B3B3B3"), WHITE = hex("#ffffff");
-    /* Azul más oscuro que el fondo (#0000AA): es el que cierra el contorno por
-       el lado en sombra. Tiene que ser más oscuro, no igual, o el filo se
-       disuelve en el papel — que es justo lo que pasaba antes. */
-    const DARK = hex("#000060");
-    gl.uniform3f(gl.getUniformLocation(prog, "uRed"), ...RED);
-    gl.uniform3f(gl.getUniformLocation(prog, "uGrey"), ...GREY);
+       El azul de las piezas sube respecto al primario #0B37FF por la misma
+       razón por la que en la paleta original el rojo subía a #FF3B3F: contra
+       un fondo azul oscuro, el primario no separa en luminancia y las piezas
+       se hunden. El #0B37FF se queda para botones y kickers; esto es sólo el
+       confeti. El gris pasa a Azul 300 #B8C6FF, dentro de la rampa del manual. */
+    const AZUL = hex("#3D6BFF"), BRUMA = hex("#B8C6FF"), WHITE = hex("#ffffff");
+    /* Azul más oscuro que el fondo del hero (#020C42): es el que cierra el
+       contorno por el lado en sombra. Tiene que ser más oscuro, no igual, o
+       el filo se disuelve en el papel — que es justo lo que pasaba antes. */
+    const DARK = hex("#000418");
+    gl.uniform3f(gl.getUniformLocation(prog, "uRed"), ...AZUL);
+    gl.uniform3f(gl.getUniformLocation(prog, "uGrey"), ...BRUMA);
     gl.uniform3f(gl.getUniformLocation(prog, "uWhite"), ...WHITE);
     gl.uniform3f(gl.getUniformLocation(prog, "uDark"), ...DARK);
     gl.uniform3f(gl.getUniformLocation(prog, "uLit"), ...WHITE);
@@ -486,7 +487,7 @@ export default function ConfettiSphere() {
       const ctx = canvas!.getContext("2d");
       if (!ctx) return;
       const P: Array<{ x: number; y: number; s: number; a: number; r: number }> = [];
-      const cols = ["#8a8a8a", "#B3B3B3", "#e8e8e8"];
+      const cols = ["#3D6BFF", "#B8C6FF", "#ffffff"];
       const draw = () => {
         const w = canvas!.clientWidth, h = canvas!.clientHeight;
         const d = Math.min(devicePixelRatio || 1, 2);
