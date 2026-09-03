@@ -10,18 +10,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { logStrategyDecision, upsertPolicy } from "@/hooks/useWooCoreMap";
-import { REPLACEMENT_BEHAVIOR_LABELS } from "@/lib/coreReplenishment";
+import {
+  REPLACEMENT_BEHAVIOR_LABELS,
+  LIFECYCLE_LABELS,
+  policyChoiceLabel,
+  resolvePolicyChoice,
+  type ReplenishmentPolicyChoice,
+} from "@/lib/coreReplenishment";
 import { Search, ArrowLeft, Loader2 } from "lucide-react";
 import { LifecycleStatusDialog } from "./LifecycleStatusDialog";
 import { ReplenishmentRouteDialog } from "./ReplenishmentRouteDialog";
 
-type LifecycleChoice = "no_restock" | "exit" | "replaced";
+type LifecycleChoice = ReplenishmentPolicyChoice;
 
 const LIFECYCLE_CHOICES: { value: LifecycleChoice; label: string; hint: string }[] = [
+  { value: "restock", label: "Restock / Reposición", hint: "El producto puede generar reposición normalmente. Restock habilitado." },
   { value: "no_restock", label: "No restock", hint: "Se deja de reponer. Restock desactivado." },
   { value: "exit", label: "En salida", hint: "Producto saliendo del catálogo. Restock desactivado." },
   { value: "replaced", label: "Reemplazado", hint: "Sustituido por otro producto. Restock desactivado." },
 ];
+
 
 interface Ctx {
   map: any;
@@ -224,10 +232,11 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
     }
     hydratedForRef.current = null;
     const p = selected.policy;
-    const lcRaw = p?.lifecycle_status as LifecycleChoice | undefined;
-    const validChoices: LifecycleChoice[] = ["no_restock", "exit", "replaced"];
-    const alreadyDefined = lcRaw && validChoices.includes(lcRaw);
-    setStatus(alreadyDefined ? (lcRaw as LifecycleChoice) : (initialStatus ?? "no_restock"));
+    // La política de reposición se deriva del modelo actual (lifecycle + ruta + restock_enabled),
+    // no se asume desde el estado comercial.
+    const derived = resolvePolicyChoice(p);
+    setStatus(!p ? (initialStatus ?? "no_restock") : derived === "restock" && initialStatus ? initialStatus : derived);
+
 
     setBehavior(p?.replacement_behavior ?? "suggest_only");
     setReason(p?.decision_reason ?? "");
@@ -320,9 +329,7 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
   }, [fabricableCandidates, replacementDebounced, originalCoreId, originalWooId]);
 
   function policyLabel(ctx: Ctx) {
-    const lc = ctx.policy?.lifecycle_status;
-    if (!lc || lc === "active") return "Sin definir";
-    return lc;
+    return policyChoiceLabel(ctx.policy);
   }
 
   function candidateCtx(c: FabricableCandidate): Ctx {
@@ -380,42 +387,58 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id ?? null;
       const m = selected.map;
-      const patch: any = {
-        woo_product_id: m.woo_product_id,
-        core_product_id: selected.core?.id ?? null,
-        product_name_snapshot: m.woo_product_name,
-        sku_snapshot: m.woo_product_sku,
-        lifecycle_status: status,
-        restock_enabled: false,
-        decision_reason: reason || null,
-        last_reviewed_at: new Date().toISOString(),
-        reviewed_by: uid,
-        updated_by: uid,
-      };
-      if (status === "replaced") {
-        patch.replacement_product_id = replacement?.core_id ?? null;
-        patch.replacement_woo_product_id = replacement?.woo_product_id ?? null;
-        patch.replacement_behavior = behavior;
-      }
+       const currentLifecycle = selected.policy?.lifecycle_status ?? "active";
+       const isRestock = status === "restock";
+       const currentRoute = selected.policy?.replenishment_route;
+       const nextRoute = isRestock
+         ? (["external_supplier", "manual_cost_only"].includes(currentRoute ?? "") ? currentRoute : "internal_factory")
+         : status;
+       const patch: any = {
+         woo_product_id: m.woo_product_id,
+         core_product_id: selected.core?.id ?? null,
+         product_name_snapshot: m.woo_product_name,
+         sku_snapshot: m.woo_product_sku,
+         // Política de reposición no cambia el Lifecycle comercial.
+         lifecycle_status: currentLifecycle,
+         replenishment_route: nextRoute,
+         restock_enabled: isRestock,
+         // Al abandonar "Reemplazado", se limpian sus referencias obsoletas.
+         replacement_product_id: null,
+         replacement_woo_product_id: null,
+         replacement_behavior: null,
+         decision_reason: reason || null,
+         last_reviewed_at: new Date().toISOString(),
+         reviewed_by: uid,
+         updated_by: uid,
+       };
+       if (status === "replaced") {
+         patch.replacement_product_id = replacement?.core_id ?? null;
+         patch.replacement_woo_product_id = replacement?.woo_product_id ?? null;
+         patch.replacement_behavior = behavior;
+       }
       const { previous } = await upsertPolicy(patch);
-      await logStrategyDecision({
-        woo_product_id: m.woo_product_id,
-        core_product_id: selected.core?.id ?? null,
-        decision_type: "set_no_restock_policy",
-        previous_values: {
-          lifecycle_status: previous?.lifecycle_status ?? null,
-          replacement_product_id: previous?.replacement_product_id ?? null,
-          replacement_woo_product_id: previous?.replacement_woo_product_id ?? null,
-          replacement_behavior: previous?.replacement_behavior ?? null,
-        },
-        new_values: {
-          lifecycle_status: status,
-          replacement_product_id: patch.replacement_product_id ?? null,
-          replacement_woo_product_id: patch.replacement_woo_product_id ?? null,
-          replacement_behavior: patch.replacement_behavior ?? null,
-        },
-        reason: reason || null,
-      });
+       await logStrategyDecision({
+         woo_product_id: m.woo_product_id,
+         core_product_id: selected.core?.id ?? null,
+         decision_type: "set_replenishment_policy",
+         previous_values: {
+           lifecycle_status: previous?.lifecycle_status ?? null,
+           replenishment_route: previous?.replenishment_route ?? null,
+           restock_enabled: previous?.restock_enabled ?? null,
+           replacement_product_id: previous?.replacement_product_id ?? null,
+           replacement_woo_product_id: previous?.replacement_woo_product_id ?? null,
+           replacement_behavior: previous?.replacement_behavior ?? null,
+         },
+         new_values: {
+           lifecycle_status: patch.lifecycle_status,
+           replenishment_route: patch.replenishment_route,
+           restock_enabled: patch.restock_enabled,
+           replacement_product_id: patch.replacement_product_id ?? null,
+           replacement_woo_product_id: patch.replacement_woo_product_id ?? null,
+           replacement_behavior: patch.replacement_behavior ?? null,
+         },
+         reason: reason || null,
+       });
       toast({ title: "Política guardada" });
       onDone();
       onClose();
@@ -443,10 +466,11 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
             Woo #{m.woo_product_id} · {m.woo_product_sku ?? "sin SKU"}
           </div>
           <div className="flex gap-1 mt-1 flex-wrap">
-            <Badge variant={ctx.core ? "default" : "outline"} className="text-[9px]">
-              {ctx.core ? "Core conectado" : "Sin conexión Core"}
-            </Badge>
-            <Badge variant="outline" className="text-[9px]">Política: {policyLabel(ctx)}</Badge>
+             <Badge variant={ctx.core ? "default" : "outline"} className="text-[9px]">
+               {ctx.core ? "Core conectado" : "Sin conexión Core"}
+             </Badge>
+             <Badge variant="outline" className="text-[9px]">Lifecycle: {LIFECYCLE_LABELS[ctx.policy?.lifecycle_status ?? "active"] ?? "Activo"}</Badge>
+             <Badge variant="outline" className="text-[9px]">Reposición: {policyLabel(ctx)}</Badge>
           </div>
         </div>
         {already ? (
@@ -547,20 +571,20 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
                 </div>
               </div>
 
-              <div>
-                <Label>Estado</Label>
-                <Select value={status} onValueChange={v => setStatus(v as LifecycleChoice)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LIFECYCLE_CHOICES.map(c => (
-                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {LIFECYCLE_CHOICES.find(c => c.value === status)?.hint}
-                </p>
-              </div>
+               <div>
+                 <Label>Política de reposición</Label>
+                 <Select value={status} onValueChange={v => setStatus(v as LifecycleChoice)}>
+                   <SelectTrigger><SelectValue /></SelectTrigger>
+                   <SelectContent>
+                     {LIFECYCLE_CHOICES.map(c => (
+                       <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+                 <p className="text-[10px] text-muted-foreground mt-1">
+                   {LIFECYCLE_CHOICES.find(c => c.value === status)?.hint} El Lifecycle se cambia por separado en “Estado”.
+                 </p>
+               </div>
 
               {status === "replaced" && (
                 <div className="space-y-2 border rounded p-2 bg-muted/30">

@@ -25,11 +25,13 @@ import {
 } from "@/hooks/useWooCoreMap";
 import {
   LIFECYCLE_LABELS,
-  ROUTE_LABELS,
+  ROUTE_LABELS_ALL,
   BRAND_ROLE_LABELS,
   MAPPING_STATUS_LABELS,
   VARIANT_SYNC_LABELS,
   REPLACEMENT_BEHAVIOR_LABELS,
+  policyChoiceLabel,
+  routeLabel,
   resolveDisplayCost,
 } from "@/lib/coreReplenishment";
 import { LinkWooIdDialog } from "@/components/core/woocore/LinkWooIdDialog";
@@ -482,8 +484,8 @@ export default function CoreWooCoreMap() {
               <th className="p-2">Sync</th>
               <th className="p-2">Costo</th>
               <th className="p-2">Rol</th>
-              <th className="p-2">Estado</th>
-              <th className="p-2">Ruta</th>
+              <th className="p-2">Lifecycle</th>
+              <th className="p-2">Política / ruta</th>
               <th className="p-2">Reemplazo</th>
               <th className="p-2 text-right">Acciones</th>
             </tr>
@@ -520,9 +522,14 @@ export default function CoreWooCoreMap() {
                     </td>
                     <td className="p-2">{badge(VARIANT_SYNC_LABELS[m.variants_sync_status] ?? m.variants_sync_status)}</td>
                     <td className="p-2">{costCell(ctx)}</td>
-                    <td className="p-2">{badge(BRAND_ROLE_LABELS[p?.brand_role ?? "regular"])}</td>
-                    <td className="p-2">{badge(LIFECYCLE_LABELS[p?.lifecycle_status ?? "active"], p?.lifecycle_status && p.lifecycle_status !== "active" ? "destructive" : "outline")}</td>
-                    <td className="p-2">{badge(ROUTE_LABELS[p?.replenishment_route ?? "internal_factory"])}</td>
+                     <td className="p-2">{badge(BRAND_ROLE_LABELS[p?.brand_role ?? "regular"])}</td>
+                     <td className="p-2">{badge(LIFECYCLE_LABELS[p?.lifecycle_status ?? "active"], p?.lifecycle_status && p.lifecycle_status !== "active" ? "destructive" : "outline")}</td>
+                     <td className="p-2">
+                       <div className="flex flex-col gap-1">
+                         {badge(policyChoiceLabel(p))}
+                         <span className="text-[10px] text-muted-foreground">Ruta: {routeLabel(p?.replenishment_route)}</span>
+                       </div>
+                     </td>
                     <td className="p-2 max-w-[160px]">
                       {(() => {
                         const hasRef = !!(p?.replacement_product_id || p?.replacement_woo_product_id);
@@ -640,13 +647,13 @@ export default function CoreWooCoreMap() {
                   {Object.entries(LIFECYCLE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select value={filterRoute} onValueChange={setFilterRoute}>
-                <SelectTrigger><SelectValue placeholder="Ruta" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las rutas</SelectItem>
-                  {Object.entries(ROUTE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
+               <Select value={filterRoute} onValueChange={setFilterRoute}>
+                 <SelectTrigger><SelectValue placeholder="Ruta" /></SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="all">Todas las rutas</SelectItem>
+                   {Object.entries(ROUTE_LABELS_ALL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                 </SelectContent>
+               </Select>
               <Select value={filterBrand} onValueChange={setFilterBrand}>
                 <SelectTrigger><SelectValue placeholder="Rol" /></SelectTrigger>
                 <SelectContent>
@@ -726,12 +733,13 @@ export default function CoreWooCoreMap() {
                         </td>
                         <td className="p-2 font-mono text-[10px]">{ctx.map.woo_product_id}</td>
                         <td className="p-2">{ctx.core ? <Badge className="text-[10px]">Conectado</Badge> : <Badge variant="outline" className="text-[10px]">Sin Core</Badge>}</td>
-                        <td className="p-2">
-                          <div className="flex flex-col gap-1">
-                            {badge(LIFECYCLE_LABELS[p?.lifecycle_status ?? "active"], needsAct ? "outline" : "destructive")}
-                            {needsAct && <Badge variant="destructive" className="text-[9px] w-fit">Reemplazo sin activar</Badge>}
-                          </div>
-                        </td>
+                         <td className="p-2">
+                           <div className="flex flex-col gap-1">
+                             {badge(LIFECYCLE_LABELS[p?.lifecycle_status ?? "active"], needsAct ? "outline" : "destructive")}
+                             <span className="text-[10px] text-muted-foreground">Reposición: {policyChoiceLabel(p)}</span>
+                             {needsAct && <Badge variant="destructive" className="text-[9px] w-fit">Reemplazo sin activar</Badge>}
+                           </div>
+                         </td>
                         <td className="p-2">{replLabel}</td>
                         <td className="p-2">{p?.replacement_behavior ? (REPLACEMENT_BEHAVIOR_LABELS[p.replacement_behavior] ?? p.replacement_behavior) : "—"}</td>
                         <td className="p-2 text-[10px] text-muted-foreground">{p?.updated_at ? new Date(p.updated_at).toLocaleDateString() : "—"}</td>

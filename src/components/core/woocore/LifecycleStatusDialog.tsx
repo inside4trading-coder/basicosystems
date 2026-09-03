@@ -22,14 +22,13 @@ export function LifecycleStatusDialog({ open, onClose, onDone, ctx }: Props) {
     try {
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id ?? null;
-      const restock = status === "active";
       const patch: any = {
         woo_product_id: m.woo_product_id,
         core_product_id: ctx.core?.id ?? null,
         product_name_snapshot: m.woo_product_name,
         sku_snapshot: m.woo_product_sku,
+        // Lifecycle es el estado comercial; no modifica la política de reposición.
         lifecycle_status: status,
-        restock_enabled: restock,
         decision_reason: reason || null,
         last_reviewed_at: new Date().toISOString(),
         reviewed_by: uid,
@@ -41,7 +40,7 @@ export function LifecycleStatusDialog({ open, onClose, onDone, ctx }: Props) {
         core_product_id: ctx.core?.id ?? null,
         decision_type: "set_lifecycle_status",
         previous_values: { lifecycle_status: previous?.lifecycle_status ?? null },
-        new_values: { lifecycle_status: status, restock_enabled: restock },
+        new_values: { lifecycle_status: status },
         reason: reason || null,
       });
       toast({ title: "Estado guardado" });

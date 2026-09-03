@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { logStrategyDecision, upsertPolicy } from "@/hooks/useWooCoreMap";
-import { ROUTE_LABELS } from "@/lib/coreReplenishment";
+import { ROUTE_LABELS_ALL } from "@/lib/coreReplenishment";
 
 interface Props { open: boolean; onClose: () => void; onDone: () => void; ctx: any; }
 
@@ -33,6 +33,8 @@ export function ReplenishmentRouteDialog({ open, onClose, onDone, ctx }: Props) 
         product_name_snapshot: m.woo_product_name,
         sku_snapshot: m.woo_product_sku,
         replenishment_route: route,
+        // La ruta de reposición es independiente del estado comercial.
+        restock_enabled: ["internal_factory", "external_supplier", "manual_cost_only"].includes(route),
         external_supplier_name: route === "external_supplier" ? supplier || null : null,
         external_supplier_unit_cost_usd: route === "external_supplier" && sCost ? Number(sCost) : null,
         external_supplier_min_qty: route === "external_supplier" && sMin ? Number(sMin) : null,
@@ -60,12 +62,15 @@ export function ReplenishmentRouteDialog({ open, onClose, onDone, ctx }: Props) 
       <DialogContent>
         <DialogHeader><DialogTitle>Ruta de reposición</DialogTitle></DialogHeader>
         <div className="space-y-3 text-sm">
+          <p className="text-xs text-muted-foreground">
+            Esta decisión controla cómo se repone el producto. No cambia su Lifecycle / estado comercial.
+          </p>
           <div>
-            <Label>Ruta</Label>
+            <Label>Ruta operativa</Label>
             <Select value={route} onValueChange={setRoute}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {Object.entries(ROUTE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                {Object.entries(ROUTE_LABELS_ALL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
