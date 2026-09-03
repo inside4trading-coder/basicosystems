@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { logStrategyDecision, upsertPolicy } from "@/hooks/useWooCoreMap";
-import { ROUTE_LABELS } from "@/lib/coreReplenishment";
+import { ROUTE_LABELS_ALL } from "@/lib/coreReplenishment";
 
 interface Props { open: boolean; onClose: () => void; onDone: () => void; ctx: any; }
 
@@ -62,12 +62,15 @@ export function ReplenishmentRouteDialog({ open, onClose, onDone, ctx }: Props) 
       <DialogContent>
         <DialogHeader><DialogTitle>Ruta de reposición</DialogTitle></DialogHeader>
         <div className="space-y-3 text-sm">
+          <p className="text-xs text-muted-foreground">
+            Esta decisión controla cómo se repone el producto. No cambia su Lifecycle / estado comercial.
+          </p>
           <div>
-            <Label>Ruta</Label>
+            <Label>Ruta operativa</Label>
             <Select value={route} onValueChange={setRoute}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {Object.entries(ROUTE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                {Object.entries(ROUTE_LABELS_ALL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
