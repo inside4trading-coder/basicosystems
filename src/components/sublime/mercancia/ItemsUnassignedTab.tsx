@@ -32,6 +32,7 @@ import {
 import { ItemEditorSheet } from "./ItemEditorSheet";
 import { AssignToShipmentDialog } from "./AssignToShipmentDialog";
 import { BulkAssignShipmentDialog } from "./BulkAssignShipmentDialog";
+import { ConsignmentBadge } from "./ConsignmentBadge";
 
 function ItemThumb({ item, size = 40 }: { item: SublimeMerchItem; size?: number }) {
   const [src, setSrc] = useState<string>("");
@@ -207,12 +208,15 @@ export function ItemsUnassignedTab() {
                           onCheckedChange={(checked) => toggleItem(item, checked === true)}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <ItemThumb item={item} />
-                          <div className="min-w-0">
-                            <div className="truncate">{item.name}</div>
-                            <div className="text-[11px] text-muted-foreground truncate">{formatSizeSummary(item)} · {calculateTotalUnits(item)} uds</div>
+                       <TableCell className="font-medium">
+                         <div className="flex items-center gap-2">
+                           <ItemThumb item={item} />
+                           <div className="min-w-0">
+                             <div className="flex items-center gap-2 min-w-0">
+                               <div className="truncate">{item.name}</div>
+                               {item.is_consignment ? <ConsignmentBadge percentage={item.consignment_commission_pct} /> : null}
+                             </div>
+                             <div className="text-[11px] text-muted-foreground truncate">{formatSizeSummary(item)} · {calculateTotalUnits(item)} uds</div>
                             <PhotoCounts item={item} />
                           </div>
                         </div>
@@ -283,9 +287,12 @@ function MobileCard({
         <div className="flex items-start gap-3 min-w-0">
           <Checkbox aria-label={`Seleccionar ${item.name}`} checked={selected} disabled={assigned} onCheckedChange={(checked) => onSelect(checked === true)} className="mt-1" />
           <ItemThumb item={item} size={56} />
-          <div className="min-w-0">
-            <p className="font-semibold truncate">{item.name}</p>
-            <p className="text-xs text-muted-foreground">{item.codigo_fabricante ?? "sin código"} · {item.sku_web ?? "sin SKU"}</p>
+           <div className="min-w-0">
+             <div className="flex items-center gap-2 min-w-0">
+               <p className="font-semibold truncate">{item.name}</p>
+               {item.is_consignment ? <ConsignmentBadge percentage={item.consignment_commission_pct} /> : null}
+             </div>
+             <p className="text-xs text-muted-foreground">{item.codigo_fabricante ?? "sin código"} · {item.sku_web ?? "sin SKU"}</p>
             <p className="text-xs text-muted-foreground">{formatSizeSummary(item)} · {calculateTotalUnits(item)} uds</p>
             <PhotoCounts item={item} />
           </div>

@@ -25,6 +25,8 @@ import {
   type SublimeMerchBox,
 } from "@/hooks/useSublimeMerch";
 import {
+  calculateConsignmentCommission,
+  calculateConsignmentNet,
   calculateShippingCost,
   calculateTotalCost,
   calculateMargin,
@@ -40,6 +42,7 @@ import {
 import { ItemEditorSheet } from "./ItemEditorSheet";
 import { AssignToShipmentDialog } from "./AssignToShipmentDialog";
 import { ReceiveItemDialog } from "./ReceiveItemDialog";
+import { ConsignmentBadge } from "./ConsignmentBadge";
 
 
 function ItemThumb({ item, size = 40 }: { item: SublimeMerchItem; size?: number }) {
@@ -159,11 +162,14 @@ export function ItemsInTransitTab() {
               <Card key={i.id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-3 min-w-0">
-                    <ItemThumb item={i} size={56} />
-                    <div className="min-w-0">
-                      <p className="font-semibold truncate">{i.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {shipment?.shipment_number ?? "sin envío"} ·{" "}
+                     <ItemThumb item={i} size={56} />
+                     <div className="min-w-0">
+                       <div className="flex items-center gap-2 min-w-0">
+                         <p className="font-semibold truncate">{i.name}</p>
+                         {i.is_consignment ? <ConsignmentBadge percentage={i.consignment_commission_pct} /> : null}
+                       </div>
+                       <p className="text-xs text-muted-foreground">
+                         {shipment?.shipment_number ?? "sin envío"} ·{" "}
                         {box?.box_number ?? "sin caja"}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -190,9 +196,15 @@ export function ItemsInTransitTab() {
                     <p className="text-muted-foreground">Total</p>
                     <p className="font-medium">{total.toFixed(2)} €</p>
                   </div>
-                </div>
-                <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
-                  <Badge variant="secondary">
+                 </div>
+                 {i.is_consignment ? (
+                   <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs space-y-1">
+                     <div className="flex justify-between gap-4"><span className="text-muted-foreground">Comisión SUBLIME</span><span>{calculateConsignmentCommission(i, rule, shipment ?? null).toFixed(2)} €</span></div>
+                     <div className="flex justify-between gap-4"><span className="text-muted-foreground">Neto consignación</span><span className="font-semibold">{calculateConsignmentNet(i, rule, shipment ?? null)?.toFixed(2) ?? "—"} €</span></div>
+                   </div>
+                 ) : null}
+                 <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
+                   <Badge variant="secondary">
                     {MERCH_ESTADO_LABEL[i.estado as MerchEstado] ?? i.estado}
                   </Badge>
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -267,10 +279,13 @@ export function ItemsInTransitTab() {
                     <TableRow key={i.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
-                          <ItemThumb item={i} />
-                          <div className="min-w-0">
-                            <div className="truncate">{i.name}</div>
-                            <div className="text-[10px] text-muted-foreground">
+                           <ItemThumb item={i} />
+                           <div className="min-w-0">
+                             <div className="flex items-center gap-2 min-w-0">
+                               <div className="truncate">{i.name}</div>
+                               {i.is_consignment ? <ConsignmentBadge percentage={i.consignment_commission_pct} /> : null}
+                             </div>
+                             <div className="text-[10px] text-muted-foreground">
                               {i.codigo_fabricante ?? "—"}
                             </div>
                             <div className="text-[10px] text-muted-foreground truncate">
@@ -316,9 +331,10 @@ export function ItemsInTransitTab() {
                         </div>
                       </TableCell>
 
-                      <TableCell className="text-right">
-                        {margin == null ? "—" : `${margin.toFixed(2)} €`}
-                      </TableCell>
+                       <TableCell className="text-right">
+                         <div>{margin == null ? "—" : `${margin.toFixed(2)} €`}</div>
+                         {i.is_consignment ? <div className="text-[10px] text-amber-700 dark:text-amber-400">Comisión {calculateConsignmentCommission(i, rule, shipment ?? null).toFixed(2)} €</div> : null}
+                       </TableCell>
                       <TableCell>{i.sku_web ?? "—"}</TableCell>
                       <TableCell>
                         {i.subido_al_sistema ? (

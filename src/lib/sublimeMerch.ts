@@ -12,6 +12,9 @@ export interface MerchItemLike {
   product_type?: string | null;
   use_manual_pvp?: boolean | null;
   pvp_manual?: number | null;
+  is_consignment?: boolean | null;
+  consignment_commission_pct?: number | null;
+  consignment_commission_amount?: number | null;
 }
 
 export interface PricingRuleLike {
@@ -157,6 +160,29 @@ export function getFinalPvp(
   return suggested > 0 ? suggested : null;
 }
 
+export function calculateConsignmentCommission(
+  item: MerchItemLike,
+  rule?: PricingRuleLike | null,
+  shipment?: MerchShipmentLike | null,
+): number {
+  if (!item.is_consignment) return 0;
+  const pvpUnit = getFinalPvp(item, rule, shipment);
+  if (pvpUnit == null) return 0;
+  const pct = Math.min(100, Math.max(0, Number(item.consignment_commission_pct ?? 0)));
+  return pvpUnit * Math.max(1, calculateTotalUnits(item)) * pct / 100;
+}
+
+export function calculateConsignmentNet(
+  item: MerchItemLike,
+  rule?: PricingRuleLike | null,
+  shipment?: MerchShipmentLike | null,
+): number | null {
+  if (!item.is_consignment) return null;
+  const pvpUnit = getFinalPvp(item, rule, shipment);
+  if (pvpUnit == null) return null;
+  return pvpUnit * Math.max(1, calculateTotalUnits(item)) - calculateConsignmentCommission(item, rule, shipment);
+}
+
 export function calculateMargin(
   item: MerchItemLike,
   shipment?: MerchShipmentLike | null,
@@ -165,7 +191,7 @@ export function calculateMargin(
   const pvpUnit = getFinalPvp(item, rule, shipment);
   if (pvpUnit == null) return null;
   const units = Math.max(1, calculateTotalUnits(item));
-  return pvpUnit * units - calculateTotalCost(item, shipment);
+  return pvpUnit * units - calculateTotalCost(item, shipment) - calculateConsignmentCommission(item, rule, shipment);
 }
 
 export function calculateMerchMargin(
@@ -470,6 +496,10 @@ const CSV_COLUMNS = [
   "pvp_final_aplicado",
   "pvp_total",
   "margen_estimado",
+  "consignacion",
+  "comision_sublime_pct",
+  "comision_sublime",
+  "neto_consignacion",
   "shipment_number",
   "box_number",
   "sent_at",
@@ -516,6 +546,8 @@ export function buildSublimeMerchCsv(
     const suggestedTent = tentBase + tentIva;
     const finalPvp = getFinalPvp(it, rule, hasShipment ? ship : null);
     const margin = calculateMargin(it, hasShipment ? ship : null, rule);
+    const commission = calculateConsignmentCommission(it, rule, hasShipment ? ship : null);
+    const consignmentNet = calculateConsignmentNet(it, rule, hasShipment ? ship : null);
     const pvpTotal = finalPvp != null ? finalPvp * units : null;
     const row = [
       it.sku_web ?? "",
@@ -547,6 +579,10 @@ export function buildSublimeMerchCsv(
       finalPvp != null ? finalPvp.toFixed(2) : "",
       pvpTotal != null ? pvpTotal.toFixed(2) : "",
       margin != null ? margin.toFixed(2) : "",
+      it.is_consignment ? "true" : "false",
+      it.is_consignment ? Number(it.consignment_commission_pct ?? 0).toFixed(2) : "",
+      it.is_consignment ? commission.toFixed(2) : "",
+      it.is_consignment && consignmentNet != null ? consignmentNet.toFixed(2) : "",
       ship?.shipment_number ?? "",
       box?.box_number ?? "",
       ship?.sent_at ?? "",

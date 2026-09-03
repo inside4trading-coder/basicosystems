@@ -9164,12 +9164,15 @@ export type Database = {
         Row: {
           box_id: string | null
           codigo_fabricante: string | null
+          consignment_commission_amount: number
+          consignment_commission_pct: number
           created_at: string
           created_by: string | null
           estado: string
           fotos_origen: string[]
           fotos_web: string[]
           id: string
+          is_consignment: boolean
           name: string
           no_size: boolean
           notas: string | null
@@ -9197,12 +9200,15 @@ export type Database = {
         Insert: {
           box_id?: string | null
           codigo_fabricante?: string | null
+          consignment_commission_amount?: number
+          consignment_commission_pct?: number
           created_at?: string
           created_by?: string | null
           estado?: string
           fotos_origen?: string[]
           fotos_web?: string[]
           id?: string
+          is_consignment?: boolean
           name: string
           no_size?: boolean
           notas?: string | null
@@ -9230,12 +9236,15 @@ export type Database = {
         Update: {
           box_id?: string | null
           codigo_fabricante?: string | null
+          consignment_commission_amount?: number
+          consignment_commission_pct?: number
           created_at?: string
           created_by?: string | null
           estado?: string
           fotos_origen?: string[]
           fotos_web?: string[]
           id?: string
+          is_consignment?: boolean
           name?: string
           no_size?: boolean
           notas?: string | null
