@@ -263,7 +263,11 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                   <tr
                     key={r.id}
                     className={`border-t align-top ${
-                      justSolved ? "bg-emerald-50 dark:bg-emerald-950/30" : ""
+                      justSolved
+                        ? "bg-emerald-50 dark:bg-emerald-950/30"
+                        : refreshInfo?.changed
+                          ? "bg-amber-50 dark:bg-amber-950/20"
+                          : ""
                     }`}
                   >
                     <td className="p-2 whitespace-nowrap text-xs">
@@ -359,6 +363,9 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                       ) : (
                         <div className="flex flex-col gap-1">
                           <Badge variant="outline" className="w-fit">{r.status}</Badge>
+                          {refreshInfo?.changed && (
+                            <Badge className="bg-amber-600 text-white w-fit">Política actualizada</Badge>
+                          )}
                           {refreshInfo && !refreshInfo.resolved && (
                             <span className="text-[11px] text-amber-600">{refreshInfo.message}</span>
                           )}
