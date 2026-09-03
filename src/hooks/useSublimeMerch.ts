@@ -570,6 +570,44 @@ export function useMerchMutations() {
     onSuccess: invalidate,
   });
 
+  const bulkAssignItemsToShipmentBox = useMutation({
+    mutationFn: async ({
+      itemIds,
+      shipmentId,
+      boxId,
+    }: {
+      itemIds: string[];
+      shipmentId: string;
+      boxId: string;
+    }) => {
+      if (!itemIds.length) throw new Error("No hay productos seleccionados.");
+      if (!shipmentId || !boxId) {
+        throw new Error("Selecciona una caja válida para este envío.");
+      }
+      const { data: box, error: boxErr } = await (supabase as any)
+        .from(T_BOX)
+        .select("id, shipment_id")
+        .eq("id", boxId)
+        .single();
+      if (boxErr || !box || box.shipment_id !== shipmentId) {
+        throw new Error("Selecciona una caja válida para este envío.");
+      }
+      const { data, error } = await (supabase as any)
+        .from(TABLE)
+        .update({
+          shipment_id: shipmentId,
+          box_id: boxId,
+          estado: "in_transit",
+        })
+        .in("id", itemIds)
+        .select();
+      if (error) throw error;
+      return (data ?? []) as SublimeMerchItem[];
+    },
+    onSuccess: invalidate,
+  });
+
+
   const markItemReceived = useMutation({
     mutationFn: async (itemId: string) => {
       const { data: userRes } = await supabase.auth.getUser();
