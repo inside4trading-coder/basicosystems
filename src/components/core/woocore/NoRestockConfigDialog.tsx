@@ -389,7 +389,10 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
       const m = selected.map;
        const currentLifecycle = selected.policy?.lifecycle_status ?? "active";
        const isRestock = status === "restock";
-       const nextRoute = isRestock ? "internal_factory" : status;
+       const currentRoute = selected.policy?.replenishment_route;
+       const nextRoute = isRestock
+         ? (["external_supplier", "manual_cost_only"].includes(currentRoute ?? "") ? currentRoute : "internal_factory")
+         : status;
        const patch: any = {
          woo_product_id: m.woo_product_id,
          core_product_id: selected.core?.id ?? null,
