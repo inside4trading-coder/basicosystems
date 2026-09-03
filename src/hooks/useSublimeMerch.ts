@@ -570,6 +570,58 @@ export function useMerchMutations() {
     onSuccess: invalidate,
   });
 
+  const bulkAssignItemsToShipmentBox = useMutation({
+    mutationFn: async ({
+      itemIds,
+      shipmentId,
+      boxId,
+    }: {
+      itemIds: string[];
+      shipmentId: string;
+      boxId: string;
+    }) => {
+      if (!itemIds.length) throw new Error("No hay productos seleccionados.");
+      if (!shipmentId || !boxId) {
+        throw new Error("Selecciona una caja válida para este envío.");
+      }
+      const { data: box, error: boxErr } = await (supabase as any)
+        .from(T_BOX)
+        .select("id, shipment_id")
+        .eq("id", boxId)
+        .single();
+      if (boxErr || !box || box.shipment_id !== shipmentId) {
+        throw new Error("Selecciona una caja válida para este envío.");
+      }
+      const { data: currentItems, error: currentErr } = await (supabase as any)
+        .from(TABLE)
+        .select("id, shipment_id, box_id")
+        .in("id", itemIds);
+      if (currentErr) throw currentErr;
+      const assignedItems = (currentItems ?? []).filter(
+        (item: { shipment_id: string | null; box_id: string | null }) =>
+          item.shipment_id !== null || item.box_id !== null,
+      );
+      if (assignedItems.length > 0 || (currentItems ?? []).length !== itemIds.length) {
+        throw new Error("Uno o más productos ya tienen un envío o caja asignados. Actualiza la lista e inténtalo de nuevo.");
+      }
+      const { data, error } = await (supabase as any)
+        .from(TABLE)
+        .update({
+          shipment_id: shipmentId,
+          box_id: boxId,
+          estado: "in_transit",
+        })
+        .in("id", itemIds)
+        .is("shipment_id", null)
+        .is("box_id", null)
+        .select();
+      if (error) throw error;
+      return (data ?? []) as SublimeMerchItem[];
+    },
+    onSuccess: invalidate,
+  });
+
+
   const markItemReceived = useMutation({
     mutationFn: async (itemId: string) => {
       const { data: userRes } = await supabase.auth.getUser();
@@ -692,6 +744,8 @@ export function useMerchMutations() {
     createBox,
     updateBox,
     assignItemToShipmentBox,
+    bulkAssignItemsToShipmentBox,
+
     markItemReceived,
     markBoxReceived,
     markItemAvailable,
