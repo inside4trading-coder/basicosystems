@@ -107,7 +107,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
   const [refreshResults, setRefreshResults] = useState<
     Record<
       string,
-      { resolved: boolean; message: string; reason?: string; selfReplacement?: boolean }
+      { resolved: boolean; changed?: boolean; message: string; reason?: string; selfReplacement?: boolean }
     >
   >({});
 
@@ -118,6 +118,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
       ...s,
       [row.id]: {
         resolved: res.resolved,
+        changed: (res as any).changed,
         message: res.message,
         reason: res.reason,
         selfReplacement: (res as any).selfReplacement,
@@ -125,33 +126,35 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
     }));
     setRefreshing((s) => ({ ...s, [row.id]: false }));
     toast({
-      title: res.resolved ? "Solucionado" : "Sigue pendiente",
+      title: (res as any).changed ? "Cambios detectados" : "Sin cambios",
       description: res.message,
     });
   };
 
   const handleRefreshAll = async (list: PolicyEvent[]) => {
     setRefreshAll(true);
-    let solved = 0;
+    let changed = 0;
     for (const row of list) {
       const res = await refreshRow(row);
       setRefreshResults((s) => ({
         ...s,
         [row.id]: {
           resolved: res.resolved,
+          changed: (res as any).changed,
           message: res.message,
           reason: res.reason,
           selfReplacement: (res as any).selfReplacement,
         },
       }));
-      if (res.resolved) solved += 1;
+      if ((res as any).changed) changed += 1;
     }
     setRefreshAll(false);
     toast({
-      title: "Revalidación completada",
-      description: `${solved} de ${list.length} pendientes quedaron solucionados.`,
+      title: "Actualización completada",
+      description: `${changed} de ${list.length} pendientes cambiaron de política. Ninguna se resolvió automáticamente.`,
     });
   };
+
 
 
   const [filter, setFilter] = useState<string>(initialFilter ?? "all");
