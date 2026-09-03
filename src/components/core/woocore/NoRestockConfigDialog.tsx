@@ -232,10 +232,11 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
     }
     hydratedForRef.current = null;
     const p = selected.policy;
-    const lcRaw = p?.lifecycle_status as LifecycleChoice | undefined;
-    const validChoices: LifecycleChoice[] = ["no_restock", "exit", "replaced"];
-    const alreadyDefined = lcRaw && validChoices.includes(lcRaw);
-    setStatus(alreadyDefined ? (lcRaw as LifecycleChoice) : (initialStatus ?? "no_restock"));
+    // La política de reposición se deriva del modelo actual (lifecycle + ruta + restock_enabled),
+    // no se asume desde el estado comercial.
+    const derived = resolvePolicyChoice(p);
+    setStatus(p ? derived : (initialStatus ?? "no_restock"));
+
 
     setBehavior(p?.replacement_behavior ?? "suggest_only");
     setReason(p?.decision_reason ?? "");
