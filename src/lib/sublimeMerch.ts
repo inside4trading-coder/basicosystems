@@ -570,6 +570,7 @@ const CSV_COLUMNS = [
   "consignacion",
   "comision_sublime_pct",
   "comision_sublime",
+  "iva_incluido_consignacion",
   "neto_consignacion",
   "shipment_number",
   "box_number",
@@ -619,6 +620,7 @@ export function buildSublimeMerchCsv(
     const margin = calculateMargin(it, hasShipment ? ship : null, rule);
     const commission = calculateConsignmentCommission(it, rule, hasShipment ? ship : null);
     const consignmentNet = calculateConsignmentNet(it, rule, hasShipment ? ship : null);
+    const consignmentBreak = getConsignmentBreakdown(it, rule, hasShipment ? ship : null);
     const pvpTotal = finalPvp != null ? finalPvp * units : null;
     const row = [
       it.sku_web ?? "",
@@ -653,6 +655,7 @@ export function buildSublimeMerchCsv(
       it.is_consignment ? "true" : "false",
       it.is_consignment ? Number(it.consignment_commission_pct ?? 0).toFixed(2) : "",
       it.is_consignment ? commission.toFixed(2) : "",
+      it.is_consignment && consignmentBreak ? consignmentBreak.ivaTotal.toFixed(2) : "",
       it.is_consignment && consignmentNet != null ? consignmentNet.toFixed(2) : "",
       ship?.shipment_number ?? "",
       box?.box_number ?? "",
