@@ -76,14 +76,22 @@ export function routeLabel(route?: string | null): string {
 // Política de reposición: concepto separado del Lifecycle comercial.
 export const REPLENISHMENT_POLICY_LABELS: Record<string, string> = {
   restock: "Restock / Reposición",
+  external_supplier: "Proveedor externo",
+  manual_cost_only: "Solo costo manual",
   no_restock: "No restock",
   exit: "En salida",
   replaced: "Reemplazado",
 };
 
-export type ReplenishmentPolicyChoice = "restock" | "no_restock" | "exit" | "replaced";
+export type ReplenishmentPolicyChoice =
+  | "restock"
+  | "external_supplier"
+  | "manual_cost_only"
+  | "no_restock"
+  | "exit"
+  | "replaced";
 
-/** Deriva la política de reposición efectiva a partir de lifecycle + ruta + restock_enabled. */
+/** Deriva la política efectiva sin confundirla con el Lifecycle comercial. */
 export function resolvePolicyChoice(p?: {
   lifecycle_status?: string | null;
   restock_enabled?: boolean | null;
@@ -96,7 +104,11 @@ export function resolvePolicyChoice(p?: {
   if (lc === "exit") return "exit";
   if (lc === "no_restock" || lc === "ignored" || lc === "archived") return "no_restock";
   const route = p?.replenishment_route ?? "internal_factory";
-  if (["no_restock", "none", "ignored", "exit", "replaced"].includes(route)) return "no_restock";
+  if (["no_restock", "none", "ignored"].includes(route)) return "no_restock";
+  if (route === "exit") return "exit";
+  if (route === "replaced") return "replaced";
+  if (route === "external_supplier") return "external_supplier";
+  if (route === "manual_cost_only") return "manual_cost_only";
   if (p?.restock_enabled === false) return "no_restock";
   if (p?.replacement_product_id || p?.replacement_woo_product_id) return "replaced";
   return "restock";
