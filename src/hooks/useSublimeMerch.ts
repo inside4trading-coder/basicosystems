@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  uploadSublimeMerchPhoto,
+  calculateConsignmentCommission,
   deleteSublimeMerchPhotoFromStorage,
+  findPricingRule,
+  uploadSublimeMerchPhoto,
   type PhotoType,
 } from "@/lib/sublimeMerch";
 
@@ -35,6 +37,9 @@ export interface SublimeMerchItem {
   product_type: string;
   use_manual_pvp: boolean;
   pvp_manual: number | null;
+  is_consignment: boolean;
+  consignment_commission_pct: number;
+  consignment_commission_amount: number;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -57,6 +62,9 @@ export interface MerchItemInput {
   product_type: string;
   use_manual_pvp: boolean;
   pvp_manual: number | null;
+  is_consignment: boolean;
+  consignment_commission_pct: number;
+  consignment_commission_amount: number;
 }
 
 export interface SublimePricingRule {
@@ -125,6 +133,22 @@ export interface BoxInput {
 const TABLE = "sublime_merch_items";
 const T_SHIP = "sublime_merch_shipments";
 const T_BOX = "sublime_merch_boxes";
+
+const T_RULES = "sublime_merch_pricing_rules";
+
+async function resolveConsignmentAmount(input: MerchItemInput, shipmentId?: string | null): Promise<number> {
+  if (!input.is_consignment) return 0;
+  const [shipmentResult, ruleResult] = await Promise.all([
+    shipmentId
+      ? (supabase as any).from(T_SHIP).select("cost_per_kg_eur").eq("id", shipmentId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    (supabase as any).from(T_RULES).select("product_type, label, profit_percentage, active").eq("product_type", input.product_type).maybeSingle(),
+  ]);
+  if (shipmentResult.error) throw shipmentResult.error;
+  if (ruleResult.error) throw ruleResult.error;
+  const rule = ruleResult.data ?? findPricingRule(null, input.product_type);
+  return calculateConsignmentCommission(input, rule, shipmentResult.data ?? null);
+}
 
 function sortByNewest<T extends { created_at?: string | null; inserted_at?: string | null; updated_at?: string | null }>(
   items: T[]
@@ -304,6 +328,9 @@ export function useMerchMutations() {
         product_type: input.product_type,
         use_manual_pvp: input.use_manual_pvp,
         pvp_manual: input.pvp_manual,
+        is_consignment: input.is_consignment,
+        consignment_commission_pct: input.is_consignment ? input.consignment_commission_pct : 0,
+        consignment_commission_amount: await resolveConsignmentAmount(input),
         created_by: uid,
 
       };
@@ -330,6 +357,12 @@ export function useMerchMutations() {
     }) => {
       const { data: userRes } = await supabase.auth.getUser();
       const uid = userRes.user?.id ?? null;
+      const { data: existingItem, error: existingItemError } = await (supabase as any)
+        .from(TABLE)
+        .select("shipment_id")
+        .eq("id", id)
+        .maybeSingle();
+      if (existingItemError) throw existingItemError;
       const payload: Record<string, unknown> = {
         name: input.name.trim(),
         precio_compra: input.precio_compra,
@@ -346,6 +379,9 @@ export function useMerchMutations() {
         product_type: input.product_type,
         use_manual_pvp: input.use_manual_pvp,
         pvp_manual: input.pvp_manual,
+        is_consignment: input.is_consignment,
+        consignment_commission_pct: input.is_consignment ? input.consignment_commission_pct : 0,
+        consignment_commission_amount: await resolveConsignmentAmount(input, existingItem?.shipment_id),
       };
 
       if (input.subido_al_sistema && !wasUploaded) {
@@ -554,12 +590,20 @@ export function useMerchMutations() {
       if (boxErr || !box || box.shipment_id !== shipmentId) {
         throw new Error("Selecciona una caja válida para este envío.");
       }
+      const { data: currentItem, error: itemErr } = await (supabase as any)
+        .from(TABLE)
+        .select("*")
+        .eq("id", itemId)
+        .single();
+      if (itemErr) throw itemErr;
+      const commissionAmount = await resolveConsignmentAmount(currentItem as MerchItemInput, shipmentId);
       const { data, error } = await (supabase as any)
         .from(TABLE)
         .update({
           shipment_id: shipmentId,
           box_id: boxId,
           estado: "in_transit",
+          consignment_commission_amount: commissionAmount,
         })
         .eq("id", itemId)
         .select()
@@ -594,7 +638,7 @@ export function useMerchMutations() {
       }
       const { data: currentItems, error: currentErr } = await (supabase as any)
         .from(TABLE)
-        .select("id, shipment_id, box_id")
+        .select("*")
         .in("id", itemIds);
       if (currentErr) throw currentErr;
       const assignedItems = (currentItems ?? []).filter(
@@ -604,19 +648,25 @@ export function useMerchMutations() {
       if (assignedItems.length > 0 || (currentItems ?? []).length !== itemIds.length) {
         throw new Error("Uno o más productos ya tienen un envío o caja asignados. Actualiza la lista e inténtalo de nuevo.");
       }
-      const { data, error } = await (supabase as any)
-        .from(TABLE)
-        .update({
-          shipment_id: shipmentId,
-          box_id: boxId,
-          estado: "in_transit",
-        })
-        .in("id", itemIds)
-        .is("shipment_id", null)
-        .is("box_id", null)
-        .select();
-      if (error) throw error;
-      return (data ?? []) as SublimeMerchItem[];
+      const updates = await Promise.all((currentItems ?? []).map(async (currentItem: SublimeMerchItem & MerchItemInput) => {
+        const commissionAmount = await resolveConsignmentAmount(currentItem, shipmentId);
+        const { data, error } = await (supabase as any)
+          .from(TABLE)
+          .update({
+            shipment_id: shipmentId,
+            box_id: boxId,
+            estado: "in_transit",
+            consignment_commission_amount: commissionAmount,
+          })
+          .eq("id", currentItem.id)
+          .is("shipment_id", null)
+          .is("box_id", null)
+          .select()
+          .single();
+        if (error) throw error;
+        return data as SublimeMerchItem;
+      }));
+      return updates;
     },
     onSuccess: invalidate,
   });
@@ -799,9 +849,6 @@ export function useSublimeMerchSummary() {
     },
   });
 }
-
-
-const T_RULES = "sublime_merch_pricing_rules";
 
 export function useSublimePricingRules() {
   return useQuery({

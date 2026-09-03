@@ -22,6 +22,8 @@ import {
   calculateShippingCost,
   calculateSuggestedBasePvp,
   calculateIvaAmount,
+  calculateConsignmentCommission,
+  calculateConsignmentNet,
   getFinalPvp,
   findPricingRule,
   IVA_RATE,
@@ -74,6 +76,9 @@ const empty = (): MerchItemInput => ({
   product_type: "franelas_hoodies",
   use_manual_pvp: false,
   pvp_manual: null,
+  is_consignment: false,
+  consignment_commission_pct: 0,
+  consignment_commission_amount: 0,
 });
 
 
@@ -129,6 +134,9 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
               product_type: (item.product_type as string) ?? "franelas_hoodies",
               use_manual_pvp: Boolean(item.use_manual_pvp),
               pvp_manual: item.pvp_manual == null ? null : Number(item.pvp_manual),
+              is_consignment: Boolean(item.is_consignment),
+              consignment_commission_pct: Number(item.consignment_commission_pct ?? 0),
+              consignment_commission_amount: Number(item.consignment_commission_amount ?? 0),
             }
 
           : empty(),
@@ -223,6 +231,8 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
     if (form.peso_kg < 0) return toast.error("Peso no puede ser negativo.");
     if (form.pvp != null && form.pvp < 0)
       return toast.error("PVP no puede ser negativo.");
+    if (form.is_consignment && (form.consignment_commission_pct < 0 || form.consignment_commission_pct > 100))
+      return toast.error("La comisión debe estar entre 0% y 100%.");
 
     // Sizes validation
     if (form.no_size) {
@@ -243,14 +253,24 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
       if (!check.ok) return toast.error(check.message);
     }
 
+    const commissionPvp = getFinalPvp(form, currentRule, currentShipment);
+    const commissionAmount = form.is_consignment && commissionPvp != null
+      ? commissionPvp * Math.max(1, calculateTotalUnits(form)) * Number(form.consignment_commission_pct ?? 0) / 100
+      : 0;
+    const inputToSave: MerchItemInput = {
+      ...form,
+      consignment_commission_pct: form.is_consignment ? Number(form.consignment_commission_pct ?? 0) : 0,
+      consignment_commission_amount: commissionAmount,
+    };
+
     setSaving(true);
     try {
       if (isEdit && item) {
-        await updateItem.mutateAsync({ id: item.id, input: form, wasUploaded });
+        await updateItem.mutateAsync({ id: item.id, input: inputToSave, wasUploaded });
         toast.success("Producto actualizado.");
         onOpenChange(false);
       } else {
-        const created = await createItem.mutateAsync(form);
+        const created = await createItem.mutateAsync(inputToSave);
         let failures = 0;
         for (const p of pendingOrigen) {
           try {
@@ -1054,6 +1074,57 @@ function SuggestedPricePanel({
         <span className="font-semibold">
           {finalPvp != null ? `${finalPvp.toFixed(2)} €` : "—"}
         </span>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Venta en consignación</Label>
+              {form.is_consignment ? (
+                <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400 text-[10px] whitespace-nowrap">
+                  CONSIGNACIÓN · {Number(form.consignment_commission_pct ?? 0)}% SUBLIME
+                </Badge>
+              ) : null}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              La comisión se descuenta del PVP final y nunca se suma al coste de compra.
+            </p>
+          </div>
+          <Switch
+            checked={form.is_consignment}
+            onCheckedChange={(value) => onChange({
+              is_consignment: value,
+              consignment_commission_pct: value ? Number(form.consignment_commission_pct ?? 0) : 0,
+              consignment_commission_amount: 0,
+            })}
+          />
+        </div>
+
+        {form.is_consignment ? (
+          <>
+            <div className="space-y-2">
+              <Label>Comisión SUBLIME (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                value={form.consignment_commission_pct}
+                onChange={(e) => onChange({
+                  consignment_commission_pct: e.target.value === "" ? 0 : Number(e.target.value),
+                })}
+              />
+            </div>
+            <div className="space-y-1 rounded-md border border-border/60 bg-background p-2 text-xs">
+              <Row k="PVP final" v={finalPvp == null ? "—" : `${(finalPvp * units).toFixed(2)} €`} />
+              <Row k={`− Comisión SUBLIME (${Number(form.consignment_commission_pct ?? 0)}%)`} v={`${calculateConsignmentCommission(form, rule, hasShipment ? shipment : null).toFixed(2)} €`} />
+              <Row k="= Neto de consignación" v={<span className="font-semibold">{calculateConsignmentNet(form, rule, hasShipment ? shipment : null) == null ? "—" : `${calculateConsignmentNet(form, rule, hasShipment ? shipment : null)?.toFixed(2)} €`}</span>} />
+            </div>
+          </>
+        ) : null}
       </div>
     </div>
   );
