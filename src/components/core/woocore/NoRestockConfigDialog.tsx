@@ -13,7 +13,7 @@ import { logStrategyDecision, upsertPolicy } from "@/hooks/useWooCoreMap";
 import {
   REPLACEMENT_BEHAVIOR_LABELS,
   LIFECYCLE_LABELS,
-  routeLabel,
+  policyChoiceLabel,
   resolvePolicyChoice,
   type ReplenishmentPolicyChoice,
 } from "@/lib/coreReplenishment";
@@ -329,9 +329,7 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
   }, [fabricableCandidates, replacementDebounced, originalCoreId, originalWooId]);
 
   function policyLabel(ctx: Ctx) {
-    const lc = ctx.policy?.lifecycle_status;
-    if (!lc || lc === "active") return "Sin definir";
-    return lc;
+    return policyChoiceLabel(ctx.policy);
   }
 
   function candidateCtx(c: FabricableCandidate): Ctx {
@@ -391,15 +389,14 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
       const m = selected.map;
        const currentLifecycle = selected.policy?.lifecycle_status ?? "active";
        const isRestock = status === "restock";
-       const nextLifecycle = isRestock ? "active" : status;
        const nextRoute = isRestock ? "internal_factory" : status;
        const patch: any = {
          woo_product_id: m.woo_product_id,
          core_product_id: selected.core?.id ?? null,
          product_name_snapshot: m.woo_product_name,
          sku_snapshot: m.woo_product_sku,
-         // Este diálogo configura la política; Lifecycle se conserva al editar Restock.
-         lifecycle_status: isRestock ? currentLifecycle : nextLifecycle,
+         // Política de reposición no cambia el Lifecycle comercial.
+         lifecycle_status: currentLifecycle,
          replenishment_route: nextRoute,
          restock_enabled: isRestock,
          decision_reason: reason || null,
@@ -458,10 +455,11 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
             Woo #{m.woo_product_id} · {m.woo_product_sku ?? "sin SKU"}
           </div>
           <div className="flex gap-1 mt-1 flex-wrap">
-            <Badge variant={ctx.core ? "default" : "outline"} className="text-[9px]">
-              {ctx.core ? "Core conectado" : "Sin conexión Core"}
-            </Badge>
-            <Badge variant="outline" className="text-[9px]">Política: {policyLabel(ctx)}</Badge>
+             <Badge variant={ctx.core ? "default" : "outline"} className="text-[9px]">
+               {ctx.core ? "Core conectado" : "Sin conexión Core"}
+             </Badge>
+             <Badge variant="outline" className="text-[9px]">Lifecycle: {LIFECYCLE_LABELS[ctx.policy?.lifecycle_status ?? "active"] ?? "Activo"}</Badge>
+             <Badge variant="outline" className="text-[9px]">Reposición: {policyLabel(ctx)}</Badge>
           </div>
         </div>
         {already ? (

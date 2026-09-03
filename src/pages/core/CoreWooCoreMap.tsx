@@ -25,7 +25,6 @@ import {
 } from "@/hooks/useWooCoreMap";
 import {
   LIFECYCLE_LABELS,
-  ROUTE_LABELS,
   ROUTE_LABELS_ALL,
   BRAND_ROLE_LABELS,
   MAPPING_STATUS_LABELS,
