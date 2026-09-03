@@ -141,8 +141,8 @@ export function calculateSuggestedFinalPvp(cost: number, profitPercentage: numbe
   return base + calculateIvaAmount(base);
 }
 
-/** Final PVP (per unit) applied to the item, considering manual override or suggested. */
-export function getFinalPvp(
+/** Base PVP (per unit): precio sugerido/manual sin la participación de SUBLIME. */
+export function getBasePvp(
   item: MerchItemLike,
   rule?: PricingRuleLike | null,
   shipment?: MerchShipmentLike | null,
@@ -160,16 +160,75 @@ export function getFinalPvp(
   return suggested > 0 ? suggested : null;
 }
 
+function consignmentPct(item: MerchItemLike): number {
+  if (!item.is_consignment) return 0;
+  // Clamp: 100% haría infinito el PVP final.
+  return Math.min(99.99, Math.max(0, Number(item.consignment_commission_pct ?? 0)));
+}
+
+/**
+ * Final PVP (per unit) aplicado al item.
+ * En consignación, la comisión es un porcentaje DEL PVP FINAL:
+ *   PVP final = PVP base / (1 - pct)
+ */
+export function getFinalPvp(
+  item: MerchItemLike,
+  rule?: PricingRuleLike | null,
+  shipment?: MerchShipmentLike | null,
+): number | null {
+  const base = getBasePvp(item, rule, shipment);
+  if (base == null) return null;
+  if (!item.is_consignment) return base;
+  const pct = consignmentPct(item);
+  return base / (1 - pct / 100);
+}
+
+export type ConsignmentBreakdown = {
+  units: number;
+  pct: number;
+  basePvpUnit: number;
+  finalPvpUnit: number;
+  commissionUnit: number;
+  netOwnerUnit: number;
+  basePvpTotal: number;
+  finalPvpTotal: number;
+  commissionTotal: number;
+  netOwnerTotal: number;
+};
+
+export function getConsignmentBreakdown(
+  item: MerchItemLike,
+  rule?: PricingRuleLike | null,
+  shipment?: MerchShipmentLike | null,
+): ConsignmentBreakdown | null {
+  if (!item.is_consignment) return null;
+  const base = getBasePvp(item, rule, shipment);
+  if (base == null) return null;
+  const pct = consignmentPct(item);
+  const units = Math.max(1, calculateTotalUnits(item));
+  const finalPvpUnit = base / (1 - pct / 100);
+  const commissionUnit = finalPvpUnit * pct / 100;
+  const netOwnerUnit = finalPvpUnit - commissionUnit;
+  return {
+    units,
+    pct,
+    basePvpUnit: base,
+    finalPvpUnit,
+    commissionUnit,
+    netOwnerUnit,
+    basePvpTotal: base * units,
+    finalPvpTotal: finalPvpUnit * units,
+    commissionTotal: commissionUnit * units,
+    netOwnerTotal: netOwnerUnit * units,
+  };
+}
+
 export function calculateConsignmentCommission(
   item: MerchItemLike,
   rule?: PricingRuleLike | null,
   shipment?: MerchShipmentLike | null,
 ): number {
-  if (!item.is_consignment) return 0;
-  const pvpUnit = getFinalPvp(item, rule, shipment);
-  if (pvpUnit == null) return 0;
-  const pct = Math.min(100, Math.max(0, Number(item.consignment_commission_pct ?? 0)));
-  return pvpUnit * Math.max(1, calculateTotalUnits(item)) * pct / 100;
+  return getConsignmentBreakdown(item, rule, shipment)?.commissionTotal ?? 0;
 }
 
 export function calculateConsignmentNet(
@@ -177,11 +236,10 @@ export function calculateConsignmentNet(
   rule?: PricingRuleLike | null,
   shipment?: MerchShipmentLike | null,
 ): number | null {
-  if (!item.is_consignment) return null;
-  const pvpUnit = getFinalPvp(item, rule, shipment);
-  if (pvpUnit == null) return null;
-  return pvpUnit * Math.max(1, calculateTotalUnits(item)) - calculateConsignmentCommission(item, rule, shipment);
+  const b = getConsignmentBreakdown(item, rule, shipment);
+  return b ? b.netOwnerTotal : null;
 }
+
 
 export function calculateMargin(
   item: MerchItemLike,
