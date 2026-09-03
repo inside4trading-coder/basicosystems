@@ -733,12 +733,13 @@ export default function CoreWooCoreMap() {
                         </td>
                         <td className="p-2 font-mono text-[10px]">{ctx.map.woo_product_id}</td>
                         <td className="p-2">{ctx.core ? <Badge className="text-[10px]">Conectado</Badge> : <Badge variant="outline" className="text-[10px]">Sin Core</Badge>}</td>
-                        <td className="p-2">
-                          <div className="flex flex-col gap-1">
-                            {badge(LIFECYCLE_LABELS[p?.lifecycle_status ?? "active"], needsAct ? "outline" : "destructive")}
-                            {needsAct && <Badge variant="destructive" className="text-[9px] w-fit">Reemplazo sin activar</Badge>}
-                          </div>
-                        </td>
+                         <td className="p-2">
+                           <div className="flex flex-col gap-1">
+                             {badge(LIFECYCLE_LABELS[p?.lifecycle_status ?? "active"], needsAct ? "outline" : "destructive")}
+                             <span className="text-[10px] text-muted-foreground">Reposición: {policyChoiceLabel(p)}</span>
+                             {needsAct && <Badge variant="destructive" className="text-[9px] w-fit">Reemplazo sin activar</Badge>}
+                           </div>
+                         </td>
                         <td className="p-2">{replLabel}</td>
                         <td className="p-2">{p?.replacement_behavior ? (REPLACEMENT_BEHAVIOR_LABELS[p.replacement_behavior] ?? p.replacement_behavior) : "—"}</td>
                         <td className="p-2 text-[10px] text-muted-foreground">{p?.updated_at ? new Date(p.updated_at).toLocaleDateString() : "—"}</td>

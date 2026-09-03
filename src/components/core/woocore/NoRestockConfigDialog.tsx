@@ -410,24 +410,28 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
         patch.replacement_behavior = behavior;
       }
       const { previous } = await upsertPolicy(patch);
-      await logStrategyDecision({
-        woo_product_id: m.woo_product_id,
-        core_product_id: selected.core?.id ?? null,
-        decision_type: "set_no_restock_policy",
-        previous_values: {
-          lifecycle_status: previous?.lifecycle_status ?? null,
-          replacement_product_id: previous?.replacement_product_id ?? null,
-          replacement_woo_product_id: previous?.replacement_woo_product_id ?? null,
-          replacement_behavior: previous?.replacement_behavior ?? null,
-        },
-        new_values: {
-          lifecycle_status: status,
-          replacement_product_id: patch.replacement_product_id ?? null,
-          replacement_woo_product_id: patch.replacement_woo_product_id ?? null,
-          replacement_behavior: patch.replacement_behavior ?? null,
-        },
-        reason: reason || null,
-      });
+       await logStrategyDecision({
+         woo_product_id: m.woo_product_id,
+         core_product_id: selected.core?.id ?? null,
+         decision_type: "set_replenishment_policy",
+         previous_values: {
+           lifecycle_status: previous?.lifecycle_status ?? null,
+           replenishment_route: previous?.replenishment_route ?? null,
+           restock_enabled: previous?.restock_enabled ?? null,
+           replacement_product_id: previous?.replacement_product_id ?? null,
+           replacement_woo_product_id: previous?.replacement_woo_product_id ?? null,
+           replacement_behavior: previous?.replacement_behavior ?? null,
+         },
+         new_values: {
+           lifecycle_status: patch.lifecycle_status,
+           replenishment_route: patch.replenishment_route,
+           restock_enabled: patch.restock_enabled,
+           replacement_product_id: patch.replacement_product_id ?? null,
+           replacement_woo_product_id: patch.replacement_woo_product_id ?? null,
+           replacement_behavior: patch.replacement_behavior ?? null,
+         },
+         reason: reason || null,
+       });
       toast({ title: "Política guardada" });
       onDone();
       onClose();
@@ -560,20 +564,20 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
                 </div>
               </div>
 
-              <div>
-                <Label>Estado</Label>
-                <Select value={status} onValueChange={v => setStatus(v as LifecycleChoice)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LIFECYCLE_CHOICES.map(c => (
-                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {LIFECYCLE_CHOICES.find(c => c.value === status)?.hint}
-                </p>
-              </div>
+               <div>
+                 <Label>Política de reposición</Label>
+                 <Select value={status} onValueChange={v => setStatus(v as LifecycleChoice)}>
+                   <SelectTrigger><SelectValue /></SelectTrigger>
+                   <SelectContent>
+                     {LIFECYCLE_CHOICES.map(c => (
+                       <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+                 <p className="text-[10px] text-muted-foreground mt-1">
+                   {LIFECYCLE_CHOICES.find(c => c.value === status)?.hint} El Lifecycle se cambia por separado en “Estado”.
+                 </p>
+               </div>
 
               {status === "replaced" && (
                 <div className="space-y-2 border rounded p-2 bg-muted/30">
