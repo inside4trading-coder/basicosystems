@@ -405,7 +405,8 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
          // Al abandonar "Reemplazado", se limpian sus referencias obsoletas.
          replacement_product_id: null,
          replacement_woo_product_id: null,
-         replacement_behavior: null,
+         // La columna es NOT NULL: al limpiar el reemplazo se vuelve al valor neutro.
+         replacement_behavior: "suggest_only",
          decision_reason: reason || null,
          last_reviewed_at: new Date().toISOString(),
          reviewed_by: uid,
