@@ -253,10 +253,8 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
       if (!check.ok) return toast.error(check.message);
     }
 
-    const commissionPvp = getFinalPvp(form, currentRule, currentShipment);
-    const commissionAmount = form.is_consignment && commissionPvp != null
-      ? commissionPvp * Math.max(1, calculateTotalUnits(form)) * Number(form.consignment_commission_pct ?? 0) / 100
-      : 0;
+    const commissionAmount = calculateConsignmentCommission(form, currentRule, currentShipment);
+
     const inputToSave: MerchItemInput = {
       ...form,
       consignment_commission_pct: form.is_consignment ? Number(form.consignment_commission_pct ?? 0) : 0,
