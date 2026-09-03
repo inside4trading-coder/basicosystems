@@ -730,6 +730,8 @@ export function useMerchMutations() {
     createBox,
     updateBox,
     assignItemToShipmentBox,
+    bulkAssignItemsToShipmentBox,
+
     markItemReceived,
     markBoxReceived,
     markItemAvailable,
