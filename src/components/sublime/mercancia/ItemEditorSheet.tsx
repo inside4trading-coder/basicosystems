@@ -24,6 +24,7 @@ import {
   calculateIvaAmount,
   calculateConsignmentCommission,
   calculateConsignmentNet,
+  getConsignmentBreakdown,
   getFinalPvp,
   findPricingRule,
   IVA_RATE,
