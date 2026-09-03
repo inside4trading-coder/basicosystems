@@ -592,6 +592,18 @@ export function useMerchMutations() {
       if (boxErr || !box || box.shipment_id !== shipmentId) {
         throw new Error("Selecciona una caja válida para este envío.");
       }
+      const { data: currentItems, error: currentErr } = await (supabase as any)
+        .from(TABLE)
+        .select("id, shipment_id, box_id")
+        .in("id", itemIds);
+      if (currentErr) throw currentErr;
+      const assignedItems = (currentItems ?? []).filter(
+        (item: { shipment_id: string | null; box_id: string | null }) =>
+          item.shipment_id !== null || item.box_id !== null,
+      );
+      if (assignedItems.length > 0 || (currentItems ?? []).length !== itemIds.length) {
+        throw new Error("Uno o más productos ya tienen un envío o caja asignados. Actualiza la lista e inténtalo de nuevo.");
+      }
       const { data, error } = await (supabase as any)
         .from(TABLE)
         .update({
@@ -600,6 +612,8 @@ export function useMerchMutations() {
           estado: "in_transit",
         })
         .in("id", itemIds)
+        .is("shipment_id", null)
+        .is("box_id", null)
         .select();
       if (error) throw error;
       return (data ?? []) as SublimeMerchItem[];
