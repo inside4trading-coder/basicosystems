@@ -235,7 +235,7 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
     // La política de reposición se deriva del modelo actual (lifecycle + ruta + restock_enabled),
     // no se asume desde el estado comercial.
     const derived = resolvePolicyChoice(p);
-    setStatus(p ? derived : (initialStatus ?? "no_restock"));
+    setStatus(!p ? (initialStatus ?? "no_restock") : derived === "restock" && initialStatus ? initialStatus : derived);
 
 
     setBehavior(p?.replacement_behavior ?? "suggest_only");
