@@ -33,6 +33,8 @@ export function ReplenishmentRouteDialog({ open, onClose, onDone, ctx }: Props) 
         product_name_snapshot: m.woo_product_name,
         sku_snapshot: m.woo_product_sku,
         replenishment_route: route,
+        // La ruta de reposición es independiente del estado comercial.
+        restock_enabled: ["internal_factory", "external_supplier", "manual_cost_only"].includes(route),
         external_supplier_name: route === "external_supplier" ? supplier || null : null,
         external_supplier_unit_cost_usd: route === "external_supplier" && sCost ? Number(sCost) : null,
         external_supplier_min_qty: route === "external_supplier" && sMin ? Number(sMin) : null,
