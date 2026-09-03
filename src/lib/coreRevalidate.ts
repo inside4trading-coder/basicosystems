@@ -18,6 +18,23 @@ export type RevalidationResult = {
   coreVariantId?: string | null;
   createdNeedId?: string | null;
   selfReplacement?: boolean;
+  /** true cuando "Actualizar" detectó cambios de política/ruta respecto al snapshot previo */
+  changed?: boolean;
+  changes?: string[];
+  snapshot?: PolicySnapshot;
+};
+
+/** Foto de la política/ruta vigente de un producto en un momento dado. */
+export type PolicySnapshot = {
+  route: string | null;
+  lifecycle_status: string | null;
+  restock_enabled: boolean | null;
+  replacement_behavior: string | null;
+  replacement_product_id: string | null;
+  unit_cost: number | null;
+  core_product_id: string | null;
+  core_variant_id: string | null;
+  captured_at?: string;
 };
 
 const NOT_VALIDATABLE: RevalidationResult = {
