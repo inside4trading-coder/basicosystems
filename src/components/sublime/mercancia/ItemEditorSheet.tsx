@@ -1116,11 +1116,27 @@ function SuggestedPricePanel({
                 })}
               />
             </div>
-            <div className="space-y-1 rounded-md border border-border/60 bg-background p-2 text-xs">
-              <Row k="PVP final" v={finalPvp == null ? "—" : `${(finalPvp * units).toFixed(2)} €`} />
-              <Row k={`− Comisión SUBLIME (${Number(form.consignment_commission_pct ?? 0)}%)`} v={`${calculateConsignmentCommission(form, rule, hasShipment ? shipment : null).toFixed(2)} €`} />
-              <Row k="= Neto de consignación" v={<span className="font-semibold">{calculateConsignmentNet(form, rule, hasShipment ? shipment : null) == null ? "—" : `${calculateConsignmentNet(form, rule, hasShipment ? shipment : null)?.toFixed(2)} €`}</span>} />
-            </div>
+            {(() => {
+              const b = getConsignmentBreakdown(form, rule, hasShipment ? shipment : null);
+              const eur = (n: number) => `${n.toFixed(2)} €`;
+              return (
+                <div className="space-y-1 rounded-md border border-border/60 bg-background p-2 text-xs">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Por unidad</div>
+                  <Row k="PVP base (propietario)" v={b == null ? "—" : eur(b.basePvpUnit)} />
+                  <Row k={`PVP final (base ÷ (1 − ${b?.pct ?? 0}%))`} v={b == null ? "—" : <span className="font-semibold">{eur(b.finalPvpUnit)}</span>} />
+                  <Row k={`− Comisión SUBLIME (${b?.pct ?? 0}%)`} v={b == null ? "—" : eur(b.commissionUnit)} />
+                  <Row k="= Neto propietario" v={b == null ? "—" : eur(b.netOwnerUnit)} />
+                  <Separator className="my-1" />
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Total {b?.units ?? units} unidad{(b?.units ?? units) === 1 ? "" : "es"}
+                  </div>
+                  <Row k="PVP final total" v={b == null ? "—" : <span className="font-semibold">{eur(b.finalPvpTotal)}</span>} />
+                  <Row k="Comisión SUBLIME total" v={b == null ? "—" : eur(b.commissionTotal)} />
+                  <Row k="Neto propietario total" v={b == null ? "—" : eur(b.netOwnerTotal)} />
+                </div>
+              );
+            })()}
+
           </>
         ) : null}
       </div>
