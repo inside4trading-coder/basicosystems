@@ -1,50 +1,51 @@
-# Ticket para soporte de Lovable — basicosystems.lovable.app inaccesible desde redes externas
+# BASICO CORE — Separar Lifecycle de política de reposición
 
-Publicar de nuevo no resolvió. La app está sana: el problema es de conectividad/entrega del hosting hacia ciertas redes. Abajo está el texto listo para el ticket.
+## Estado actual confirmado
 
-## Evidencia recogida (29 ago 2026, 18:08 UTC)
+- `core_replenishment_policies` ya modela por separado `lifecycle_status`, `replenishment_route` y `restock_enabled`.
+- El resolver `resolve_core_replenishment_action` prioriza Lifecycle (`ignored`, `no_restock`, `exit`, `replaced`) y después evalúa la ruta (`external_supplier`, `manual_cost_only` o fabricación interna).
+- La configuración actual no expone una opción explícita de “Restock / Reposición” en el diálogo principal.
+- `LifecycleStatusDialog` calcula `restock_enabled` directamente desde Lifecycle (`active` = true), acoplando ambos conceptos.
+- `NoRestockConfigDialog` guarda `restock_enabled = false` para cualquier selección, incluso cuando la intención debe expresarse mediante otra política.
+- `ReplenishmentRouteDialog` cambia la ruta, pero no deja visible ni ajusta de forma explícita la política de reposición.
+- La base actualmente contiene políticas activas con reposición habilitada, activas con ruta de proveedor externo, y políticas explícitas de no restock/archivadas; no se modificarán esos registros automáticamente.
 
-- Publicación: `is_published: true`, visibilidad efectiva `public`.
-- Dominios `fundacionbasico.com` y `www.fundacionbasico.com`: `active / connected`, y responden 200 desde `185.158.133.1`.
-- `basicosystems.lovable.app` resuelve a `185.41.148.1`, `185.41.148.2` (IPv4) y `2a07:8240::1`, `2a07:8240::2` (IPv6).
-- Desde la infraestructura de Lovable: 200 por las cuatro IPs, en 0.06–0.19s.
-- Desde el navegador del usuario (incluido incógnito, sin caché ni service worker): `ERR_CONNECTION_TIMED_OUT`.
-- Desde los servidores de Google (PageSpeed Insights, red independiente): `net::ERR_TIMED_OUT`, la página nunca carga.
-- El fallo es por equipo/red: en unas computadoras abre y en otras no. Republicar no lo cambió.
+## Cambio propuesto
 
-Conclusión: el origen sirve correctamente, pero el borde/red que atiende `*.lovable.app` no es alcanzable desde varias redes externas, incluida la de Google. No es caché, no es el código, no es visibilidad de publicación, no es DNS del cliente.
+1. **Separar la UI en dos decisiones visibles** dentro de “Configurar política”:
+   - **Estado comercial / Lifecycle:** Activo, No restock, En salida, Reemplazado y los estados históricos que ya admite el modelo.
+   - **Política de reposición:** Restock / Reposición, No restock, En salida, Reemplazado, o las rutas operativas existentes según corresponda.
+2. Añadir una opción explícita **“Restock / Reposición”** que represente un producto comercialmente activo y habilitado para generar reposición normal, sin crear un nuevo valor incompatible con el modelo.
+3. Mantener `replenishment_route` con sus valores existentes: `internal_factory`, `external_supplier`, `manual_cost_only`, `no_restock`, `exit`, `ignored` y `replaced`. La opción “Restock / Reposición” usará la ruta operativa adecuada, normalmente `internal_factory`, y conservará `restock_enabled = true`.
+4. Ajustar el guardado para que:
+   - Lifecycle se persista únicamente desde el selector de Lifecycle.
+   - La política/ruta y `restock_enabled` se persistan desde la decisión de reposición.
+   - Lifecycle `active` no fuerce por sí solo una política concreta.
+   - `no_restock`, `exit`, `ignored` y `replaced` mantengan sus bloqueos y requisitos actuales.
+   - `external_supplier` continúe siendo reposición válida por compra externa, sin convertirlo en fabricación interna.
+5. Revisar `use on restock with confirmation` para que únicamente opere cuando la política permita reposición y exista un reemplazo configurado; no habilitarlo para `no_restock`, `exit`, `ignored` ni reemplazos bloqueados.
+6. Actualizar etiquetas, badges, filtros y textos de la fila para mostrar siempre por separado:
+   - `Lifecycle: Activo` / `En salida` / etc.
+   - `Reposición: Restock` / `Proveedor externo` / `No restock` / etc.
+   Esto evita que “Activo” se interprete como “Restock” o que una ruta se interprete como Lifecycle.
+7. No realizar migración de datos ni modificar resoluciones históricas. Solo se actualizará el esquema de lectura/guardado de la UI y, si la validación demuestra una dependencia, el resolver para respetar ambos campos sin alterar registros existentes.
 
-## Texto para el ticket (copiar y pegar)
+## Archivos previstos
 
-Asunto: basicosystems.lovable.app no es alcanzable desde varias redes externas (ERR_CONNECTION_TIMED_OUT)
+- `src/components/core/woocore/NoRestockConfigDialog.tsx`
+- `src/components/core/woocore/LifecycleStatusDialog.tsx`
+- `src/components/core/woocore/ReplenishmentRouteDialog.tsx`
+- `src/pages/core/CoreWooCoreMap.tsx`
+- `src/lib/coreReplenishment.ts`
+- Solo si es necesario para que el motor use correctamente la separación: función de resolución de política mediante una migración aprobada; sin backfill ni cambios de datos históricos.
 
-Proyecto: Basico Hub v1.1
-URL publicada: https://basicosystems.lovable.app
-Dominios personalizados: fundacionbasico.com y www.fundacionbasico.com (ambos activos)
-Fecha del reporte: 29 de agosto de 2026, 18:08 UTC
+## Verificación
 
-Problema:
-El sitio publicado no carga desde varias computadoras y redes. El navegador muestra "ERR_CONNECTION_TIMED_OUT" (la conexión nunca se establece; no hay respuesta HTTP, no es un error de la aplicación).
-
-Qué ya descartamos:
-1. No es caché ni service worker: falla igual en modo incógnito, en equipos que nunca visitaron el sitio.
-2. No es la aplicación: el proyecto está publicado y su visibilidad es pública.
-3. No es el código ni el build: desde otras redes el mismo sitio devuelve HTTP 200 en menos de 0,2 s.
-4. No es un problema puntual de nuestra red: Google PageSpeed Insights, ejecutado desde la infraestructura de Google, también falla con "net::ERR_TIMED_OUT" al analizar https://basicosystems.lovable.app.
-5. Republicar el proyecto no cambió nada; el fallo persiste.
-
-Detalle técnico:
-- basicosystems.lovable.app resuelve a 185.41.148.1 y 185.41.148.2 (IPv4) y 2a07:8240::1 y 2a07:8240::2 (IPv6).
-- Desde redes donde sí funciona, las cuatro direcciones devuelven HTTP 200.
-- Desde las redes afectadas, la conexión TCP hacia esas direcciones expira sin respuesta.
-- Nuestros dominios personalizados apuntan a 185.158.133.1 y responden HTTP 200.
-
-Impacto:
-Es un panel operativo interno. El equipo no puede acceder al sistema desde varias oficinas y equipos, lo que bloquea la operación diaria.
-
-Solicitud:
-Revisar el enrutamiento/nodo de borde que atiende *.lovable.app hacia esas redes, ya que el origen sirve correctamente pero el destino no es alcanzable desde múltiples orígenes externos, incluida la red de Google.
-
-## Fuera de alcance
-
-No se modifica código de la aplicación. Este bloque es solo diagnóstico y documentación para soporte.
+- Producto con `Lifecycle = active` puede guardar `Política = Restock / Reposición`.
+- Producto activo puede elegir `internal_factory` y generar la acción normal de reposición.
+- Producto activo con `external_supplier` sigue siendo compra externa.
+- `no_restock`, `exit`, `ignored` y `replaced` conservan sus bloqueos, reemplazos y rutas actuales.
+- `use_on_restock_with_confirmation` solo aparece/funciona en una política de reposición permitida.
+- Las resoluciones históricas no se eliminan ni se reescriben.
+- No se tocan Woo write, inventario, QR, escaneo, OP, nómina, costos, movimientos financieros, despachos ni unidades.
+- Typecheck con 0 errores y revisión del flujo visual en Mapa Woo / Core.
