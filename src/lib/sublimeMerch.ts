@@ -188,13 +188,22 @@ export type ConsignmentBreakdown = {
   pct: number;
   basePvpUnit: number;
   finalPvpUnit: number;
+  ivaUnit: number;
   commissionUnit: number;
   netOwnerUnit: number;
   basePvpTotal: number;
   finalPvpTotal: number;
+  ivaTotal: number;
   commissionTotal: number;
   netOwnerTotal: number;
 };
+
+/** IVA contenido en un precio que YA incluye IVA. */
+export function calculateIncludedIva(priceWithIva: number, ivaRate: number = IVA_RATE): number {
+  const p = Number(priceWithIva ?? 0);
+  const r = Number(ivaRate ?? 0);
+  return p - p / (1 + r);
+}
 
 export function getConsignmentBreakdown(
   item: MerchItemLike,
@@ -207,21 +216,25 @@ export function getConsignmentBreakdown(
   const pct = consignmentPct(item);
   const units = Math.max(1, calculateTotalUnits(item));
   const finalPvpUnit = base / (1 - pct / 100);
+  const ivaUnit = calculateIncludedIva(finalPvpUnit);
   const commissionUnit = finalPvpUnit * pct / 100;
-  const netOwnerUnit = finalPvpUnit - commissionUnit;
+  const netOwnerUnit = finalPvpUnit - commissionUnit - ivaUnit;
   return {
     units,
     pct,
     basePvpUnit: base,
     finalPvpUnit,
+    ivaUnit,
     commissionUnit,
     netOwnerUnit,
     basePvpTotal: base * units,
     finalPvpTotal: finalPvpUnit * units,
+    ivaTotal: ivaUnit * units,
     commissionTotal: commissionUnit * units,
     netOwnerTotal: netOwnerUnit * units,
   };
 }
+
 
 export function calculateConsignmentCommission(
   item: MerchItemLike,
@@ -557,6 +570,7 @@ const CSV_COLUMNS = [
   "consignacion",
   "comision_sublime_pct",
   "comision_sublime",
+  "iva_incluido_consignacion",
   "neto_consignacion",
   "shipment_number",
   "box_number",
@@ -606,6 +620,7 @@ export function buildSublimeMerchCsv(
     const margin = calculateMargin(it, hasShipment ? ship : null, rule);
     const commission = calculateConsignmentCommission(it, rule, hasShipment ? ship : null);
     const consignmentNet = calculateConsignmentNet(it, rule, hasShipment ? ship : null);
+    const consignmentBreak = getConsignmentBreakdown(it, rule, hasShipment ? ship : null);
     const pvpTotal = finalPvp != null ? finalPvp * units : null;
     const row = [
       it.sku_web ?? "",
@@ -640,6 +655,7 @@ export function buildSublimeMerchCsv(
       it.is_consignment ? "true" : "false",
       it.is_consignment ? Number(it.consignment_commission_pct ?? 0).toFixed(2) : "",
       it.is_consignment ? commission.toFixed(2) : "",
+      it.is_consignment && consignmentBreak ? consignmentBreak.ivaTotal.toFixed(2) : "",
       it.is_consignment && consignmentNet != null ? consignmentNet.toFixed(2) : "",
       ship?.shipment_number ?? "",
       box?.box_number ?? "",

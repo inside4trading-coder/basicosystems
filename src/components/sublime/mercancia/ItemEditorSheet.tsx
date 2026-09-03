@@ -1124,7 +1124,8 @@ function SuggestedPricePanel({
                 <div className="space-y-1 rounded-md border border-border/60 bg-background p-2 text-xs">
                   <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Por unidad</div>
                   <Row k="PVP base (propietario)" v={b == null ? "—" : eur(b.basePvpUnit)} />
-                  <Row k={`PVP final (base ÷ (1 − ${b?.pct ?? 0}%))`} v={b == null ? "—" : <span className="font-semibold">{eur(b.finalPvpUnit)}</span>} />
+                  <Row k={`PVP final con IVA (base ÷ (1 − ${b?.pct ?? 0}%))`} v={b == null ? "—" : <span className="font-semibold">{eur(b.finalPvpUnit)}</span>} />
+                  <Row k={`− IVA incluido (${(IVA_RATE * 100).toFixed(0)}%)`} v={b == null ? "—" : eur(b.ivaUnit)} />
                   <Row k={`− Comisión SUBLIME (${b?.pct ?? 0}%)`} v={b == null ? "—" : eur(b.commissionUnit)} />
                   <Row k="= Neto propietario" v={b == null ? "—" : eur(b.netOwnerUnit)} />
                   <Separator className="my-1" />
@@ -1132,8 +1133,10 @@ function SuggestedPricePanel({
                     Total {b?.units ?? units} unidad{(b?.units ?? units) === 1 ? "" : "es"}
                   </div>
                   <Row k="PVP final total" v={b == null ? "—" : <span className="font-semibold">{eur(b.finalPvpTotal)}</span>} />
+                  <Row k="IVA incluido total" v={b == null ? "—" : eur(b.ivaTotal)} />
                   <Row k="Comisión SUBLIME total" v={b == null ? "—" : eur(b.commissionTotal)} />
                   <Row k="Neto propietario total" v={b == null ? "—" : eur(b.netOwnerTotal)} />
+
                 </div>
               );
             })()}
