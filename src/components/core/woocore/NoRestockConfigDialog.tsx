@@ -10,18 +10,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { logStrategyDecision, upsertPolicy } from "@/hooks/useWooCoreMap";
-import { REPLACEMENT_BEHAVIOR_LABELS } from "@/lib/coreReplenishment";
+import {
+  REPLACEMENT_BEHAVIOR_LABELS,
+  LIFECYCLE_LABELS,
+  routeLabel,
+  resolvePolicyChoice,
+  type ReplenishmentPolicyChoice,
+} from "@/lib/coreReplenishment";
 import { Search, ArrowLeft, Loader2 } from "lucide-react";
 import { LifecycleStatusDialog } from "./LifecycleStatusDialog";
 import { ReplenishmentRouteDialog } from "./ReplenishmentRouteDialog";
 
-type LifecycleChoice = "no_restock" | "exit" | "replaced";
+type LifecycleChoice = ReplenishmentPolicyChoice;
 
 const LIFECYCLE_CHOICES: { value: LifecycleChoice; label: string; hint: string }[] = [
+  { value: "restock", label: "Restock / Reposición", hint: "El producto puede generar reposición normalmente. Restock habilitado." },
   { value: "no_restock", label: "No restock", hint: "Se deja de reponer. Restock desactivado." },
   { value: "exit", label: "En salida", hint: "Producto saliendo del catálogo. Restock desactivado." },
   { value: "replaced", label: "Reemplazado", hint: "Sustituido por otro producto. Restock desactivado." },
 ];
+
 
 interface Ctx {
   map: any;
