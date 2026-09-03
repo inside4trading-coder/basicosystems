@@ -389,18 +389,24 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id ?? null;
       const m = selected.map;
-      const patch: any = {
-        woo_product_id: m.woo_product_id,
-        core_product_id: selected.core?.id ?? null,
-        product_name_snapshot: m.woo_product_name,
-        sku_snapshot: m.woo_product_sku,
-        lifecycle_status: status,
-        restock_enabled: false,
-        decision_reason: reason || null,
-        last_reviewed_at: new Date().toISOString(),
-        reviewed_by: uid,
-        updated_by: uid,
-      };
+       const currentLifecycle = selected.policy?.lifecycle_status ?? "active";
+       const isRestock = status === "restock";
+       const nextLifecycle = isRestock ? "active" : status;
+       const nextRoute = isRestock ? "internal_factory" : status;
+       const patch: any = {
+         woo_product_id: m.woo_product_id,
+         core_product_id: selected.core?.id ?? null,
+         product_name_snapshot: m.woo_product_name,
+         sku_snapshot: m.woo_product_sku,
+         // Este diálogo configura la política; Lifecycle se conserva al editar Restock.
+         lifecycle_status: isRestock ? currentLifecycle : nextLifecycle,
+         replenishment_route: nextRoute,
+         restock_enabled: isRestock,
+         decision_reason: reason || null,
+         last_reviewed_at: new Date().toISOString(),
+         reviewed_by: uid,
+         updated_by: uid,
+       };
       if (status === "replaced") {
         patch.replacement_product_id = replacement?.core_id ?? null;
         patch.replacement_woo_product_id = replacement?.woo_product_id ?? null;
