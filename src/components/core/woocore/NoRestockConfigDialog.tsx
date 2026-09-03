@@ -402,16 +402,20 @@ export function NoRestockConfigDialog({ open, onClose, onDone, rowsCtx, initialC
          lifecycle_status: currentLifecycle,
          replenishment_route: nextRoute,
          restock_enabled: isRestock,
+         // Al abandonar "Reemplazado", se limpian sus referencias obsoletas.
+         replacement_product_id: null,
+         replacement_woo_product_id: null,
+         replacement_behavior: null,
          decision_reason: reason || null,
          last_reviewed_at: new Date().toISOString(),
          reviewed_by: uid,
          updated_by: uid,
        };
-      if (status === "replaced") {
-        patch.replacement_product_id = replacement?.core_id ?? null;
-        patch.replacement_woo_product_id = replacement?.woo_product_id ?? null;
-        patch.replacement_behavior = behavior;
-      }
+       if (status === "replaced") {
+         patch.replacement_product_id = replacement?.core_id ?? null;
+         patch.replacement_woo_product_id = replacement?.woo_product_id ?? null;
+         patch.replacement_behavior = behavior;
+       }
       const { previous } = await upsertPolicy(patch);
        await logStrategyDecision({
          woo_product_id: m.woo_product_id,
