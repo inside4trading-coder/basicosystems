@@ -437,3 +437,182 @@ export async function revalidateAttentionRow(row: PolicyEvent): Promise<Revalida
     return NOT_VALIDATABLE;
   }
 }
+
+// ---------------------------------------------------------------------------
+// "Actualizar" = detectar y sincronizar cambios de política/ruta.
+// Nunca resuelve la necesidad, ni crea reposición, ni movimientos financieros.
+// ---------------------------------------------------------------------------
+
+const ROUTE_LABEL: Record<string, string> = {
+  internal_factory: "Fabricación interna",
+  external_supplier: "Proveedor externo",
+  no_restock: "No restock",
+  replacement: "Reemplazo",
+  pending_classification: "Sin clasificar",
+  manual_cost: "Costo manual",
+};
+
+const BEHAVIOR_LABEL: Record<string, string> = {
+  suggest_only: "Solo sugerir",
+  use_on_restock: "Usar en reposición",
+  use_on_restock_with_confirmation: "Usar con confirmación",
+};
+
+function routeLabel(v: string | null | undefined): string {
+  if (!v) return "sin política";
+  return ROUTE_LABEL[v] ?? v;
+}
+
+function behaviorLabel(v: string | null | undefined): string {
+  if (!v) return "sin definir";
+  return BEHAVIOR_LABEL[v] ?? v;
+}
+
+/** Snapshot registrado cuando se generó/evaluó la necesidad. */
+export function readStoredPolicySnapshot(row: PolicyEvent): PolicySnapshot {
+  const stored = (row.resolution_data as any)?.policy_snapshot ?? null;
+  if (stored) {
+    return {
+      route: stored.route ?? null,
+      lifecycle_status: stored.lifecycle_status ?? null,
+      restock_enabled: stored.restock_enabled ?? null,
+      replacement_behavior: stored.replacement_behavior ?? null,
+      replacement_product_id: stored.replacement_product_id ?? null,
+      unit_cost: stored.unit_cost != null ? Number(stored.unit_cost) : null,
+      core_product_id: stored.core_product_id ?? null,
+      core_variant_id: stored.core_variant_id ?? null,
+      captured_at: stored.captured_at ?? null,
+    };
+  }
+  // Sin snapshot previo: reconstruir desde los datos con los que nació la fila.
+  const rd = (row.resolution_data as any) ?? {};
+  return {
+    route: rd.route ?? row._unlinkedRoute ?? null,
+    lifecycle_status: rd.lifecycle_status ?? null,
+    restock_enabled: rd.restock_enabled ?? null,
+    replacement_behavior: row.replacement_behavior ?? null,
+    replacement_product_id: row.replacement_product_id ?? null,
+    unit_cost: row.unit_cost != null ? Number(row.unit_cost) : null,
+    core_product_id: row.core_product_id ?? null,
+    core_variant_id: row.core_variant_id ?? null,
+  };
+}
+
+/** Lee la política vigente del producto (solo lectura). */
+export async function readCurrentPolicySnapshot(row: PolicyEvent): Promise<PolicySnapshot> {
+  const route = await resolveRouteInfo(row);
+  const rowResolved = {
+    ...row,
+    core_product_id: route.coreProductId ?? row.core_product_id ?? null,
+    core_variant_id: route.coreVariantId ?? row.core_variant_id ?? null,
+  } as PolicyEvent;
+  const unitCost = await resolveUnitCost(rowResolved);
+
+  let behavior: string | null = null;
+  let replacementProductId: string | null = null;
+  const productId = route.coreProductId ?? row.core_product_id ?? null;
+  if (productId) {
+    const { data } = await (supabase as any)
+      .from("core_replenishment_policies")
+      .select("replacement_behavior, replacement_product_id")
+      .eq("core_product_id", productId)
+      .maybeSingle();
+    behavior = (data as any)?.replacement_behavior ?? null;
+    replacementProductId = (data as any)?.replacement_product_id ?? null;
+  }
+
+  return {
+    route: route.route,
+    lifecycle_status: route.lifecycleStatus,
+    restock_enabled: route.restockEnabled,
+    replacement_behavior: behavior,
+    replacement_product_id: replacementProductId,
+    unit_cost: unitCost,
+    core_product_id: route.coreProductId ?? row.core_product_id ?? null,
+    core_variant_id: route.coreVariantId ?? row.core_variant_id ?? null,
+    captured_at: new Date().toISOString(),
+  };
+}
+
+/** Compara snapshot previo vs actual y devuelve la lista de cambios legibles. */
+export function diffPolicySnapshots(prev: PolicySnapshot, next: PolicySnapshot): string[] {
+  const changes: string[] = [];
+  if ((prev.route ?? null) !== (next.route ?? null)) {
+    changes.push(`Política: ${routeLabel(prev.route)} → ${routeLabel(next.route)}`);
+  }
+  if ((prev.lifecycle_status ?? null) !== (next.lifecycle_status ?? null)) {
+    changes.push(
+      `Estado comercial: ${prev.lifecycle_status ?? "sin definir"} → ${next.lifecycle_status ?? "sin definir"}`,
+    );
+  }
+  if ((prev.restock_enabled ?? null) !== (next.restock_enabled ?? null)) {
+    const fmt = (v: boolean | null) => (v == null ? "sin definir" : v ? "reposición activa" : "reposición desactivada");
+    changes.push(`Reposición: ${fmt(prev.restock_enabled ?? null)} → ${fmt(next.restock_enabled ?? null)}`);
+  }
+  if ((prev.replacement_behavior ?? null) !== (next.replacement_behavior ?? null)) {
+    changes.push(
+      `Comportamiento de reemplazo: ${behaviorLabel(prev.replacement_behavior)} → ${behaviorLabel(next.replacement_behavior)}`,
+    );
+  }
+  if ((prev.replacement_product_id ?? null) !== (next.replacement_product_id ?? null)) {
+    changes.push("Producto de reemplazo actualizado");
+  }
+  const prevCost = prev.unit_cost != null ? Number(prev.unit_cost) : null;
+  const nextCost = next.unit_cost != null ? Number(next.unit_cost) : null;
+  if ((prevCost ?? null) !== (nextCost ?? null)) {
+    const fmt = (v: number | null) => (v == null ? "sin costo" : `${v.toFixed(2)} USD`);
+    changes.push(`Costo unitario: ${fmt(prevCost)} → ${fmt(nextCost)}`);
+  }
+  if ((prev.core_variant_id ?? null) !== (next.core_variant_id ?? null) && next.core_variant_id) {
+    changes.push("Vínculo de variante Core actualizado");
+  } else if ((prev.core_product_id ?? null) !== (next.core_product_id ?? null) && next.core_product_id) {
+    changes.push("Vínculo de producto Core actualizado");
+  }
+  return changes;
+}
+
+/**
+ * Actualizar: sincroniza la fila con la política vigente y reporta los cambios.
+ * Mantiene la necesidad ABIERTA. Resolver sigue siendo manual e independiente.
+ */
+export async function syncAttentionRowPolicy(row: PolicyEvent): Promise<RevalidationResult> {
+  try {
+    // Sincroniza vínculo Woo/Core si el padre ya está conectado (solo información).
+    const mapCheck = await hasWooCoreMap(row);
+    const rowForRead = {
+      ...row,
+      core_product_id: mapCheck.productId ?? row.core_product_id ?? null,
+      core_variant_id: mapCheck.variantId ?? row.core_variant_id ?? null,
+    } as PolicyEvent;
+
+    const prev = readStoredPolicySnapshot(row);
+    const next = await readCurrentPolicySnapshot(rowForRead);
+    const changes = diffPolicySnapshots(prev, next);
+
+    return {
+      resolved: false,
+      changed: changes.length > 0,
+      changes,
+      snapshot: next,
+      reason: changes.length > 0 ? "policy_changed" : "policy_unchanged",
+      message:
+        changes.length > 0
+          ? `Cambios detectados: ${changes.join(" · ")}. La necesidad sigue abierta; resuélvela manualmente.`
+          : "Sin cambios de política. La necesidad sigue abierta.",
+      unitCost: next.unit_cost,
+      route: next.route,
+      lifecycleStatus: next.lifecycle_status,
+      restockEnabled: next.restock_enabled,
+      coreProductId: next.core_product_id,
+      coreVariantId: next.core_variant_id,
+    };
+  } catch (e: any) {
+    return {
+      resolved: false,
+      changed: false,
+      changes: [],
+      reason: "sync_failed",
+      message: e?.message ?? "No se pudo actualizar la información.",
+    };
+  }
+}
