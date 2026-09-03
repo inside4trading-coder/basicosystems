@@ -2,8 +2,7 @@ import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { revalidateAttentionRow, type RevalidationResult } from "@/lib/coreRevalidate";
-import { continueOperationalFlow } from "@/lib/coreNeedsFromEvent";
+import { syncAttentionRowPolicy, type RevalidationResult } from "@/lib/coreRevalidate";
 
 export type PolicyEvent = {
   id: string;
@@ -890,143 +889,47 @@ export function useReplenishmentPolicyEvents() {
     }
   };
 
-  // ------- Revalidación ("Actualizar") -------
+  // ------- Actualizar = detectar y sincronizar cambios de política -------
+  // No resuelve la necesidad, no crea reposición ni movimientos financieros.
   const refreshRow = async (row: PolicyEvent): Promise<RevalidationResult> => {
-    const result = await revalidateAttentionRow(row);
-    if (!result.resolved) return result;
+    const result = await syncAttentionRowPolicy(row);
+    if (result.reason === "sync_failed") return result;
 
-    // Continuar ruta operativa ANTES de cerrar el evento
-    const flow = await continueOperationalFlow(row, result);
-    if (!flow.ok) {
-      return {
-        ...result,
-        resolved: false,
-        reason: flow.reason ?? "flow_failed",
-        message: flow.message,
-      };
-    }
-
-    const uid = await getCurrentUserId();
     const now = new Date().toISOString();
-    const stamp = {
-      resolved_by_refresh: true,
-      resolved_reason: result.reason,
-      resolved_unit_cost: result.unitCost ?? null,
-      unit_cost: result.unitCost ?? null,
-      core_product_id: result.coreProductId ?? row.core_product_id ?? null,
-      core_variant_id: result.coreVariantId ?? row.core_variant_id ?? null,
-      created_need_id: flow.needId ?? null,
-      route: flow.route ?? result.route ?? null,
-      ...(result.selfReplacement ? { self_replacement: true } : {}),
-      refreshed_at: now,
-    };
+    const uid = await getCurrentUserId();
 
-    try {
-      if (row._kind === "policy_event") {
+    // Persistir el snapshot vigente (solo información) manteniendo el estado abierto.
+    if (row._kind === "policy_event") {
+      try {
         const { error } = await supabase
           .from("core_replenishment_policy_events" as any)
           .update({
-            status: "resolved",
-            resolved_at: now,
-            resolution_data: { ...(row.resolution_data ?? {}), ...stamp },
+            resolution_data: {
+              ...(row.resolution_data ?? {}),
+              policy_snapshot: result.snapshot ?? null,
+              last_policy_sync: {
+                at: now,
+                by: uid,
+                changed: !!result.changed,
+                changes: result.changes ?? [],
+              },
+            },
           })
           .eq("id", row.id);
         if (error) throw error;
-      } else if (row.sourcePendingItemId) {
-        const { error } = await supabase
-          .from("core_fabrication_fund_pending_items" as any)
-          .update({ status: "resolved", resolved_at: now, resolved_by: uid })
-          .eq("id", row.sourcePendingItemId);
-        if (error) throw error;
-      } else if (row.sourceMovementId) {
-        const key =
-          row._kind === "internal_missing_core"
-            ? "unlinked_core_resolution"
-            : "pending_classification_resolution";
-        const current = await readMovementResolution(row.sourceMovementId);
-        const next = {
-          ...(current ?? {}),
-          [key]: {
-            ...((current as any)?.[key] ?? {}),
-            status: "closed",
-            ...stamp,
-            resolved_at: now,
-            resolved_by: uid,
-          },
-        };
-        const { error } = await supabase
-          .from("core_fabrication_fund_movements" as any)
-          .update({ cost_snapshot_data: next })
-          .eq("id", row.sourceMovementId);
-        if (error) throw error;
-      } else {
-        return {
-          resolved: false,
-          reason: "not_validatable",
-          message: "No se pudo validar automáticamente.",
-        };
+      } catch (e: any) {
+        return { ...result, reason: "update_failed", message: e.message };
       }
-      // Cerrar también el movimiento origen (si el evento venía de una reserva
-      // sin vínculo Core) y dejar trazado el vínculo necesidad ↔ movimiento.
-      const originMovementId =
-        row.sourceMovementId ??
-        (row.resolution_data as any)?.origin_movement_id ??
-        (row.source_type === "fabrication_fund_movement" ? (row as any).source_id : null) ??
-        null;
-      if (flow.needId && originMovementId) {
-        const { data: existingLink } = await supabase
-          .from("core_production_need_sources")
-          .select("id")
-          .eq("fabrication_fund_movement_id", originMovementId)
-          .maybeSingle();
-        if (!existingLink) {
-          await supabase.from("core_production_need_sources").insert({
-            production_need_id: flow.needId,
-            fabrication_fund_movement_id: originMovementId,
-            source_order_id: row.woo_order_id ?? null,
-            source_order_item_id: row.woo_order_item_id ?? null,
-            quantity: Number(row.quantity ?? 1) || 1,
-            amount: row.amount ?? null,
-            currency: "USD",
-          });
-        }
-        if (row._kind === "policy_event") {
-          const current = await readMovementResolution(originMovementId);
-          await supabase
-            .from("core_fabrication_fund_movements" as any)
-            .update({
-              cost_snapshot_data: {
-                ...(current ?? {}),
-                unlinked_core_resolution: {
-                  ...((current as any)?.unlinked_core_resolution ?? {}),
-                  status: "closed",
-                  ...stamp,
-                  resolved_reason: "need_created_or_already_exists",
-                  resolved_at: now,
-                  resolved_by: uid,
-                },
-              },
-            })
-            .eq("id", originMovementId);
-        }
-      }
-    } catch (e: any) {
-      return { ...result, resolved: false, reason: "update_failed", message: e.message };
     }
-
 
     invalidateAll();
     qc.invalidateQueries({ queryKey: ["core_production_needs"] });
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("core-needs-refresh"));
     }
-    return {
-      ...result,
-      createdNeedId: flow.needId ?? null,
-      route: flow.route ?? result.route ?? null,
-      message: flow.message,
-    };
+    return result;
   };
+
 
 
   return {
