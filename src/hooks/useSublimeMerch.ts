@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useMerchBrand, type MerchBrand } from "@/components/sublime/mercancia/brand";
 import {
   calculateConsignmentCommission,
   deleteSublimeMerchPhotoFromStorage,
@@ -136,13 +137,13 @@ const T_BOX = "sublime_merch_boxes";
 
 const T_RULES = "sublime_merch_pricing_rules";
 
-async function resolveConsignmentAmount(input: MerchItemInput, shipmentId?: string | null): Promise<number> {
+async function resolveConsignmentAmount(input: MerchItemInput, brand: MerchBrand, shipmentId?: string | null): Promise<number> {
   if (!input.is_consignment) return 0;
   const [shipmentResult, ruleResult] = await Promise.all([
     shipmentId
       ? (supabase as any).from(T_SHIP).select("cost_per_kg_eur").eq("id", shipmentId).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    (supabase as any).from(T_RULES).select("product_type, label, profit_percentage, active").eq("product_type", input.product_type).maybeSingle(),
+    (supabase as any).from(T_RULES).select("product_type, label, profit_percentage, active").eq("brand", brand).eq("product_type", input.product_type).maybeSingle(),
   ]);
   if (shipmentResult.error) throw shipmentResult.error;
   if (ruleResult.error) throw ruleResult.error;
@@ -163,12 +164,14 @@ function sortByNewest<T extends { created_at?: string | null; inserted_at?: stri
 
 
 export function useUnassignedItems() {
+  const brand = useMerchBrand();
   return useQuery({
-    queryKey: ["sublime-merch", "unassigned"],
+    queryKey: ["sublime-merch", brand, "unassigned"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from(TABLE)
         .select("*")
+        .eq("brand", brand)
         .or("shipment_id.is.null,box_id.is.null")
         .neq("estado", "cancelled")
         .order("created_at", { ascending: false });
@@ -180,8 +183,9 @@ export function useUnassignedItems() {
 }
 
 export function useSublimeItem(itemId: string | null | undefined) {
+  const brand = useMerchBrand();
   return useQuery({
-    queryKey: ["sublime-merch", "item", itemId ?? "none"],
+    queryKey: ["sublime-merch", brand, "item", itemId ?? "none"],
     enabled: Boolean(itemId),
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -198,12 +202,14 @@ export function useSublimeItem(itemId: string | null | undefined) {
 
 
 export function useInTransitItems() {
+  const brand = useMerchBrand();
   return useQuery({
-    queryKey: ["sublime-merch", "in-transit"],
+    queryKey: ["sublime-merch", brand, "in-transit"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from(TABLE)
         .select("*")
+        .eq("brand", brand)
         .not("shipment_id", "is", null)
         .not("box_id", "is", null)
         .not("estado", "in", "(available,cancelled)")
@@ -216,16 +222,19 @@ export function useInTransitItems() {
 }
 
 export function useItemsCounts() {
+  const brand = useMerchBrand();
   return useQuery({
-    queryKey: ["sublime-merch", "counts"],
+    queryKey: ["sublime-merch", brand, "counts"],
     queryFn: async () => {
       const inTransit = await (supabase as any)
         .from(TABLE)
         .select("id", { count: "exact", head: true })
+        .eq("brand", brand)
         .eq("estado", "in_transit");
       const available = await (supabase as any)
         .from(TABLE)
         .select("id", { count: "exact", head: true })
+        .eq("brand", brand)
         .in("estado", ["received", "available"]);
       return {
         in_transit: inTransit.count ?? 0,
@@ -236,12 +245,14 @@ export function useItemsCounts() {
 }
 
 export function useSublimeShipments() {
+  const brand = useMerchBrand();
   return useQuery({
-    queryKey: ["sublime-merch", "shipments"],
+    queryKey: ["sublime-merch", brand, "shipments"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from(T_SHIP)
         .select("*")
+        .eq("brand", brand)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as SublimeMerchShipment[];
@@ -250,13 +261,15 @@ export function useSublimeShipments() {
 }
 
 export function useSublimeBoxes(shipmentId?: string | null) {
+  const brand = useMerchBrand();
   return useQuery({
-    queryKey: ["sublime-merch", "boxes", shipmentId ?? "all"],
+    queryKey: ["sublime-merch", brand, "boxes", shipmentId ?? "all"],
     enabled: shipmentId !== undefined,
     queryFn: async () => {
       let q = (supabase as any)
         .from(T_BOX)
         .select("*")
+        .eq("brand", brand)
         .order("created_at", { ascending: true });
       if (shipmentId) q = q.eq("shipment_id", shipmentId);
       const { data, error } = await q;
@@ -267,12 +280,14 @@ export function useSublimeBoxes(shipmentId?: string | null) {
 }
 
 export function useShipmentBoxCounts() {
+  const brand = useMerchBrand();
   return useQuery({
-    queryKey: ["sublime-merch", "box-counts"],
+    queryKey: ["sublime-merch", brand, "box-counts"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from(T_BOX)
-        .select("shipment_id");
+        .select("shipment_id")
+        .eq("brand", brand);
       if (error) throw error;
       const map: Record<string, number> = {};
       for (const row of (data ?? []) as { shipment_id: string }[]) {
@@ -283,10 +298,11 @@ export function useShipmentBoxCounts() {
   });
 }
 
-export async function getNextShipmentNumber(): Promise<string> {
+export async function getNextShipmentNumber(brand: MerchBrand = "sublime"): Promise<string> {
   const { data, error } = await (supabase as any)
     .from(T_SHIP)
-    .select("shipment_number");
+    .select("shipment_number")
+    .eq("brand", brand);
   if (error) throw error;
   let max = 0;
   for (const row of (data ?? []) as { shipment_number: string }[]) {
@@ -301,6 +317,7 @@ export async function getNextShipmentNumber(): Promise<string> {
 
 export function useMerchMutations() {
   const qc = useQueryClient();
+  const brand = useMerchBrand();
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["sublime-merch"] });
@@ -330,8 +347,9 @@ export function useMerchMutations() {
         pvp_manual: input.pvp_manual,
         is_consignment: input.is_consignment,
         consignment_commission_pct: input.is_consignment ? input.consignment_commission_pct : 0,
-        consignment_commission_amount: await resolveConsignmentAmount(input),
+        consignment_commission_amount: await resolveConsignmentAmount(input, brand),
         created_by: uid,
+        brand,
 
       };
       const { data, error } = await (supabase as any)
@@ -381,7 +399,7 @@ export function useMerchMutations() {
         pvp_manual: input.pvp_manual,
         is_consignment: input.is_consignment,
         consignment_commission_pct: input.is_consignment ? input.consignment_commission_pct : 0,
-        consignment_commission_amount: await resolveConsignmentAmount(input, existingItem?.shipment_id),
+        consignment_commission_amount: await resolveConsignmentAmount(input, brand, existingItem?.shipment_id),
       };
 
       if (input.subido_al_sistema && !wasUploaded) {
@@ -493,6 +511,7 @@ export function useMerchMutations() {
         cost_per_kg_eur: input.cost_per_kg_eur,
         status: input.status,
         notes: input.notes,
+        brand,
       };
       const { data, error } = await (supabase as any)
         .from(T_SHIP)
@@ -536,6 +555,7 @@ export function useMerchMutations() {
         weight_kg: input.weight_kg,
         status: input.status,
         notes: input.notes,
+        brand,
       };
       const { data, error } = await (supabase as any)
         .from(T_BOX)
@@ -596,7 +616,7 @@ export function useMerchMutations() {
         .eq("id", itemId)
         .single();
       if (itemErr) throw itemErr;
-      const commissionAmount = await resolveConsignmentAmount(currentItem as MerchItemInput, shipmentId);
+      const commissionAmount = await resolveConsignmentAmount(currentItem as MerchItemInput, brand, shipmentId);
       const { data, error } = await (supabase as any)
         .from(TABLE)
         .update({
@@ -649,7 +669,7 @@ export function useMerchMutations() {
         throw new Error("Uno o más productos ya tienen un envío o caja asignados. Actualiza la lista e inténtalo de nuevo.");
       }
       const updates = await Promise.all((currentItems ?? []).map(async (currentItem: SublimeMerchItem & MerchItemInput) => {
-        const commissionAmount = await resolveConsignmentAmount(currentItem, shipmentId);
+        const commissionAmount = await resolveConsignmentAmount(currentItem, brand, shipmentId);
         const { data, error } = await (supabase as any)
           .from(TABLE)
           .update({
@@ -804,12 +824,14 @@ export function useMerchMutations() {
 }
 
 export function useAvailableItems() {
+  const brand = useMerchBrand();
   return useQuery({
-    queryKey: ["sublime-merch", "available"],
+    queryKey: ["sublime-merch", brand, "available"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from(TABLE)
         .select("*")
+        .eq("brand", brand)
         .in("estado", ["received", "available"])
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -819,10 +841,11 @@ export function useAvailableItems() {
   });
 }
 
-export async function fetchAllSublimeMerchItemsForCsv(): Promise<SublimeMerchItem[]> {
+export async function fetchAllSublimeMerchItemsForCsv(brand: MerchBrand = "sublime"): Promise<SublimeMerchItem[]> {
   const { data, error } = await (supabase as any)
     .from(TABLE)
     .select("*")
+    .eq("brand", brand)
     .neq("estado", "cancelled")
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -830,15 +853,17 @@ export async function fetchAllSublimeMerchItemsForCsv(): Promise<SublimeMerchIte
 }
 
 export function useSublimeMerchSummary() {
+  const brand = useMerchBrand();
   return useQuery({
-    queryKey: ["sublime-merch", "summary"],
+    queryKey: ["sublime-merch", brand, "summary"],
     queryFn: async () => {
       const [itemsRes, shipRes] = await Promise.all([
         (supabase as any)
           .from(TABLE)
           .select("*")
+          .eq("brand", brand)
           .neq("estado", "cancelled"),
-        (supabase as any).from(T_SHIP).select("id,cost_per_kg_eur"),
+        (supabase as any).from(T_SHIP).select("id,cost_per_kg_eur").eq("brand", brand),
       ]);
       if (itemsRes.error) throw itemsRes.error;
       if (shipRes.error) throw shipRes.error;
@@ -851,12 +876,14 @@ export function useSublimeMerchSummary() {
 }
 
 export function useSublimePricingRules() {
+  const brand = useMerchBrand();
   return useQuery({
-    queryKey: ["sublime-merch", "pricing-rules"],
+    queryKey: ["sublime-merch", brand, "pricing-rules"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from(T_RULES)
         .select("*")
+        .eq("brand", brand)
         .order("label", { ascending: true });
       if (error) throw error;
       return (data ?? []) as SublimePricingRule[];
@@ -866,6 +893,7 @@ export function useSublimePricingRules() {
 
 export function usePricingRulesMutations() {
   const qc = useQueryClient();
+  const brand = useMerchBrand();
   const invalidate = () => qc.invalidateQueries({ queryKey: ["sublime-merch", "pricing-rules"] });
 
   const createRule = useMutation({
@@ -880,6 +908,7 @@ export function usePricingRulesMutations() {
         label: input.label.trim(),
         profit_percentage: input.profit_percentage,
         active: input.active ?? true,
+        brand,
       };
       const { data, error } = await (supabase as any)
         .from(T_RULES)
