@@ -3,7 +3,7 @@ import BrandMark from "../components/BrandMark";
 import ConfettiSphere from "../components/landing/ConfettiSphere";
 import "../components/landing/landing-bsystems.css";
 
-export function Landing() {
+export default function Landing() {
   const [scrolled, setScrolled] = useState(false);
   const [activePillar, setActivePillar] = useState<"ordenar" | "conectar" | "automatizar">("ordenar");
   const [activeArea, setActiveArea] = useState<string>("ventas");
@@ -525,12 +525,11 @@ export function Landing() {
 
       {/* CONTACTO + FAQ */}
       <section id="contacto" className="contact-section">
+        <div className="contact-intro">
+          <h2>Enséñanos cómo funciona tu empresa.</h2>
+          <p>Nosotros te enseñamos cómo podría funcionar mejor.</p>
+        </div>
         <div className="contact-container">
-          <div className="contact-intro">
-            <h2>Enséñanos cómo funciona tu empresa.</h2>
-            <p>Nosotros te enseñamos cómo podría funcionar mejor.</p>
-          </div>
-          
           {submitted ? (
             <div className="form-success">
               <div className="success-icon">✓</div>
