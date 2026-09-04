@@ -55,6 +55,7 @@ import CoreFactoryOperators from "./pages/core/CoreFactoryOperators";
 import CorePayroll from "./pages/core/CorePayroll";
 import CoreInventory from "./pages/core/CoreInventory";
 import CoreDispatches from "./pages/core/CoreDispatches";
+import CoreMercanciaTransito from "./pages/core/CoreMercanciaTransito";
 import CoreReports from "./pages/core/CoreReports";
 import CoreWooCoreMap from "./pages/core/CoreWooCoreMap";
 import EspanaLayout from "./pages/espana/EspanaLayout";
@@ -168,6 +169,7 @@ const App = () => (
                 <Route path="nomina" element={<CorePayroll />} />
                 <Route path="inventario" element={<CoreInventory />} />
                 <Route path="despachos" element={<CoreDispatches />} />
+                <Route path="mercancia-transito" element={<CoreMercanciaTransito />} />
                 <Route path="reportes" element={<CoreReports />} />
               </Route>
               <Route path="/espana" element={<EspanaLayout />}>

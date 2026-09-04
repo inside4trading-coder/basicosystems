@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useMerchBrand } from "./brand";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ const emptyShipment = (shipmentNumber: string): ShipmentInput => ({
 });
 
 export function BulkAssignShipmentDialog({ open, onOpenChange, items, onAssigned }: Props) {
+  const brand = useMerchBrand();
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [shipmentId, setShipmentId] = useState("");
   const [boxId, setBoxId] = useState("");
@@ -76,7 +78,7 @@ export function BulkAssignShipmentDialog({ open, onOpenChange, items, onAssigned
     setShipmentId("");
     setBoxId("");
     setNewBoxNumber("Caja 1");
-    getNextShipmentNumber()
+    getNextShipmentNumber(brand)
       .then((number) => setNewShipment(emptyShipment(number)))
       .catch(() => setNewShipment(emptyShipment("")));
   }, [open]);

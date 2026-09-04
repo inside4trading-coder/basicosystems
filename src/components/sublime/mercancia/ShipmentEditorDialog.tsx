@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useMerchBrand } from "./brand";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -56,6 +57,7 @@ function toDateInput(iso: string | null): string {
 }
 
 export function ShipmentEditorDialog({ open, onOpenChange, shipment }: Props) {
+  const brand = useMerchBrand();
   const [form, setForm] = useState<ShipmentInput>(empty());
   const [saving, setSaving] = useState(false);
   const { createShipment, updateShipment } = useMerchMutations();
@@ -75,7 +77,7 @@ export function ShipmentEditorDialog({ open, onOpenChange, shipment }: Props) {
         });
       } else {
         setForm(empty());
-        getNextShipmentNumber()
+        getNextShipmentNumber(brand)
           .then((n) => setForm((f) => ({ ...f, shipment_number: n })))
           .catch(() => undefined);
       }
@@ -84,7 +86,7 @@ export function ShipmentEditorDialog({ open, onOpenChange, shipment }: Props) {
 
   const regenerateNumber = async () => {
     try {
-      const n = await getNextShipmentNumber();
+      const n = await getNextShipmentNumber(brand);
       setForm((f) => ({ ...f, shipment_number: n }));
     } catch {
       toast.error("No se pudo regenerar el número.");

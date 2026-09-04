@@ -199,7 +199,7 @@ export function ItemsInTransitTab() {
                  </div>
                  {i.is_consignment ? (
                    <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs space-y-1">
-                     <div className="flex justify-between gap-4"><span className="text-muted-foreground">Comisión SUBLIME</span><span>{calculateConsignmentCommission(i, rule, shipment ?? null).toFixed(2)} €</span></div>
+                     <div className="flex justify-between gap-4"><span className="text-muted-foreground">Comisión de consignación</span><span>{calculateConsignmentCommission(i, rule, shipment ?? null).toFixed(2)} €</span></div>
                      <div className="flex justify-between gap-4"><span className="text-muted-foreground">Neto consignación</span><span className="font-semibold">{calculateConsignmentNet(i, rule, shipment ?? null)?.toFixed(2) ?? "—"} €</span></div>
                    </div>
                  ) : null}
