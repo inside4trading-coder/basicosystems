@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useMerchBrand } from "./brand";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -56,6 +57,7 @@ function toDateInput(iso: string | null): string {
 }
 
 export function ShipmentEditorDialog({ open, onOpenChange, shipment }: Props) {
+  const brand = useMerchBrand();
   const [form, setForm] = useState<ShipmentInput>(empty());
   const [saving, setSaving] = useState(false);
   const { createShipment, updateShipment } = useMerchMutations();
