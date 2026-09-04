@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { BrandMark } from "../components/BrandMark";
-import { ConfettiSphere } from "../components/landing/ConfettiSphere";
+import BrandMark from "../components/BrandMark";
+import ConfettiSphere from "../components/landing/ConfettiSphere";
 import "../components/landing/landing-bsystems.css";
 
 export function Landing() {
@@ -104,7 +104,7 @@ export function Landing() {
     },
     finanzas: {
       title: "FINANZAS",
-      desc: "Sabes cuánto entró·¿¿, cuánto salió y en qué.",
+      desc: "Sabes cuánto entró, cuánto salió y en qué.",
       icon: "💰"
     },
     equipo: {
@@ -114,7 +114,7 @@ export function Landing() {
     },
     clientes: {
       title: "CLIENTES",
-      desc: "Informacion y seguimiento conectados.",
+      desc: "Información y seguimiento conectados.",
       icon: "🤝"
     },
     compras: {
@@ -126,23 +126,23 @@ export function Landing() {
 
   const faqs = [
     {
-      q: "Tengo que cambiar las herramientas que ya utilizo?",
+      q: "¿Tengo que cambiar las herramientas que ya utilizo?",
       a: "No. Hacemos que las herramientas que ya usas trabajen juntas. No necesitas reemplazar todo."
     },
     {
-      q: "Todo necesita IA?",
-      a: "No. Usamos IA solo cuando realmente aporta. Muchas veces basta con una regla sencilla o una automatizacion."
+      q: "¿Todo necesita IA?",
+      a: "No. Usamos IA solo cuando realmente aporta. Muchas veces basta con una regla sencilla o una automatización."
     },
     {
-      q: "Podeis empezar solamente por un proceso?",
-      a: "Sí·¿. Empezamos por lo que más duele hoy y vamos expandiendo el sistema."
+      q: "¿Podéis empezar solamente por un proceso?",
+      a: "Sí. Empezamos por lo que más duele hoy y vamos expandiendo el sistema."
     },
     {
-      q: "Constru is herramientas a medida?",
-      a: "Sí·¿. Diseñ¿·¿amos el sistema alrededor de cómo funciona tu empresa, no al revé·¿s."
+      q: "¿Construís herramientas a medida?",
+      a: "Sí. Diseñamos el sistema alrededor de cómo funciona tu empresa, no al revés."
     },
     {
-      q: "C ómo empieza un proyecto?",
+      q: "¿Cómo empieza un proyecto?",
       a: "Primero entendemos cómo trabajas. Después te enseñamos cómo podría funcionar mejor."
     }
   ];
@@ -159,15 +159,15 @@ export function Landing() {
       {/* NAV */}
       <nav className={`landing-nav ${scrolled ? "scrolled" : ""}`}>
         <div className="nav-content">
-          <BrandMark size="small" />
+          <BrandMark variant="positive" />
           <div className="nav-links">
             <a href="#problema">El problema</a>
-            <a href="#pilares">Qué·¿ hacemos</a>
+            <a href="#pilares">Qué hacemos</a>
             <a href="#antes-despues">Resultados</a>
             <a href="#areas">Lo que construimos</a>
-            <a href="#proceso">C ómo trabajamos</a>
+            <a href="#proceso">Cómo trabajamos</a>
           </div>
-          <a href="#contacto" className="nav-cta">Cu éntanos cómo trabajas</a>
+          <a href="#contacto" className="nav-cta">Cuéntanos cómo trabajas</a>
         </div>
       </nav>
 
@@ -181,7 +181,7 @@ export function Landing() {
               y construimos una forma mejor de hacerlo.
             </p>
             <div className="hero-ctas">
-              <a href="#contacto" className="btn-primary">Cu éntanos cómo trabajas</a>
+              <a href="#contacto" className="btn-primary">Cuéntanos cómo trabajas</a>
               <a href="#proceso" className="btn-secondary">Ver cómo funciona</a>
             </div>
           </div>
@@ -196,10 +196,10 @@ export function Landing() {
             {[
               { before: "Pedido", after: "Pedido", during: "[B] SYSTEMS" },
               { before: "Email", after: "Inventario actualizado", during: "" },
-              { before: "Excel", after: "Administraci ón informada", during: "" },
+              { before: "Excel", after: "Administración informada", during: "" },
               { before: "WhatsApp", after: "Equipo avisado", during: "" },
-              { before: "Inventario", after: "Informaci ón conectada", during: "" },
-              { before: "Administraci ón", after: "", during: "" }
+              { before: "Inventario", after: "Información conectada", during: "" },
+              { before: "Administración", after: "", during: "" }
             ].map((step, idx) => (
               <div key={idx} className={`process-step ${idx === processStep ? "active" : ""}`}>
                 <div className="step-before">{step.before}</div>
@@ -226,7 +226,7 @@ export function Landing() {
             <div className="scatter-item" style={{bottom: "30%", left: "10%"}}>💬 WhatsApp</div>
             <div className="scatter-item" style={{bottom: "15%", right: "15%"}}>🛒 Ecommerce</div>
             <div className="scatter-item" style={{top: "40%", left: "50%", transform: "translateX(-50%)"}}>📦 Inventario</div>
-            <div className="scatter-item" style={{top: "60%", right: "25%"}}>🧾 Facturaci ón</div>
+            <div className="scatter-item" style={{top: "60%", right: "25%"}}>🧾 Facturación</div>
           </div>
 
           <div className="problem-situations">
@@ -324,7 +324,7 @@ export function Landing() {
                   <div className="flow-arrow">↓</div>
                   <div className="flow-step">Otra herramienta</div>
                   <div className="flow-arrow">↓</div>
-                  <div className="flow-step">Administraci ón</div>
+                  <div className="flow-step">Administración</div>
                 </div>
                 <div className="process-metrics">
                   <div className="metric">8 pasos</div>
@@ -334,7 +334,7 @@ export function Landing() {
               </div>
               
               <div className="after-side">
-                <h4>DESPU ÉS</h4>
+                <h4>DESPUÉS</h4>
                 <div className="process-flow">
                   <div className="flow-step after">Pedido</div>
                   <div className="flow-arrow after">↓</div>
@@ -344,8 +344,8 @@ export function Landing() {
                 </div>
                 <div className="process-metrics">
                   <div className="metric after">3 pasos</div>
-                  <div className="metric after">1 intervenci ón</div>
-                  <div className="metric after">Informaci ón conectada</div>
+                  <div className="metric after">1 intervención</div>
+                  <div className="metric after">Información conectada</div>
                 </div>
               </div>
             </div>
@@ -423,7 +423,7 @@ export function Landing() {
             <div className="case-grid">
               <div className="case-problem">
                 <h4>PROBLEMA</h4>
-                <p>Informaci ón y procesos repartidos.</p>
+                <p>Información y procesos repartidos.</p>
               </div>
               <div className="case-system">
                 <h4>SISTEMA</h4>
@@ -431,15 +431,15 @@ export function Landing() {
                   <span className="module-tag">Ventas</span>
                   <span className="module-tag">Productos</span>
                   <span className="module-tag">Inventario</span>
-                  <span className="module-tag">Producci ón</span>
+                  <span className="module-tag">Producción</span>
                   <span className="module-tag">Costes</span>
                   <span className="module-tag">Proveedores</span>
                   <span className="module-tag">Finanzas</span>
                 </div>
               </div>
               <div className="case-connection">
-                <h4>CONEXI ÓN</h4>
-                <p>Venta → demanda → producci ón → inventario → costes → decisi ón</p>
+                <h4>CONEXIÓN</h4>
+                <p>Venta → demanda → producción → inventario → costes → decisión</p>
               </div>
             </div>
           </div>
@@ -457,7 +457,7 @@ export function Landing() {
               </div>
               <div className="principle-card">
                 <div className="principle-icon">🔄</div>
-                <h4>AUTOMATIZACI ÓN</h4>
+                <h4>AUTOMATIZACIÓN</h4>
                 <p>cuando una secuencia puede ejecutarse sola.</p>
               </div>
               <div className="principle-card">
@@ -479,29 +479,29 @@ export function Landing() {
         </div>
       </section>
 
-      {/* 07 — C ÓMO TRABAJAMOS + CTA */}
+      {/* 07 — CÓMO TRABAJAMOS + CTA */}
       <section id="proceso" className="process-section">
         <div className="process-container">
-          <h2>C ómo trabajamos</h2>
+          <h2>Cómo trabajamos</h2>
           
           <div className="process-timeline">
             <div className="timeline-step">
               <div className="step-number">01</div>
               <h4>ENTENDEMOS</h4>
               <p>Vemos cómo funciona actualmente la empresa.</p>
-              <div className="step-result">diagn óstico inicial</div>
+              <div className="step-result">diagnóstico inicial</div>
             </div>
             <div className="timeline-line"></div>
             <div className="timeline-step">
               <div className="step-number">02</div>
               <h4>ORDENAMOS</h4>
               <p>Mapeamos procesos, herramientas, personas y problemas.</p>
-              <div className="step-result">mapa de la operaci ón</div>
+              <div className="step-result">mapa de la operación</div>
             </div>
             <div className="timeline-line"></div>
             <div className="timeline-step">
               <div className="step-number">03</div>
-              <h4>DISEÑ· ¿AMOS</h4>
+              <h4>DISEÑAMOS</h4>
               <p>Decidimos qué simplificar, conectar, automatizar o construir.</p>
               <div className="step-result">propuesta del sistema</div>
             </div>
@@ -527,14 +527,14 @@ export function Landing() {
       <section id="contacto" className="contact-section">
         <div className="contact-container">
           <div className="contact-intro">
-            <h2>Ensé·¿ñ·¿·anos cómo funciona tu empresa.</h2>
+            <h2>Enséñanos cómo funciona tu empresa.</h2>
             <p>Nosotros te enseñamos cómo podría funcionar mejor.</p>
           </div>
           
           {submitted ? (
             <div className="form-success">
               <div className="success-icon">✓</div>
-              <h3>Gracias por contar nos cómo trabajas.</h3>
+              <h3>Gracias por contárnos cómo trabajas.</h3>
               <p>Te contactaremos pronto para entender mejor tu operación.</p>
             </div>
           ) : (
@@ -573,14 +573,14 @@ export function Landing() {
                 </select>
               </div>
               <textarea
-                placeholder="Cu éntanos qué quieres mejorar"
+                placeholder="Cuéntanos qué quieres mejorar"
                 value={formData.mensaje}
                 onChange={(e) => setFormData({...formData, mensaje: e.target.value})}
                 rows={4}
                 required
               />
               <button type="submit" className="btn-primary full-width">
-                Cu éntanos cómo trabajas
+                Cuéntanos cómo trabajas
               </button>
               <div className="form-notes">
                 <span>Sin compromiso.</span>
@@ -615,13 +615,13 @@ export function Landing() {
       {/* FOOTER */}
       <footer className="landing-footer">
         <div className="footer-content">
-          <BrandMark size="small" />
+          <BrandMark variant="negative" />
           <p>Primero entendemos. Después construimos.</p>
           <div className="footer-links">
             <a href="#">Aviso legal</a>
             <a href="#">Privacidad</a>
           </div>
-          <p className="footer-copy"> © 2026 [B] SYSTEMS</p>
+          <p className="footer-copy">© 2026 [B] SYSTEMS</p>
         </div>
       </footer>
     </div>
