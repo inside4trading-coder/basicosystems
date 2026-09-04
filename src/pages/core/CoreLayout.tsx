@@ -44,6 +44,7 @@ const groups: { label: string; items: Section[] }[] = [
       { to: "/core/nomina", label: "Nómina", icon: Wallet },
       { to: "/core/despachos", label: "Despachos", icon: Truck },
       { to: "/core/inventario", label: "Inventario", icon: Warehouse },
+      { to: "/core/mercancia-transito", label: "Mercancía en Tránsito", icon: Package },
       { to: "/core/reportes", label: "Reportes", icon: BarChart3 },
     ],
   },
