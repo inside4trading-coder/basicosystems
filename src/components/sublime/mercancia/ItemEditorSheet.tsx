@@ -957,6 +957,7 @@ function SuggestedPricePanel({
   shipment: { cost_per_kg_eur: number | null } | null;
   onChange: (patch: Partial<MerchItemInput>) => void;
 }) {
+  const { label: brandLabel } = useMerchBrandConfig();
   const hasShipment = !!(shipment && shipment.cost_per_kg_eur != null);
   const units = Math.max(1, calculateTotalUnits(form));
   const perUnitBuy = Number(form.precio_compra ?? 0);
