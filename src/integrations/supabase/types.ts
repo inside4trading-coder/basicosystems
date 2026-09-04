@@ -9116,6 +9116,7 @@ export type Database = {
       sublime_merch_boxes: {
         Row: {
           box_number: string
+          brand: string
           created_at: string
           id: string
           notes: string | null
@@ -9128,6 +9129,7 @@ export type Database = {
         }
         Insert: {
           box_number: string
+          brand?: string
           created_at?: string
           id?: string
           notes?: string | null
@@ -9140,6 +9142,7 @@ export type Database = {
         }
         Update: {
           box_number?: string
+          brand?: string
           created_at?: string
           id?: string
           notes?: string | null
@@ -9163,6 +9166,7 @@ export type Database = {
       sublime_merch_items: {
         Row: {
           box_id: string | null
+          brand: string
           codigo_fabricante: string | null
           consignment_commission_amount: number
           consignment_commission_pct: number
@@ -9199,6 +9203,7 @@ export type Database = {
         }
         Insert: {
           box_id?: string | null
+          brand?: string
           codigo_fabricante?: string | null
           consignment_commission_amount?: number
           consignment_commission_pct?: number
@@ -9235,6 +9240,7 @@ export type Database = {
         }
         Update: {
           box_id?: string | null
+          brand?: string
           codigo_fabricante?: string | null
           consignment_commission_amount?: number
           consignment_commission_pct?: number
@@ -9289,6 +9295,7 @@ export type Database = {
       sublime_merch_pricing_rules: {
         Row: {
           active: boolean
+          brand: string
           created_at: string
           id: string
           label: string
@@ -9298,6 +9305,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          brand?: string
           created_at?: string
           id?: string
           label: string
@@ -9307,6 +9315,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          brand?: string
           created_at?: string
           id?: string
           label?: string
@@ -9318,6 +9327,7 @@ export type Database = {
       }
       sublime_merch_shipments: {
         Row: {
+          brand: string
           carrier: string | null
           cost_per_kg_eur: number
           created_at: string
@@ -9332,6 +9342,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand?: string
           carrier?: string | null
           cost_per_kg_eur?: number
           created_at?: string
@@ -9346,6 +9357,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand?: string
           carrier?: string | null
           cost_per_kg_eur?: number
           created_at?: string
