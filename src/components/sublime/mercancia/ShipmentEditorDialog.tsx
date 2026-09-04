@@ -75,7 +75,7 @@ export function ShipmentEditorDialog({ open, onOpenChange, shipment }: Props) {
         });
       } else {
         setForm(empty());
-        getNextShipmentNumber()
+        getNextShipmentNumber(brand)
           .then((n) => setForm((f) => ({ ...f, shipment_number: n })))
           .catch(() => undefined);
       }
@@ -84,7 +84,7 @@ export function ShipmentEditorDialog({ open, onOpenChange, shipment }: Props) {
 
   const regenerateNumber = async () => {
     try {
-      const n = await getNextShipmentNumber();
+      const n = await getNextShipmentNumber(brand);
       setForm((f) => ({ ...f, shipment_number: n }));
     } catch {
       toast.error("No se pudo regenerar el número.");

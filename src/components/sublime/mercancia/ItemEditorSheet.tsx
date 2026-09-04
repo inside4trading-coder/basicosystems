@@ -34,6 +34,7 @@ import {
   validatePhotoUrl,
   uploadSublimeMerchPhoto,
 } from "@/lib/sublimeMerch";
+import { useMerchBrandConfig } from "./brand";
 import { Badge } from "@/components/ui/badge";
 
 import {
@@ -89,6 +90,7 @@ interface PendingFile {
 }
 
 export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
+  const { label: brandLabel } = useMerchBrandConfig();
   const [form, setForm] = useState<MerchItemInput>(empty());
   const { createItem, updateItem, addPhotoToItem, addWebPhotoUrl } = useMerchMutations();
   const { data: pricingRules = [] } = useSublimePricingRules();
@@ -1084,7 +1086,7 @@ function SuggestedPricePanel({
               <Label className="text-sm">Venta en consignación</Label>
               {form.is_consignment ? (
                 <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400 text-[10px] whitespace-nowrap">
-                  CONSIGNACIÓN · {Number(form.consignment_commission_pct ?? 0)}% SUBLIME
+                  CONSIGNACIÓN · {Number(form.consignment_commission_pct ?? 0)}% {brandLabel}
                 </Badge>
               ) : null}
             </div>
@@ -1105,7 +1107,7 @@ function SuggestedPricePanel({
         {form.is_consignment ? (
           <>
             <div className="space-y-2">
-              <Label>Comisión SUBLIME (%)</Label>
+              <Label>Comisión {brandLabel} (%)</Label>
               <Input
                 type="number"
                 min={0}
@@ -1126,7 +1128,7 @@ function SuggestedPricePanel({
                   <Row k="PVP base (propietario)" v={b == null ? "—" : eur(b.basePvpUnit)} />
                   <Row k={`PVP final con IVA (base ÷ (1 − ${b?.pct ?? 0}%))`} v={b == null ? "—" : <span className="font-semibold">{eur(b.finalPvpUnit)}</span>} />
                   <Row k={`− IVA incluido (${(IVA_RATE * 100).toFixed(0)}%)`} v={b == null ? "—" : eur(b.ivaUnit)} />
-                  <Row k={`− Comisión SUBLIME (${b?.pct ?? 0}%)`} v={b == null ? "—" : eur(b.commissionUnit)} />
+                  <Row k={`− Comisión ${brandLabel} (${b?.pct ?? 0}%)`} v={b == null ? "—" : eur(b.commissionUnit)} />
                   <Row k="= Neto propietario" v={b == null ? "—" : eur(b.netOwnerUnit)} />
                   <Separator className="my-1" />
                   <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -1134,7 +1136,7 @@ function SuggestedPricePanel({
                   </div>
                   <Row k="PVP final total" v={b == null ? "—" : <span className="font-semibold">{eur(b.finalPvpTotal)}</span>} />
                   <Row k="IVA incluido total" v={b == null ? "—" : eur(b.ivaTotal)} />
-                  <Row k="Comisión SUBLIME total" v={b == null ? "—" : eur(b.commissionTotal)} />
+                  <Row k={`Comisión ${brandLabel} total`} v={b == null ? "—" : eur(b.commissionTotal)} />
                   <Row k="Neto propietario total" v={b == null ? "—" : eur(b.netOwnerTotal)} />
 
                 </div>

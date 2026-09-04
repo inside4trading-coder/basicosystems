@@ -76,7 +76,7 @@ export function BulkAssignShipmentDialog({ open, onOpenChange, items, onAssigned
     setShipmentId("");
     setBoxId("");
     setNewBoxNumber("Caja 1");
-    getNextShipmentNumber()
+    getNextShipmentNumber(brand)
       .then((number) => setNewShipment(emptyShipment(number)))
       .catch(() => setNewShipment(emptyShipment("")));
   }, [open]);
