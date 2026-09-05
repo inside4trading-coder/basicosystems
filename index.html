@@ -33,7 +33,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0B37FF" />
+    <meta name="theme-color" content="#0A37FF" />
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="BASICO" />
@@ -41,16 +41,18 @@
 
     <!-- Open Graph. Las URL de imagen han de ser absolutas: los rastreadores no
          resuelven rutas relativas.
-         Pendiente: sustituir og-basico-systems.png por la versión con la
-         nueva identidad azul. Se mantiene el archivo actual hasta recibirlo. -->
+         La tarjeta va en JPEG y no PNG: con el degradado del hero, en PNG
+         pesaba 297 kB y WhatsApp degrada la vista previa grande a un thumbnail
+         cuadrado por encima de ~300 kB. Se regenera con
+         `node design/generate-assets.cjs`. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Basico System" />
     <meta property="og:locale" content="es_ES" />
     <meta property="og:url" content="https://basicosystems.lovable.app/" />
     <meta property="og:title" content="Basico System — Sistemas operativos a medida para marcas" />
     <meta property="og:description" content="Estudio de sistemas e IA aplicada. Empieza con Basico System, con diez módulos listos, y evoluciona a un sistema 100 % a medida cuando tu operación lo pida." />
-    <meta property="og:image" content="https://basicosystems.lovable.app/og-basico-systems.png" />
-    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image" content="https://basicosystems.lovable.app/og-basico-systems.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Basico System: sistemas operativos para marcas. Empieza en días, evoluciona a medida." />
@@ -58,7 +60,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Basico System — Sistemas operativos a medida para marcas" />
     <meta name="twitter:description" content="Estudio de sistemas e IA aplicada. Empieza con Basico System, con diez módulos listos, y evoluciona a un sistema 100 % a medida cuando tu operación lo pida." />
-    <meta name="twitter:image" content="https://basicosystems.lovable.app/og-basico-systems.png" />
+    <meta name="twitter:image" content="https://basicosystems.lovable.app/og-basico-systems.jpg" />
     <meta name="twitter:image:alt" content="Basico System: sistemas operativos para marcas. Empieza en días, evoluciona a medida." />
 
     <script type="application/ld+json">
@@ -89,7 +91,7 @@
           "applicationCategory": "BusinessApplication",
           "operatingSystem": "Web",
           "inLanguage": "es-ES",
-          "image": "https://basicosystems.lovable.app/og-basico-systems.png",
+          "image": "https://basicosystems.lovable.app/og-basico-systems.jpg",
           "description": "Sistema de gestión modular para marcas: pedidos, CRM, planning, RRHH, RRPP, campañas, llamadas, administración, fabricación y retail.",
           "featureList": [
             "Pedidos", "CRM", "Planning", "Crew", "RRPP",

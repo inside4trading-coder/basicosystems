@@ -9,7 +9,7 @@
  *   icon-512.png            512×512 circular
  *   icon-512-maskable.png   512×512 a sangre, para la máscara de Android
  *   apple-touch-icon.png    180×180 a sangre, para la máscara de iOS
- *   og-basico-systems.png   1200×630
+ *   og-basico-systems.jpg   1200×630, JPEG por peso (ver más abajo)
  *
  * Se captura con Playwright —ya está en las devDependencies— porque los
  * originales son HTML con la fuente Fixedsys, y así el icono usa exactamente
@@ -54,7 +54,7 @@ function construirIco(pngs) {
   const navegador = await chromium.launch({ channel: "chrome" });
 
   /* ---------- Iconos ----------
-     Gris #B3B3B3 sobre azul #0000AA: el mismo par que el confeti de la landing.
+     Blanco sobre azul primario #0A37FF: variante `onPrimary` del BrandMark.
      Va en todos los tamaños, no solo en el favicon — un icono que cambia de
      color según la resolución se lee como dos marcas distintas.
 
@@ -62,7 +62,7 @@ function construirIco(pngs) {
        · favicon  → el mínimo, la letra tiene que ser lo mayor posible a 16 px
        · apple    → algo más, iOS le redondea las esquinas
        · maskable → 20 %, Android le recorta un círculo y se come las esquinas */
-  const TINTA = "#B3B3B3";
+  const TINTA = "#FFFFFF";
   /* Dos van a sangre en cuadrado y no en círculo, y no es un descuido:
        · maskable → Android le aplica su propia máscara y exige que el fondo
          llegue al borde; un círculo con esquinas transparentes se le rellena
@@ -101,19 +101,31 @@ function construirIco(pngs) {
      WhatsApp sólo monta la vista previa grande por debajo de unos 300 kB: por
      encima degrada a un thumbnail cuadrado recortado del centro. 1200×630 es
      además la medida que documentan todas las plataformas.
-     Al cambiar esto hay que actualizar og:image:width/height en index.html:
-     si no coinciden con el fichero, algunas plataformas descartan la imagen. */
+
+     JPEG y no PNG: el fondo de la tarjeta es el degradado radial del hero, casi
+     10.000 colores distintos, y en PNG pesaba 297 kB — bajo el umbral pero con
+     3 kB de margen, que cualquier reajuste se come. En JPEG con croma sin
+     submuestrear queda en ~100 kB. La tipografía es de contorno (Chakra Petch),
+     no bitmap, así que no sufre con la compresión.
+
+     Al cambiar formato o medidas hay que actualizar og:image, og:image:type y
+     og:image:width/height en index.html: si no coinciden con el fichero,
+     algunas plataformas descartan la imagen. */
   const og = await navegador.newPage({ viewport: { width: 1200, height: 630 } });
   await og.goto(urlDe("og-card.html"), { waitUntil: "load" });
   await og.evaluate(() => document.fonts.ready);
   await og.waitForTimeout(400);
-  await og.screenshot({ path: path.join(PUBLIC, "og-basico-systems.png") });
+  await og.screenshot({
+    path: path.join(PUBLIC, "og-basico-systems.jpg"),
+    type: "jpeg",
+    quality: 88,
+  });
   await og.close();
 
   await navegador.close();
 
   for (const f of ["favicon.ico", "icon-192.png", "icon-512.png", "icon-512-maskable.png",
-                   "apple-touch-icon.png", "og-basico-systems.png"]) {
+                   "apple-touch-icon.png", "og-basico-systems.jpg"]) {
     const b = fs.statSync(path.join(PUBLIC, f)).size;
     console.log(`  ${f.padEnd(24)} ${(b / 1024).toFixed(1)} kB`);
   }
