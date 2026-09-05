@@ -574,27 +574,56 @@ export default function EspanaFabricacion() {
                         <TableHead className="text-xs text-right">Requerido</TableHead>
                         <TableHead className="text-xs text-right">Disponible</TableHead>
                         <TableHead className="text-xs text-center">OK</TableHead>
+                        <TableHead className="text-xs text-right">Excepción</TableHead>
                       </TableRow></TableHeader>
                       <TableBody>
-                        {(preflight.data.materials as any[]).map((m, i) => (
+                        {(preflight.data.materials as any[]).map((m, i) => {
+                          const ov = overrides[m.recipe_item_id];
+                          return (
                           <TableRow key={i}>
                             <TableCell className="text-xs">
                               {m.material_name ? (
                                 <>
-                                  <span className="font-medium">{m.material_name}</span>
+                                  <span className={ov ? "line-through text-muted-foreground" : "font-medium"}>{m.material_name}</span>
                                   {m.material_size && <span className="text-muted-foreground"> · talla {m.material_size}</span>}
                                   {m.material_sku && <div className="font-mono text-[10px] text-muted-foreground">{m.material_sku}</div>}
+                                  {ov && (
+                                    <div className="mt-1">
+                                      <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-700 mr-1">Material sustituido</Badge>
+                                      <span className="font-medium text-amber-700">{ov.name}</span>
+                                      {ov.reason && <div className="text-[10px] text-muted-foreground italic">Nota: {ov.reason}</div>}
+                                    </div>
+                                  )}
                                 </>
                               ) : <span className="text-amber-600 italic">No resuelto · {m.reason || "—"}</span>}
                             </TableCell>
                             <TableCell className="text-xs">{m.size_strategy}</TableCell>
                             <TableCell className="text-right text-xs font-mono">{Number(m.planned_quantity).toFixed(2)}</TableCell>
-                            <TableCell className="text-right text-xs font-mono">{Number(m.available).toFixed(2)}</TableCell>
+                            <TableCell className="text-right text-xs font-mono">{Number(ov ? ov.available : m.available).toFixed(2)}</TableCell>
                             <TableCell className="text-center">
-                              {m.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600 inline" /> : <AlertTriangle className="h-4 w-4 text-amber-600 inline" />}
+                              {rowOk(m) ? <CheckCircle2 className="h-4 w-4 text-emerald-600 inline" /> : <AlertTriangle className="h-4 w-4 text-amber-600 inline" />}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <MaterialOverridePicker
+                                  locationId={preflight.data.location_id}
+                                  materialType={m.material_type}
+                                  familyName={m.family_name}
+                                  familyColor={m.family_color}
+                                  excludeId={m.expected_material_id || m.resolved_material_id}
+                                  disabled={preflight.data.already_consumed > 0}
+                                  onSelect={(opt) => pickOverride(m, opt)}
+                                />
+                                {ov && (
+                                  <Button size="sm" variant="ghost" className="h-7 px-1 text-xs" onClick={() => clearOverride(m.recipe_item_id)}>
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
