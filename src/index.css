@@ -71,6 +71,11 @@
   .brand-heading { font-family: "Chakra Petch", system-ui, sans-serif; @apply font-bold uppercase tracking-tight; }
   .mono { font-family: "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0.06em; }
   .mono-cap { font-family: "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+  .motion-in { animation: brandIn var(--dur-in) var(--ease-brand) both; }
+  .motion-out { animation: brandOut var(--dur-out) var(--ease-brand) both; }
+  @keyframes brandIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  @keyframes brandOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.98); } }
   .glass { backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.35); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55); }
   .kpi-card { @apply bg-card rounded-surface border border-border p-6 shadow-sm transition-shadow hover:shadow-md; }
   .status-badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide; }
