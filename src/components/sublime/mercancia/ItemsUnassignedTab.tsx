@@ -216,8 +216,9 @@ export function ItemsUnassignedTab() {
                                <div className="truncate">{item.name}</div>
                                {item.is_consignment ? <ConsignmentBadge percentage={item.consignment_commission_pct} /> : null}
                              </div>
-                             <div className="text-[11px] text-muted-foreground truncate">{formatSizeSummary(item)} · {calculateTotalUnits(item)} uds</div>
-                            <PhotoCounts item={item} />
+                              <div className="text-[11px] text-muted-foreground truncate">{formatSizeSummary(item)} · {calculateTotalUnits(item)} uds</div>
+                             <ProcessedAt value={item.created_at} className="text-[11px] text-muted-foreground" />
+                             <PhotoCounts item={item} />
                           </div>
                         </div>
                       </TableCell>
@@ -293,8 +294,9 @@ function MobileCard({
                {item.is_consignment ? <ConsignmentBadge percentage={item.consignment_commission_pct} /> : null}
              </div>
              <p className="text-xs text-muted-foreground">{item.codigo_fabricante ?? "sin código"} · {item.sku_web ?? "sin SKU"}</p>
-            <p className="text-xs text-muted-foreground">{formatSizeSummary(item)} · {calculateTotalUnits(item)} uds</p>
-            <PhotoCounts item={item} />
+             <p className="text-xs text-muted-foreground">{formatSizeSummary(item)} · {calculateTotalUnits(item)} uds</p>
+             <ProcessedAt value={item.created_at} className="text-xs text-muted-foreground" />
+             <PhotoCounts item={item} />
           </div>
         </div>
         <div className="flex gap-1">
