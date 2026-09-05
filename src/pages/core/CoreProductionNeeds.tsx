@@ -840,13 +840,13 @@ function AttentionTabTrigger() {
       value="attention"
       className={
         active
-          ? "chip-error data-[state=active]:bg-red-600 data-[state=active]:text-white hover:bg-red-600/90 animate-pulse motion-reduce:animate-none"
+          ? "chip-error data-[state=active]:bg-[hsl(var(--status-error))] data-[state=active]:text-white animate-pulse motion-reduce:animate-none"
           : ""
       }
     >
       Requieren atención
       {active && (
-        <Badge className="ml-2 bg-white text-red-700 hover:bg-white">{total}</Badge>
+        <Badge className="num ml-2 bg-background text-[hsl(var(--status-error))] hover:bg-background">{total}</Badge>
       )}
     </TabsTrigger>
   );

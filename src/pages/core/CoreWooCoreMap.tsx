@@ -390,7 +390,7 @@ export default function CoreWooCoreMap() {
         <span className="text-[10px] text-muted-foreground">{r.label}</span>
         {isOperationalManual && (
           <span
-            className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold chip-warning w-fit"
+            className="chip-warning w-fit text-[9px]"
             title="Este costo se usará para montos de partidas/necesidades cuando no exista estructura. No reemplaza una estructura de fabricación."
           >
             Costo manual operativo
@@ -414,9 +414,9 @@ export default function CoreWooCoreMap() {
 
   function connectionCell(ctx: RowCtx) {
     const tier = statusTier(ctx);
-    const greenChip = "inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold chip-success";
-    const yellowChip = "inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold chip-warning";
-    const redChip = "inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold chip-error";
+    const greenChip = "chip-success";
+    const yellowChip = "chip-warning";
+    const redChip = "chip-error";
 
     if (tier === 2) {
       return (
