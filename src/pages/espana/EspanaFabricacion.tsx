@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { formatDMY } from "@/lib/dateUtils";
 import ManualFabricationDialog, { MANUAL_REASON_LABEL } from "@/components/espana/ManualFabricationDialog";
 import ProductionNoteDialog from "@/components/espana/ProductionNoteDialog";
+import MaterialOverridePicker, { materialOptionLabel, type MaterialOption } from "@/components/espana/MaterialOverridePicker";
 
 
 interface FabRow {
@@ -108,6 +109,8 @@ export default function EspanaFabricacion() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [preflight, setPreflight] = useState<{ open: boolean; request?: FabRow; data?: any; loading?: boolean }>({ open: false });
   const [notePre, setNotePre] = useState<{ open: boolean; request?: FabRow; lines?: any[]; loading?: boolean }>({ open: false });
+  // Excepciones manuales de material por fila de receta (recipe_item_id → material alternativo real)
+  const [overrides, setOverrides] = useState<Record<string, { material_id: string; name: string; available: number; reason: string }>>({});
 
 
   const load = async () => {
