@@ -223,8 +223,8 @@ export default function Llamadas() {
                       <Tooltip />
                       <Legend />
                       <Line type="monotone" dataKey="total" name="Total" stroke="hsl(var(--muted-foreground))" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="answered" name="Contestadas" stroke="hsl(142, 71%, 45%)" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="valid" name="Válidas" stroke="hsl(152, 60%, 42%)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="answered" name="Contestadas" stroke="hsl(var(--status-success))" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="valid" name="Válidas" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -244,7 +244,7 @@ export default function Llamadas() {
                       <XAxis dataKey="hour" tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}h`} />
                       <YAxis tick={{ fontSize: 11 }} />
                       <Tooltip labelFormatter={(v) => `${v}:00 - ${v}:59`} />
-                      <Bar dataKey="count" name="Llamadas" fill="hsl(152, 60%, 42%)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="count" name="Llamadas" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
