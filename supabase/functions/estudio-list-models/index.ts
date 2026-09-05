@@ -65,12 +65,11 @@ Deno.serve(async (req) => {
     if (userErr || !userData.user) return json(401, { error: "Sesión inválida" });
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
-    const { data: roles } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userData.user.id);
-    const allowed = (roles ?? []).some((r: { role: string }) => r.role === "admin" || r.role === "manager");
-    if (!allowed) return json(403, { error: "Solo administradores o managers" });
+    const { data: allowed } = await admin.rpc("has_module_access", {
+      _user_id: userData.user.id,
+      _module: "/estudio-visual",
+    });
+    if (!allowed) return json(403, { error: "No tienes acceso a Basico Studio" });
 
     const catalog = await fetchCatalog();
 
