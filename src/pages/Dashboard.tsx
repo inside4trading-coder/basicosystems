@@ -154,15 +154,8 @@ export default function Dashboard() {
         eyebrow="01 · VENTAS"
         title="Resumen de ventas"
         subtitle={lastSyncedAt ? <span className="mono-cap text-[10px] text-primary">{timeAgo(lastSyncedAt)}</span> : undefined}
-        actions={
-          <>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3"></div>
-          <div className="flex items-center"></div>
-          </>
-        }
       />
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center">
             <Button variant="destructive" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="gap-2 rounded-r-none">
