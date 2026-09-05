@@ -5103,49 +5103,64 @@ export type Database = {
       }
       esp_fabrication_material_consumptions: {
         Row: {
+          actual_material_id: string | null
           consumed_quantity: number
           created_at: string
           created_by: string | null
+          expected_material_id: string | null
+          expected_variant_id: string | null
           fabrication_request_id: string
           id: string
           location_id: string | null
           material_id: string
           material_movement_id: string | null
           notes: string | null
+          override_reason: string | null
           planned_quantity: number
           recipe_id: string | null
           recipe_item_id: string | null
           size_strategy: string | null
+          was_overridden: boolean
         }
         Insert: {
+          actual_material_id?: string | null
           consumed_quantity: number
           created_at?: string
           created_by?: string | null
+          expected_material_id?: string | null
+          expected_variant_id?: string | null
           fabrication_request_id: string
           id?: string
           location_id?: string | null
           material_id: string
           material_movement_id?: string | null
           notes?: string | null
+          override_reason?: string | null
           planned_quantity: number
           recipe_id?: string | null
           recipe_item_id?: string | null
           size_strategy?: string | null
+          was_overridden?: boolean
         }
         Update: {
+          actual_material_id?: string | null
           consumed_quantity?: number
           created_at?: string
           created_by?: string | null
+          expected_material_id?: string | null
+          expected_variant_id?: string | null
           fabrication_request_id?: string
           id?: string
           location_id?: string | null
           material_id?: string
           material_movement_id?: string | null
           notes?: string | null
+          override_reason?: string | null
           planned_quantity?: number
           recipe_id?: string | null
           recipe_item_id?: string | null
           size_strategy?: string | null
+          was_overridden?: boolean
         }
         Relationships: [
           {
@@ -9815,10 +9830,24 @@ export type Database = {
         }
         Returns: Json
       }
-      esp_consume_materials_for_fabrication_request: {
-        Args: { p_location_id?: string; p_notes?: string; p_request_id: string }
-        Returns: Json
-      }
+      esp_consume_materials_for_fabrication_request:
+        | {
+            Args: {
+              p_location_id?: string
+              p_notes?: string
+              p_request_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_location_id?: string
+              p_notes?: string
+              p_overrides?: Json
+              p_request_id: string
+            }
+            Returns: Json
+          }
       esp_consume_production_note: {
         Args: { p_allow_negative?: boolean; p_note_id: string }
         Returns: Json
