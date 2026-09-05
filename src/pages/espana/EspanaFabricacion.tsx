@@ -111,6 +111,12 @@ export default function EspanaFabricacion() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [preflight, setPreflight] = useState<{ open: boolean; request?: FabRow; data?: any; loading?: boolean }>({ open: false });
   const [notePre, setNotePre] = useState<{ open: boolean; request?: FabRow; lines?: any[]; loading?: boolean }>({ open: false });
+  /** Sustituciones de material por línea de receta, solo para esta fabricación. */
+  const [overrides, setOverrides] = useState<Record<string, MaterialOption>>({});
+  const [prefNote, setPrefNote] = useState("");
+  const [history, setHistory] = useState<any[] | null>(null);
+  const [rowNote, setRowNote] = useState<{ open: boolean; request?: FabRow }>({ open: false });
+
 
 
   const load = async () => {
