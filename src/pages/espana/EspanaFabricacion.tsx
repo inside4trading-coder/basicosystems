@@ -462,6 +462,13 @@ export default function EspanaFabricacion() {
                       </div>
                     )}
                     {isRestock && <div className="text-[11px] text-muted-foreground">Reposición sugerida por venta POS</div>}
+                    {r.notes && (
+                      <div className="text-[11px] text-amber-700 dark:text-amber-500 flex items-start gap-1 mt-0.5">
+                        <NotebookPen className="h-3 w-3 mt-0.5 shrink-0" />
+                        <span className="whitespace-pre-wrap">Nota: {r.notes}</span>
+                      </div>
+                    )}
+
                   </TableCell>
                   <TableCell className="text-xs">
                     {raw ? (
