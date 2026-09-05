@@ -610,33 +610,111 @@ export default function EspanaFabricacion() {
                         <TableHead className="text-xs text-center">OK</TableHead>
                       </TableRow></TableHeader>
                       <TableBody>
-                        {(preflight.data.materials as any[]).map((m, i) => (
-                          <TableRow key={i}>
-                            <TableCell className="text-xs">
-                              {m.material_name ? (
-                                <>
-                                  <span className="font-medium">{m.material_name}</span>
-                                  {m.material_size && <span className="text-muted-foreground"> · talla {m.material_size}</span>}
-                                  {m.material_sku && <div className="font-mono text-[10px] text-muted-foreground">{m.material_sku}</div>}
-                                </>
-                              ) : <span className="text-amber-600 italic">No resuelto · {m.reason || "—"}</span>}
-                            </TableCell>
-                            <TableCell className="text-xs">{m.size_strategy}</TableCell>
-                            <TableCell className="text-right text-xs font-mono">{Number(m.planned_quantity).toFixed(2)}</TableCell>
-                            <TableCell className="text-right text-xs font-mono">{Number(m.available).toFixed(2)}</TableCell>
-                            <TableCell className="text-center">
-                              {m.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600 inline" /> : <AlertTriangle className="h-4 w-4 text-amber-600 inline" />}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {(preflight.data.materials as any[]).map((m, i) => {
+                          const ov = overrides[m.recipe_item_id];
+                          const required = Number(m.planned_quantity);
+                          const available = ov ? ov.available : Number(m.available);
+                          const lineOk = ov ? ov.available >= required : !!m.ok;
+                          const locked = preflight.data.already_consumed > 0;
+                          return (
+                            <TableRow key={i}>
+                              <TableCell className="text-xs">
+                                {ov ? (
+                                  <>
+                                    <div className="text-[10px] text-muted-foreground line-through">
+                                      Esperado: {m.material_name ? `${m.material_name}${m.material_size ? ` · talla ${m.material_size}` : ""}` : "no resuelto"}
+                                      {m.material_sku ? ` · ${m.material_sku}` : ""}
+                                    </div>
+                                    <div className="font-semibold">Usado: {materialLabel(ov)}</div>
+                                    {ov.sku && <div className="font-mono text-[10px] text-muted-foreground">{ov.sku}</div>}
+                                    <Badge className="bg-purple-600 mt-1 text-[10px]"><Repeat2 className="h-3 w-3 mr-1" />Material sustituido</Badge>
+                                  </>
+                                ) : m.material_name ? (
+                                  <>
+                                    <span className="font-medium">{m.material_name}</span>
+                                    {m.material_size && <span className="text-muted-foreground"> · talla {m.material_size}</span>}
+                                    {m.material_sku && <div className="font-mono text-[10px] text-muted-foreground">{m.material_sku}</div>}
+                                  </>
+                                ) : <span className="text-amber-600 italic">No resuelto · {m.reason || "—"}</span>}
+                                {!locked && (
+                                  <MaterialOverridePicker
+                                    locationId={preflight.data.location_id || null}
+                                    materialType={m.material_type || m.family_material_type || null}
+                                    familyName={m.family_name || m.material_name || null}
+                                    familyColor={m.family_color || m.material_color || null}
+                                    expectedMaterialId={m.expected_material_id || m.resolved_material_id || null}
+                                    value={ov || null}
+                                    requiredQty={required}
+                                    onSelect={(sel) => setOverrides((prev) => ({ ...prev, [m.recipe_item_id]: sel }))}
+                                    onClear={() => setOverrides((prev) => {
+                                      const next = { ...prev };
+                                      delete next[m.recipe_item_id];
+                                      return next;
+                                    })}
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs">{m.size_strategy}</TableCell>
+                              <TableCell className="text-right text-xs font-mono">{required.toFixed(2)}</TableCell>
+                              <TableCell className="text-right text-xs font-mono">{Number(available).toFixed(2)}</TableCell>
+                              <TableCell className="text-center">
+                                {lineOk ? <CheckCircle2 className="h-4 w-4 text-emerald-600 inline" /> : <AlertTriangle className="h-4 w-4 text-amber-600 inline" />}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
+                  {Object.keys(overrides).length > 0 && (
+                    <Card className="p-3 mt-2 border-l-4 border-l-purple-500 bg-purple-500/5 text-xs">
+                      <p className="font-bold flex items-center gap-1"><Repeat2 className="h-3.5 w-3.5 text-purple-600" /> Excepción de consumo</p>
+                      <p className="text-muted-foreground mt-1">
+                        Se descontarán los materiales sustituidos, no los previstos. El pedido, la talla, la variante de WooCommerce y la receta no cambian.
+                      </p>
+                    </Card>
+                  )}
                 </div>
               )}
 
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold uppercase text-muted-foreground">Nota de producción (opcional)</p>
+                <Textarea
+                  rows={2}
+                  maxLength={1000}
+                  value={prefNote}
+                  placeholder="Ej. usar blank XL y ajustar antes de estampar"
+                  onChange={(e) => setPrefNote(e.target.value)}
+                />
+              </div>
+
               {preflight.data.already_consumed > 0 && (
                 <p className="text-xs text-amber-600">⚠ Esta solicitud ya tiene materiales consumidos. No se puede volver a consumir.</p>
+              )}
+
+              {history && history.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Historial de consumo</p>
+                  <div className="border rounded divide-y text-xs">
+                    {history.map((h) => (
+                      <div key={h.id} className="p-2">
+                        {h.was_overridden ? (
+                          <>
+                            <div className="text-muted-foreground line-through">Previsto: {h.expected_label || "—"}</div>
+                            <div className="font-semibold">Utilizado: {h.actual_label || "—"}</div>
+                            <Badge className="bg-purple-600 mt-1 text-[10px]"><Repeat2 className="h-3 w-3 mr-1" />Material sustituido</Badge>
+                          </>
+                        ) : (
+                          <div className="font-medium">{h.actual_label || "—"}</div>
+                        )}
+                        <div className="text-[10px] text-muted-foreground mt-1">
+                          Cantidad {Number(h.consumed_quantity)} · {formatDMY(h.created_at)}
+                          {h.override_reason ? ` · ${h.override_reason}` : ""}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -648,7 +726,7 @@ export default function EspanaFabricacion() {
                 preflight.loading
                 || !preflight.data
                 || !preflight.data.recipe_id
-                || !preflight.data.all_ok
+                || !materialsReady()
                 || preflight.data.already_consumed > 0
               }
             >
@@ -656,6 +734,7 @@ export default function EspanaFabricacion() {
               Consumir materiales y fabricar
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
