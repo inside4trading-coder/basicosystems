@@ -181,7 +181,18 @@ export default function EspanaFabricacion() {
     })));
   };
 
+  /** Todas las líneas resueltas: receta OK, o sustituto con stock suficiente. */
+  const materialsReady = () => {
+    const mats = (preflight.data?.materials || []) as any[];
+    if (mats.length === 0) return !!preflight.data?.all_ok;
+    return mats.every((m) => {
+      const ov = overrides[m.recipe_item_id];
+      return ov ? ov.available >= Number(m.planned_quantity) : !!m.ok;
+    });
+  };
+
   const confirmConsume = async () => {
+
     if (!preflight.request) return;
     setPreflight(p => ({ ...p, loading: true }));
     const payload = Object.entries(overrides).map(([recipe_item_id, m]) => ({ recipe_item_id, material_id: m.id }));
