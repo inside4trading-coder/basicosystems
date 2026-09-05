@@ -23,7 +23,7 @@ const leadSchema = z.object({
 });
 
 const modules = [
-  { n: "01", title: "Pedidos", desc: "Sync con tu e-commerce, estados, costos y márgenes en vivo.", icon: "bsys-cart" },
+  { n: "01", title: "Pedidos", desc: "Conectado con tu tienda online: estados, costos y márgenes en vivo.", icon: "bsys-cart" },
   { n: "02", title: "CRM", desc: "Clientes unificados, segmentación y comportamiento de compra.", icon: "bsys-user" },
   { n: "03", title: "Planning", desc: "Calendario editorial sincronizado con Notion y tu equipo.", icon: "bsys-clock" },
   { n: "04", title: "Crew", desc: "RRHH completo: nómina, documentos, incidencias y tareas.", icon: "bsys-users" },
@@ -32,35 +32,64 @@ const modules = [
   { n: "07", title: "Llamadas", desc: "Telefonía conectada, grabaciones y analítica por agente.", icon: "bsys-chat" },
   { n: "08", title: "Administración", desc: "Obligaciones, vencimientos y control financiero.", icon: "bsys-file" },
   { n: "09", title: "Core", desc: "Fabricación completa: costos por prenda, órdenes de producción, partidas y nómina de taller.", icon: "bsys-terminal", wide: true },
-  { n: "10", title: "Retail", desc: "POS de tienda, catálogo sincronizado con WooCommerce e inventario en un solo stock.", icon: "bsys-tag", wide: true },
+  { n: "10", title: "Retail", desc: "Punto de venta de tienda, catálogo conectado con tu tienda online e inventario en un solo stock.", icon: "bsys-tag", wide: true },
 ];
 
 const customization = [
-  { title: "Branding", desc: "Tus colores, tu logo, tu tipografía. Sin rastro de Basico." },
+  { title: "Tu marca", desc: "Tus colores, tu logo, tu tipografía. Sin rastro de Basico." },
   { title: "Módulos", desc: "Activa solo los que tu marca necesita. Apaga el resto." },
-  { title: "Roles y permisos", desc: "RBAC configurable. Define quién ve y hace qué." },
+  { title: "Quién ve qué", desc: "Decides qué hace y qué ve cada persona de tu equipo." },
   { title: "Integraciones", desc: "Conectamos las herramientas que ya usas. No al revés." },
 ];
 
 const industries = [
   { title: "Moda", desc: "Stock, drops, devoluciones y RRPP." },
   { title: "Restauración", desc: "Reservas, inventario, turnos y delivery." },
-  { title: "Hospitality", desc: "Reservas, housekeeping y experiencia." },
+  { title: "Hoteles", desc: "Reservas, limpieza de habitaciones y experiencia del huésped." },
   { title: "Servicios", desc: "Clientes, propuestas, horas y facturación." },
   { title: "Eventos", desc: "Productores, proveedores, agenda y caja." },
-  { title: "Retail físico", desc: "POS, stock por tienda, equipo y cliente." },
+  { title: "Retail físico", desc: "Punto de venta, stock por tienda, equipo y cliente." },
 ];
 
 const process = [
-  { n: "01", title: "Discovery", desc: "Entendemos tu operación real. 1–2 semanas." },
-  { n: "02", title: "Diseño", desc: "Mapeamos módulos, datos y permisos." },
-  { n: "03", title: "Construcción", desc: "Iteramos cada semana con tu equipo dentro." },
-  { n: "04", title: "Operación", desc: "Soporte continuo y evolución del sistema." },
+  { n: "01", title: "Entendemos", desc: "Vemos qué ocurre, quién interviene y dónde se pierde tiempo. 1–2 semanas." },
+  { n: "02", title: "Ordenamos", desc: "Mapeamos módulos, datos y permisos." },
+  { n: "03", title: "Construimos", desc: "Avanzamos cada semana contigo dentro." },
+  { n: "04", title: "Mejoramos", desc: "Seguimos contigo. El sistema evoluciona con tu empresa." },
 ];
 
 const stack = [
   "LangChain", "RAG", "Claude", "Shopify", "WooCommerce", "Supabase", "Vercel",
   "Antigravity", "Cursor", "Zadarma", "n8n", "Docker", "Obsidian",
+];
+
+// Mapa de conexión de la sección Módulos: mismo patrón que la pieza de
+// Instagram "puede conectar las partes clave de tu operación" — nodo central
+// [B] con las áreas que ya conecta, antes de entrar al detalle de cada módulo.
+const operationMap = [
+  "Ventas", "Inventario", "Producción", "Finanzas", "Equipo", "Clientes", "Compras",
+];
+
+// Grid "antes de construir" — mismo patrón que la pieza de Instagram
+// "entendemos tu operación" (Personas · Procesos · Herramientas · Datos ·
+// Decisiones · Tareas manuales), reutilizando el componente .cards.three.
+const understand = [
+  { title: "Personas", desc: "Quién hace qué en tu equipo." },
+  { title: "Procesos", desc: "Cómo se mueve cada tarea, paso a paso." },
+  { title: "Herramientas", desc: "Qué usas hoy, y qué tan conectado está." },
+  { title: "Datos", desc: "Qué información tienes, y dónde vive." },
+  { title: "Decisiones", desc: "Qué se decide, y con qué información." },
+  { title: "Tareas manuales", desc: "Qué se repite, y qué se puede automatizar." },
+];
+
+// Árbol de decisión "No todo necesita IA" — mismo patrón que la pieza
+// [B] Principle / 001. Sustituye el listado de herramientas como mensaje
+// principal del bloque Stack; el listado baja a nota al pie.
+const decisions = [
+  { q: "¿Basta una condición sencilla?", a: "Regla" },
+  { q: "¿Una secuencia puede ejecutarse sola?", a: "Automatización" },
+  { q: "¿Tu empresa necesita una herramienta propia?", a: "Software" },
+  { q: "¿Hace falta interpretar, analizar o asistir?", a: "IA" },
 ];
 
 const navItems = [
@@ -186,16 +215,16 @@ export default function Landing() {
       {/* HERO */}
       <header className="hero">
         <ConfettiSphere />
-        <p className="eyebrow">Estudio de sistemas · IA aplicada</p>
+        <p className="eyebrow">[B] Systems</p>
         <h1>
-          Sistemas operativos para marcas que <em>no caben</em> en un SaaS genérico
+          Hacemos que tu empresa funcione <em>mejor</em>
         </h1>
         <p className="sub">
-          Empieza con Basico System. Evoluciona a un sistema 100% a medida cuando tu operación lo pida.
+          Software construido alrededor de cómo trabaja tu empresa. Ya existe uno listo, o te construimos el tuyo.
         </p>
         <div className="ctas">
           <button type="button" className="btn fill" onClick={scrollTo("dos-formas")}>
-            Probar Basico System
+            Quiero activarlo
           </button>
           <button type="button" className="btn ghost" onClick={scrollTo("contacto")}>
             Quiero uno a medida
@@ -204,18 +233,35 @@ export default function Landing() {
       </header>
 
       <div className="below">
-        {/* MANIFIESTO */}
+        {/* MANIFIESTO — mismo patrón que la pieza "nuestra diferencia" */}
         <section className="block">
-          <p className="kicker">No somos un SaaS</p>
+          <p className="kicker">Nuestra diferencia</p>
           <div className="manifest">
             {[
-              "No alquilas software. Te construimos uno.",
-              "No te adaptas al producto. El sistema se adapta a ti.",
-              "No pagas por features que no usas. Pagas por lo que tu operación necesita.",
+              "No te preguntamos qué software quieres.",
+              "Primero entendemos cómo funciona tu empresa.",
+              "Después construimos el sistema que hace falta.",
             ].map((line, i) => (
               <div key={line}>
                 <span className="n">0{i + 1}</span>
                 <p>{line}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* CÓMO FUNCIONA — grid "antes de construir", mismo patrón que la pieza
+            "entendemos tu operación" (Personas·Procesos·Herramientas·Datos·
+            Decisiones·Tareas manuales). Reutiliza el componente .cards.three. */}
+        <section className="block">
+          <p className="kicker">Antes de construir</p>
+          <h2>Primero entendemos tu operación.</h2>
+          <p className="lede">Vemos qué ocurre, quién interviene y dónde se pierde tiempo.</p>
+          <div className="cards three">
+            {understand.map((u) => (
+              <div key={u.title} className="card">
+                <h3>{u.title}</h3>
+                <p>{u.desc}</p>
               </div>
             ))}
           </div>
@@ -234,15 +280,15 @@ export default function Landing() {
                 <span className="path__label">basico.systems</span>
               </div>
               <div className="path__body">
-                <p className="tag">Producto</p>
+                <p className="tag">Ya existe</p>
                 <h3>Basico System</h3>
-                <p className="sub2">Arranca en días</p>
+                <p className="sub2">Lo activas y esta semana ya estás ordenando tu empresa.</p>
                 <ul>
                   {[
-                    "10 módulos listos: Pedidos, CRM, Planning, Crew, RRPP, Campañas, Llamadas, Administración, Core y Retail",
-                    "Personalizable: branding, roles, flujos y campos",
-                    "Integraciones nativas: WooCommerce, Brevo, Notion, Zadarma",
-                    "Onboarding guiado con tu equipo",
+                    "Ya trae ventas, inventario, producción, finanzas, equipo y compras conectados",
+                    "Se ajusta a tu marca en días, no en meses",
+                    "Ya usa las herramientas que tienes hoy — no reemplazas nada",
+                    "Tu equipo lo aprende acompañado",
                   ].map((b) => (
                     <li key={b}>{b}</li>
                   ))}
@@ -252,7 +298,7 @@ export default function Landing() {
                   className="btn fill"
                   onClick={() => { setInterest("saas"); scrollTo("contacto")(); }}
                 >
-                  Solicitar acceso
+                  Quiero activarlo
                 </button>
               </div>
             </article>
@@ -265,15 +311,15 @@ export default function Landing() {
                 <span className="path__label">estudio.basico.systems</span>
               </div>
               <div className="path__body">
-                <p className="tag">Estudio</p>
+                <p className="tag">A tu medida</p>
                 <h3>Hecho a medida</h3>
-                <p className="sub2">Construido para tu operación</p>
+                <p className="sub2">No existe todavía. Lo construimos alrededor de cómo trabaja tu empresa.</p>
                 <ul>
                   {[
-                    "Discovery profundo de tu negocio",
-                    "Módulos nuevos diseñados desde cero",
-                    "Integraciones con cualquier herramienta",
-                    "Soporte y evolución continua",
+                    "Primero vemos cómo trabajas hoy",
+                    "Construimos módulos que no existen en ningún lado más",
+                    "Se conecta con cualquier herramienta que ya uses",
+                    "Seguimos contigo después de construirlo",
                   ].map((b) => (
                     <li key={b}>{b}</li>
                   ))}
@@ -290,13 +336,27 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* MÓDULOS */}
+        {/* MÓDULOS — diagrama de conexión, mismo patrón que la pieza "puede
+            conectar las partes clave de tu operación": nodo [B] arriba, las
+            áreas que conecta debajo, antes de entrar al detalle de cada módulo. */}
         <section className="block" id="modulos">
-          <p className="kicker">El producto</p>
-          <h2>Qué incluye Basico System hoy</h2>
+          <p className="kicker">Lo que puede conectar</p>
+          <h2>Puede conectar las partes clave de tu operación.</h2>
           <p className="lede">
-            Estos son los módulos en producción. En tailor-made, los combinamos, modificamos o construimos nuevos.
+            Ventas, inventario, producción, finanzas, equipo, clientes y compras — todo en un mismo lugar.
           </p>
+          <div className="map">
+            <div className="map__hub-wrap">
+              <span className="map__hub" aria-hidden="true">[B]</span>
+              <span className="map__stem" aria-hidden="true" />
+            </div>
+            <div className="map__grid">
+              {operationMap.map((area) => (
+                <span key={area} className="map__node">{area}</span>
+              ))}
+            </div>
+          </div>
+          <p className="lede" style={{ marginTop: "2.75rem" }}>Así se ve por dentro, módulo por módulo:</p>
           <div className="mods">
             {modules.map((m) => (
               <div key={m.n} className={m.wide ? "mod wide" : "mod"}>
@@ -329,25 +389,36 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* STACK */}
+        {/* NO TODO NECESITA IA — árbol de decisión, mismo patrón que la pieza
+            [B] Principle / 001. El listado de herramientas se conserva como
+            respaldo técnico, degradado a nota al pie del bloque oscuro. */}
         <section className="block">
-          <p className="kicker">Stack</p>
-          <h2>Construido con las mejores herramientas de IA</h2>
-          <p className="lede">Integramos los modelos y servicios que tu operación necesita.</p>
+          <p className="kicker">[B] Principle / 001</p>
+          <h2>No todo necesita IA.</h2>
+          <ol className="decision">
+            {decisions.map((d) => (
+              <li key={d.a}>
+                <span className="decision__q">{d.q}</span>
+                <span className="decision__a">{d.a}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="decision__msg">Usamos lo que tenga sentido. No incorporamos IA porque esté de moda.</p>
           <div className="stackwrap">
+            <p className="kicker" style={{ color: "var(--blue-300)" }}>Por dentro</p>
             <div className="stackrow">
               {stack.map((s) => (
                 <span key={s}>{s}</span>
               ))}
             </div>
-            <p className="stacknote">Si tu marca usa otras herramientas, las integramos.</p>
+            <p className="stacknote">Si tu marca usa otras herramientas, las conectamos.</p>
           </div>
         </section>
 
         {/* RUBROS */}
         <section className="block">
-          <p className="kicker">Adaptable</p>
-          <h2>Da igual el rubro</h2>
+          <p className="kicker">Para cualquier negocio</p>
+          <h2>No importa a qué te dediques</h2>
           <p className="lede">
             Lo que cambia es el negocio. Lo que se mantiene es el método. Cada rubro arranca con
             Basico System y crece a medida según el negocio.
@@ -362,10 +433,19 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* PROCESO */}
+        {/* PROCESO — secuencia con flechas, mismo patrón que la pieza
+            "después decidimos qué hacer" (01→02→03→04). */}
         <section className="block" id="proceso">
           <p className="kicker">Cómo trabajamos</p>
-          <h2>Proceso</h2>
+          <h2>Primero entendemos. Después construimos.</h2>
+          <p className="steps__flow" aria-hidden="true">
+            {process.map((p, i) => (
+              <span key={p.n}>
+                <span>{p.title}</span>
+                {i < process.length - 1 && <span className="arrow"> → </span>}
+              </span>
+            ))}
+          </p>
           <ul className="steps">
             {process.map((p) => (
               <li key={p.n}>
@@ -390,10 +470,10 @@ export default function Landing() {
 
         {/* CONTACTO */}
         <section className="block contact" id="contacto">
-          <p className="kicker">Empecemos</p>
-          <h2>¿Listo para que tu marca opere como Basico?</h2>
+          <p className="kicker">Primera pregunta</p>
+          <h2>¿Cómo funciona tu empresa?</h2>
           <p className="lede">
-            Cuéntanos cómo opera tu marca hoy. Volvemos en menos de 48 h con un primer mapa.
+            Ahí empieza nuestro trabajo. Cuéntanos y te decimos por dónde empezar. Respondemos en menos de 48 horas.
           </p>
 
           <form onSubmit={handleSubmit}>
@@ -405,8 +485,8 @@ export default function Landing() {
                 className="radio-row"
               >
                 {([
-                  ["saas", "Probar Basico System"],
-                  ["tailor", "Construir uno a medida"],
+                  ["saas", "Quiero activarlo"],
+                  ["tailor", "Quiero uno a medida"],
                   ["unsure", "Aún no lo sé"],
                 ] as const).map(([v, l]) => (
                   <label key={v} htmlFor={`interest-${v}`} className={interest === v ? "on" : undefined}>
@@ -432,7 +512,7 @@ export default function Landing() {
               <Input id="email" name="email" type="email" required maxLength={255} />
             </div>
             <div className="field">
-              <Label htmlFor="message">Cuéntanos sobre tu operación</Label>
+              <Label htmlFor="message">Cuéntanos cómo trabaja tu empresa hoy</Label>
               <Textarea id="message" name="message" rows={5} maxLength={1000} />
             </div>
             <button type="submit" className="btn fill" disabled={submitting}>

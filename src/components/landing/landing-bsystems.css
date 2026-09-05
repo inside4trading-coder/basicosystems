@@ -492,6 +492,103 @@
 .landing-bsystems .card h3 { font-size: 1.25rem; color: var(--accent); }
 .landing-bsystems .card p { color: var(--slate); font-size: 0.9375rem; margin: 0.6rem 0 0; }
 
+/* Diagrama de conexión (sección Módulos): nodo [B] arriba, conectado por un
+   tallo a la rejilla de áreas debajo. El borde superior en acento de cada
+   nodo es la señal visual de conexión — sin SVG ni cálculo de líneas, para
+   que se mantenga estable en cualquier ancho de pantalla. */
+.landing-bsystems .map { margin-top: 2.75rem; }
+.landing-bsystems .map__hub-wrap { display: flex; flex-direction: column; align-items: center; }
+.landing-bsystems .map__hub {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: 0.02em;
+}
+.landing-bsystems .map__stem { width: 2px; height: 1.5rem; background: var(--mist); margin: 0 auto 1.25rem; }
+.landing-bsystems .map__grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 40rem) {
+  .landing-bsystems .map__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.landing-bsystems .map__node {
+  display: block;
+  border: 1px solid var(--mist);
+  border-top: 2px solid var(--accent);
+  border-radius: 1rem;
+  padding: 1rem 0.5rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: #ffffff;
+}
+
+/* Árbol de decisión "No todo necesita IA": una pregunta, una respuesta.
+   Vive sobre fondo claro, arriba del stackwrap oscuro que aloja el listado
+   de herramientas como respaldo técnico. */
+.landing-bsystems .decision {
+  list-style: none;
+  margin: 2.5rem 0 0;
+  padding: 0;
+  border: 1px solid var(--mist);
+  border-radius: 1.375rem;
+  overflow: hidden;
+}
+.landing-bsystems .decision li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--mist);
+}
+.landing-bsystems .decision li:last-child { border-bottom: 0; }
+.landing-bsystems .decision__q { color: var(--slate); font-size: 1rem; }
+.landing-bsystems .decision__a {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  background: var(--accent);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.landing-bsystems .decision__msg {
+  margin: 1.75rem 0 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Secuencia con flechas sobre el grid de Proceso: mismo contenido que las
+   tarjetas de abajo, así que va aria-hidden en el JSX para no duplicar la
+   lectura en lectores de pantalla. */
+.landing-bsystems .steps__flow {
+  margin: 1.5rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.landing-bsystems .steps__flow .arrow { color: var(--faint); }
+
 .landing-bsystems .stackwrap {
   background: var(--blue-900);
   border-radius: 1.375rem;
