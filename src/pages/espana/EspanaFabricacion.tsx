@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2, Plus, Wrench, Store, ThumbsUp, Ban, NotebookPen } from "lucide-react";
+import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2, Plus, Wrench, Store, ThumbsUp, Ban, NotebookPen, Repeat2 } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +12,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { formatDMY } from "@/lib/dateUtils";
 import ManualFabricationDialog, { MANUAL_REASON_LABEL } from "@/components/espana/ManualFabricationDialog";
 import ProductionNoteDialog from "@/components/espana/ProductionNoteDialog";
+import FabricationNoteDialog from "@/components/espana/FabricationNoteDialog";
+import MaterialOverridePicker, { MaterialOption, materialLabel } from "@/components/espana/MaterialOverridePicker";
+
 
 
 interface FabRow {
