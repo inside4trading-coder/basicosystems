@@ -41,10 +41,10 @@ type Event = {
 };
 
 const SEVERITY_STYLES: Record<string, string> = {
-  allow: "bg-emerald-600 text-white",
-  warning: "bg-amber-500 text-black",
-  review: "bg-yellow-300 text-black",
-  block: "bg-red-600 text-white",
+  allow: "chip-success",
+  warning: "chip-warning",
+  review: "chip-warning",
+  block: "chip-error",
 };
 
 type Preset = {

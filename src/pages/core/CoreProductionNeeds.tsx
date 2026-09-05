@@ -840,7 +840,7 @@ function AttentionTabTrigger() {
       value="attention"
       className={
         active
-          ? "bg-red-600 text-white data-[state=active]:bg-red-600 data-[state=active]:text-white hover:bg-red-600/90 animate-pulse motion-reduce:animate-none"
+          ? "chip-error data-[state=active]:bg-red-600 data-[state=active]:text-white hover:bg-red-600/90 animate-pulse motion-reduce:animate-none"
           : ""
       }
     >

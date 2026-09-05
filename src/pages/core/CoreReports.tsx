@@ -47,14 +47,14 @@ function hoursSince(d?: string | null) {
 function riskBadge(h: number | null) {
   if (h === null) return <Badge variant="secondary">—</Badge>;
   if (h >= 72) return <Badge variant="destructive">Crítica · {Math.floor(h)}h</Badge>;
-  if (h >= 24) return <Badge className="bg-orange-500 hover:bg-orange-500/80 text-white">Alta · {Math.floor(h)}h</Badge>;
-  return <Badge className="bg-yellow-500 hover:bg-yellow-500/80 text-black">Reciente · {Math.floor(h)}h</Badge>;
+  if (h >= 24) return <Badge className="chip-warning">Alta · {Math.floor(h)}h</Badge>;
+  return <Badge className="chip-warning">Reciente · {Math.floor(h)}h</Badge>;
 }
 
 function invStatusBadge(s: string) {
   const map: Record<string, { v: any; cls?: string; label: string }> = {
-    fully_entered: { v: "default", cls: "bg-green-600 hover:bg-green-600/80 text-white", label: "Inventario completo" },
-    partially_entered: { v: "default", cls: "bg-orange-500 hover:bg-orange-500/80 text-white", label: "Parcial" },
+    fully_entered: { v: "default", cls: "chip-success", label: "Inventario completo" },
+    partially_entered: { v: "default", cls: "chip-warning", label: "Parcial" },
     pending_inventory: { v: "destructive", label: "Pendiente inventario" },
     not_ready: { v: "secondary", label: "No listo" },
   };
@@ -665,7 +665,7 @@ export default function CoreReports() {
                           <div className="flex flex-col gap-1">
                             <Badge variant="outline" className="w-fit">preview: {l.mode}</Badge>
                             {realWrite && (
-                              <Badge className="bg-blue-600 hover:bg-blue-600/80 text-white w-fit">
+                              <Badge className="chip-info w-fit">
                                 Confirmado manualmente
                               </Badge>
                             )}
@@ -674,7 +674,7 @@ export default function CoreReports() {
                         <TableCell>
                           <Badge
                             variant={l.status === "failed" ? "destructive" : "outline"}
-                            className={l.status === "success" ? "bg-green-600 text-white" : ""}
+                            className={l.status === "success" ? "chip-success" : ""}
                           >
                             {l.status}
                             {realWrite ? " · escritura real" : ""}

@@ -44,10 +44,10 @@ const EXTRA_ACTION_LABELS: Record<string, string> = {
 };
 
 const SEVERITY_STYLES: Record<string, string> = {
-  allow: "bg-emerald-600 text-white",
-  warning: "bg-amber-500 text-black",
-  review: "bg-yellow-300 text-black",
-  block: "bg-red-600 text-white",
+  allow: "chip-success",
+  warning: "chip-warning",
+  review: "chip-warning",
+  block: "chip-error",
 };
 
 function actionLabel(action: string) {
@@ -329,7 +329,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                     <td className="p-2">
                       {justSolved ? (
                         <div className="flex flex-col gap-1">
-                          <Badge className="bg-emerald-600 text-white w-fit">
+                          <Badge className="chip-success w-fit">
                             <CheckCircle2 className="w-3 h-3 mr-1" /> Solucionado
                           </Badge>
                           <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
@@ -340,7 +340,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         <div className="flex flex-col gap-1">
                           {r.pendingClassificationResolution?.action === "no_restock" ? (
                             <>
-                              <Badge className="bg-slate-600 text-white w-fit">
+                              <Badge className="chip-neutral w-fit">
                                 Corregido · No restock
                               </Badge>
                               <span className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -349,7 +349,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                             </>
                           ) : (
                             <>
-                              <Badge className="bg-emerald-600 text-white w-fit">
+                              <Badge className="chip-success w-fit">
                                 Corregido · Reemplazo
                               </Badge>
                               {rep && (
@@ -364,7 +364,7 @@ export function PolicyEventsAttentionPanel({ initialFilter }: { initialFilter?: 
                         <div className="flex flex-col gap-1">
                           <Badge variant="outline" className="w-fit">{r.status}</Badge>
                           {refreshInfo?.changed && (
-                            <Badge className="bg-amber-600 text-white w-fit">Política actualizada</Badge>
+                            <Badge className="chip-warning w-fit">Política actualizada</Badge>
                           )}
                           {refreshInfo && !refreshInfo.resolved && (
                             <span className="text-[11px] text-amber-600">{refreshInfo.message}</span>
