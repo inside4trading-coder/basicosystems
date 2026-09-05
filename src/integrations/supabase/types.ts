@@ -9830,24 +9830,15 @@ export type Database = {
         }
         Returns: Json
       }
-      esp_consume_materials_for_fabrication_request:
-        | {
-            Args: {
-              p_location_id?: string
-              p_notes?: string
-              p_request_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_location_id?: string
-              p_notes?: string
-              p_overrides?: Json
-              p_request_id: string
-            }
-            Returns: Json
-          }
+      esp_consume_materials_for_fabrication_request: {
+        Args: {
+          p_location_id?: string
+          p_notes?: string
+          p_overrides?: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
       esp_consume_production_note: {
         Args: { p_allow_negative?: boolean; p_note_id: string }
         Returns: Json
