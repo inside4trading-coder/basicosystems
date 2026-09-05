@@ -11,11 +11,11 @@ import {
 } from "@/lib/policyBlocked";
 
 const SEVERITY: Record<string, string> = {
-  manual_cost_review: "bg-yellow-300 text-black",
-  external_supplier_review: "bg-amber-500 text-black",
-  suggest_replacement: "bg-blue-500 text-white",
-  block_no_restock: "bg-red-600 text-white",
-  block_exit: "bg-red-600 text-white",
+  manual_cost_review: "chip-warning",
+  external_supplier_review: "chip-warning",
+  suggest_replacement: "chip-info",
+  block_no_restock: "chip-error",
+  block_exit: "chip-error",
   block_ignored: "bg-muted text-foreground",
 };
 

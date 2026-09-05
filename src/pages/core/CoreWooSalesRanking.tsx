@@ -90,9 +90,9 @@ const STATUS_COLORS: Record<ProductAgg["coreStatus"], string> = {
 };
 
 const STATUS_BADGE: Record<ProductAgg["coreStatus"], { label: string; cls: string }> = {
-  ya_en_core: { label: "En Catálogo de Fabricación", cls: "bg-green-600 text-white" },
-  no_en_core: { label: "Falta en Catálogo", cls: "bg-red-600 text-white" },
-  conflicto: { label: "Conflicto SKU", cls: "bg-yellow-500 text-black" },
+  ya_en_core: { label: "En Catálogo de Fabricación", cls: "chip-success" },
+  no_en_core: { label: "Falta en Catálogo", cls: "chip-error" },
+  conflicto: { label: "Conflicto SKU", cls: "chip-warning" },
   ignorado: { label: "Ignorado", cls: "bg-muted text-muted-foreground" },
   no_fabricable: { label: "No fabricable", cls: "bg-muted text-muted-foreground" },
 };
@@ -505,10 +505,10 @@ export default function CoreWooSalesRanking() {
                   {isOpen && Array.from(g.variants.values()).sort((a, b) => b.units - a.units).map((v, i) => {
                     const vStatus = v.coreStatus ?? "no_en_core";
                     const vBadge = vStatus === "en_core"
-                      ? { label: "En Core", cls: "bg-green-600 text-white" }
+                      ? { label: "En Core", cls: "chip-success" }
                       : vStatus === "sin_padre"
                         ? { label: "Sin padre", cls: "bg-muted text-muted-foreground" }
-                        : { label: "Falta en Catálogo", cls: "bg-red-600 text-white" };
+                        : { label: "Falta en Catálogo", cls: "chip-error" };
                     const rowCls = vStatus === "en_core"
                       ? "bg-green-50/40 dark:bg-green-950/10"
                       : vStatus === "sin_padre"

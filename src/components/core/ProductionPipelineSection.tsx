@@ -92,7 +92,7 @@ function stepClass(state: "done" | "pending" | "in_progress" | "error" | "inv_do
     case "error":
       return "bg-red-100 text-red-800 border-red-300";
     case "inv_done":
-      return "bg-emerald-600 text-white border-emerald-700";
+      return "chip-success border-emerald-700";
     case "inv_ready":
       return "bg-red-100 text-red-800 border-red-400";
     case "inv_blocked":

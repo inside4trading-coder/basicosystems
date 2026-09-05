@@ -77,11 +77,11 @@ const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secon
 };
 
 const PRIORITY_LABELS: Record<string, { label: string; cls: string }> = {
-  core_essential: { label: "Core / Esencial", cls: "bg-red-600 text-white border-transparent" },
+  core_essential: { label: "Core / Esencial", cls: "chip-error border-transparent" },
   regular: { label: "Regular", cls: "bg-muted text-foreground" },
-  seasonal: { label: "Temporada", cls: "bg-amber-500 text-black border-transparent" },
-  limited_drop: { label: "Drop limitado", cls: "bg-purple-600 text-white border-transparent" },
-  test: { label: "Prueba", cls: "bg-blue-500 text-white border-transparent" },
+  seasonal: { label: "Temporada", cls: "chip-warning border-transparent" },
+  limited_drop: { label: "Drop limitado", cls: "chip-info border-transparent" },
+  test: { label: "Prueba", cls: "chip-info border-transparent" },
   low: { label: "Baja prioridad", cls: "bg-muted text-muted-foreground" },
 };
 

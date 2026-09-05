@@ -83,6 +83,13 @@
   .status-badge-warning { @apply status-badge bg-[hsl(var(--status-warning)/0.12)] text-[hsl(var(--status-warning))]; }
   .status-badge-error { @apply status-badge bg-[hsl(var(--status-error)/0.12)] text-[hsl(var(--status-error))]; }
   .status-badge-inactive { @apply status-badge bg-[hsl(var(--status-inactive)/0.12)] text-[hsl(var(--status-inactive))]; }
+  /* Chips de estado sólidos (badges operativos) */
+  .chip { @apply inline-flex items-center gap-1 rounded-full border-transparent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide; }
+  .chip-success { @apply chip bg-[hsl(var(--status-success))] text-white hover:bg-[hsl(var(--status-success)/0.85)]; }
+  .chip-warning { @apply chip bg-[hsl(var(--status-warning))] text-[hsl(var(--studio-ink))] hover:bg-[hsl(var(--status-warning)/0.85)]; }
+  .chip-error { @apply chip bg-[hsl(var(--status-error))] text-white hover:bg-[hsl(var(--status-error)/0.85)]; }
+  .chip-info { @apply chip bg-[hsl(var(--blue-500))] text-white hover:bg-[hsl(var(--blue-500)/0.85)]; }
+  .chip-neutral { @apply chip bg-[hsl(var(--status-inactive))] text-white hover:bg-[hsl(var(--status-inactive)/0.85)]; }
 }
 
 @layer utilities {
