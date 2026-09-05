@@ -643,7 +643,7 @@ export default function EspanaFabricacion() {
                 preflight.loading
                 || !preflight.data
                 || !preflight.data.recipe_id
-                || !preflight.data.all_ok
+                || !allOkEffective
                 || preflight.data.already_consumed > 0
               }
             >
