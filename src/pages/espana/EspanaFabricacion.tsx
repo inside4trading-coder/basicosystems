@@ -806,6 +806,15 @@ export default function EspanaFabricacion() {
 
       <ManualFabricationDialog open={manualOpen} onOpenChange={setManualOpen} onCreated={() => { setOrigin("manual"); setView("real"); load(); }} />
       <ProductionNoteDialog open={noteOpen} onOpenChange={setNoteOpen} onCreated={() => { setOrigin("note"); setView("real"); load(); }} />
+      <FabricationNoteDialog
+        open={rowNote.open}
+        onOpenChange={(o) => setRowNote((p) => ({ ...p, open: o }))}
+        requestId={rowNote.request?.id || null}
+        productName={rowNote.request?.product_name || null}
+        initialNote={rowNote.request?.notes || null}
+        onSaved={() => load()}
+      />
+
 
     </div>
   );
