@@ -218,7 +218,7 @@ export default function CampaignWizard() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/campaigns")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight">Nueva Campaña</h2>
+        <h2 className="num text-xl sm:text-2xl font-black tracking-tight">Nueva Campaña</h2>
       </div>
 
       {/* Stepper */}

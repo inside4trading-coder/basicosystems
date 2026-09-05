@@ -88,7 +88,7 @@ export function AdminKPIs({ instances, monthDate }: Props) {
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{k.label}</span>
               <Icon className="h-4 w-4 text-muted-foreground" />
             </div>
-            <div className="text-2xl font-black tracking-tight">{k.value}</div>
+            <div className="num text-2xl font-black tracking-tight">{k.value}</div>
           </div>
         );
       })}

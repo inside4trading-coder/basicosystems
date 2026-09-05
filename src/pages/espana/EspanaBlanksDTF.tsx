@@ -267,7 +267,7 @@ export default function EspanaBlanksDTF() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
+          <h2 className="num text-2xl font-black tracking-tight flex items-center gap-2">
             <Shirt className="h-6 w-6 text-primary" /> Blanks / DTF
           </h2>
           <p className="text-sm text-muted-foreground">
@@ -289,12 +289,12 @@ export default function EspanaBlanksDTF() {
         {/* ============== RESUMEN ============== */}
         <TabsContent value="resumen" className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card className="p-4"><p className="text-[10px] uppercase text-muted-foreground">Blanks activos</p><p className="text-3xl font-black">{kpis.blanks}</p><p className="text-[10px] text-muted-foreground">stock total: {kpis.stockBlanks}</p></Card>
-            <Card className="p-4"><p className="text-[10px] uppercase text-muted-foreground">DTF activos</p><p className="text-3xl font-black">{kpis.dtf}</p><p className="text-[10px] text-muted-foreground">stock total: {kpis.stockDtf}</p></Card>
-            <Card className="p-4"><p className="text-[10px] uppercase text-muted-foreground">Otros insumos</p><p className="text-3xl font-black">{kpis.others}</p></Card>
-            <Card className="p-4 border-l-4 border-l-amber-500"><p className="text-[10px] uppercase text-muted-foreground flex items-center gap-1"><AlertTriangle className="h-3 w-3" />Bajo stock</p><p className="text-3xl font-black">{kpis.low}</p></Card>
-            <Card className="p-4"><p className="text-[10px] uppercase text-muted-foreground">Movimientos 7 días</p><p className="text-3xl font-black">{kpis.mov7d}</p></Card>
-            <Card className="p-4 border-l-4 border-l-blue-500"><p className="text-[10px] uppercase text-muted-foreground flex items-center gap-1"><FlaskConical className="h-3 w-3" />Solicitudes test listas</p><p className="text-3xl font-black">{kpis.testReady}</p><p className="text-[10px] text-muted-foreground">para BLOQUE 5B</p></Card>
+            <Card className="p-4"><p className="text-[10px] uppercase text-muted-foreground">Blanks activos</p><p className="num text-3xl font-black">{kpis.blanks}</p><p className="text-[10px] text-muted-foreground">stock total: {kpis.stockBlanks}</p></Card>
+            <Card className="p-4"><p className="text-[10px] uppercase text-muted-foreground">DTF activos</p><p className="num text-3xl font-black">{kpis.dtf}</p><p className="text-[10px] text-muted-foreground">stock total: {kpis.stockDtf}</p></Card>
+            <Card className="p-4"><p className="text-[10px] uppercase text-muted-foreground">Otros insumos</p><p className="num text-3xl font-black">{kpis.others}</p></Card>
+            <Card className="p-4 border-l-4 border-l-amber-500"><p className="text-[10px] uppercase text-muted-foreground flex items-center gap-1"><AlertTriangle className="h-3 w-3" />Bajo stock</p><p className="num text-3xl font-black">{kpis.low}</p></Card>
+            <Card className="p-4"><p className="text-[10px] uppercase text-muted-foreground">Movimientos 7 días</p><p className="num text-3xl font-black">{kpis.mov7d}</p></Card>
+            <Card className="p-4 border-l-4 border-l-blue-500"><p className="text-[10px] uppercase text-muted-foreground flex items-center gap-1"><FlaskConical className="h-3 w-3" />Solicitudes test listas</p><p className="num text-3xl font-black">{kpis.testReady}</p><p className="text-[10px] text-muted-foreground">para BLOQUE 5B</p></Card>
           </div>
 
           {/* Inventario por blank (matriz tipo + nombre + color × tallas) */}

@@ -120,7 +120,7 @@ export default function EspanaWooCommerce() {
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
+          <h2 className="num text-2xl font-black tracking-tight flex items-center gap-2">
             <Globe className="h-6 w-6 text-primary" /> WooCommerce España
           </h2>
           <p className="text-sm text-muted-foreground">Sincronización de catálogo desde basicoclothes.es · modo solo lectura. <a href="/espana/woocommerce/pedidos" className="text-primary font-semibold underline-offset-2 hover:underline">Ver pedidos Woo →</a> · <a href="/espana/woocommerce/problemas" className="text-amber-600 font-semibold underline-offset-2 hover:underline">Problemas de catálogo →</a> · <a href="/espana/woocommerce/reclasificar" className="text-primary font-semibold underline-offset-2 hover:underline">Reclasificar Woo ES →</a></p>
@@ -191,7 +191,7 @@ export default function EspanaWooCommerce() {
         <Card className="p-4 space-y-3">
           <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Catálogo España</p>
           <div className="space-y-1">
-            <p className="text-2xl font-black">{totals.products}<span className="text-sm text-muted-foreground font-normal"> productos</span></p>
+            <p className="num text-2xl font-black">{totals.products}<span className="text-sm text-muted-foreground font-normal"> productos</span></p>
             <p className="text-xs text-muted-foreground">{totals.variants} variantes totales</p>
             <p className="text-xs"><span className="text-primary font-semibold">{totals.wooProducts}</span> desde Woo · <span className="text-muted-foreground">{totals.products - totals.wooProducts} manuales</span></p>
           </div>

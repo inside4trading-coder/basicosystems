@@ -79,7 +79,7 @@ export default function EspanaVentas() {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-black tracking-tight">Ventas España</h2>
+          <h2 className="num text-2xl font-black tracking-tight">Ventas España</h2>
           <p className="text-sm text-muted-foreground">Ventas POS registradas.</p>
         </div>
         <Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4 mr-2" />Exportar CSV</Button>

@@ -582,7 +582,7 @@ export default function CoreScanning() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">Escaneo</h1>
+          <h1 className="num text-2xl font-black tracking-tight">Escaneo</h1>
           <p className="text-sm text-muted-foreground">
             Escanea el QR de una unidad y registra procesos completados.
           </p>

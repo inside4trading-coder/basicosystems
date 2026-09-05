@@ -215,19 +215,19 @@ export function PedidosPaymentMethods() {
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Transacciones analizadas
               </p>
-              <p className="text-2xl font-black mt-1 tabular-nums">{transactionsAnalyzed}</p>
+              <p className="num text-2xl font-black mt-1 tabular-nums">{transactionsAnalyzed}</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Total apariciones
               </p>
-              <p className="text-2xl font-black mt-1 tabular-nums">{totalAppearances}</p>
+              <p className="num text-2xl font-black mt-1 tabular-nums">{totalAppearances}</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Métodos usados
               </p>
-              <p className="text-2xl font-black mt-1 tabular-nums">{grouped.length}</p>
+              <p className="num text-2xl font-black mt-1 tabular-nums">{grouped.length}</p>
             </div>
           </div>
 

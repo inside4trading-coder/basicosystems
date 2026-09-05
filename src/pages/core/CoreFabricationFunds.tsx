@@ -597,7 +597,7 @@ export default function CoreFabricationFunds() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Layers className="h-5 w-5 text-primary" />
-            <h1 className="text-2xl font-black tracking-tight">Partidas de Fabricación</h1>
+            <h1 className="num text-2xl font-black tracking-tight">Partidas de Fabricación</h1>
           </div>
           <p className="text-sm text-muted-foreground max-w-2xl">
             Control del fondo reservado para fabricar productos vendidos, reponer stock o reemplazar productos no restockeables.
@@ -683,7 +683,7 @@ export default function CoreFabricationFunds() {
           {/* Disponible interno total */}
           <Card className="p-4 border-emerald-200 bg-emerald-50/60 dark:bg-emerald-950/20">
             <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Disponible real sin asignar</p>
-            <p className="text-3xl font-black text-emerald-800 dark:text-emerald-300 mt-1">
+            <p className="num text-3xl font-black text-emerald-800 dark:text-emerald-300 mt-1">
               {usd(totals.availableReal + Number(partidaCards.nonRestock.fund?.available_amount ?? 0))}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -1366,7 +1366,7 @@ function PartidaCard({
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{title}</p>
-          <p className="text-2xl font-black mt-1">{fmt.format(amount)}</p>
+          <p className="num text-2xl font-black mt-1">{fmt.format(amount)}</p>
         </div>
         {showAlert && (
           <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">

@@ -47,7 +47,7 @@ export default function CoreProductImports() {
           <ArrowLeft className="h-4 w-4 mr-1" />Volver
         </Button>
         <div>
-          <h1 className="text-2xl font-black tracking-tight">Historial de importaciones</h1>
+          <h1 className="num text-2xl font-black tracking-tight">Historial de importaciones</h1>
           <p className="text-sm text-muted-foreground">Catálogo de Fabricación · auditoría completa.</p>
         </div>
       </div>

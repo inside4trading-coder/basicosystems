@@ -222,7 +222,7 @@ export default function CorePayroll() {
         <div>
           <div className="flex items-center gap-2">
             <Wallet className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-black tracking-tight">Nómina de Producción</h1>
+            <h1 className="num text-2xl font-black tracking-tight">Nómina de Producción</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             Cierre semanal de trabajos escaneados. Cierre automático: jueves 11:59 pm (hora Venezuela) · Pago: viernes.

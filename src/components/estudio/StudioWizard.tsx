@@ -234,7 +234,7 @@ export function StudioWizard(props: StudioWizardProps) {
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-3xl w-screen h-[100dvh] sm:h-auto sm:w-full sm:max-h-[90vh] overflow-y-auto rounded-none sm:rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-black tracking-tight">
+          <DialogTitle className="num text-2xl font-black tracking-tight">
             {STUDIO_KIND_LABELS[kind]}
           </DialogTitle>
           <p className="text-sm text-muted-foreground">{kindDescription}</p>

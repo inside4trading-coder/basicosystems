@@ -128,7 +128,7 @@ export default function Planning() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black tracking-tight">Planificación</h2>
+          <h2 className="num text-2xl font-black tracking-tight">Planificación</h2>
           <p className="text-sm text-muted-foreground">Visor de tareas sincronizado con Notion</p>
         </div>
         <div className="flex items-center gap-3">
@@ -264,7 +264,7 @@ export default function Planning() {
 function Header() {
   return (
     <div>
-      <h2 className="text-2xl font-black tracking-tight">Planificación</h2>
+      <h2 className="num text-2xl font-black tracking-tight">Planificación</h2>
       <p className="text-sm text-muted-foreground">Visor de tareas sincronizado con Notion</p>
     </div>
   );

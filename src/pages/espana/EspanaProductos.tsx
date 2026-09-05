@@ -130,7 +130,7 @@ export default function EspanaProductos() {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-black tracking-tight">Productos España</h2>
+          <h2 className="num text-2xl font-black tracking-tight">Productos España</h2>
           <p className="text-sm text-muted-foreground">Catálogo de productos, variantes y precios.</p>
         </div>
         <div className="flex gap-2">

@@ -189,7 +189,7 @@ export default function EspanaWooOrders() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
+          <h2 className="num text-2xl font-black tracking-tight flex items-center gap-2">
             <Globe className="h-6 w-6 text-primary" /> Pedidos WooCommerce España
           </h2>
           <p className="text-sm text-muted-foreground">Lectura desde basicoclothes.es · genera ventas web y cola de fabricación. <a href="/espana/woocommerce" className="text-primary font-semibold underline-offset-2 hover:underline">Catálogo Woo →</a> · <a href="/espana/woocommerce/reclasificar" className="text-primary font-semibold underline-offset-2 hover:underline">Reclasificar Woo ES →</a> · <a href="/espana/woocommerce/problemas" className="text-amber-600 font-semibold underline-offset-2 hover:underline">Problemas →</a></p>

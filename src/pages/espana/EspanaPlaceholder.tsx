@@ -11,7 +11,7 @@ export default function EspanaPlaceholder({ title, description, bullets }: Props
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-black tracking-tight">{title}</h2>
+        <h2 className="num text-2xl font-black tracking-tight">{title}</h2>
         {description && <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{description}</p>}
       </div>
       <Card className="p-10 rounded-2xl border-dashed flex flex-col items-center text-center">

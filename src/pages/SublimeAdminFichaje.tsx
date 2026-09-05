@@ -655,7 +655,7 @@ export default function SublimeAdminFichaje() {
             <Store className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+            <h1 className="num text-2xl sm:text-3xl font-black text-foreground tracking-tight">
               Sublime · Fichaje
             </h1>
             <p className="text-sm text-muted-foreground">

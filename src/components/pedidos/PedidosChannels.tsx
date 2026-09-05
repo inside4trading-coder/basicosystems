@@ -191,15 +191,15 @@ export function PedidosChannels() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pedidos</p>
-              <p className="text-2xl font-black mt-1 tabular-nums">{totals.totalOrders}</p>
+              <p className="num text-2xl font-black mt-1 tabular-nums">{totals.totalOrders}</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total USD</p>
-              <p className="text-2xl font-black mt-1 tabular-nums">{fmtUsd(totals.totalUsd)}</p>
+              <p className="num text-2xl font-black mt-1 tabular-nums">{fmtUsd(totals.totalUsd)}</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Canales</p>
-              <p className="text-2xl font-black mt-1 tabular-nums">{grouped.length}</p>
+              <p className="num text-2xl font-black mt-1 tabular-nums">{grouped.length}</p>
             </div>
           </div>
 

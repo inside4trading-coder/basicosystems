@@ -86,7 +86,7 @@ export default function Crew() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
+          <h1 className="num text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
             <Users2 className="h-6 w-6 text-primary" />
             Crew
           </h1>

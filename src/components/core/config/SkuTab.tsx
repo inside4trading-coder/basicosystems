@@ -57,7 +57,7 @@ export default function SkuTab() {
       <div className="p-5 rounded-xl bg-muted/40 border border-border/60 flex items-center justify-between gap-4 flex-wrap">
         <div>
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Próximo SKU</p>
-          <p className="text-2xl font-black font-mono mt-1">
+          <p className="num text-2xl font-black font-mono mt-1">
             {showPreview ? preview : "•".repeat(form.sku_prefix.length + form.sku_digits)}
           </p>
         </div>

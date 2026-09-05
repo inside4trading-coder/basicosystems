@@ -75,7 +75,7 @@ function StatCard({ s }: { s: Stat }) {
       </div>
       <div className="min-w-0">
         <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">{s.label}</div>
-        <div className="text-2xl font-black leading-tight">{s.value}</div>
+        <div className="num text-2xl font-black leading-tight">{s.value}</div>
         {s.hint && <div className="text-[11px] text-muted-foreground mt-0.5">{s.hint}</div>}
       </div>
     </div>

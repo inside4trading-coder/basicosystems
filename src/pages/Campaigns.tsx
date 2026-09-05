@@ -112,7 +112,7 @@ export default function Campaigns() {
   return (
     <div className="space-y-6 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight">Campañas</h2>
+        <h2 className="num text-xl sm:text-2xl font-black tracking-tight">Campañas</h2>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={fetchCampaigns} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
@@ -132,7 +132,7 @@ export default function Campaigns() {
         ].map((stat, i) => (
           <div key={stat.label} className="kpi-card animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{stat.label}</span>
-            <div className="text-2xl font-black tracking-tight mt-1">{stat.value}</div>
+            <div className="num text-2xl font-black tracking-tight mt-1">{stat.value}</div>
           </div>
         ))}
       </div>

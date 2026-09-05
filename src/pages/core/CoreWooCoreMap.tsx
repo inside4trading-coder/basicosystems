@@ -600,7 +600,7 @@ export default function CoreWooCoreMap() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">Mapa Woo / Core</h1>
+          <h1 className="num text-2xl font-black tracking-tight">Mapa Woo / Core</h1>
           <p className="text-sm text-muted-foreground">Mesa de decisión entre WooCommerce y Basico Core. Solo lectura de Woo, sin escrituras al store.</p>
         </div>
         <div className="flex gap-2 flex-wrap">

@@ -292,7 +292,7 @@ export default function EspanaFabricacion() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
+          <h2 className="num text-2xl font-black tracking-tight flex items-center gap-2">
             <Hammer className="h-6 w-6 text-primary" /> Listado de fabricación ES
           </h2>
           <p className="text-sm text-muted-foreground">Cola generada desde pedidos WooCommerce España cuando el producto requiere fabricación.</p>
@@ -315,30 +315,30 @@ export default function EspanaFabricacion() {
         <Card className="p-4 border-l-4 border-l-primary">
           <p className="text-[10px] uppercase text-muted-foreground font-bold">Producción real</p>
           <div className="flex gap-4 mt-2">
-            <div><p className="text-2xl font-black">{kpis.realPending}</p><p className="text-[10px] text-muted-foreground">pendientes</p></div>
-            <div><p className="text-2xl font-black">{kpis.realInProgress}</p><p className="text-[10px] text-muted-foreground">fabricando</p></div>
-            <div><p className="text-2xl font-black">{kpis.realReady}</p><p className="text-[10px] text-muted-foreground">listas</p></div>
+            <div><p className="num text-2xl font-black">{kpis.realPending}</p><p className="text-[10px] text-muted-foreground">pendientes</p></div>
+            <div><p className="num text-2xl font-black">{kpis.realInProgress}</p><p className="text-[10px] text-muted-foreground">fabricando</p></div>
+            <div><p className="num text-2xl font-black">{kpis.realReady}</p><p className="text-[10px] text-muted-foreground">listas</p></div>
           </div>
         </Card>
         <Card className="p-4 border-l-4 border-l-teal-500">
           <p className="text-[10px] uppercase text-muted-foreground font-bold flex items-center gap-1"><Store className="h-3 w-3" /> Restock pendiente de aprobación</p>
           <div className="flex gap-4 mt-2">
-            <div><p className="text-2xl font-black">{kpis.restockPending}</p><p className="text-[10px] text-muted-foreground">solicitudes</p></div>
-            <div><p className="text-2xl font-black">{kpis.restockUnits}</p><p className="text-[10px] text-muted-foreground">unidades</p></div>
+            <div><p className="num text-2xl font-black">{kpis.restockPending}</p><p className="text-[10px] text-muted-foreground">solicitudes</p></div>
+            <div><p className="num text-2xl font-black">{kpis.restockUnits}</p><p className="text-[10px] text-muted-foreground">unidades</p></div>
           </div>
         </Card>
         <Card className="p-4 border-l-4 border-l-blue-500">
           <p className="text-[10px] uppercase text-muted-foreground font-bold flex items-center gap-1"><FlaskConical className="h-3 w-3" /> Pruebas</p>
           <div className="flex gap-4 mt-2">
-            <div><p className="text-2xl font-black">{kpis.testCount}</p><p className="text-[10px] text-muted-foreground">solicitudes</p></div>
-            <div><p className="text-2xl font-black">{kpis.testUnits}</p><p className="text-[10px] text-muted-foreground">unidades</p></div>
+            <div><p className="num text-2xl font-black">{kpis.testCount}</p><p className="text-[10px] text-muted-foreground">solicitudes</p></div>
+            <div><p className="num text-2xl font-black">{kpis.testUnits}</p><p className="text-[10px] text-muted-foreground">unidades</p></div>
           </div>
         </Card>
         <Card className="p-4 border-l-4 border-l-zinc-500">
           <p className="text-[10px] uppercase text-muted-foreground font-bold flex items-center gap-1"><Archive className="h-3 w-3" /> Histórico / Legacy</p>
           <div className="flex gap-4 mt-2">
-            <div><p className="text-2xl font-black">{kpis.legacyCount}</p><p className="text-[10px] text-muted-foreground">solicitudes</p></div>
-            <div><p className="text-2xl font-black">{kpis.legacyUnits}</p><p className="text-[10px] text-muted-foreground">unidades</p></div>
+            <div><p className="num text-2xl font-black">{kpis.legacyCount}</p><p className="text-[10px] text-muted-foreground">solicitudes</p></div>
+            <div><p className="num text-2xl font-black">{kpis.legacyUnits}</p><p className="text-[10px] text-muted-foreground">unidades</p></div>
           </div>
         </Card>
       </div>

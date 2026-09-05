@@ -199,15 +199,15 @@ export default function ExternalRestockList() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Prendas a reponer</p>
-          <p className="text-2xl font-black">{totals.qty}</p>
+          <p className="num text-2xl font-black">{totals.qty}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Costo reservado</p>
-          <p className="text-2xl font-black font-mono">{usd(totals.amount)}</p>
+          <p className="num text-2xl font-black font-mono">{usd(totals.amount)}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Movimientos externos</p>
-          <p className="text-2xl font-black">{totals.movements}</p>
+          <p className="num text-2xl font-black">{totals.movements}</p>
         </Card>
       </div>
 

@@ -132,7 +132,7 @@ export default function EspanaDashboard() {
                 <span>{k.label}</span>
                 <Icon className="h-3.5 w-3.5" />
               </div>
-              <div className="text-2xl font-black mt-1">{k.value}</div>
+              <div className="num text-2xl font-black mt-1">{k.value}</div>
             </Card>
           );
         })}

@@ -112,7 +112,7 @@ export default function EspanaWooProblemas() {
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
+          <h2 className="num text-2xl font-black tracking-tight flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 text-amber-500" /> Problemas Woo
           </h2>
           <p className="text-sm text-muted-foreground">SKUs inválidos, items sin mapear y mantenimiento de catálogo · sin tocar WooCommerce</p>
