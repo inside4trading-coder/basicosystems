@@ -24,7 +24,7 @@ export function BrandWindow({ label, actions, className, bodyClassName, children
       )}
       style={{ borderRadius: 16 }}
     >
-      <div className="flex h-[38px] items-center gap-2 border-b border-border bg-muted/60 px-4">
+      <div className="glass-panel flex h-[38px] items-center gap-2 border-b px-4">
         <span className="h-[10px] w-[10px] rounded-full bg-[hsl(var(--status-error))]/70" />
         <span className="h-[10px] w-[10px] rounded-full bg-[hsl(var(--status-warning))]/70" />
         <span className="h-[10px] w-[10px] rounded-full bg-[hsl(var(--status-success))]/70" />
