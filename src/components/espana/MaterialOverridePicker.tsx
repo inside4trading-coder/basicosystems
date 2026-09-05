@@ -93,7 +93,7 @@ export default function MaterialOverridePicker({
 
   return (
     <div className="flex items-center gap-1">
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={setOpen} modal>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]">
             <Repeat2 className="h-3 w-3 mr-1" />
@@ -102,8 +102,12 @@ export default function MaterialOverridePicker({
         </PopoverTrigger>
         <PopoverContent className="p-0 w-[360px]" align="start">
           <Command filter={(v, s) => (v.toLowerCase().includes(s.toLowerCase()) ? 1 : 0)}>
-            <CommandInput placeholder="Seleccionar material utilizado…" />
-            <CommandList>
+            <CommandInput autoFocus placeholder="Buscar material por nombre, talla, color o SKU…" />
+            <CommandList
+              className="max-h-[260px] overflow-y-auto"
+              onWheel={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+            >
               {loading && (
                 <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" /> Cargando inventario…
