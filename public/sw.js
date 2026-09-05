@@ -12,7 +12,9 @@
 // v4 — tarjeta social rehecha para leerse a tamaño de feed, ahora a 2400×1260.
 // v5 — tarjeta centrada y de vuelta a 1200×630 para no pasar el límite de peso
 //      de WhatsApp, que si no degrada a un thumbnail cuadrado.
-const STATIC_CACHE = "basico-static-v5";
+// v6 — identidad nueva: iconos [B] blanco sobre azul #0A37FF y tarjeta social
+//      rehecha en JPEG. Se retira la woff2 de Fixedsys, ya sin uso.
+const STATIC_CACHE = "basico-static-v6";
 const STATIC_ASSETS = ["/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {

@@ -3,21 +3,22 @@
   Tarjeta que se ve al compartir el enlace de Basico System.
   Se captura a 1200×630 → public/og-basico-systems.png
 
-  ── Dos restricciones que mandan sobre el diseño ────────────────────────────
+  ── Restricciones que mandan sobre el diseño ────────────────────────────────
 
   1 · NUNCA se ve a 1200 px. LinkedIn la muestra a ~552 en el feed, X a ~506 y
       la miniatura de WhatsApp a ~300. De ahí el mínimo de cuerpo: 28 px para
       leerse a 552, y 48 px para sobrevivir a la miniatura de 300.
 
-  2 · WhatsApp RECORTA EL CUADRADO CENTRAL. Medido sobre la versión anterior,
-      que iba alineada a la izquierda: el recorte partía el texto a media
-      palabra y se leía "EMAS / ATIVOS / ARCAS". Por eso todo va centrado y
-      dentro de los 630 px centrales, que es el cuadrado que sobrevive.
+  2 · WhatsApp RECORTA EL CUADRADO CENTRAL. Por eso todo va centrado y dentro
+      de los 630 px centrales, que es el cuadrado que sobrevive.
 
-  Y el peso importa: WhatsApp sólo monta la vista previa grande por debajo de
-  unos 300 kB. Por encima degrada al thumbnail cuadrado. Por eso se captura a
-  1200×630 y no al doble — subirlo a 2400 llevó el fichero a 529 kB y fue justo
-  lo que rompió la vista previa.
+  3 · Peso por debajo de ~300 kB: por encima, WhatsApp degrada de la vista
+      previa grande a un thumbnail cuadrado recortado. Por eso se captura a
+      1200×630 y no al doble.
+
+  Marca: fondo, tipografías y paleta salen de la landing real
+  (src/components/landing/landing-bsystems.css y src/index.css). El lockup
+  `[B] SYSTEMS` reproduce src/components/BrandMark.tsx en su variante negativa.
 
   El toroide se dibuja con canvas 2D y semilla fija en lugar de capturar la
   animación WebGL: así la tarjeta sale igual cada vez que se regenera.
@@ -26,58 +27,59 @@
 -->
 <meta charset="utf-8">
 <title>Basico System — tarjeta social</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=JetBrains+Mono:wght@400;500&display=block" rel="stylesheet">
 <style>
-  @font-face {
-    font-family: "Fixedsys Excelsior";
-    src: url("../public/fonts/fixedsys-excelsior-subset.woff2") format("woff2");
-    font-display: block;
-  }
   html, body { margin: 0; padding: 0; }
   body { width: 1200px; height: 630px; overflow: hidden; }
   .card {
-    position: relative;
-    width: 1200px;
-    height: 630px;
-    background: #0000AA;
+    position: relative; width: 1200px; height: 630px;
+    /* mismo degradado que .hero-section de la landing */
+    background: radial-gradient(120% 100% at 20% 0%,
+      hsl(230 94% 28%) 0%, hsl(231 94% 13%) 45%, hsl(218 29% 5%) 100%);
     color: #fff;
-    font-family: "Fixedsys Excelsior", monospace;
-    -webkit-font-smoothing: none;
-    font-smooth: never;
-    text-rendering: optimizeSpeed;
-    letter-spacing: .06em;
-    overflow: hidden;
-    text-align: center;
+    overflow: hidden; text-align: center;
   }
   canvas { position: absolute; inset: 0; }
 
-  /* Pila centrada. El ancho se acota a 630 px —el cuadrado central— para que
-     ninguna línea pueda salirse de la zona que sobrevive al recorte. */
+  /* Pila centrada, acotada a los 630 px del cuadrado central. */
   .txt {
-    position: absolute; inset: 0; width: 630px; margin: 0 auto;
-    padding: 50px 0;
+    position: absolute; inset: 0; width: 630px; margin: 0 auto; padding: 48px 0;
     display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 26px;
-    z-index: 1;
+    justify-content: center; gap: 26px; z-index: 1;
   }
   .eyebrow {
-    font-size: 30px; letter-spacing: .2em; text-transform: uppercase;
-    color: #FF3B3F; display: flex; align-items: center; gap: 16px; margin: 0;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-weight: 500; font-size: 28px; letter-spacing: .14em;
+    text-transform: uppercase; color: hsl(228 100% 86%);
+    display: flex; align-items: center; gap: 16px; margin: 0;
   }
   .eyebrow::before, .eyebrow::after {
-    content: ""; width: 40px; height: 3px; background: #FF3B3F;
+    content: ""; width: 36px; height: 3px; background: hsl(229 100% 62%);
   }
-  /* 88 px: Fixedsys avanza ~0,5 em por carácter, así que "PARA MARCAS" —la
-     línea más larga, once caracteres— ocupa 503 px de los 630 disponibles. */
   h1 {
-    margin: 0; font-weight: 400; text-transform: uppercase;
-    font-size: 88px; line-height: .94; letter-spacing: .02em;
+    margin: 0; font-family: "Chakra Petch", system-ui, sans-serif;
+    font-weight: 700; text-transform: uppercase;
+    font-size: 92px; line-height: .96; letter-spacing: .02em;
   }
-  h1 em { font-style: normal; color: #FF3B3F; }
-  .sub { margin: 0; font-size: 32px; color: #c9c9e8; line-height: 1.35; }
+  h1 em { font-style: normal; color: hsl(228 100% 86%); }
+  .sub {
+    margin: 0; font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 30px; line-height: 1.4; color: hsla(0,0%,100%,.82);
+  }
+
+  /* Lockup [B] SYSTEMS — proporciones tomadas de BrandMark.tsx, variante
+     negativa. Los dos valores de la B (0.85em y -0.061em) centran ópticamente
+     la letra entre los corchetes: no redondear. */
   .mark {
-    margin: 0; font-size: 44px; letter-spacing: .1em; text-transform: uppercase;
+    margin: 0; display: inline-flex; align-items: center; gap: .34em;
+    font-family: "Chakra Petch", system-ui, sans-serif; font-weight: 700;
+    font-size: 46px; line-height: .8; letter-spacing: -.01em; color: #fff;
   }
-  .mark span { color: #FF3B3F; }
+  .mark .iso { display: inline-flex; align-items: baseline; }
+  .mark .br { font-weight: 500; }
+  .mark .b { font-size: .85em; position: relative; top: -.061em; }
+  .mark .word { font-size: .567em; letter-spacing: .06em; position: relative; top: .06em; }
 </style>
 <div class="card">
   <canvas id="fx" width="1200" height="630"></canvas>
@@ -85,28 +87,30 @@
     <p class="eyebrow">Estudio de sistemas</p>
     <h1>Sistemas<br>operativos<br>para <em>marcas</em></h1>
     <p class="sub">Empieza en días.<br>Evoluciona a medida.</p>
-    <p class="mark">Basico <span>/</span> Systems</p>
+    <p class="mark" aria-label="[B] SYSTEMS">
+      <span class="iso"><span class="br">[</span><span class="b">B</span><span class="br">]</span></span>
+      <span class="word">SYSTEMS</span>
+    </p>
   </div>
 </div>
 <script>
 'use strict';
-/* Toroide estático, misma geometría y paleta que el componente de la landing.
+/* Toroide estático, misma geometría y paleta que ConfettiSphere.tsx.
    Semilla fija: la tarjeta debe salir igual en cada regeneración. */
 const RING = 0.68, TUBE = 0.38, TILT = 0.44;
 const CX = 600, CY = 315, R = 430;
-const RED = '#FF3B3F', GREY = '#B3B3B3', WHITE = '#ffffff', DARK = '#000060';
+const AZUL = '#3D6BFF', BRUMA = '#B8C6FF', WHITE = '#ffffff', DARK = '#000418';
 
-/* Hueco para el texto. Se descartan las piezas que caen dentro de esta elipse,
-   así el aro rodea al mensaje y el texto queda sobre azul plano.
-   El agujero propio del toroide no sirve: es un 28 % del diámetro exterior, muy
-   por debajo del bloque de texto. Definirlo aparte desacopla la legibilidad de
-   cómo se dimensione el aro. */
+/* Hueco para el texto: se descartan las piezas que caen dentro de esta elipse,
+   así el aro rodea al mensaje y el texto queda sobre fondo limpio. El agujero
+   propio del toroide es sólo un 28 % del diámetro exterior, muy por debajo del
+   bloque de texto, así que el hueco se define aparte. */
 const HUECO_X = 372, HUECO_Y = 288;
 
 const N = 620;
 const LARGO = 8.4, ANCHO = 3.8;
 
-let s = 20260727;
+let s = 20260905;
 const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
 
 const ctx = document.getElementById('fx').getContext('2d');
@@ -116,27 +120,22 @@ for (let i = 0; i < N; i++) {
   const v = rnd() * Math.PI * 2;      // vuelta por el tubo
   const t = Math.cbrt(rnd()) * TUBE;  // raíz cúbica: reparto uniforme en volumen
   const rr = RING + t * Math.cos(v);
-  const lx = rr * Math.cos(u);
-  const ly = rr * Math.sin(u);
-  const lz = t * Math.sin(v);
-  // cabeceo sobre el eje horizontal, igual que el TILT_REST del componente
+  const lx = rr * Math.cos(u), ly = rr * Math.sin(u), lz = t * Math.sin(v);
   const cy = Math.cos(TILT), sy = Math.sin(TILT);
   const py = ly * cy - lz * sy;
   const pz = ly * sy + lz * cy;
   const x = CX + lx * R, y = CY + py * R;
-  // fuera las que taparían el texto
   const dx = (x - CX) / HUECO_X, dy = (y - CY) / HUECO_Y;
-  if (dx * dx + dy * dy < 1) continue;
+  if (dx * dx + dy * dy < 1) continue;      // fuera las que taparían el texto
   piezas.push({
     x, y, z: pz,
     ang: rnd() * Math.PI * 2,
     sc: 0.62 + rnd() * rnd() * 0.9,
-    col: i % 10 < 3 ? RED : (i % 10 < 7 ? GREY : WHITE),
+    col: i % 10 < 4 ? AZUL : (i % 10 < 7 ? BRUMA : WHITE),
     al: 0.78 + rnd() * 0.22,
   });
 }
-// de atrás hacia delante, para que la profundidad se lea
-piezas.sort((a, b) => a.z - b.z);
+piezas.sort((a, b) => a.z - b.z);   // de atrás hacia delante: la profundidad se lee
 
 for (const p of piezas) {
   const prof = p.z / 1.06;
@@ -146,8 +145,8 @@ for (const p of piezas) {
   ctx.rotate(p.ang);
   ctx.globalAlpha = p.al * (0.78 + 0.22 * (prof * 0.5 + 0.5));
   const w = ANCHO * escala, h = LARGO * escala;
-  // contorno oscuro por debajo y relleno encima: reproduce el filo del shader,
-  // que separa la pieza del fondo por los dos lados
+  // contorno oscuro debajo y relleno encima: separa la pieza del fondo por los
+  // dos lados, igual que el filo del shader
   ctx.fillStyle = DARK;
   ctx.fillRect(-w / 2 - 1.5, -h / 2 - 1.5, w + 3, h + 3);
   ctx.fillStyle = p.col;
