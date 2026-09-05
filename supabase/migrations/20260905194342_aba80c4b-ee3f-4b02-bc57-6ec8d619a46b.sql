@@ -1,1 +1,0 @@
-DROP FUNCTION IF EXISTS public.esp_consume_materials_for_fabrication_request(uuid, uuid, text);

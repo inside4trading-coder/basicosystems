@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown, Loader2, Repeat2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface MaterialOption {
@@ -16,130 +15,90 @@ export interface MaterialOption {
   available: number;
 }
 
-export const materialLabel = (m: { name?: string | null; size?: string | null; color?: string | null }) =>
-  [m?.name || "Material", [m?.size, m?.color].filter(Boolean).join(" / ")].filter(Boolean).join(" · ");
+export const materialOptionLabel = (o: MaterialOption | null | undefined) =>
+  o ? [o.name, o.size ? `talla ${o.size}` : null, o.color].filter(Boolean).join(" · ") : "";
 
-/**
- * Selector de material real de inventario para sustituir el material previsto
- * por la receta en UNA fabricación concreta. No modifica recetas ni productos.
- */
+interface Props {
+  locationId: string | null | undefined;
+  materialType: string;
+  familyName?: string | null;
+  familyColor?: string | null;
+  excludeId?: string | null;
+  onSelect: (opt: MaterialOption) => void;
+  disabled?: boolean;
+}
+
+/** Selector de material alternativo real del inventario (mismo tipo, misma sede). */
 export default function MaterialOverridePicker({
-  locationId,
-  materialType,
-  familyName,
-  familyColor,
-  expectedMaterialId,
-  value,
-  requiredQty,
-  onSelect,
-  onClear,
-}: {
-  locationId: string | null;
-  materialType: string | null;
-  familyName: string | null;
-  familyColor: string | null;
-  expectedMaterialId: string | null;
-  value: MaterialOption | null;
-  requiredQty: number;
-  onSelect: (m: MaterialOption) => void;
-  onClear: () => void;
-}) {
+  locationId, materialType, familyName, familyColor, excludeId, onSelect, disabled,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState<MaterialOption[]>([]);
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!open || loaded) return;
-    let cancelled = false;
+    if (!open) return;
+    setLoading(true);
     (async () => {
-      setLoading(true);
-      let q = supabase
+      const { data: items } = await supabase
         .from("esp_material_items")
         .select("id,material_type,sku,name,color,size")
-        .eq("status", "active")
-        .order("name")
-        .limit(500);
-      if (materialType) q = q.eq("material_type", materialType);
-      const { data } = await q;
-      const items = (data || []) as any[];
-      const ids = items.map((i) => i.id);
-      const stockMap: Record<string, number> = {};
-      if (ids.length && locationId) {
-        const { data: stock } = await supabase
-          .from("esp_material_stock")
-          .select("material_id,quantity_on_hand")
-          .eq("location_id", locationId)
-          .in("material_id", ids);
-        for (const s of (stock || []) as any[]) {
-          stockMap[s.material_id] = (stockMap[s.material_id] || 0) + Number(s.quantity_on_hand || 0);
-        }
+        .eq("material_type", materialType)
+        .neq("status", "archived")
+        .order("name");
+      const ids = ((items || []) as any[]).map((i) => i.id);
+      let stockMap: Record<string, number> = {};
+      if (ids.length > 0) {
+        let q = supabase.from("esp_material_stock").select("material_id,quantity_on_hand").in("material_id", ids);
+        if (locationId) q = q.eq("location_id", locationId);
+        const { data: stock } = await q;
+        for (const s of (stock || []) as any[]) stockMap[s.material_id] = Number(s.quantity_on_hand || 0);
       }
-      if (cancelled) return;
-      setOptions(items.map((i) => ({ ...i, available: stockMap[i.id] ?? 0 })) as MaterialOption[]);
+      const fam = (n: string | null, c: string | null) =>
+        (familyName && n === familyName && (!familyColor || c === familyColor)) ? 0 : 1;
+      const opts: MaterialOption[] = ((items || []) as any[])
+        .filter((i) => i.id !== excludeId)
+        .map((i) => ({ ...i, available: stockMap[i.id] ?? 0 }))
+        .sort((a, b) => fam(a.name, a.color) - fam(b.name, b.color) || b.available - a.available || a.name.localeCompare(b.name));
+      setOptions(opts);
       setLoading(false);
-      setLoaded(true);
     })();
-    return () => { cancelled = true; };
-  }, [open, loaded, materialType, locationId]);
-
-  const sorted = useMemo(() => {
-    const fam = (m: MaterialOption) =>
-      (!familyName || m.name === familyName) && (!familyColor || (m.color || "") === (familyColor || "")) ? 0 : 1;
-    return [...options]
-      .filter((m) => m.id !== expectedMaterialId)
-      .sort((a, b) => fam(a) - fam(b) || a.name.localeCompare(b.name) || (a.size || "").localeCompare(b.size || ""));
-  }, [options, familyName, familyColor, expectedMaterialId]);
+  }, [open, materialType, locationId, excludeId, familyName, familyColor]);
 
   return (
-    <div className="flex items-center gap-1">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]">
-            <Repeat2 className="h-3 w-3 mr-1" />
-            {value ? "Cambiar otro" : "Cambiar material"}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="p-0 w-[360px]" align="start">
-          <Command filter={(v, s) => (v.toLowerCase().includes(s.toLowerCase()) ? 1 : 0)}>
-            <CommandInput placeholder="Seleccionar material utilizado…" />
-            <CommandList>
-              {loading && (
-                <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Cargando inventario…
-                </div>
-              )}
-              <CommandEmpty>Sin materiales.</CommandEmpty>
-              <CommandGroup>
-                {sorted.map((m) => {
-                  const enough = m.available >= requiredQty;
-                  return (
-                    <CommandItem
-                      key={m.id}
-                      value={`${m.name} ${m.size || ""} ${m.color || ""} ${m.sku || ""}`}
-                      onSelect={() => { onSelect(m); setOpen(false); }}
-                    >
-                      <Check className={cn("mr-2 h-3.5 w-3.5", value?.id === m.id ? "opacity-100" : "opacity-0")} />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-xs font-medium">{materialLabel(m)}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono">
-                          {m.sku || "sin SKU"} · stock {m.available}
-                        </div>
-                      </div>
-                      {!enough && <span className="text-[10px] text-amber-600 ml-2 shrink-0">sin stock</span>}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-      {value && (
-        <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-muted-foreground" onClick={onClear}>
-          Deshacer
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 text-xs" disabled={disabled}>
+          <Repeat className="h-3 w-3 mr-1" /> Cambiar material
         </Button>
-      )}
-    </div>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-80 p-1 max-h-72 overflow-y-auto">
+        {loading ? (
+          <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Cargando inventario…</div>
+        ) : options.length === 0 ? (
+          <p className="p-3 text-xs text-muted-foreground">No hay otros materiales de este tipo en inventario.</p>
+        ) : (
+          options.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => { setOpen(false); onSelect(o); }}
+              className={cn(
+                "w-full text-left px-2 py-1.5 rounded hover:bg-muted/60 text-xs flex items-center justify-between gap-2",
+                o.available <= 0 && "opacity-50",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="font-medium block truncate">{materialOptionLabel(o)}</span>
+                {o.sku && <span className="font-mono text-[10px] text-muted-foreground">{o.sku}</span>}
+              </span>
+              <span className={cn("font-mono text-[10px] shrink-0", o.available > 0 ? "text-emerald-600" : "text-amber-600")}>
+                stock {o.available}
+              </span>
+            </button>
+          ))
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

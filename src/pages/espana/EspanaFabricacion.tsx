@@ -3,20 +3,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2, Plus, Wrench, Store, ThumbsUp, Ban, NotebookPen, Repeat2 } from "lucide-react";
+import { Hammer, Play, Check, X, Loader2, FlaskConical, Archive, Package, AlertTriangle, CheckCircle2, Plus, Wrench, Store, ThumbsUp, Ban, NotebookPen } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-
 
 import { formatDMY } from "@/lib/dateUtils";
 import ManualFabricationDialog, { MANUAL_REASON_LABEL } from "@/components/espana/ManualFabricationDialog";
 import ProductionNoteDialog from "@/components/espana/ProductionNoteDialog";
-import FabricationNoteDialog from "@/components/espana/FabricationNoteDialog";
-import MaterialOverridePicker, { MaterialOption, materialLabel } from "@/components/espana/MaterialOverridePicker";
-
+import MaterialOverridePicker, { materialOptionLabel, type MaterialOption } from "@/components/espana/MaterialOverridePicker";
 
 
 interface FabRow {
@@ -113,12 +109,8 @@ export default function EspanaFabricacion() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [preflight, setPreflight] = useState<{ open: boolean; request?: FabRow; data?: any; loading?: boolean }>({ open: false });
   const [notePre, setNotePre] = useState<{ open: boolean; request?: FabRow; lines?: any[]; loading?: boolean }>({ open: false });
-  /** Sustituciones de material por línea de receta, solo para esta fabricación. */
-  const [overrides, setOverrides] = useState<Record<string, MaterialOption>>({});
-  const [prefNote, setPrefNote] = useState("");
-  const [history, setHistory] = useState<any[] | null>(null);
-  const [rowNote, setRowNote] = useState<{ open: boolean; request?: FabRow }>({ open: false });
-
+  // Excepciones manuales de material por fila de receta (recipe_item_id → material alternativo real)
+  const [overrides, setOverrides] = useState<Record<string, { material_id: string; name: string; available: number; reason: string }>>({});
 
 
   const load = async () => {
@@ -152,69 +144,48 @@ export default function EspanaFabricacion() {
 
   const openPreflight = async (r: FabRow) => {
     setOverrides({});
-    setPrefNote(r.notes || "");
-    setHistory(null);
     setPreflight({ open: true, request: r, loading: true });
     const { data, error } = await supabase.rpc("esp_resolve_fabrication_materials" as any, { p_request_id: r.id });
     if (error) { toast.error(error.message); setPreflight({ open: false }); return; }
     setPreflight({ open: true, request: r, data, loading: false });
-    if ((data as any)?.already_consumed > 0) void loadHistory(r.id);
   };
 
-  const loadHistory = async (requestId: string) => {
-    const { data } = await supabase
-      .from("esp_fabrication_material_consumptions")
-      .select("id,planned_quantity,consumed_quantity,was_overridden,override_reason,created_at,expected_material_id,material_id")
-      .eq("fabrication_request_id", requestId)
-      .order("created_at", { ascending: true });
-    const rowsH = (data || []) as any[];
-    const ids = Array.from(new Set(rowsH.flatMap((h) => [h.expected_material_id, h.material_id]).filter(Boolean)));
-    const nameMap: Record<string, string> = {};
-    if (ids.length) {
-      const { data: mats } = await supabase.from("esp_material_items").select("id,name,size,color,sku").in("id", ids);
-      for (const m of (mats || []) as any[]) nameMap[m.id] = `${materialLabel(m)}${m.sku ? ` · ${m.sku}` : ""}`;
-    }
-    setHistory(rowsH.map((h) => ({
-      ...h,
-      expected_label: h.expected_material_id ? nameMap[h.expected_material_id] : null,
-      actual_label: nameMap[h.material_id] || null,
-    })));
+  const pickOverride = (m: any, opt: MaterialOption) => {
+    const reason = window.prompt(`Motivo para usar "${materialOptionLabel(opt)}" en vez de "${m.material_name}${m.material_size ? " talla " + m.material_size : ""}":`, "Sin stock del material original") ?? "";
+    setOverrides((prev) => ({
+      ...prev,
+      [m.recipe_item_id]: { material_id: opt.id, name: materialOptionLabel(opt), available: opt.available, reason },
+    }));
   };
 
-  /** Todas las líneas resueltas: receta OK, o sustituto con stock suficiente. */
-  const materialsReady = () => {
-    const mats = (preflight.data?.materials || []) as any[];
-    if (mats.length === 0) return !!preflight.data?.all_ok;
-    return mats.every((m) => {
-      const ov = overrides[m.recipe_item_id];
-      return ov ? ov.available >= Number(m.planned_quantity) : !!m.ok;
-    });
+  const clearOverride = (recipeItemId: string) =>
+    setOverrides((prev) => { const n = { ...prev }; delete n[recipeItemId]; return n; });
+
+  const rowOk = (m: any) => {
+    const ov = overrides[m.recipe_item_id];
+    return ov ? ov.available >= Number(m.planned_quantity) : !!m.ok;
   };
+
+  const allOkEffective = (preflight.data?.materials as any[] | undefined)?.every((m) => rowOk(m)) ?? false;
 
   const confirmConsume = async () => {
-
     if (!preflight.request) return;
     setPreflight(p => ({ ...p, loading: true }));
-    const payload = Object.entries(overrides).map(([recipe_item_id, m]) => ({ recipe_item_id, material_id: m.id }));
+    const ovList = Object.entries(overrides).map(([recipe_item_id, o]) => ({
+      recipe_item_id,
+      material_id: o.material_id,
+      reason: o.reason || "Sustitución manual",
+    }));
     const { data, error } = await supabase.rpc("esp_consume_materials_for_fabrication_request" as any, {
       p_request_id: preflight.request.id,
-      p_location_id: preflight.data?.location_id ?? null,
-      p_notes: prefNote.trim() || null,
-      p_overrides: payload,
+      ...(ovList.length > 0 ? { p_overrides: ovList } : {}),
     });
     if (error) { toast.error(error.message); setPreflight(p => ({ ...p, loading: false })); return; }
-    const out = data as any;
-    if ((prefNote.trim() || null) !== (preflight.request.notes || null)) {
-      await supabase.from("esp_fabrication_requests").update({ notes: prefNote.trim() || null }).eq("id", preflight.request.id);
-    }
-    toast.success(
-      `Consumidos ${out?.materials_consumed || 0} materiales${out?.materials_overridden ? ` · ${out.materials_overridden} sustituidos` : ""} · solicitud en fabricación`,
-    );
+    toast.success(`Consumidos ${(data as any)?.materials_consumed || 0} materiales${ovList.length > 0 ? ` (${ovList.length} sustituido${ovList.length > 1 ? "s" : ""})` : ""} · solicitud en fabricación`);
     setPreflight({ open: false });
     setOverrides({});
     load();
   };
-
 
   // --- Notas de producción: mismo pipeline, consumo al pulsar "Fabricar" ---
   const openNotePreflight = async (r: FabRow) => {
@@ -475,13 +446,6 @@ export default function EspanaFabricacion() {
                       </div>
                     )}
                     {isRestock && <div className="text-[11px] text-muted-foreground">Reposición sugerida por venta POS</div>}
-                    {r.notes && (
-                      <div className="text-[11px] text-amber-700 dark:text-amber-500 flex items-start gap-1 mt-0.5">
-                        <NotebookPen className="h-3 w-3 mt-0.5 shrink-0" />
-                        <span className="whitespace-pre-wrap">Nota: {r.notes}</span>
-                      </div>
-                    )}
-
                   </TableCell>
                   <TableCell className="text-xs">
                     {raw ? (
@@ -562,20 +526,9 @@ export default function EspanaFabricacion() {
                           <Check className="h-3 w-3 mr-1" />Entregar
                         </Button>
                       )}
-                      {!r.is_legacy && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          title={r.notes ? "Editar nota de producción" : "Añadir nota de producción"}
-                          onClick={() => setRowNote({ open: true, request: r })}
-                        >
-                          <NotebookPen className={`h-3 w-3 ${r.notes ? "text-amber-600" : ""}`} />
-                        </Button>
-                      )}
                       {!["cancelled","rejected","delivered_to_shipping","pending_approval"].includes(r.status) && !r.is_legacy && (
                         <Button size="sm" variant="ghost" onClick={() => setStatus(r.id, "cancelled")}><X className="h-3 w-3" /></Button>
                       )}
-
                     </div>
                   </TableCell>
                 </TableRow>
@@ -621,113 +574,64 @@ export default function EspanaFabricacion() {
                         <TableHead className="text-xs text-right">Requerido</TableHead>
                         <TableHead className="text-xs text-right">Disponible</TableHead>
                         <TableHead className="text-xs text-center">OK</TableHead>
+                        <TableHead className="text-xs text-right">Excepción</TableHead>
                       </TableRow></TableHeader>
                       <TableBody>
                         {(preflight.data.materials as any[]).map((m, i) => {
                           const ov = overrides[m.recipe_item_id];
-                          const required = Number(m.planned_quantity);
-                          const available = ov ? ov.available : Number(m.available);
-                          const lineOk = ov ? ov.available >= required : !!m.ok;
-                          const locked = preflight.data.already_consumed > 0;
                           return (
-                            <TableRow key={i}>
-                              <TableCell className="text-xs">
-                                {ov ? (
-                                  <>
-                                    <div className="text-[10px] text-muted-foreground line-through">
-                                      Esperado: {m.material_name ? `${m.material_name}${m.material_size ? ` · talla ${m.material_size}` : ""}` : "no resuelto"}
-                                      {m.material_sku ? ` · ${m.material_sku}` : ""}
+                          <TableRow key={i}>
+                            <TableCell className="text-xs">
+                              {m.material_name ? (
+                                <>
+                                  <span className={ov ? "line-through text-muted-foreground" : "font-medium"}>{m.material_name}</span>
+                                  {m.material_size && <span className="text-muted-foreground"> · talla {m.material_size}</span>}
+                                  {m.material_sku && <div className="font-mono text-[10px] text-muted-foreground">{m.material_sku}</div>}
+                                  {ov && (
+                                    <div className="mt-1">
+                                      <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-700 mr-1">Material sustituido</Badge>
+                                      <span className="font-medium text-amber-700">{ov.name}</span>
+                                      {ov.reason && <div className="text-[10px] text-muted-foreground italic">Nota: {ov.reason}</div>}
                                     </div>
-                                    <div className="font-semibold">Usado: {materialLabel(ov)}</div>
-                                    {ov.sku && <div className="font-mono text-[10px] text-muted-foreground">{ov.sku}</div>}
-                                    <Badge className="bg-purple-600 mt-1 text-[10px]"><Repeat2 className="h-3 w-3 mr-1" />Material sustituido</Badge>
-                                  </>
-                                ) : m.material_name ? (
-                                  <>
-                                    <span className="font-medium">{m.material_name}</span>
-                                    {m.material_size && <span className="text-muted-foreground"> · talla {m.material_size}</span>}
-                                    {m.material_sku && <div className="font-mono text-[10px] text-muted-foreground">{m.material_sku}</div>}
-                                  </>
-                                ) : <span className="text-amber-600 italic">No resuelto · {m.reason || "—"}</span>}
-                                {!locked && (
-                                  <MaterialOverridePicker
-                                    locationId={preflight.data.location_id || null}
-                                    materialType={m.material_type || m.family_material_type || null}
-                                    familyName={m.family_name || m.material_name || null}
-                                    familyColor={m.family_color || m.material_color || null}
-                                    expectedMaterialId={m.expected_material_id || m.resolved_material_id || null}
-                                    value={ov || null}
-                                    requiredQty={required}
-                                    onSelect={(sel) => setOverrides((prev) => ({ ...prev, [m.recipe_item_id]: sel }))}
-                                    onClear={() => setOverrides((prev) => {
-                                      const next = { ...prev };
-                                      delete next[m.recipe_item_id];
-                                      return next;
-                                    })}
-                                  />
+                                  )}
+                                </>
+                              ) : <span className="text-amber-600 italic">No resuelto · {m.reason || "—"}</span>}
+                            </TableCell>
+                            <TableCell className="text-xs">{m.size_strategy}</TableCell>
+                            <TableCell className="text-right text-xs font-mono">{Number(m.planned_quantity).toFixed(2)}</TableCell>
+                            <TableCell className="text-right text-xs font-mono">{Number(ov ? ov.available : m.available).toFixed(2)}</TableCell>
+                            <TableCell className="text-center">
+                              {rowOk(m) ? <CheckCircle2 className="h-4 w-4 text-emerald-600 inline" /> : <AlertTriangle className="h-4 w-4 text-amber-600 inline" />}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <MaterialOverridePicker
+                                  locationId={preflight.data.location_id}
+                                  materialType={m.material_type}
+                                  familyName={m.family_name}
+                                  familyColor={m.family_color}
+                                  excludeId={m.expected_material_id || m.resolved_material_id}
+                                  disabled={preflight.data.already_consumed > 0}
+                                  onSelect={(opt) => pickOverride(m, opt)}
+                                />
+                                {ov && (
+                                  <Button size="sm" variant="ghost" className="h-7 px-1 text-xs" onClick={() => clearOverride(m.recipe_item_id)}>
+                                    <X className="h-3 w-3" />
+                                  </Button>
                                 )}
-                              </TableCell>
-                              <TableCell className="text-xs">{m.size_strategy}</TableCell>
-                              <TableCell className="text-right text-xs font-mono">{required.toFixed(2)}</TableCell>
-                              <TableCell className="text-right text-xs font-mono">{Number(available).toFixed(2)}</TableCell>
-                              <TableCell className="text-center">
-                                {lineOk ? <CheckCircle2 className="h-4 w-4 text-emerald-600 inline" /> : <AlertTriangle className="h-4 w-4 text-amber-600 inline" />}
-                              </TableCell>
-                            </TableRow>
+                              </div>
+                            </TableCell>
+                          </TableRow>
                           );
                         })}
                       </TableBody>
                     </Table>
                   </div>
-                  {Object.keys(overrides).length > 0 && (
-                    <Card className="p-3 mt-2 border-l-4 border-l-purple-500 bg-purple-500/5 text-xs">
-                      <p className="font-bold flex items-center gap-1"><Repeat2 className="h-3.5 w-3.5 text-purple-600" /> Excepción de consumo</p>
-                      <p className="text-muted-foreground mt-1">
-                        Se descontarán los materiales sustituidos, no los previstos. El pedido, la talla, la variante de WooCommerce y la receta no cambian.
-                      </p>
-                    </Card>
-                  )}
                 </div>
               )}
-
-              <div className="space-y-1.5">
-                <p className="text-xs font-bold uppercase text-muted-foreground">Nota de producción (opcional)</p>
-                <Textarea
-                  rows={2}
-                  maxLength={1000}
-                  value={prefNote}
-                  placeholder="Ej. usar blank XL y ajustar antes de estampar"
-                  onChange={(e) => setPrefNote(e.target.value)}
-                />
-              </div>
 
               {preflight.data.already_consumed > 0 && (
                 <p className="text-xs text-amber-600">⚠ Esta solicitud ya tiene materiales consumidos. No se puede volver a consumir.</p>
-              )}
-
-              {history && history.length > 0 && (
-                <div>
-                  <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Historial de consumo</p>
-                  <div className="border rounded divide-y text-xs">
-                    {history.map((h) => (
-                      <div key={h.id} className="p-2">
-                        {h.was_overridden ? (
-                          <>
-                            <div className="text-muted-foreground line-through">Previsto: {h.expected_label || "—"}</div>
-                            <div className="font-semibold">Utilizado: {h.actual_label || "—"}</div>
-                            <Badge className="bg-purple-600 mt-1 text-[10px]"><Repeat2 className="h-3 w-3 mr-1" />Material sustituido</Badge>
-                          </>
-                        ) : (
-                          <div className="font-medium">{h.actual_label || "—"}</div>
-                        )}
-                        <div className="text-[10px] text-muted-foreground mt-1">
-                          Cantidad {Number(h.consumed_quantity)} · {formatDMY(h.created_at)}
-                          {h.override_reason ? ` · ${h.override_reason}` : ""}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               )}
             </div>
           )}
@@ -739,7 +643,7 @@ export default function EspanaFabricacion() {
                 preflight.loading
                 || !preflight.data
                 || !preflight.data.recipe_id
-                || !materialsReady()
+                || !allOkEffective
                 || preflight.data.already_consumed > 0
               }
             >
@@ -747,7 +651,6 @@ export default function EspanaFabricacion() {
               Consumir materiales y fabricar
             </Button>
           </DialogFooter>
-
         </DialogContent>
       </Dialog>
 
@@ -817,15 +720,6 @@ export default function EspanaFabricacion() {
 
       <ManualFabricationDialog open={manualOpen} onOpenChange={setManualOpen} onCreated={() => { setOrigin("manual"); setView("real"); load(); }} />
       <ProductionNoteDialog open={noteOpen} onOpenChange={setNoteOpen} onCreated={() => { setOrigin("note"); setView("real"); load(); }} />
-      <FabricationNoteDialog
-        open={rowNote.open}
-        onOpenChange={(o) => setRowNote((p) => ({ ...p, open: o }))}
-        requestId={rowNote.request?.id || null}
-        productName={rowNote.request?.product_name || null}
-        initialNote={rowNote.request?.notes || null}
-        onSaved={() => load()}
-      />
-
 
     </div>
   );
