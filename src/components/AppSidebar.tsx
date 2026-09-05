@@ -71,7 +71,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
         {collapsed ? (
           <span className="text-sidebar-primary font-black text-lg">B</span>
         ) : (
-          <img src={basicoLogo} alt="Basico" className="h-10 w-auto" />
+          <img src={basicoLogoAsset.url} alt="Basico" className="h-10 w-auto" />
         )}
       </div>
       <SidebarContent>
