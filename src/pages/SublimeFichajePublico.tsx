@@ -106,7 +106,7 @@ export default function SublimeFichajePublico() {
       </header>
 
       <main className="flex-1 flex items-center justify-center px-4 pb-8">
-        <Card className="w-full max-w-md p-6 sm:p-8 rounded-3xl border-border/60 shadow-2xl bg-card/80 backdrop-blur">
+        <Card className="glass-panel w-full max-w-md p-6 sm:p-8 rounded-3xl shadow-2xl">
           {stage === "identify" && (
             <FichajeIdentify onSubmit={handlePinSubmit} loading={loading} error={error} />
           )}
