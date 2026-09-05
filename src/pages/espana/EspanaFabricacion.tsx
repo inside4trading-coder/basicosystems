@@ -143,21 +143,47 @@ export default function EspanaFabricacion() {
   };
 
   const openPreflight = async (r: FabRow) => {
+    setOverrides({});
     setPreflight({ open: true, request: r, loading: true });
     const { data, error } = await supabase.rpc("esp_resolve_fabrication_materials" as any, { p_request_id: r.id });
     if (error) { toast.error(error.message); setPreflight({ open: false }); return; }
     setPreflight({ open: true, request: r, data, loading: false });
   };
 
+  const pickOverride = (m: any, opt: MaterialOption) => {
+    const reason = window.prompt(`Motivo para usar "${materialOptionLabel(opt)}" en vez de "${m.material_name}${m.material_size ? " talla " + m.material_size : ""}":`, "Sin stock del material original") ?? "";
+    setOverrides((prev) => ({
+      ...prev,
+      [m.recipe_item_id]: { material_id: opt.id, name: materialOptionLabel(opt), available: opt.available, reason },
+    }));
+  };
+
+  const clearOverride = (recipeItemId: string) =>
+    setOverrides((prev) => { const n = { ...prev }; delete n[recipeItemId]; return n; });
+
+  const rowOk = (m: any) => {
+    const ov = overrides[m.recipe_item_id];
+    return ov ? ov.available >= Number(m.planned_quantity) : !!m.ok;
+  };
+
+  const allOkEffective = (preflight.data?.materials as any[] | undefined)?.every((m) => rowOk(m)) ?? false;
+
   const confirmConsume = async () => {
     if (!preflight.request) return;
     setPreflight(p => ({ ...p, loading: true }));
+    const ovList = Object.entries(overrides).map(([recipe_item_id, o]) => ({
+      recipe_item_id,
+      material_id: o.material_id,
+      reason: o.reason || "Sustitución manual",
+    }));
     const { data, error } = await supabase.rpc("esp_consume_materials_for_fabrication_request" as any, {
       p_request_id: preflight.request.id,
+      ...(ovList.length > 0 ? { p_overrides: ovList } : {}),
     });
     if (error) { toast.error(error.message); setPreflight(p => ({ ...p, loading: false })); return; }
-    toast.success(`Consumidos ${(data as any)?.materials_consumed || 0} materiales · solicitud en fabricación`);
+    toast.success(`Consumidos ${(data as any)?.materials_consumed || 0} materiales${ovList.length > 0 ? ` (${ovList.length} sustituido${ovList.length > 1 ? "s" : ""})` : ""} · solicitud en fabricación`);
     setPreflight({ open: false });
+    setOverrides({});
     load();
   };
 
