@@ -462,9 +462,6 @@ export default function Landing() {
           <div className="inner">
             <p className="k">Un área de Basico</p>
             <h2>El mismo ADN: producto, diseño, obsesión por el detalle.</h2>
-            <a href="https://basicoclothes.com" target="_blank" rel="noopener noreferrer">
-              basicoclothes.com
-            </a>
           </div>
         </section>
 
@@ -529,9 +526,6 @@ export default function Landing() {
               <p>Basico System · Un área de Basico · {new Date().getFullYear()}</p>
             </div>
             <div className="foot__links">
-              <a href="https://basicoclothes.com" target="_blank" rel="noopener noreferrer">
-                basicoclothes.com
-              </a>
               <Link to="/login">{user ? "Ir al panel" : "Acceso equipo"}</Link>
             </div>
           </div>
