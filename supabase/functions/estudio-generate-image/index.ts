@@ -131,14 +131,12 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    const { data: callerRoles } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userData.user.id);
-    const isAllowed = (callerRoles ?? []).some(
-      (r: any) => r.role === "admin" || r.role === "manager",
-    );
-    if (!isAllowed) return json(403, { error: "Solo administradores o managers" });
+    // Acceso por módulo: quien tenga /estudio-visual asignado puede generar.
+    const { data: hasAccess } = await admin.rpc("has_module_access", {
+      _user_id: userData.user.id,
+      _module: "/estudio-visual",
+    });
+    if (!hasAccess) return json(403, { error: "No tienes acceso a Basico Studio" });
 
     if (!OPENROUTER_API_KEY) {
       return json(500, { error: "OPENROUTER_API_KEY no configurada en las Edge Functions." });
