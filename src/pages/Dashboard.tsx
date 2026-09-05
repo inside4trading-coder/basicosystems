@@ -150,15 +150,19 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 w-full">
       {/* Header */}
+      <ModuleHeader
+        eyebrow="01 · VENTAS"
+        title="Resumen de ventas"
+        subtitle={lastSyncedAt ? <span className="mono-cap text-[10px] text-primary">{timeAgo(lastSyncedAt)}</span> : undefined}
+        actions={
+          <>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3"></div>
+          <div className="flex items-center"></div>
+          </>
+        }
+      />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight">Resumen de ventas</h2>
-          {lastSyncedAt && (
-            <p className="text-xs text-muted-foreground mt-1">
-              <span className="text-primary/80 font-medium">{timeAgo(lastSyncedAt)}</span>
-            </p>
-          )}
-        </div>
+        <div />
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center">
             <Button variant="destructive" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="gap-2 rounded-r-none">
