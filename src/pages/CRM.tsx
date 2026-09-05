@@ -255,6 +255,7 @@ export default function CRM() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
+          <p className="mono-cap text-[10px] text-primary">01 · CLIENTES</p>
           <h2 className="text-2xl font-black tracking-tight">CRM</h2>
           {!loading && (
             <p className="text-sm text-muted-foreground mt-1">{total.toLocaleString()} clientes{customerType !== "all" ? " en este segmento" : " registrados"}</p>

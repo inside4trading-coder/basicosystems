@@ -21,7 +21,7 @@ export function AdminMetricCard({ label, value, hint, icon: Icon, tooltip }: Adm
           <Icon className="h-4 w-4 text-primary" />
         </div>
       </div>
-      <div className="text-3xl font-black tabular-nums text-foreground">{value}</div>
+      <div className="num text-3xl font-black tabular-nums text-foreground">{value}</div>
       {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
     </Card>
   );

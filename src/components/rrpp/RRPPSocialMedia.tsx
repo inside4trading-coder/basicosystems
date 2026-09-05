@@ -222,7 +222,7 @@ export function RRPPSocialMedia({ contactId }: Props) {
                     <p className="text-sm text-muted-foreground truncate">@{latest.handle}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-black">{formatFollowers(latest.followers)}</p>
+                    <p className="num text-2xl font-black">{formatFollowers(latest.followers)}</p>
                     {prev ? (
                       <p className={`text-xs flex items-center justify-end gap-1 font-semibold ${trendClass}`}>
                         <TrendIcon className="h-3 w-3" />

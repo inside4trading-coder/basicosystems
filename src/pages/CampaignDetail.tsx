@@ -130,7 +130,7 @@ export default function CampaignDetail() {
               <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{kpi.label}</span>
             </div>
-            <div className="text-2xl font-black tracking-tight mt-2">{kpi.value.toLocaleString()}</div>
+            <div className="num text-2xl font-black tracking-tight mt-2">{kpi.value.toLocaleString()}</div>
             {kpi.sub && <p className="text-xs text-muted-foreground">{kpi.sub}</p>}
           </div>
         ))}

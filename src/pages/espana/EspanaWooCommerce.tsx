@@ -191,7 +191,7 @@ export default function EspanaWooCommerce() {
         <Card className="p-4 space-y-3">
           <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Catálogo España</p>
           <div className="space-y-1">
-            <p className="text-2xl font-black">{totals.products}<span className="text-sm text-muted-foreground font-normal"> productos</span></p>
+            <p className="num text-2xl font-black">{totals.products}<span className="text-sm text-muted-foreground font-normal"> productos</span></p>
             <p className="text-xs text-muted-foreground">{totals.variants} variantes totales</p>
             <p className="text-xs"><span className="text-primary font-semibold">{totals.wooProducts}</span> desde Woo · <span className="text-muted-foreground">{totals.products - totals.wooProducts} manuales</span></p>
           </div>

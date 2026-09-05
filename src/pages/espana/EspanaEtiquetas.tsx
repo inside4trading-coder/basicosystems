@@ -306,6 +306,7 @@ export default function EspanaEtiquetas() {
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
+          <p className="mono-cap text-[10px] text-primary">03 · ESPAÑA</p>
           <h2 className="text-2xl font-black tracking-tight">Etiquetas / QR</h2>
           <p className="text-sm text-muted-foreground">Genera etiquetas escaneables para POS Móvil e inventario por sede.</p>
         </div>

@@ -128,6 +128,7 @@ export default function Planning() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
+          <p className="mono-cap text-[10px] text-primary">01 · PLANIFICACIÓN</p>
           <h2 className="text-2xl font-black tracking-tight">Planificación</h2>
           <p className="text-sm text-muted-foreground">Visor de tareas sincronizado con Notion</p>
         </div>

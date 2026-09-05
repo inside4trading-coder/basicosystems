@@ -183,6 +183,7 @@ export default function Pedidos() {
     <div className="space-y-6 w-full">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
+          <p className="mono-cap text-[10px] text-primary">01 · OPERACIÓN</p>
           <h2 className="text-2xl font-black tracking-tight">Pedidos</h2>
           {view === "list" && !loading && <p className="text-sm text-muted-foreground mt-1">{total} pedidos</p>}
         </div>

@@ -334,7 +334,7 @@ export default function FuerzaVenezuela() {
             <p className="text-sm md:text-base leading-relaxed lowercase text-zinc-400">
               cada ingreso confirmado se publica. cada gasto se muestra con monto y soporte. cada saldo queda visible.
             </p>
-            <p className="text-xl md:text-2xl font-black lowercase tracking-tight text-white leading-tight">
+            <p className="num text-xl md:text-2xl font-black lowercase tracking-tight text-white leading-tight">
               no nos creas.{" "}
               <span className="bg-gradient-to-r from-[#ff8a5c] to-[#ffb38a] bg-clip-text text-transparent">revísalo.</span>
             </p>
@@ -502,17 +502,17 @@ export default function FuerzaVenezuela() {
               <div className="flex flex-wrap items-center justify-center gap-3 md:gap-5 text-center">
                 <div className="flex flex-col items-center">
                   <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-400/90">ingresos confirmados</span>
-                  <span className="mt-1 text-2xl md:text-3xl font-black tabular-nums text-white">~ {fmtUSD(ingresadoTotalUsd)}</span>
+                  <span className="num mt-1 text-2xl md:text-3xl font-black tabular-nums text-white">~ {fmtUSD(ingresadoTotalUsd)}</span>
                 </div>
-                <span className="text-3xl md:text-5xl font-black text-zinc-600">−</span>
+                <span className="num text-3xl md:text-5xl font-black text-zinc-600">−</span>
                 <div className="flex flex-col items-center">
                   <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#ffb38a]">gastos con soporte</span>
-                  <span className="mt-1 text-2xl md:text-3xl font-black tabular-nums text-white">~ {fmtUSD(gastadoTotalUsd)}</span>
+                  <span className="num mt-1 text-2xl md:text-3xl font-black tabular-nums text-white">~ {fmtUSD(gastadoTotalUsd)}</span>
                 </div>
-                <span className="text-3xl md:text-5xl font-black text-zinc-600">=</span>
+                <span className="num text-3xl md:text-5xl font-black text-zinc-600">=</span>
                 <div className="flex flex-col items-center rounded-lg border border-cyan-400/30 bg-cyan-400/[0.06] px-4 py-2">
                   <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300">saldo disponible</span>
-                  <span className="mt-1 text-2xl md:text-3xl font-black tabular-nums text-white">~ {fmtUSD(disponibleTotalUsd)}</span>
+                  <span className="num mt-1 text-2xl md:text-3xl font-black tabular-nums text-white">~ {fmtUSD(disponibleTotalUsd)}</span>
                 </div>
               </div>
               <p className="mt-4 text-center text-xs md:text-sm lowercase text-zinc-400">
@@ -535,7 +535,7 @@ export default function FuerzaVenezuela() {
             <div className="relative overflow-hidden rounded-xl border border-[#ff8a5c]/30 bg-[#3a1a14]/40 p-5 md:p-6 backdrop-blur-sm">
               <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#ff8a5c]/20 blur-3xl" />
               <div className="absolute -left-10 -bottom-10 h-28 w-28 rounded-full bg-[#c44a5a]/20 blur-3xl" />
-              <p className="relative text-3xl md:text-5xl font-black lowercase tracking-tight text-white leading-[0.95]">
+              <p className="num relative text-3xl md:text-5xl font-black lowercase tracking-tight text-white leading-[0.95]">
                 no nos creas.
                 <br />
                 <span className="bg-gradient-to-r from-[#ff8a5c] to-[#ffb38a] bg-clip-text text-transparent">míralo.</span>

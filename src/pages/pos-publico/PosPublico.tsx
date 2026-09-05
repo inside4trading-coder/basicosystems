@@ -196,7 +196,7 @@ export default function PosPublico() {
           {cart.length > 0 && (
             <div className="flex items-center justify-between border-t mt-3 pt-3">
               <span className="text-sm font-bold">Total</span>
-              <span className="text-2xl font-black">€{total.toFixed(2)}</span>
+              <span className="num text-2xl font-black">€{total.toFixed(2)}</span>
             </div>
           )}
         </Card>
@@ -242,7 +242,7 @@ export default function PosPublico() {
             <CheckCircle2 className="h-10 w-10 text-primary mx-auto" />
             <h3 className="text-xl font-black">Venta registrada</h3>
             <p className="text-sm">Nº <span className="font-mono font-bold">{done.sale_number}</span></p>
-            <p className="text-2xl font-black">€{done.total.toFixed(2)}</p>
+            <p className="num text-2xl font-black">€{done.total.toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">Pago: {done.payment}</p>
             <Button className="w-full" onClick={() => setDone(null)}>Continuar</Button>
           </Card>

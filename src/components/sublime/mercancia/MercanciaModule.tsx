@@ -189,7 +189,7 @@ function StockValueCard({
           <Icon className="h-4 w-4 text-primary" />
         </div>
       </div>
-      <div className="text-3xl font-black tabular-nums text-foreground">{amount}</div>
+      <div className="num text-3xl font-black tabular-nums text-foreground">{amount}</div>
       <div className="text-xs text-muted-foreground mt-1">
         {summary.itemCount} producto{summary.itemCount === 1 ? "" : "s"} · {summary.unitCount} unidad
         {summary.unitCount === 1 ? "" : "es"}

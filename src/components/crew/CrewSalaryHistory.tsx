@@ -74,7 +74,7 @@ export function CrewSalaryHistory({ employeeId, currentSalary }: { employeeId: s
       {currentSalary != null && (
         <div className="kpi-card p-4">
           <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Salario actual</h2>
-          <p className="text-2xl font-black tracking-tight mt-1">${currentSalary.toLocaleString("es-VE")}</p>
+          <p className="num text-2xl font-black tracking-tight mt-1">${currentSalary.toLocaleString("es-VE")}</p>
         </div>
       )}
 

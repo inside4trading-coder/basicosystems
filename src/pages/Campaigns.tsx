@@ -132,7 +132,7 @@ export default function Campaigns() {
         ].map((stat, i) => (
           <div key={stat.label} className="kpi-card animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{stat.label}</span>
-            <div className="text-2xl font-black tracking-tight mt-1">{stat.value}</div>
+            <div className="num text-2xl font-black tracking-tight mt-1">{stat.value}</div>
           </div>
         ))}
       </div>

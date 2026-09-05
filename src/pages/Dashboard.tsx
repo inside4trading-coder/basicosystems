@@ -10,6 +10,8 @@ import { useBlurSales } from "@/hooks/useBlurSales";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDMY } from "@/lib/dateUtils";
+import { ModuleHeader } from "@/components/brand/ModuleHeader";
+import { BRAND_CHART_COLORS } from "@/lib/brandChartColors";
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "";
@@ -47,14 +49,7 @@ const statusLabels: Record<string, { label: string; className: string }> = {
   "tu-pedido-ha-sido": { label: "Pedido enviado", className: "status-badge-success" },
 };
 
-const PIE_COLORS = [
-  "hsl(354, 100%, 44%)",
-  "hsl(142, 71%, 45%)",
-  "hsl(45, 93%, 47%)",
-  "hsl(200, 70%, 50%)",
-  "hsl(280, 60%, 55%)",
-  "hsl(0, 0%, 50%)",
-];
+const PIE_COLORS = BRAND_CHART_COLORS;
 
 export default function Dashboard() {
   const [period, setPeriod] = useState<Period>("month");
@@ -150,15 +145,12 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 w-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight">Resumen de ventas</h2>
-          {lastSyncedAt && (
-            <p className="text-xs text-muted-foreground mt-1">
-              <span className="text-primary/80 font-medium">{timeAgo(lastSyncedAt)}</span>
-            </p>
-          )}
-        </div>
+      <ModuleHeader
+        eyebrow="01 · VENTAS"
+        title="Resumen de ventas"
+        subtitle={lastSyncedAt ? <span className="mono-cap text-[10px] text-primary">{timeAgo(lastSyncedAt)}</span> : undefined}
+      />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center">
             <Button variant="destructive" size="sm" onClick={() => handleSync(30)} disabled={syncing} className="gap-2 rounded-r-none">
@@ -253,10 +245,10 @@ export default function Dashboard() {
               return (
               <div key={kpi.label} className="kpi-card animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{kpi.label}</span>
+                  <span className="mono-cap text-[10px] text-muted-foreground">{kpi.label}</span>
                   <kpi.icon className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <div className={`text-2xl font-black tracking-tight transition-all ${blurred ? "blur-md select-none" : ""}`}>{kpi.value}</div>
+                <div className={`num text-2xl font-black tracking-tight transition-all ${blurred ? "blur-md select-none" : ""}`}>{kpi.value}</div>
                 <div className={`mt-1 space-y-0.5 ${blurred ? "blur-md select-none" : ""}`}>
                   <div className={`flex items-center gap-1 text-xs font-semibold ${kpi.change >= 0 ? "text-status-success" : "text-status-error"}`} title="Período inmediatamente anterior de la misma duración">
                     {kpi.change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -301,7 +293,7 @@ export default function Dashboard() {
                     <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}`} />
                     <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Ventas"]}
                       contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="revenue" fill="hsl(var(--blue-500))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -321,7 +313,7 @@ export default function Dashboard() {
                     <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                     <Tooltip formatter={(v: number) => [v, "Pedidos"]}
                       contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="count" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="count" fill="hsl(var(--status-success))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -383,7 +375,7 @@ export default function Dashboard() {
                   <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip formatter={(v: number) => [v, "Pedidos"]} labelFormatter={(l) => `${l}:00 - ${l}:59`}
                     contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                  <Bar dataKey="count" fill="hsl(var(--secondary))" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="count" fill="hsl(var(--blue-300))" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

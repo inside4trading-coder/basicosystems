@@ -568,7 +568,7 @@ function SummaryCard({
         {icon}
         {label}
       </div>
-      <p className="text-2xl font-black tracking-tight mt-1">{value}</p>
+      <p className="num text-2xl font-black tracking-tight mt-1">{value}</p>
     </div>
   );
 }

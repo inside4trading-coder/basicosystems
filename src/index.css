@@ -71,6 +71,11 @@
   .brand-heading { font-family: "Chakra Petch", system-ui, sans-serif; @apply font-bold uppercase tracking-tight; }
   .mono { font-family: "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0.06em; }
   .mono-cap { font-family: "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+  .motion-in { animation: brandIn var(--dur-in) var(--ease-brand) both; }
+  .motion-out { animation: brandOut var(--dur-out) var(--ease-brand) both; }
+  @keyframes brandIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  @keyframes brandOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.98); } }
   .glass { backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.35); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55); }
   .kpi-card { @apply bg-card rounded-surface border border-border p-6 shadow-sm transition-shadow hover:shadow-md; }
   .status-badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide; }
@@ -81,8 +86,7 @@
 }
 
 @layer utilities {
-  .scroll-reveal { animation: scrollReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
-  @keyframes scrollReveal { from { opacity: 0; transform: translateY(16px); filter: blur(4px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-  @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); } 20%, 40%, 60%, 80% { transform: translateX(4px); } }
-  .animate-shake { animation: shake 0.5s ease-in-out; }
+  .scroll-reveal { animation: scrollReveal var(--dur-in) var(--ease-brand) both; }
+  @keyframes scrollReveal { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  .animate-shake { animation: brandIn var(--dur-in) var(--ease-brand) both; }
 }

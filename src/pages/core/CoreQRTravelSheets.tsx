@@ -670,7 +670,7 @@ function UnitPreview({ unit, processes, order, variantCode }: { unit: Unit; proc
         <div className="space-y-1">
           <div className="text-xs uppercase tracking-wide text-muted-foreground">Código variante</div>
           <div className="text-xl font-black font-mono">{variantCode}</div>
-          <div className="text-2xl font-black">Talla {unit.size ?? "—"}</div>
+          <div className="num text-2xl font-black">Talla {unit.size ?? "—"}</div>
           <div className="text-xs font-mono">{unit.variant_sku ?? ""}</div>
           <div className="text-xs text-muted-foreground">OP: {order?.order_code}</div>
         </div>

@@ -148,11 +148,11 @@ export default function EspanaWooReclasificar() {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card className="p-3"><p className="text-[10px] uppercase font-semibold text-muted-foreground">Total Woo ES</p><p className="text-2xl font-black">{stats.total}</p></Card>
-        <Card className="p-3"><p className="text-[10px] uppercase font-semibold text-muted-foreground">manage_stock=true</p><p className="text-2xl font-black text-emerald-600">{stats.manageTrue}</p></Card>
-        <Card className="p-3"><p className="text-[10px] uppercase font-semibold text-muted-foreground">manage_stock=false</p><p className="text-2xl font-black text-amber-600">{stats.manageFalse}</p></Card>
-        <Card className="p-3"><p className="text-[10px] uppercase font-semibold text-muted-foreground">made_to_order</p><p className="text-2xl font-black">{stats.mto}</p></Card>
-        <Card className="p-3"><p className="text-[10px] uppercase font-semibold text-muted-foreground">physical_stock</p><p className="text-2xl font-black">{stats.phys}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase font-semibold text-muted-foreground">Total Woo ES</p><p className="num text-2xl font-black">{stats.total}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase font-semibold text-muted-foreground">manage_stock=true</p><p className="num text-2xl font-black text-emerald-600">{stats.manageTrue}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase font-semibold text-muted-foreground">manage_stock=false</p><p className="num text-2xl font-black text-amber-600">{stats.manageFalse}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase font-semibold text-muted-foreground">made_to_order</p><p className="num text-2xl font-black">{stats.mto}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase font-semibold text-muted-foreground">physical_stock</p><p className="num text-2xl font-black">{stats.phys}</p></Card>
       </div>
 
       {stats.mismatch.length > 0 && (

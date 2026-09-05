@@ -240,6 +240,7 @@ export default function EspanaPOS() {
     <div className="space-y-4 max-w-5xl mx-auto">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
+          <p className="mono-cap text-[10px] text-primary">03 · ESPAÑA</p>
           <h2 className="text-2xl font-black tracking-tight">POS Móvil</h2>
           <p className="text-xs text-muted-foreground">Registrar venta presencial y descontar inventario.</p>
         </div>
@@ -323,7 +324,7 @@ export default function EspanaPOS() {
         {cart.length > 0 && (
           <div className="flex items-center justify-between border-t mt-3 pt-3">
             <span className="text-sm font-bold">Total</span>
-            <span className="text-2xl font-black">€{total.toFixed(2)}</span>
+            <span className="num text-2xl font-black">€{total.toFixed(2)}</span>
           </div>
         )}
       </Card>
