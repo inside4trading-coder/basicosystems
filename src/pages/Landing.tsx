@@ -108,15 +108,26 @@ export default function Landing() {
   const [moduleCount, setModuleCount] = useState(0);
   const heroRef = useRef<HTMLElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+  const curtainRef = useRef<HTMLDivElement>(null);
 
-  // Nav compacto + parallax del hero + barra de progreso. Un solo listener
-  // con rAF para las tres cosas: togglear la clase de scrolled es barato,
-  // pero escribir la custom property y el ancho de la barra en cada evento
-  // de scroll sin throttle sí provoca layout thrash.
+  // Nav compacto + parallax del hero + barra de progreso + cortina de
+  // acento. Un solo listener con rAF para las cuatro cosas: togglear la
+  // clase de scrolled es barato, pero escribir la custom property y el
+  // ancho de la barra en cada evento de scroll sin throttle sí provoca
+  // layout thrash.
   // La barra escribe directo al DOM por ref, no por estado — un re-render de
   // toda la página en cada frame de scroll sería el detalle "premium" que
   // termina sintiéndose lento.
   useEffect(() => {
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion && curtainRef.current) {
+      curtainRef.current.style.display = "none";
+    }
+    // Cortina de acento: golpe de color a pantalla completa que se dispara
+    // una única vez, al cruzar el límite hero→cuerpo, y barre hacia arriba
+    // para revelar lo que sigue. Con reduced-motion queda "ya jugada" desde
+    // el arranque, así el listener nunca la dispara.
+    let curtainPlayed = reducedMotion;
     let ticking = false;
     const onScroll = () => {
       if (ticking) return;
@@ -130,6 +141,24 @@ export default function Landing() {
         const max = document.documentElement.scrollHeight - window.innerHeight;
         if (progressRef.current) {
           progressRef.current.style.width = `${max > 0 ? Math.min(100, (y / max) * 100) : 0}%`;
+        }
+        if (!curtainPlayed && heroRef.current) {
+          const threshold = heroRef.current.offsetHeight * 0.55;
+          if (y > threshold) {
+            curtainPlayed = true;
+            const el = curtainRef.current;
+            if (el) {
+              // Cubre instantáneo (sin transición) y en el frame siguiente
+              // arranca el barrido — así el golpe de color aparece de golpe
+              // y se retira con una transición, no al revés.
+              el.classList.add("curtain--cover");
+              requestAnimationFrame(() => {
+                el.classList.remove("curtain--cover");
+                el.classList.add("curtain--sweep");
+              });
+              window.setTimeout(() => { el.style.display = "none"; }, 700);
+            }
+          }
         }
         ticking = false;
       });
@@ -289,6 +318,11 @@ export default function Landing() {
 
   return (
     <div className="landing-bsystems">
+      {/* Cortina de acento: golpe de color a pantalla completa, una sola vez
+          por sesión, al cruzar el límite hero→cuerpo — ver el useEffect de
+          arriba. Arranca oculta arriba del viewport (translateY(-100%)). */}
+      <div ref={curtainRef} className="curtain" aria-hidden="true" />
+
       {/* Barra de progreso de scroll. El ancho lo escribe el listener de
           scroll directo por ref — ver el useEffect de arriba. */}
       <div className="scroll-progress" aria-hidden="true">

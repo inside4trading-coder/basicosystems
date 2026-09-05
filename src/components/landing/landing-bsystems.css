@@ -346,6 +346,23 @@
 .landing-bsystems .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .landing-bsystems .btn[disabled] { opacity: 0.55; cursor: not-allowed; }
 
+/* Cortina de acento: golpe de color a pantalla completa que se dispara una
+   única vez al cruzar el límite hero→cuerpo, y barre hacia arriba para
+   revelar la sección debajo. No es decoración de scroll continuo (como el
+   .reveal de más abajo) — es un evento de transición, una sola vez por
+   sesión. Arranca oculta arriba del viewport; Landing.tsx la cubre de golpe
+   (sin transición) y al frame siguiente dispara el barrido. */
+.landing-bsystems .curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: linear-gradient(155deg, var(--blue-900) 0%, var(--accent) 55%, var(--blue-300) 100%);
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+.landing-bsystems .curtain.curtain--cover { transition: none; transform: translateY(0); }
+.landing-bsystems .curtain.curtain--sweep { transition: transform 620ms var(--ease); transform: translateY(-100%); }
+
 .landing-bsystems .below {
   background: var(--surface);
   position: relative;
@@ -977,16 +994,52 @@
   color: #8FA1D8;
 }
 
-/* Scroll-reveal. `.reveal` es el estado de reposo (fuera de pantalla);
-   `.in-view` lo añade React vía IntersectionObserver la primera vez que el
-   bloque entra, y no se retira — es una entrada, no algo que deba repetirse
-   al subir y bajar. */
+/* Scroll-reveal, estilo cortina. `.reveal` cubre su propia sección con un
+   panel de acento (`::before`) que ya está ahí en reposo (scaleX(1), anclado
+   a la derecha); `.in-view` lo añade React vía IntersectionObserver la
+   primera vez que el bloque entra, y no se retira — es una entrada, no algo
+   que deba repetirse al subir y bajar. El panel se retrae de izquierda a
+   derecha (transform-origin a la derecha, scaleX 1→0), así el contenido se
+   revela empezando por la izquierda. Una línea de acento (`::after`) barre
+   justo por delante del borde que avanza, vía keyframes — no puede ser una
+   transición porque necesita aparecer y desvanecerse dentro del mismo golpe. */
 .landing-bsystems .reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 700ms var(--ease), transform 700ms var(--ease);
+  position: relative;
+  overflow: hidden;
 }
-.landing-bsystems .reveal.in-view { opacity: 1; transform: none; }
+.landing-bsystems .reveal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: linear-gradient(100deg, var(--blue-900), var(--accent) 60%, var(--blue-300));
+  transform-origin: right center;
+  transform: scaleX(1);
+  transition: transform 720ms var(--ease);
+  pointer-events: none;
+}
+.landing-bsystems .reveal.in-view::before { transform: scaleX(0); }
+.landing-bsystems .reveal::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  z-index: 6;
+  background: linear-gradient(180deg, var(--accent), var(--blue-300));
+  box-shadow: 0 0 20px 3px rgba(11, 55, 255, 0.6);
+  opacity: 0;
+  pointer-events: none;
+}
+.landing-bsystems .reveal.in-view::after {
+  animation: bsys-sweep-line 720ms var(--ease) forwards;
+}
+@keyframes bsys-sweep-line {
+  0% { left: 0%; opacity: 1; }
+  85% { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
 
 /* Stagger de los hijos al revelarse: mismas rejillas que ya existían (cards,
    mods, paths, el mapa de conexión, el árbol de decisión, los pasos de
@@ -1045,6 +1098,9 @@
    landing (color, tipografía, layout) no cambia. El spinner de carga queda
    fuera a propósito: es información de estado, no adorno. */
 @media (prefers-reduced-motion: reduce) {
+  .landing-bsystems .curtain { display: none; }
+  .landing-bsystems .reveal::before,
+  .landing-bsystems .reveal::after { display: none; }
   .landing-bsystems .reveal,
   .landing-bsystems .reveal .cards > *,
   .landing-bsystems .reveal .mods > *,
