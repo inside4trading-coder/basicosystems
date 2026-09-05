@@ -86,8 +86,7 @@
 }
 
 @layer utilities {
-  .scroll-reveal { animation: scrollReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
-  @keyframes scrollReveal { from { opacity: 0; transform: translateY(16px); filter: blur(4px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-  @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); } 20%, 40%, 60%, 80% { transform: translateX(4px); } }
-  .animate-shake { animation: shake 0.5s ease-in-out; }
+  .scroll-reveal { animation: scrollReveal var(--dur-in) var(--ease-brand) both; }
+  @keyframes scrollReveal { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  .animate-shake { animation: brandIn var(--dur-in) var(--ease-brand) both; }
 }
