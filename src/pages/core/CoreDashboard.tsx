@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
+import { ModuleHeader } from "@/components/brand/ModuleHeader";
 import { Badge } from "@/components/ui/badge";
 import { useCoreSettings } from "@/hooks/useCoreSettings";
 import { supabase } from "@/integrations/supabase/client";
@@ -142,15 +143,17 @@ export default function CoreDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight">Dashboard Core</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Vista general de fábrica en tiempo real.
-          </p>
-        </div>
-        <Badge variant={active ? "default" : "secondary"}>
-          Módulo {active ? "activo" : "inactivo"}
-        </Badge>
+        <ModuleHeader
+          className="w-full"
+          eyebrow="02 · FÁBRICA"
+          title="Dashboard Core"
+          subtitle="Vista general de fábrica en tiempo real."
+          actions={
+            <Badge variant={active ? "default" : "secondary"}>
+              Módulo {active ? "activo" : "inactivo"}
+            </Badge>
+          }
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -171,11 +174,11 @@ export default function CoreDashboard() {
                 </span>
               )}
             </div>
-            <p className={`mt-4 font-black ${c.isText ? "text-xl" : "text-3xl"} ${c.highlight ? "text-red-700" : ""}`}>
+            <p className={`num mt-4 font-black ${c.isText ? "text-xl" : "text-3xl"} ${c.highlight ? "text-red-700" : ""}`}>
               {c.value}
             </p>
             <p className="text-sm font-medium mt-1">{c.label}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{c.hint}</p>
+            <p className="mono-cap mt-1 text-[10px] text-muted-foreground">{c.hint}</p>
           </Card>
         ))}
       </div>
