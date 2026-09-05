@@ -3,7 +3,7 @@ import { BarChart3, Package, Users, Users2, ClipboardList, Mail, Phone, Settings
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { useAuth, canAccessRoute, subscribeRoleRoutes, type ProfileRole } from "@/hooks/useAuth";
-import basicoLogo from "@/assets/basico-logo.png";
+import basicoLogoAsset from "@/assets/basico-sidebar-logo.png.asset.json";
 import { InstallAppButton } from "@/components/InstallAppButton";
 
 import {
@@ -71,7 +71,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
         {collapsed ? (
           <span className="text-sidebar-primary font-black text-lg">B</span>
         ) : (
-          <img src={basicoLogo} alt="Basico" className="h-10 w-auto" />
+          <img src={basicoLogoAsset.url} alt="Basico" className="h-10 w-auto" />
         )}
       </div>
       <SidebarContent>
