@@ -149,23 +149,59 @@ export default function EspanaFabricacion() {
   };
 
   const openPreflight = async (r: FabRow) => {
+    setOverrides({});
+    setPrefNote(r.notes || "");
+    setHistory(null);
     setPreflight({ open: true, request: r, loading: true });
     const { data, error } = await supabase.rpc("esp_resolve_fabrication_materials" as any, { p_request_id: r.id });
     if (error) { toast.error(error.message); setPreflight({ open: false }); return; }
     setPreflight({ open: true, request: r, data, loading: false });
+    if ((data as any)?.already_consumed > 0) void loadHistory(r.id);
+  };
+
+  const loadHistory = async (requestId: string) => {
+    const { data } = await supabase
+      .from("esp_fabrication_material_consumptions")
+      .select("id,planned_quantity,consumed_quantity,was_overridden,override_reason,created_at,expected_material_id,material_id")
+      .eq("fabrication_request_id", requestId)
+      .order("created_at", { ascending: true });
+    const rowsH = (data || []) as any[];
+    const ids = Array.from(new Set(rowsH.flatMap((h) => [h.expected_material_id, h.material_id]).filter(Boolean)));
+    const nameMap: Record<string, string> = {};
+    if (ids.length) {
+      const { data: mats } = await supabase.from("esp_material_items").select("id,name,size,color,sku").in("id", ids);
+      for (const m of (mats || []) as any[]) nameMap[m.id] = `${materialLabel(m)}${m.sku ? ` · ${m.sku}` : ""}`;
+    }
+    setHistory(rowsH.map((h) => ({
+      ...h,
+      expected_label: h.expected_material_id ? nameMap[h.expected_material_id] : null,
+      actual_label: nameMap[h.material_id] || null,
+    })));
   };
 
   const confirmConsume = async () => {
     if (!preflight.request) return;
     setPreflight(p => ({ ...p, loading: true }));
+    const payload = Object.entries(overrides).map(([recipe_item_id, m]) => ({ recipe_item_id, material_id: m.id }));
     const { data, error } = await supabase.rpc("esp_consume_materials_for_fabrication_request" as any, {
       p_request_id: preflight.request.id,
+      p_location_id: preflight.data?.location_id ?? null,
+      p_notes: prefNote.trim() || null,
+      p_overrides: payload,
     });
     if (error) { toast.error(error.message); setPreflight(p => ({ ...p, loading: false })); return; }
-    toast.success(`Consumidos ${(data as any)?.materials_consumed || 0} materiales · solicitud en fabricación`);
+    const out = data as any;
+    if ((prefNote.trim() || null) !== (preflight.request.notes || null)) {
+      await supabase.from("esp_fabrication_requests").update({ notes: prefNote.trim() || null }).eq("id", preflight.request.id);
+    }
+    toast.success(
+      `Consumidos ${out?.materials_consumed || 0} materiales${out?.materials_overridden ? ` · ${out.materials_overridden} sustituidos` : ""} · solicitud en fabricación`,
+    );
     setPreflight({ open: false });
+    setOverrides({});
     load();
   };
+
 
   // --- Notas de producción: mismo pipeline, consumo al pulsar "Fabricar" ---
   const openNotePreflight = async (r: FabRow) => {
