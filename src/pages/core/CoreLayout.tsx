@@ -140,7 +140,7 @@ export default function CoreLayout() {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "hidden md:block shrink-0 md:sticky md:top-4 md:self-start md:max-h-[calc(100vh-2rem)] md:overflow-y-auto transition-all duration-300",
+          "glass-panel hidden md:block shrink-0 md:sticky md:top-4 md:self-start md:max-h-[calc(100vh-2rem)] md:overflow-y-auto transition-all duration-300 rounded-2xl border p-2",
           desktopOpen ? "md:w-60" : "md:w-10"
         )}
       >

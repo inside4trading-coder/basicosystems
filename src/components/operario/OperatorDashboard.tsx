@@ -226,7 +226,7 @@ export function OperatorDashboard({
 
 
       {/* Botón fijo escanear */}
-      <div className="fixed inset-x-0 bottom-0 border-t bg-background/95 p-4 backdrop-blur">
+      <div className="glass-panel fixed inset-x-0 bottom-0 border-t p-4">
         <Button size="lg" className="h-14 w-full text-lg" onClick={onScan}>
           <QrCode className="mr-2 h-6 w-6" /> Escanear prenda
         </Button>

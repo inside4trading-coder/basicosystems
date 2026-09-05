@@ -112,7 +112,7 @@ export function StudioActionCards({ onSelect }: { onSelect: (kind: StudioKind) =
                   )}
                 />
                 {blocked && (
-                  <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-card/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                  <span className="glass-panel absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     <Lock className="h-3 w-3" />
                     En construcción
                   </span>

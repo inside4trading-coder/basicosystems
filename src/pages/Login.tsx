@@ -102,7 +102,7 @@ export default function Login() {
         className="w-full max-w-sm animate-fade-in relative z-10"
         style={{ animationDelay: "0.1s" }}
       >
-        <div className="rounded-lg shadow-2xl p-8 border border-white/10 bg-black/30 backdrop-blur-xl">
+        <div className="glass-dark rounded-lg shadow-2xl p-8 border">
           <div className="flex justify-center mb-8">
             <img src={basicoLogo} alt="Basico" className="h-14 w-auto" />
           </div>
