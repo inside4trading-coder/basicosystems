@@ -549,9 +549,20 @@ export default function EspanaFabricacion() {
                           <Check className="h-3 w-3 mr-1" />Entregar
                         </Button>
                       )}
+                      {!r.is_legacy && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title={r.notes ? "Editar nota de producción" : "Añadir nota de producción"}
+                          onClick={() => setRowNote({ open: true, request: r })}
+                        >
+                          <NotebookPen className={`h-3 w-3 ${r.notes ? "text-amber-600" : ""}`} />
+                        </Button>
+                      )}
                       {!["cancelled","rejected","delivered_to_shipping","pending_approval"].includes(r.status) && !r.is_legacy && (
                         <Button size="sm" variant="ghost" onClick={() => setStatus(r.id, "cancelled")}><X className="h-3 w-3" /></Button>
                       )}
+
                     </div>
                   </TableCell>
                 </TableRow>
