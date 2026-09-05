@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, canAccessRoute } from "@/hooks/useAuth";
 import type { Employee, EmployeeStatus, RecurringTask } from "@/types/crew";
 
 export function useCrewData() {
   const { role } = useAuth();
-  const isAdmin = role === "admin";
+  const isAdmin = canAccessRoute(role, "/crew");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

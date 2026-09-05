@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, canAccessRoute } from "@/hooks/useAuth";
 import {
   ArrowLeft, MapPin, Calendar, Pencil, MoreVertical,
   AlertTriangle, GraduationCap, Archive, Trash2, Loader2,
@@ -51,7 +51,7 @@ export default function CrewProfile() {
 
   const { role, user } = useAuth();
   const [canViewSensitiveCrewData, setCanViewSensitiveCrewData] = useState(false);
-  const isAdmin = role === "admin" && canViewSensitiveCrewData;
+  const isAdmin = canAccessRoute(role, "/crew") && canViewSensitiveCrewData;
 
   const employee = employees.find((e) => e.id === id);
   const [searchParams] = useSearchParams();
@@ -72,7 +72,7 @@ export default function CrewProfile() {
     }
 
     supabase
-      .rpc("has_role", { _user_id: user.id, _role: "admin" })
+      .rpc("has_module_access" as any, { _user_id: user.id, _module: "/crew" })
       .then(({ data }) => {
         if (!cancelled) setCanViewSensitiveCrewData(Boolean(data));
       }, () => {
