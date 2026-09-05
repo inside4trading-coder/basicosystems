@@ -43,6 +43,7 @@ import { ItemEditorSheet } from "./ItemEditorSheet";
 import { AssignToShipmentDialog } from "./AssignToShipmentDialog";
 import { ReceiveItemDialog } from "./ReceiveItemDialog";
 import { ConsignmentBadge } from "./ConsignmentBadge";
+import { ProcessedAt } from "./ProcessedAt";
 
 
 function ItemThumb({ item, size = 40 }: { item: SublimeMerchItem; size?: number }) {
@@ -172,10 +173,11 @@ export function ItemsInTransitTab() {
                          {shipment?.shipment_number ?? "sin envío"} ·{" "}
                         {box?.box_number ?? "sin caja"}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatSizeSummary(i)} · {calculateTotalUnits(i)} uds
-                      </p>
-                    </div>
+                       <p className="text-xs text-muted-foreground">
+                         {formatSizeSummary(i)} · {calculateTotalUnits(i)} uds
+                       </p>
+                       <ProcessedAt value={i.created_at} className="text-xs text-muted-foreground" />
+                     </div>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => openEdit(i)}>
                     <Pencil className="h-4 w-4" />
@@ -288,10 +290,11 @@ export function ItemsInTransitTab() {
                              <div className="text-[10px] text-muted-foreground">
                               {i.codigo_fabricante ?? "—"}
                             </div>
-                            <div className="text-[10px] text-muted-foreground truncate">
-                              {formatSizeSummary(i)} · {calculateTotalUnits(i)} uds
-                            </div>
-                          </div>
+                             <div className="text-[10px] text-muted-foreground truncate">
+                               {formatSizeSummary(i)} · {calculateTotalUnits(i)} uds
+                             </div>
+                             <ProcessedAt value={i.created_at} />
+                           </div>
                         </div>
                       </TableCell>
                       <TableCell>

@@ -33,6 +33,7 @@ import { ItemEditorSheet } from "./ItemEditorSheet";
 import { AssignToShipmentDialog } from "./AssignToShipmentDialog";
 import { BulkAssignShipmentDialog } from "./BulkAssignShipmentDialog";
 import { ConsignmentBadge } from "./ConsignmentBadge";
+import { ProcessedAt } from "./ProcessedAt";
 
 function ItemThumb({ item, size = 40 }: { item: SublimeMerchItem; size?: number }) {
   const [src, setSrc] = useState<string>("");
