@@ -204,7 +204,7 @@ export default function CoreFactoryOperators() {
     <div className="space-y-6">
       <div className="flex justify-between items-end flex-wrap gap-3">
         <div>
-          <h1 className="num text-2xl font-black tracking-tight">Basico Crew / Operarios de Fábrica</h1>
+          <h1 className="text-2xl font-black tracking-tight">Basico Crew / Operarios de Fábrica</h1>
           <p className="text-sm text-muted-foreground">Catálogo de personas que participan en producción, escaneo y nómina.</p>
         </div>
         <Button onClick={openNew} variant="brand"><Plus className="h-4 w-4" /> Nuevo operario</Button>

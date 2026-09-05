@@ -557,7 +557,7 @@ export default function CoreInventory() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="num text-3xl font-black tracking-tight flex items-center gap-2">
+          <h1 className="text-3xl font-black tracking-tight flex items-center gap-2">
             <Warehouse className="h-7 w-7 text-primary" /> Inventario
           </h1>
           <p className="text-sm text-muted-foreground">

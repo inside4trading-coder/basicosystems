@@ -597,7 +597,7 @@ export default function CoreFabricationFunds() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Layers className="h-5 w-5 text-primary" />
-            <h1 className="num text-2xl font-black tracking-tight">Partidas de Fabricación</h1>
+            <h1 className="text-2xl font-black tracking-tight">Partidas de Fabricación</h1>
           </div>
           <p className="text-sm text-muted-foreground max-w-2xl">
             Control del fondo reservado para fabricar productos vendidos, reponer stock o reemplazar productos no restockeables.

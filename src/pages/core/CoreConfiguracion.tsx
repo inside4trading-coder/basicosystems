@@ -10,7 +10,7 @@ export default function CoreConfiguracion() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="num text-3xl font-black tracking-tight">Configuración Core</h1>
+        <h1 className="text-3xl font-black tracking-tight">Configuración Core</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Parámetros base del módulo de fábrica Basico Core.
         </p>

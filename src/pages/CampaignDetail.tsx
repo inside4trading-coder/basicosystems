@@ -102,7 +102,7 @@ export default function CampaignDetail() {
           </Button>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="num text-xl sm:text-2xl font-black tracking-tight truncate">{campaign.name}</h2>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight truncate">{campaign.name}</h2>
               <Badge variant="outline" className={badge.className}>{badge.label}</Badge>
             </div>
             {campaign.subject && <p className="text-sm text-muted-foreground mt-0.5 truncate">{campaign.subject}</p>}

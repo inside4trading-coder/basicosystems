@@ -447,7 +447,7 @@ export default function CrewRecurringTasksOverview() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="num text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
               <ListChecks className="h-6 w-6 text-primary" />
               Tareas recurrentes
             </h1>

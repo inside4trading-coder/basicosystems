@@ -110,7 +110,8 @@ export default function EspanaInventario() {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="num text-2xl font-black tracking-tight">Inventario por sedes</h2>
+          <p className="mono-cap text-[10px] text-primary">03 · ESPAÑA</p>
+          <h2 className="text-2xl font-black tracking-tight">Inventario por sedes</h2>
           <p className="text-sm text-muted-foreground">Stock real por sede y variante.</p>
         </div>
         <div className="flex gap-2 flex-wrap">

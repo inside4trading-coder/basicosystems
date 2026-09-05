@@ -166,7 +166,7 @@ export default function Administracion() {
         <div className="flex items-center gap-3">
           <Building2 className="h-6 w-6 text-primary" />
           <div>
-            <h1 className="num text-2xl font-black tracking-tight">{scope.title}</h1>
+            <h1 className="text-2xl font-black tracking-tight">{scope.title}</h1>
             <p className="text-muted-foreground text-sm">
               {scope.subtitle}
             </p>
@@ -196,7 +196,7 @@ export default function Administracion() {
         <div className="flex items-center gap-3">
           <Building2 className="h-6 w-6 text-primary shrink-0" />
           <div className="min-w-0">
-            <h1 className="num text-xl sm:text-2xl font-black tracking-tight">{scope.title}</h1>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight">{scope.title}</h1>
             <p className="text-muted-foreground text-sm">
               {scope.subtitle}
             </p>

@@ -370,7 +370,7 @@ export default function CoreProductionNeeds() {
             <ListChecks className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="num text-2xl font-black tracking-tight">Necesidades de Producción</h1>
+            <h1 className="text-2xl font-black tracking-tight">Necesidades de Producción</h1>
             <p className="text-sm text-muted-foreground">Qué hay que fabricar, generado desde Partidas de Fabricación.</p>
           </div>
         </div>

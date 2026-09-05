@@ -293,7 +293,7 @@ export default function CoreCostTemplateEditor() {
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/core/templates-costos")}><ArrowLeft className="h-4 w-4" /></Button>
           <div>
-            <h1 className="num text-2xl font-black tracking-tight">{isNew ? "Nuevo template" : name || "Editar template"}</h1>
+            <h1 className="text-2xl font-black tracking-tight">{isNew ? "Nuevo template" : name || "Editar template"}</h1>
             <p className="text-xs text-muted-foreground">Constructor de template reutilizable de costos / producción.</p>
           </div>
         </div>

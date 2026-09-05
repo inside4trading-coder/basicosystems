@@ -628,7 +628,7 @@ export default function CoreCostStructureEditor() {
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4" /></Button>
           <div>
-            <h1 className="num text-2xl font-black tracking-tight">
+            <h1 className="text-2xl font-black tracking-tight">
               {isVariantMode
                 ? `Editar variante ${variantInfo?.size ?? ""}${variantInfo?.color ? " / " + variantInfo.color : ""}`.trim()
                 : (isNew ? "Nueva estructura de costos" : name || "Editar estructura")}

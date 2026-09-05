@@ -240,7 +240,8 @@ export default function EspanaPOS() {
     <div className="space-y-4 max-w-5xl mx-auto">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="num text-2xl font-black tracking-tight">POS Móvil</h2>
+          <p className="mono-cap text-[10px] text-primary">03 · ESPAÑA</p>
+          <h2 className="text-2xl font-black tracking-tight">POS Móvil</h2>
           <p className="text-xs text-muted-foreground">Registrar venta presencial y descontar inventario.</p>
         </div>
         <div className="flex items-center gap-2">

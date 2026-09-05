@@ -267,7 +267,7 @@ export default function EspanaBlanksDTF() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="num text-2xl font-black tracking-tight flex items-center gap-2">
+          <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
             <Shirt className="h-6 w-6 text-primary" /> Blanks / DTF
           </h2>
           <p className="text-sm text-muted-foreground">

@@ -103,7 +103,7 @@ export default function Configuracion() {
 
   return (
     <div className="space-y-6 sm:space-y-8 max-w-4xl">
-      <h2 className="num text-xl sm:text-2xl font-black tracking-tight">Configuración</h2>
+      <h2 className="text-xl sm:text-2xl font-black tracking-tight">Configuración</h2>
 
       {/* Privacidad: Blur de ventas */}
       <PrivacyBlurToggle />

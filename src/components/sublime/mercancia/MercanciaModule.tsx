@@ -80,7 +80,7 @@ function MercanciaContent() {
             <Package className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="num text-3xl sm:text-4xl font-black text-foreground tracking-tight">
+            <h1 className="text-3xl sm:text-4xl font-black text-foreground tracking-tight">
               {title}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>

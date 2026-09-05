@@ -261,7 +261,7 @@ export default function CoreReports() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="num text-3xl font-black tracking-tight">Reportes</h1>
+          <h1 className="text-3xl font-black tracking-tight">Reportes</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Solo lectura · Auditoría operativa de producción, inventario, Woo y nómina.
           </p>

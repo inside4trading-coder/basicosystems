@@ -232,7 +232,7 @@ export default function CoreWooCandidates() {
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/core/productos")}><ArrowLeft className="h-4 w-4" /></Button>
           <div>
-            <h1 className="num text-2xl font-black tracking-tight">Productos Woo → Core</h1>
+            <h1 className="text-2xl font-black tracking-tight">Productos Woo → Core</h1>
             <p className="text-sm text-muted-foreground">Prioriza productos por ventas reales antes de crearlos en Core.</p>
           </div>
         </div>

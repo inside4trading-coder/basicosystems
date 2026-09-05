@@ -190,7 +190,7 @@ export default function RRPP() {
       <header className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="num text-xl sm:text-2xl font-black tracking-tight">RRPP</h1>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight">RRPP</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Operando para <span className="font-semibold text-foreground">{RRPP_BRAND_LABELS[brand]}</span>
             </p>

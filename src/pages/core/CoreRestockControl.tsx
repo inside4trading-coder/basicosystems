@@ -347,7 +347,7 @@ export default function CoreRestockControl() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Ban className="h-5 w-5 text-destructive" />
-            <h1 className="num text-2xl font-black tracking-tight">Control de Reposición</h1>
+            <h1 className="text-2xl font-black tracking-tight">Control de Reposición</h1>
           </div>
           <p className="text-sm text-muted-foreground max-w-2xl">
             Reglas globales para definir qué productos, SKUs o variaciones no deben restockearse ni producirse automáticamente.

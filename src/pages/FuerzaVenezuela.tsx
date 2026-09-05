@@ -404,7 +404,7 @@ export default function FuerzaVenezuela() {
               el fondo abierto
             </div>
 
-            <h2 className="num text-2xl md:text-4xl font-black lowercase tracking-tight text-white leading-tight">
+            <h2 className="text-2xl md:text-4xl font-black lowercase tracking-tight text-white leading-tight">
               no es solo donar.{" "}
               <span className="bg-gradient-to-r from-[#ff8a5c] to-[#ffb38a] bg-clip-text text-transparent">
                 es poder seguir el recorrido del dinero.
@@ -479,7 +479,7 @@ export default function FuerzaVenezuela() {
                     <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
                     {c.tag}
                   </div>
-                  <h3 className="num relative mt-1.5 text-xl md:text-2xl font-black lowercase tracking-tight text-white">
+                  <h3 className="relative mt-1.5 text-xl md:text-2xl font-black lowercase tracking-tight text-white">
                     {c.title}
                   </h3>
                   <ul className="relative mt-3 space-y-1.5 text-[12px] md:text-[13px] lowercase text-zinc-300">
@@ -952,7 +952,7 @@ function SectionHeader({
           {eyebrow}
         </span>
       </div>
-      <h2 className="num mt-3 text-3xl md:text-5xl font-black lowercase tracking-tight text-white">
+      <h2 className="mt-3 text-3xl md:text-5xl font-black lowercase tracking-tight text-white">
         {title}
       </h2>
       {subtitle && (

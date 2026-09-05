@@ -466,7 +466,7 @@ export default function CoreCostStructures() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="num text-3xl font-black tracking-tight">Estructuras de Costos</h1>
+          <h1 className="text-3xl font-black tracking-tight">Estructuras de Costos</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Construcción de costos de fabricación por producto, prenda o template.
           </p>

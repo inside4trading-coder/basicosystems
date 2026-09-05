@@ -266,7 +266,7 @@ export default function CoreCostTemplates() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="num text-3xl font-black tracking-tight">Templates de Costos / Producción</h1>
+          <h1 className="text-3xl font-black tracking-tight">Templates de Costos / Producción</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Plantillas reutilizables para construir estructuras de costos y procesos de fabricación.
           </p>

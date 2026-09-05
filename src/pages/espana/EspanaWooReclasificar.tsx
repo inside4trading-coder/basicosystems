@@ -124,7 +124,7 @@ export default function EspanaWooReclasificar() {
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="num text-2xl font-black tracking-tight flex items-center gap-2">
+          <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
             <Wand2 className="h-6 w-6 text-primary" /> Reclasificación Woo ES
           </h2>
           <p className="text-sm text-muted-foreground">

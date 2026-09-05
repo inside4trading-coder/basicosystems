@@ -10,7 +10,7 @@ export default function CorePlaceholder({ title, description }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="num text-3xl font-black tracking-tight">{title}</h1>
+        <h1 className="text-3xl font-black tracking-tight">{title}</h1>
         {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
       </div>
       <Card className="p-12 rounded-2xl border-dashed border-border flex flex-col items-center justify-center text-center">
