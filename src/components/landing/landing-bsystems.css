@@ -89,6 +89,40 @@
   transition: color 160ms var(--ease);
 }
 .landing-bsystems .nav__links button:hover { color: #ffffff; }
+.landing-bsystems .nav__links button {
+  position: relative;
+  padding-bottom: 0.35rem;
+}
+.landing-bsystems .nav__links button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 100%;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: right 220ms var(--ease);
+}
+.landing-bsystems .nav__links button.active { color: #ffffff; }
+.landing-bsystems .nav__links button.active::after { right: 0; }
+
+/* Barra de progreso de scroll: fija arriba del todo, por encima del nav. El
+   ancho lo escribe React directo por ref en el mismo listener que ya movía
+   el resto del hero — no es un componente ni un estado nuevo aparte. */
+.landing-bsystems .scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 60;
+  background: transparent;
+}
+.landing-bsystems .scroll-progress__bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--blue-300));
+}
 .landing-bsystems .nav__right { display: flex; align-items: center; gap: 1rem; }
 .landing-bsystems .nav__login {
   display: none;
@@ -120,6 +154,17 @@
   .landing-bsystems .nav__burger { display: none; }
 }
 
+/* Nav compacto al hacer scroll: más opaco y con sombra propia, para separarse
+   del contenido que pasa por debajo en vez de mezclarse con el degradado
+   del hero. La transición vive aquí y no en JS — React sólo alterna la clase. */
+.landing-bsystems .nav {
+  transition: background 240ms var(--ease), box-shadow 240ms var(--ease);
+}
+.landing-bsystems .nav--scrolled {
+  background: rgba(2, 12, 66, 0.92);
+  box-shadow: 0 12px 34px -18px rgba(2, 12, 66, 0.55);
+}
+
 .landing-bsystems .hero {
   position: relative;
   min-height: min(100svh, 100vh);
@@ -132,9 +177,28 @@
 .landing-bsystems .hero::before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: -10% -10% 0 -10%;
   background: radial-gradient(70% 60% at 68% 48%, rgba(11, 55, 255, 0.42), transparent 68%),
     radial-gradient(50% 45% at 8% 92%, rgba(4, 26, 140, 0.55), transparent 70%);
+  /* React escribe --scrollY en cada frame de scroll (sólo mientras el hero
+     puede estar visible). El fondo se desplaza más despacio que el resto de
+     la página — el clásico efecto de profundidad — sin tocar el layout: es
+     sólo un transform, no repinta nada más. El inset negativo evita que el
+     desplazamiento deje un borde vacío a la vista. */
+  transform: translateY(calc(var(--scrollY, 0) * 0.12px));
+  will-change: transform;
+}
+/* Grano sutil sobre el degradado oscuro: la diferencia entre un fondo plano
+   y uno con textura, sin pesar un asset — es un SVG de una línea, incrustado.
+   `soft-light` a opacidad baja lo deja como textura, no como ruido visible. */
+.landing-bsystems .hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 .landing-bsystems .hero__canvas {
   position: absolute;
@@ -184,6 +248,22 @@
 }
 .landing-bsystems .ctas { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2.4rem; }
 
+/* Entrada escalonada del hero: no es scroll-reveal —el hero ya está en
+   pantalla al cargar—, es la propia carga de la página la que se anima.
+   `animation-fill-mode: both` mantiene el estado inicial hasta que le toca
+   el turno y el final una vez termina, así no hay parpadeo antes de arrancar. */
+@keyframes bsys-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+.landing-bsystems .hero > *:not(.hero__canvas) {
+  animation: bsys-rise 720ms var(--ease) both;
+}
+.landing-bsystems .hero .eyebrow { animation-delay: 60ms; }
+.landing-bsystems .hero h1 { animation-delay: 160ms; }
+.landing-bsystems .hero .sub { animation-delay: 280ms; }
+.landing-bsystems .hero .ctas { animation-delay: 400ms; }
+
 .landing-bsystems .btn {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
@@ -207,8 +287,53 @@
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-ink);
+  position: relative;
+  overflow: hidden;
 }
 .landing-bsystems .btn.fill:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+/* Barrido de brillo: una franja diagonal que cruza el botón al pasar el
+   ratón. `::after` en vez de un gradiente sobre el fondo mismo, para que no
+   interfiera con el cambio de color de :hover de arriba — son dos efectos
+   independientes sobre dos capas distintas. */
+.landing-bsystems .btn.fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 520ms var(--ease);
+  pointer-events: none;
+}
+.landing-bsystems .btn.fill:hover::after { left: 130%; }
+
+/* Ripple: círculo de luz que nace en el punto exacto del click. `::before`
+   porque `::after` ya lo usa el barrido de arriba — son dos capas distintas
+   sobre el mismo botón. Landing.tsx pone --rx/--ry en pointerdown y alterna
+   la clase; `is-rippling` dispara la animación desde cero cada vez, incluso
+   si el botón se pulsa dos veces seguidas (ahí está el forzado de reflow). */
+.landing-bsystems .btn.fill::before {
+  content: "";
+  position: absolute;
+  top: var(--ry, 50%);
+  left: var(--rx, 50%);
+  width: 8px;
+  height: 8px;
+  margin: -4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  opacity: 0;
+  pointer-events: none;
+}
+.landing-bsystems .btn.fill.is-rippling::before {
+  animation: bsys-ripple 560ms var(--ease);
+}
+@keyframes bsys-ripple {
+  from { opacity: 0.55; transform: scale(0); }
+  to { opacity: 0; transform: scale(18); }
+}
 .landing-bsystems .btn.ghost {
   border-color: rgba(255, 255, 255, 0.35);
   color: #ffffff;
@@ -254,6 +379,33 @@
   margin: 0 0 0.75rem;
 }
 
+/* Cabecera con cifra: hoy sólo la usa Módulos, para el conteo real de
+   modules.length que anima al revelarse la sección (ver Landing.tsx). */
+.landing-bsystems .section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+.landing-bsystems .stat { flex: none; text-align: right; }
+.landing-bsystems .stat__n {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  line-height: 1;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.landing-bsystems .stat__label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
 .landing-bsystems .manifest { display: grid; gap: 1.5rem; margin-top: 2.5rem; }
 @media (min-width: 52rem) {
   .landing-bsystems .manifest { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; }
@@ -291,6 +443,11 @@
   overflow: hidden;
   padding: 0;
   box-shadow: 0 30px 60px -44px rgba(10, 13, 18, 0.35);
+  transition: transform 200ms var(--ease), box-shadow 200ms var(--ease);
+}
+.landing-bsystems .path:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 40px 70px -36px rgba(10, 13, 18, 0.4);
 }
 .landing-bsystems .path.dark {
   background: var(--blue-900);
@@ -488,6 +645,12 @@
   border: 1px solid var(--mist);
   border-radius: 1.375rem;
   padding: 1.75rem;
+  transition: border-color 160ms var(--ease), transform 160ms var(--ease), box-shadow 160ms var(--ease);
+}
+.landing-bsystems .card:hover {
+  border-color: var(--blue-300);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px -30px rgba(10, 13, 18, 0.35);
 }
 .landing-bsystems .card h3 { font-size: 1.25rem; color: var(--accent); }
 .landing-bsystems .card p { color: var(--slate); font-size: 0.9375rem; margin: 0.6rem 0 0; }
@@ -534,6 +697,11 @@
   text-transform: uppercase;
   color: var(--ink);
   background: #ffffff;
+  transition: transform 160ms var(--ease), box-shadow 160ms var(--ease);
+}
+.landing-bsystems .map__node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px -24px rgba(10, 13, 18, 0.4);
 }
 
 /* Árbol de decisión "No todo necesita IA": una pregunta, una respuesta.
@@ -604,23 +772,40 @@
   inset: 0;
   background: radial-gradient(55% 70% at 50% 0%, rgba(11, 55, 255, 0.36), transparent 70%);
 }
-.landing-bsystems .stackrow {
+/* Cinta infinita del listado de herramientas. `.marquee` recorta; el track
+   duplica el contenido una vez (JSX) y recorre sólo -50% de su ancho total,
+   así que cuando el primer juego sale por la izquierda el segundo ya ocupa
+   su lugar exacto — no hay salto visible en el empalme. */
+.landing-bsystems .marquee {
   position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.625rem;
   margin: 1.75rem 0 1.25rem;
+  overflow: hidden;
+  /* Difumina los bordes del recorte en vez de cortar en seco. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
 }
-.landing-bsystems .stackrow span {
+.landing-bsystems .marquee__track {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: max-content;
+  animation: bsys-marquee 32s linear infinite;
+}
+.landing-bsystems .marquee__dup { display: flex; align-items: center; gap: 0.625rem; }
+.landing-bsystems .marquee__track span {
   font-family: var(--font-mono);
   font-size: 0.875rem;
   letter-spacing: 0.06em;
   color: #ffffff;
+  white-space: nowrap;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.05);
   border-radius: 999px;
   padding: 0.625rem 1.25rem;
+}
+@keyframes bsys-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 .landing-bsystems .stacknote { position: relative; font-family: var(--font-mono); font-size: 0.8125rem; letter-spacing: 0.06em; color: #8FA1D8; margin: 0; }
 
@@ -730,33 +915,157 @@
 .landing-bsystems .radio-row button[role="radio"][data-state="checked"] { border-color: var(--accent); }
 .landing-bsystems .contact form > .btn { justify-self: start; }
 
+/* Footer — doble camino: la misma disyuntiva del hero (activar / a medida),
+   no un cierre genérico. Tres columnas que colapsan a una en móvil. */
 .landing-bsystems .foot {
   background: var(--blue-900);
-  padding: 3.5rem 1.5rem;
+  padding: 4.5rem 1.5rem 3rem;
   margin: 0;
 }
-.landing-bsystems .foot__inner {
+.landing-bsystems .foot__top { max-width: 80rem; margin: 0 auto 3rem; }
+.landing-bsystems .foot__cols {
   max-width: 80rem;
   margin: 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem 1.5rem;
+  display: grid;
+  gap: 2.25rem;
+  padding-bottom: 2.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
-.landing-bsystems .foot p,
-.landing-bsystems .foot a {
+@media (min-width: 40rem) {
+  .landing-bsystems .foot__cols { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.landing-bsystems .foot__col-title {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--blue-300);
+  margin: 0 0 0.9rem;
+}
+.landing-bsystems .foot__col button,
+.landing-bsystems .foot__col a {
+  display: inline-flex;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  color: #ffffff;
+  text-decoration: none;
+  transition: gap 200ms var(--ease), color 200ms var(--ease);
+}
+.landing-bsystems .foot__col button:hover,
+.landing-bsystems .foot__col a:hover { color: var(--blue-300); }
+.landing-bsystems .foot__tagline {
+  max-width: 80rem;
+  margin: 2.25rem auto 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 1.0625rem;
+  color: #ffffff;
+}
+.landing-bsystems .foot__copy {
+  max-width: 80rem;
+  margin: 0.9rem auto 0;
   font-family: var(--font-mono);
   font-size: 0.75rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #8FA1D8;
-  margin: 0;
-  text-decoration: none;
 }
-.landing-bsystems .foot a:hover { color: #ffffff; }
-.landing-bsystems .foot__brand { display: flex; align-items: center; gap: 1.75rem; }
-.landing-bsystems .foot__links { display: flex; flex-wrap: wrap; gap: 1.75rem; }
+
+/* Scroll-reveal. `.reveal` es el estado de reposo (fuera de pantalla);
+   `.in-view` lo añade React vía IntersectionObserver la primera vez que el
+   bloque entra, y no se retira — es una entrada, no algo que deba repetirse
+   al subir y bajar. */
+.landing-bsystems .reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 700ms var(--ease), transform 700ms var(--ease);
+}
+.landing-bsystems .reveal.in-view { opacity: 1; transform: none; }
+
+/* Stagger de los hijos al revelarse: mismas rejillas que ya existían (cards,
+   mods, paths, el mapa de conexión, el árbol de decisión, los pasos de
+   proceso), sin tocar el JSX de cada ítem — el retraso sale sólo de su
+   posición dentro del grid. */
+.landing-bsystems .reveal .cards > *,
+.landing-bsystems .reveal .mods > *,
+.landing-bsystems .reveal .paths > *,
+.landing-bsystems .reveal .map__grid > *,
+.landing-bsystems .reveal .decision > li,
+.landing-bsystems .reveal .steps > li {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 560ms var(--ease), transform 560ms var(--ease);
+}
+.landing-bsystems .reveal.in-view .cards > *,
+.landing-bsystems .reveal.in-view .mods > *,
+.landing-bsystems .reveal.in-view .paths > *,
+.landing-bsystems .reveal.in-view .map__grid > *,
+.landing-bsystems .reveal.in-view .decision > li,
+.landing-bsystems .reveal.in-view .steps > li {
+  opacity: 1;
+  transform: none;
+}
+.landing-bsystems .reveal .cards > *:nth-child(1), .landing-bsystems .reveal .mods > *:nth-child(1), .landing-bsystems .reveal .paths > *:nth-child(1), .landing-bsystems .reveal .map__grid > *:nth-child(1), .landing-bsystems .reveal .decision > li:nth-child(1), .landing-bsystems .reveal .steps > li:nth-child(1) { transition-delay: 0ms; }
+.landing-bsystems .reveal .cards > *:nth-child(2), .landing-bsystems .reveal .mods > *:nth-child(2), .landing-bsystems .reveal .paths > *:nth-child(2), .landing-bsystems .reveal .map__grid > *:nth-child(2), .landing-bsystems .reveal .decision > li:nth-child(2), .landing-bsystems .reveal .steps > li:nth-child(2) { transition-delay: 50ms; }
+.landing-bsystems .reveal .cards > *:nth-child(3), .landing-bsystems .reveal .mods > *:nth-child(3), .landing-bsystems .reveal .paths > *:nth-child(3), .landing-bsystems .reveal .map__grid > *:nth-child(3), .landing-bsystems .reveal .decision > li:nth-child(3), .landing-bsystems .reveal .steps > li:nth-child(3) { transition-delay: 100ms; }
+.landing-bsystems .reveal .cards > *:nth-child(4), .landing-bsystems .reveal .mods > *:nth-child(4), .landing-bsystems .reveal .paths > *:nth-child(4), .landing-bsystems .reveal .map__grid > *:nth-child(4), .landing-bsystems .reveal .decision > li:nth-child(4), .landing-bsystems .reveal .steps > li:nth-child(4) { transition-delay: 150ms; }
+.landing-bsystems .reveal .cards > *:nth-child(5), .landing-bsystems .reveal .mods > *:nth-child(5), .landing-bsystems .reveal .map__grid > *:nth-child(5), .landing-bsystems .reveal .decision > li:nth-child(5) { transition-delay: 200ms; }
+.landing-bsystems .reveal .cards > *:nth-child(6), .landing-bsystems .reveal .mods > *:nth-child(6), .landing-bsystems .reveal .map__grid > *:nth-child(6) { transition-delay: 250ms; }
+.landing-bsystems .reveal .mods > *:nth-child(7), .landing-bsystems .reveal .map__grid > *:nth-child(7) { transition-delay: 300ms; }
+.landing-bsystems .reveal .mods > *:nth-child(8) { transition-delay: 350ms; }
+.landing-bsystems .reveal .mods > *:nth-child(9) { transition-delay: 400ms; }
+.landing-bsystems .reveal .mods > *:nth-child(10) { transition-delay: 450ms; }
+
+/* Spinner del botón de envío: es un indicador de estado, no decoración —
+   sigue girando incluso con prefers-reduced-motion activado, igual que un
+   spinner nativo del sistema operativo no se detiene por esa preferencia. */
+.landing-bsystems .spinner {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-right: 0.6rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 999px;
+  animation: bsys-spin 700ms linear infinite;
+  vertical-align: -2px;
+}
+@keyframes bsys-spin { to { transform: rotate(360deg); } }
+
+/* Apaga toda la capa de movimiento añadida arriba —reveal, stagger, entrada
+   del hero, parallax, barrido del CTA, ripple, cinta de herramientas,
+   elevación al hover— para quien pidió menos movimiento en el sistema. Los
+   elementos aparecen ya en su estado final, sin animar; el resto de la
+   landing (color, tipografía, layout) no cambia. El spinner de carga queda
+   fuera a propósito: es información de estado, no adorno. */
+@media (prefers-reduced-motion: reduce) {
+  .landing-bsystems .reveal,
+  .landing-bsystems .reveal .cards > *,
+  .landing-bsystems .reveal .mods > *,
+  .landing-bsystems .reveal .paths > *,
+  .landing-bsystems .reveal .map__grid > *,
+  .landing-bsystems .reveal .decision > li,
+  .landing-bsystems .reveal .steps > li {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .landing-bsystems .hero > *:not(.hero__canvas) { animation: none; opacity: 1; transform: none; }
+  .landing-bsystems .hero::before { transform: none; }
+  .landing-bsystems .btn.fill::after { display: none; }
+  .landing-bsystems .btn.fill.is-rippling::before { animation: none; opacity: 0; }
+  .landing-bsystems .marquee__track { animation: none; }
+  .landing-bsystems .card:hover,
+  .landing-bsystems .map__node:hover,
+  .landing-bsystems .path:hover,
+  .landing-bsystems .mod:hover { transform: none; }
+}
 
 .landing-sheet.landing-sheet {
   background: #020C42;

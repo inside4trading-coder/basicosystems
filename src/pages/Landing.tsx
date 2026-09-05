@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useEffect, useRef, useState, FormEvent, PointerEvent as ReactPointerEvent } from "react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 import { Menu } from "lucide-react";
@@ -103,6 +103,149 @@ export default function Landing() {
   const [submitting, setSubmitting] = useState(false);
   const [interest, setInterest] = useState<"saas" | "tailor" | "unsure">("unsure");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [moduleCount, setModuleCount] = useState(0);
+  const heroRef = useRef<HTMLElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+
+  // Nav compacto + parallax del hero + barra de progreso. Un solo listener
+  // con rAF para las tres cosas: togglear la clase de scrolled es barato,
+  // pero escribir la custom property y el ancho de la barra en cada evento
+  // de scroll sin throttle sí provoca layout thrash.
+  // La barra escribe directo al DOM por ref, no por estado — un re-render de
+  // toda la página en cada frame de scroll sería el detalle "premium" que
+  // termina sintiéndose lento.
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        setScrolled(y > 24);
+        if (heroRef.current && y < window.innerHeight) {
+          heroRef.current.style.setProperty("--scrollY", String(y));
+        }
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        if (progressRef.current) {
+          progressRef.current.style.width = `${max > 0 ? Math.min(100, (y / max) * 100) : 0}%`;
+        }
+        ticking = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Scrollspy del nav: qué sección ancla está activa. Umbral bajo y franja
+  // centrada en el viewport para que el cambio ocurra cuando la sección
+  // domina la pantalla, no en el primer píxel de entrada.
+  useEffect(() => {
+    const targets = navItems
+      .map((item) => document.getElementById(item.id))
+      .filter((el): el is HTMLElement => !!el);
+    if (!targets.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length) setActiveSection(visible[0].target.id);
+      },
+      { rootMargin: "-40% 0px -55% 0px" },
+    );
+    targets.forEach((t) => io.observe(t));
+    return () => io.disconnect();
+  }, []);
+
+  // Scroll-reveal: cada `.reveal` aparece la primera vez que entra en
+  // pantalla. `unobserve` tras revelarlo — es una entrada, no algo que deba
+  // repetirse al subir y bajar. Respeta prefers-reduced-motion también en JS:
+  // sin esto, el elemento nace en opacity:0 vía CSS y si el observer no
+  // llegara a disparar (motion-reduce ya lo neutraliza por CSS, pero más
+  // vale no depender de una sola capa) se quedaría invisible para siempre.
+  useEffect(() => {
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const nodes = document.querySelectorAll(".reveal");
+    if (reduced) {
+      nodes.forEach((n) => n.classList.add("in-view"));
+      setModuleCount(modules.length);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in-view");
+            // El contador de "Módulos" cuenta hasta el tamaño real del
+            // array — no es una cifra decorativa, es modules.length. Nace
+            // aquí, al revelarse la sección, para que el conteo acompañe a
+            // la entrada en vez de haber terminado antes de que se vea.
+            if (entry.target.id === "modulos") {
+              const total = modules.length;
+              const start = performance.now();
+              const dur = 900;
+              const tick = (now: number) => {
+                const p = Math.min(1, (now - start) / dur);
+                setModuleCount(Math.round(total * (1 - Math.pow(1 - p, 3))));
+                if (p < 1) requestAnimationFrame(tick);
+              };
+              requestAnimationFrame(tick);
+            }
+            io.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -10% 0px" },
+    );
+    nodes.forEach((n) => io.observe(n));
+    return () => io.disconnect();
+  }, []);
+
+  // Tilt 3D sutil en tarjetas, módulos, caminos y nodos del mapa. Sólo con
+  // ratón de precisión (`pointer: fine`) — en táctil no hay hover que leer,
+  // y respeta reduced-motion igual que el resto de la capa de movimiento.
+  // El transform se escribe inline porque tiene que combinar la inclinación
+  // (calculada del cursor) con la elevación (constante); son la misma
+  // propiedad y no pueden convivir en dos reglas CSS a la vez.
+  useEffect(() => {
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const fine = matchMedia("(pointer: fine)").matches;
+    if (reduced || !fine) return;
+    const els = document.querySelectorAll<HTMLElement>(".card, .mod, .path, .map__node");
+    const onMove = (e: PointerEvent) => {
+      const el = e.currentTarget as HTMLElement;
+      const r = el.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      el.style.transform = `perspective(800px) rotateX(${(-py * 6).toFixed(2)}deg) rotateY(${(px * 6).toFixed(2)}deg) translateY(-3px)`;
+    };
+    const onLeave = (e: PointerEvent) => { (e.currentTarget as HTMLElement).style.transform = ""; };
+    els.forEach((el) => {
+      el.addEventListener("pointermove", onMove);
+      el.addEventListener("pointerleave", onLeave);
+    });
+    return () => {
+      els.forEach((el) => {
+        el.removeEventListener("pointermove", onMove);
+        el.removeEventListener("pointerleave", onLeave);
+      });
+    };
+  }, []);
+
+  // Ripple del CTA: un círculo de luz nace en el punto exacto del click y se
+  // expande. Vía CSS variables + una clase que se retira sola al terminar la
+  // animación — no hay temporizador que pueda desincronizarse.
+  const ripple = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    const el = e.currentTarget;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--rx", `${e.clientX - r.left}px`);
+    el.style.setProperty("--ry", `${e.clientY - r.top}px`);
+    el.classList.remove("is-rippling");
+    // Forzar reflow: sin esto, quitar y volver a poner la clase en el mismo
+    // tick no reinicia la animación si el botón se pulsa dos veces seguidas.
+    void el.offsetWidth;
+    el.classList.add("is-rippling");
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -146,15 +289,26 @@ export default function Landing() {
 
   return (
     <div className="landing-bsystems">
+      {/* Barra de progreso de scroll. El ancho lo escribe el listener de
+          scroll directo por ref — ver el useEffect de arriba. */}
+      <div className="scroll-progress" aria-hidden="true">
+        <div ref={progressRef} className="scroll-progress__bar" />
+      </div>
+
       {/* NAV */}
-      <header className="nav">
+      <header className={scrolled ? "nav nav--scrolled" : "nav"}>
         <nav className="nav__inner">
           <Link to="/" className="nav__mark">
             <BrandMark variant="negative" style={{ fontSize: "1.625rem" }} />
           </Link>
           <div className="nav__links">
             {navItems.map((item) => (
-              <button key={item.id} type="button" onClick={scrollTo(item.id)}>
+              <button
+                key={item.id}
+                type="button"
+                className={activeSection === item.id ? "active" : undefined}
+                onClick={scrollTo(item.id)}
+              >
                 {item.label}
               </button>
             ))}
@@ -163,7 +317,7 @@ export default function Landing() {
             <Link to="/login" className="nav__login">
               {user ? "Panel" : "Acceso equipo"}
             </Link>
-            <button type="button" className="btn fill sm" onClick={scrollTo("contacto")}>
+            <button type="button" className="btn fill sm" onPointerDown={ripple} onClick={scrollTo("contacto")}>
               Hablemos
             </button>
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
@@ -213,7 +367,7 @@ export default function Landing() {
       </header>
 
       {/* HERO */}
-      <header className="hero">
+      <header className="hero" ref={heroRef}>
         <ConfettiSphere />
         <p className="eyebrow">[B] Systems</p>
         <h1>
@@ -223,7 +377,7 @@ export default function Landing() {
           Software construido alrededor de cómo trabaja tu empresa. Ya existe uno listo, o te construimos el tuyo.
         </p>
         <div className="ctas">
-          <button type="button" className="btn fill" onClick={scrollTo("dos-formas")}>
+          <button type="button" className="btn fill" onPointerDown={ripple} onClick={scrollTo("dos-formas")}>
             Quiero activarlo
           </button>
           <button type="button" className="btn ghost" onClick={scrollTo("contacto")}>
@@ -234,7 +388,7 @@ export default function Landing() {
 
       <div className="below">
         {/* MANIFIESTO — mismo patrón que la pieza "nuestra diferencia" */}
-        <section className="block">
+        <section className="block reveal">
           <p className="kicker">Nuestra diferencia</p>
           <div className="manifest">
             {[
@@ -253,7 +407,7 @@ export default function Landing() {
         {/* CÓMO FUNCIONA — grid "antes de construir", mismo patrón que la pieza
             "entendemos tu operación" (Personas·Procesos·Herramientas·Datos·
             Decisiones·Tareas manuales). Reutiliza el componente .cards.three. */}
-        <section className="block">
+        <section className="block reveal">
           <p className="kicker">Antes de construir</p>
           <h2>Primero entendemos tu operación.</h2>
           <p className="lede">Vemos qué ocurre, quién interviene y dónde se pierde tiempo.</p>
@@ -268,7 +422,7 @@ export default function Landing() {
         </section>
 
         {/* DOS FORMAS DE EMPEZAR */}
-        <section className="block" id="dos-formas">
+        <section className="block reveal" id="dos-formas">
           <p className="kicker">Dos caminos</p>
           <h2>Dos formas de empezar</h2>
           <div className="paths">
@@ -296,6 +450,7 @@ export default function Landing() {
                 <button
                   type="button"
                   className="btn fill"
+                  onPointerDown={ripple}
                   onClick={() => { setInterest("saas"); scrollTo("contacto")(); }}
                 >
                   Quiero activarlo
@@ -339,12 +494,23 @@ export default function Landing() {
         {/* MÓDULOS — diagrama de conexión, mismo patrón que la pieza "puede
             conectar las partes clave de tu operación": nodo [B] arriba, las
             áreas que conecta debajo, antes de entrar al detalle de cada módulo. */}
-        <section className="block" id="modulos">
+        <section className="block reveal" id="modulos">
           <p className="kicker">Lo que puede conectar</p>
-          <h2>Puede conectar las partes clave de tu operación.</h2>
-          <p className="lede">
-            Ventas, inventario, producción, finanzas, equipo, clientes y compras — todo en un mismo lugar.
-          </p>
+          <div className="section-head">
+            <div>
+              <h2>Puede conectar las partes clave de tu operación.</h2>
+              <p className="lede">
+                Ventas, inventario, producción, finanzas, equipo, clientes y compras — todo en un mismo lugar.
+              </p>
+            </div>
+            {/* moduleCount cuenta hasta modules.length al revelarse la sección
+                (ver el useEffect del observer) — es el número real de módulos,
+                no una cifra suelta. */}
+            <div className="stat" aria-hidden="true">
+              <span className="stat__n">{moduleCount}</span>
+              <span className="stat__label">Módulos</span>
+            </div>
+          </div>
           <div className="map">
             <div className="map__hub-wrap">
               <span className="map__hub" aria-hidden="true">[B]</span>
@@ -376,7 +542,7 @@ export default function Landing() {
         </section>
 
         {/* PERSONALIZACIÓN */}
-        <section className="block">
+        <section className="block reveal">
           <p className="kicker">Personalización</p>
           <h2>Tu marca, no la nuestra.</h2>
           <div className="cards">
@@ -392,7 +558,7 @@ export default function Landing() {
         {/* NO TODO NECESITA IA — árbol de decisión, mismo patrón que la pieza
             [B] Principle / 001. El listado de herramientas se conserva como
             respaldo técnico, degradado a nota al pie del bloque oscuro. */}
-        <section className="block">
+        <section className="block reveal">
           <p className="kicker">[B] Principle / 001</p>
           <h2>No todo necesita IA.</h2>
           <ol className="decision">
@@ -406,17 +572,30 @@ export default function Landing() {
           <p className="decision__msg">Usamos lo que tenga sentido. No incorporamos IA porque esté de moda.</p>
           <div className="stackwrap">
             <p className="kicker" style={{ color: "var(--blue-300)" }}>Por dentro</p>
-            <div className="stackrow">
-              {stack.map((s) => (
-                <span key={s}>{s}</span>
-              ))}
+            {/* Cinta infinita: el segundo bloque es una copia exacta del
+                primero, colocada justo a continuación. La animación sólo
+                recorre -50% del ancho total, así que cuando el primer bloque
+                sale por la izquierda el segundo ocupa exactamente su lugar —
+                el salto es invisible. La copia lleva aria-hidden para que un
+                lector de pantalla no anuncie la lista dos veces. */}
+            <div className="marquee">
+              <div className="marquee__track">
+                {stack.map((s) => (
+                  <span key={s}>{s}</span>
+                ))}
+                <div aria-hidden="true" className="marquee__dup">
+                  {stack.map((s) => (
+                    <span key={s}>{s}</span>
+                  ))}
+                </div>
+              </div>
             </div>
             <p className="stacknote">Si tu marca usa otras herramientas, las conectamos.</p>
           </div>
         </section>
 
         {/* RUBROS */}
-        <section className="block">
+        <section className="block reveal">
           <p className="kicker">Para cualquier negocio</p>
           <h2>No importa a qué te dediques</h2>
           <p className="lede">
@@ -435,7 +614,7 @@ export default function Landing() {
 
         {/* PROCESO — secuencia con flechas, mismo patrón que la pieza
             "después decidimos qué hacer" (01→02→03→04). */}
-        <section className="block" id="proceso">
+        <section className="block reveal" id="proceso">
           <p className="kicker">Cómo trabajamos</p>
           <h2>Primero entendemos. Después construimos.</h2>
           <p className="steps__flow" aria-hidden="true">
@@ -458,7 +637,7 @@ export default function Landing() {
         </section>
 
         {/* BANDA DE MARCA */}
-        <section className="band">
+        <section className="band reveal">
           <div className="inner">
             <p className="k">Un área de Basico</p>
             <h2>El mismo ADN: producto, diseño, obsesión por el detalle.</h2>
@@ -466,7 +645,7 @@ export default function Landing() {
         </section>
 
         {/* CONTACTO */}
-        <section className="block contact" id="contacto">
+        <section className="block contact reveal" id="contacto">
           <p className="kicker">Primera pregunta</p>
           <h2>¿Cómo funciona tu empresa?</h2>
           <p className="lede">
@@ -512,23 +691,46 @@ export default function Landing() {
               <Label htmlFor="message">Cuéntanos cómo trabaja tu empresa hoy</Label>
               <Textarea id="message" name="message" rows={5} maxLength={1000} />
             </div>
-            <button type="submit" className="btn fill" disabled={submitting}>
+            <button type="submit" className="btn fill" onPointerDown={ripple} disabled={submitting}>
+              {submitting && <span className="spinner" aria-hidden="true" />}
               {submitting ? "Enviando..." : "Enviar"}
             </button>
           </form>
         </section>
 
-        {/* FOOTER */}
+        {/* FOOTER — opción A: doble camino. Reproduce la misma disyuntiva que
+            el hero y "Dos formas de empezar" (activar / a medida) en vez de
+            cerrar con un genérico "un área de Basico". */}
         <footer className="foot">
-          <div className="foot__inner">
-            <div className="foot__brand">
-              <BrandMark variant="negative" style={{ fontSize: "1.375rem" }} />
-              <p>Basico System · Un área de Basico · {new Date().getFullYear()}</p>
+          <div className="foot__top">
+            <BrandMark variant="negative" style={{ fontSize: "1.625rem" }} />
+          </div>
+          <div className="foot__cols">
+            <div className="foot__col">
+              <p className="foot__col-title">Ya existe</p>
+              <button
+                type="button"
+                onClick={() => { setInterest("saas"); scrollTo("contacto")(); }}
+              >
+                Quiero activarlo →
+              </button>
             </div>
-            <div className="foot__links">
+            <div className="foot__col">
+              <p className="foot__col-title">A tu medida</p>
+              <button
+                type="button"
+                onClick={() => { setInterest("tailor"); scrollTo("contacto")(); }}
+              >
+                Quiero uno a medida →
+              </button>
+            </div>
+            <div className="foot__col">
+              <p className="foot__col-title">Empresa</p>
               <Link to="/login">{user ? "Ir al panel" : "Acceso equipo"}</Link>
             </div>
           </div>
+          <p className="foot__tagline">Primero entendemos. Después construimos.</p>
+          <p className="foot__copy">© {new Date().getFullYear()} [B] Systems · Un área de Basico</p>
         </footer>
       </div>
     </div>
