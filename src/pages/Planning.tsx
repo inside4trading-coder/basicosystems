@@ -34,7 +34,6 @@ function useArchivedSources() {
 }
 
 export default function Planning() {
-  const isMobile = useIsMobile();
   const { databases: allDatabases, loading: loadingDbs, error: dbError, refetch: refetchDbs } = usePlanningDatabases();
   const { archived, toggle: toggleArchive, isArchived } = useArchivedSources();
 
