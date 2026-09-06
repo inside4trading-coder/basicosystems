@@ -33,8 +33,9 @@ export function PhotoGallery({
   const cameraRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
-  const handleFiles = async (files: FileList | null) => {
+  const handleFiles = async (files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
     setBusy(true);
     try {
@@ -55,6 +56,7 @@ export function PhotoGallery({
       if (cameraRef.current) cameraRef.current.value = "";
     }
   };
+
 
   const handleAddUrl = async () => {
     const check = validatePhotoUrl(urlInput);
