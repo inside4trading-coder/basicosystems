@@ -347,7 +347,7 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
   void calculateTotalCost;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={(v) => { if (!saving) onOpenChange(v); }}>
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{isEdit ? "Editar producto" : "Agregar producto"}</SheetTitle>
