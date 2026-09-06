@@ -1,10 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
-import { Loader2, AlertTriangle, RefreshCw, ExternalLink, Database, Table, Calendar, ListChecks, Archive, ArchiveRestore } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw, ExternalLink, Database } from "lucide-react";
 import { toast } from "sonner";
-import { usePlanningDatabases, usePlanningTasks } from "@/hooks/usePlanningData";
+import { usePlanningDatabases, usePlanningTasks, type NotionTask } from "@/hooks/usePlanningData";
+import { usePlanningFilters, usePeopleOptions } from "@/hooks/usePlanningFilters";
 import PlanningTable from "@/components/planning/PlanningTable";
 import PlanningCalendar from "@/components/planning/PlanningCalendar";
 import PlanningAgenda from "@/components/planning/PlanningAgenda";
+import PlanningToolbar, { type PlanningView } from "@/components/planning/PlanningToolbar";
+import {
+  addDays,
+  monthLabel,
+  startOfWeek,
+  taskStartDate,
+  weekRangeLabel,
+} from "@/lib/planningDates";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const ARCHIVED_KEY = "planning:archived_sources";
 
@@ -24,20 +34,23 @@ function useArchivedSources() {
 }
 
 export default function Planning() {
+  const isMobile = useIsMobile();
   const { databases: allDatabases, loading: loadingDbs, error: dbError, refetch: refetchDbs } = usePlanningDatabases();
   const { archived, toggle: toggleArchive, isArchived } = useArchivedSources();
-  const [showArchived, setShowArchived] = useState(false);
 
   const visibleDatabases = useMemo(
-    () => allDatabases.filter((d) => (showArchived ? isArchived(d.id) : !isArchived(d.id))),
-    [allDatabases, archived, showArchived]
+    () => allDatabases.filter((d) => !isArchived(d.id)),
+    [allDatabases, archived],
   );
-  const databases = visibleDatabases;
+  const archivedDatabases = useMemo(
+    () => allDatabases.filter((d) => isArchived(d.id)),
+    [allDatabases, archived],
+  );
 
   const [selectedSource, setSelectedSource] = useState<string>("all");
-  const [view, setView] = useState<"agenda" | "tabla" | "calendario">("agenda");
+  const [view, setView] = useState<PlanningView>(() => (window.innerWidth < 768 ? "semana" : "mes"));
+  const [cursor, setCursor] = useState<Date>(() => new Date());
 
-  // Reset selection if it's no longer visible
   useEffect(() => {
     if (selectedSource !== "all" && !visibleDatabases.find((d) => d.id === selectedSource)) {
       setSelectedSource("all");
@@ -46,6 +59,28 @@ export default function Planning() {
 
   const { tasks, loading: loadingTasks, error: taskError, refetch: refetchTasks } = usePlanningTasks(selectedSource, visibleDatabases);
   const [syncing, setSyncing] = useState(false);
+
+  const filters = usePlanningFilters();
+
+  // Tasks in the visible period (used to derive the people list)
+  const periodTasks = useMemo<NotionTask[]>(() => {
+    if (view === "agenda" || view === "tabla") return tasks;
+    if (view === "semana") {
+      const start = startOfWeek(cursor);
+      const end = addDays(start, 7);
+      return tasks.filter((t) => {
+        const d = taskStartDate(t);
+        return d ? d >= start && d < end : false;
+      });
+    }
+    return tasks.filter((t) => {
+      const d = taskStartDate(t);
+      return d ? d.getFullYear() === cursor.getFullYear() && d.getMonth() === cursor.getMonth() : false;
+    });
+  }, [tasks, view, cursor]);
+
+  const people = usePeopleOptions(periodTasks.length > 0 ? periodTasks : tasks);
+  const filteredTasks = useMemo(() => filters.apply(tasks), [tasks, filters]);
 
   const isTokenError = (msg: string | null) =>
     msg && (msg.toLowerCase().includes("401") || msg.toLowerCase().includes("unauthorized"));
@@ -63,7 +98,17 @@ export default function Planning() {
     }
   };
 
-  const selectedDb = databases.find((d) => d.id === selectedSource);
+  const selectedDb = visibleDatabases.find((d) => d.id === selectedSource);
+
+  const shift = (dir: 1 | -1) => {
+    setCursor((prev) => {
+      if (view === "semana") return addDays(prev, dir * 7);
+      const d = new Date(prev);
+      d.setDate(1);
+      d.setMonth(d.getMonth() + dir);
+      return d;
+    });
+  };
 
   // ── Token error ──
   if (dbError && isTokenError(dbError)) {
@@ -79,7 +124,6 @@ export default function Planning() {
     );
   }
 
-  // ── Loading databases ──
   if (loadingDbs) {
     return (
       <div className="space-y-6">
@@ -92,7 +136,6 @@ export default function Planning() {
     );
   }
 
-  // ── Error loading databases ──
   if (dbError) {
     return (
       <div className="space-y-6">
@@ -106,7 +149,6 @@ export default function Planning() {
     );
   }
 
-  // ── No databases ──
   if (allDatabases.length === 0) {
     return (
       <div className="space-y-6">
@@ -120,17 +162,16 @@ export default function Planning() {
     );
   }
 
-  const archivedCount = archived.filter((id) => allDatabases.some((d) => d.id === id)).length;
-  const activeCount = allDatabases.length - archivedCount;
+  const periodLabel = view === "semana" ? weekRangeLabel(cursor) : monthLabel(cursor);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <p className="mono-cap text-[10px] text-primary">01 · PLANIFICACIÓN</p>
-          <h2 className="text-2xl font-black tracking-tight">Planificación</h2>
-          <p className="text-sm text-muted-foreground">Visor de tareas sincronizado con Notion</p>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight">Planificación</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Visor de tareas sincronizado con Notion</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -154,109 +195,45 @@ export default function Planning() {
         </div>
       </div>
 
-      {/* Active / Archived toggle */}
-      <div className="flex items-center gap-1 bg-muted rounded-lg p-1 w-fit">
-        <button
-          onClick={() => setShowArchived(false)}
-          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-            !showArchived ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Activas ({activeCount})
-        </button>
-        <button
-          onClick={() => setShowArchived(true)}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-            showArchived ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Archive className="h-3.5 w-3.5" /> Archivadas ({archivedCount})
-        </button>
-      </div>
-
-      {/* Source selector + view toggle */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1 bg-muted rounded-lg p-1 overflow-x-auto">
-          <button
-            onClick={() => setSelectedSource("all")}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap ${
-              selectedSource === "all" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {showArchived ? "Todas archivadas" : "Todas las fuentes"}
-          </button>
-          {visibleDatabases.length === 0 && (
-            <span className="px-3 py-1.5 text-xs text-muted-foreground whitespace-nowrap">
-              {showArchived ? "Sin fuentes archivadas" : "Sin fuentes activas"}
-            </span>
-          )}
-          {visibleDatabases.map((db) => (
-            <div
-              key={db.id}
-              className={`group flex items-center rounded-md transition-colors ${
-                selectedSource === db.id ? "bg-card shadow-sm" : "hover:bg-card/50"
-              }`}
-            >
-              <button
-                onClick={() => setSelectedSource(db.id)}
-                className={`pl-3 pr-1 py-1.5 rounded-l-md text-xs font-semibold transition-colors truncate max-w-[160px] ${
-                  selectedSource === db.id ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
-                }`}
-                title={db.name}
-              >
-                {db.name}
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleArchive(db.id);
-                  toast.success(showArchived ? "Fuente restaurada" : "Fuente archivada");
-                }}
-                className="px-1.5 py-1.5 rounded-r-md text-muted-foreground hover:text-foreground opacity-60 hover:opacity-100 transition"
-                title={showArchived ? "Restaurar fuente" : "Archivar fuente"}
-              >
-                {showArchived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
-              </button>
-            </div>
-          ))}
-        </div>
-
-
-        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-          <button
-            onClick={() => setView("agenda")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-              view === "agenda" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <ListChecks className="h-3.5 w-3.5" /> Agenda
-          </button>
-          <button
-            onClick={() => setView("tabla")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-              view === "tabla" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Table className="h-3.5 w-3.5" /> Tabla
-          </button>
-          <button
-            onClick={() => setView("calendario")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-              view === "calendario" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Calendar className="h-3.5 w-3.5" /> Calendario
-          </button>
-        </div>
-      </div>
+      <PlanningToolbar
+        view={view}
+        onView={setView}
+        periodLabel={periodLabel}
+        showNav={view === "mes" || view === "semana"}
+        onPrev={() => shift(-1)}
+        onNext={() => shift(1)}
+        onToday={() => setCursor(new Date())}
+        databases={visibleDatabases}
+        archivedDatabases={archivedDatabases}
+        selectedSource={selectedSource}
+        onSelectSource={setSelectedSource}
+        onToggleArchive={(id) => {
+          toggleArchive(id);
+          toast.success(isArchived(id) ? "Fuente restaurada" : "Fuente archivada");
+        }}
+        status={filters.status}
+        onStatus={filters.setStatus}
+        people={people}
+        person={filters.person}
+        onPerson={filters.setPerson}
+        me={filters.me}
+        onSetMe={filters.setMe}
+      />
 
       {/* Content */}
       {view === "agenda" ? (
-        <PlanningAgenda tasks={tasks} loading={loadingTasks} error={taskError} />
+        <PlanningAgenda tasks={filteredTasks} loading={loadingTasks} error={taskError} />
       ) : view === "tabla" ? (
-        <PlanningTable tasks={tasks} loading={loadingTasks} error={taskError} selectedDatabaseId={selectedSource} />
+        <PlanningTable tasks={filteredTasks} loading={loadingTasks} error={taskError} selectedDatabaseId={selectedSource} />
       ) : (
-        <PlanningCalendar tasks={tasks} loading={loadingTasks} error={taskError} selectedDatabaseId={selectedSource} />
+        <PlanningCalendar
+          tasks={filteredTasks}
+          loading={loadingTasks}
+          error={taskError}
+          cursor={cursor}
+          view={view}
+          notionUrl={selectedDb?.url}
+        />
       )}
     </div>
   );
@@ -265,7 +242,7 @@ export default function Planning() {
 function Header() {
   return (
     <div>
-      <h2 className="text-2xl font-black tracking-tight">Planificación</h2>
+      <h1 className="text-2xl font-black tracking-tight">Planificación</h1>
       <p className="text-sm text-muted-foreground">Visor de tareas sincronizado con Notion</p>
     </div>
   );
