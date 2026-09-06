@@ -121,12 +121,19 @@ export function PhotoGallery({
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => cameraRef.current?.click()}
+          onClick={() => setCameraOpen(true)}
           disabled={busy}
         >
           <Camera className="h-4 w-4 mr-2" />
           Cámara
         </Button>
+        <CameraCaptureDialog
+          open={cameraOpen}
+          onOpenChange={setCameraOpen}
+          onCapture={(files) => handleFiles(files)}
+          onUnavailable={() => cameraRef.current?.click()}
+        />
+
         {showBankTools && (
           <>
             <Button
