@@ -14,7 +14,7 @@ import {
   taskStartDate,
   weekRangeLabel,
 } from "@/lib/planningDates";
-import { useIsMobile } from "@/hooks/use-mobile";
+
 
 const ARCHIVED_KEY = "planning:archived_sources";
 
