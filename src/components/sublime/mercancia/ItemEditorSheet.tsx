@@ -589,16 +589,24 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
         </div>
 
         <SheetFooter className="gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" disabled={saving} onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button
             onClick={submit}
             disabled={createItem.isPending || updateItem.isPending || saving}
           >
-            {isEdit ? "Guardar cambios" : "Crear producto"}
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {saving
+              ? progress
+                ? `Subiendo fotos ${progress.done} de ${progress.total}`
+                : "Guardando…"
+              : isEdit
+                ? "Guardar cambios"
+                : "Crear producto"}
           </Button>
         </SheetFooter>
+
       </SheetContent>
     </Sheet>
   );
