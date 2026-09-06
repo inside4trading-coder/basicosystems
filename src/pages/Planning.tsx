@@ -47,7 +47,7 @@ export default function Planning() {
   );
 
   const [selectedSource, setSelectedSource] = useState<string>("all");
-  const [view, setView] = useState<PlanningView>(() => (window.innerWidth < 768 ? "semana" : "mes"));
+  const [view, setView] = useState<PlanningView>("agenda");
   const [cursor, setCursor] = useState<Date>(() => new Date());
 
   useEffect(() => {
