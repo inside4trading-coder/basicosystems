@@ -589,11 +589,12 @@ function PendingPhotoPicker({
 }: {
   kind: "origen" | "web";
   pending: PendingFile[];
-  onAdd: (files: FileList | null) => void;
+  onAdd: (files: FileList | File[] | null) => void;
   onRemove: (idx: number) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   return (
     <div className="space-y-3">
@@ -633,12 +634,19 @@ function PendingPhotoPicker({
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => cameraRef.current?.click()}
+          onClick={() => setCameraOpen(true)}
         >
           <Camera className="h-4 w-4 mr-2" />
           Cámara
         </Button>
+        <CameraCaptureDialog
+          open={cameraOpen}
+          onOpenChange={setCameraOpen}
+          onCapture={(files) => onAdd(files)}
+          onUnavailable={() => cameraRef.current?.click()}
+        />
       </div>
+
 
       <p className="text-xs text-muted-foreground italic">
         Puedes tomar o adjuntar fotos ahora. Se subirán automáticamente al guardar el
