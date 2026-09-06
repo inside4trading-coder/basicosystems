@@ -335,7 +335,9 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
       }
     } finally {
       setSaving(false);
+      setProgress(null);
     }
+
   };
 
   void calculateTotalCost;
