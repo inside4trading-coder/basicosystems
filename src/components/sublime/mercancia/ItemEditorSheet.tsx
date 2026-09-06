@@ -110,6 +110,8 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
   const [pendingWebUrls, setPendingWebUrls] = useState<string[]>([]);
   const [webUrlInput, setWebUrlInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
 
   const revokeAll = () => {
     pendingOrigen.forEach((p) => URL.revokeObjectURL(p.previewUrl));
