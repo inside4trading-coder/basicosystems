@@ -12,6 +12,8 @@ import {
   type PhotoType,
 } from "@/lib/sublimeMerch";
 import { useMerchMutations } from "@/hooks/useSublimeMerch";
+import { CameraCaptureDialog } from "./CameraCaptureDialog";
+
 
 interface Props {
   itemId: string;
