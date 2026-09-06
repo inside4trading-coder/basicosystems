@@ -191,9 +191,40 @@ async function listDatabases(token: string) {
   return json({ databases: uniqueDatabases });
 }
 
+async function queryAllPages(token: string, path: string, errorPrefix: string) {
+  const allResults: any[] = [];
+  let hasMore = true;
+  let startCursor: string | undefined;
+
+  while (hasMore) {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (startCursor) body.start_cursor = startCursor;
+
+    const queryRes = await notionRequest(token, path, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+
+    if (!queryRes.res.ok) {
+      return {
+        error: json(
+          { error: notionError(errorPrefix, queryRes.res.status, queryRes.data) },
+          502
+        ),
+      };
+    }
+
+    if (Array.isArray(queryRes.data?.results)) allResults.push(...queryRes.data.results);
+    hasMore = queryRes.data?.has_more === true;
+    startCursor = queryRes.data?.next_cursor || undefined;
+  }
+
+  return { results: allResults };
+}
+
 async function queryDatabase(token: string, databaseId: string, fallbackName = "") {
   let databaseName = fallbackName;
-  let data: any = null;
+  let results: any[] = [];
   let sourceMode = "data_source";
 
   const dataSourceMeta = await notionRequest(token, `/v1/data_sources/${databaseId}`);
@@ -201,19 +232,9 @@ async function queryDatabase(token: string, databaseId: string, fallbackName = "
   if (dataSourceMeta.res.ok && dataSourceMeta.data?.object === "data_source") {
     databaseName = extractRichText(dataSourceMeta.data.title) || fallbackName || "Fuente sin título";
 
-    const queryRes = await notionRequest(token, `/v1/data_sources/${databaseId}/query`, {
-      method: "POST",
-      body: JSON.stringify({ page_size: 100 }),
-    });
-
-    if (!queryRes.res.ok) {
-      return json(
-        { error: notionError("Notion data source query failed", queryRes.res.status, queryRes.data) },
-        502
-      );
-    }
-
-    data = queryRes.data;
+    const queried = await queryAllPages(token, `/v1/data_sources/${databaseId}/query`, "Notion data source query failed");
+    if (queried.error) return queried.error;
+    results = queried.results;
   } else {
     sourceMode = "database";
 
@@ -233,23 +254,13 @@ async function queryDatabase(token: string, databaseId: string, fallbackName = "
 
     databaseName = extractRichText(dbMeta.data.title) || fallbackName || "Fuente sin título";
 
-    const queryRes = await notionRequest(token, `/v1/databases/${databaseId}/query`, {
-      method: "POST",
-      body: JSON.stringify({ page_size: 100 }),
-    });
-
-    if (!queryRes.res.ok) {
-      return json(
-        { error: notionError("Notion database query failed", queryRes.res.status, queryRes.data) },
-        502
-      );
-    }
-
-    data = queryRes.data;
+    const queried = await queryAllPages(token, `/v1/databases/${databaseId}/query`, "Notion database query failed");
+    if (queried.error) return queried.error;
+    results = queried.results;
   }
 
   console.log(
-    `Notion source query success: mode=${sourceMode}, source=${databaseId}, rows=${Array.isArray(data?.results) ? data.results.length : 0}`
+    `Notion source query success: mode=${sourceMode}, source=${databaseId}, rows=${results.length}`
   );
 
   const priorityKeys = ["priority", "prioridad"];
