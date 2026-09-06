@@ -181,7 +181,8 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
 
 
   const addPending = (
-    files: FileList | null,
+    files: FileList | File[] | null,
+
     kind: "origen" | "web",
   ) => {
     if (!files) return;
