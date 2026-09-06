@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Upload, Camera, Link as LinkIcon, Trash2 } from "lucide-react";
+import { Upload, Camera, Link as LinkIcon, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   canMarkUploaded,
