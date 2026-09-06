@@ -266,7 +266,7 @@ async function queryDatabase(token: string, databaseId: string, fallbackName = "
   const priorityKeys = ["priority", "prioridad"];
   const areaKeys = ["area", "proyecto", "project"];
 
-  const tasks = (data.results || []).map((page: any) => {
+  const tasks = results.map((page: any) => {
     const props = page.properties || {};
 
     // Find fields by type / name
