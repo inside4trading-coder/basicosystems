@@ -55,6 +55,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PhotoGallery } from "./PhotoGallery";
+import { CameraCaptureDialog } from "./CameraCaptureDialog";
+
 
 interface Props {
   open: boolean;
