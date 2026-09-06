@@ -269,43 +269,63 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
     try {
       if (isEdit && item) {
         await updateItem.mutateAsync({ id: item.id, input: inputToSave, wasUploaded });
-        toast.success("Producto actualizado.");
+        toast.success("Producto guardado.");
         onOpenChange(false);
       } else {
         const created = await createItem.mutateAsync(inputToSave);
+        const totalPhotos =
+          pendingOrigen.length + pendingWebFiles.length + pendingWebUrls.length;
+        let done = 0;
+        let uploaded = 0;
         let failures = 0;
+        const tick = () => {
+          done++;
+          setProgress({ done, total: totalPhotos });
+        };
+        if (totalPhotos > 0) setProgress({ done: 0, total: totalPhotos });
         for (const p of pendingOrigen) {
           try {
             const url = await uploadSublimeMerchPhoto(created.id, "origen", p.file);
             await addPhotoToItem.mutateAsync({ itemId: created.id, type: "origen", url });
+            uploaded++;
           } catch {
             failures++;
           }
+          tick();
         }
         for (const p of pendingWebFiles) {
           try {
             const url = await uploadSublimeMerchPhoto(created.id, "web", p.file);
             await addPhotoToItem.mutateAsync({ itemId: created.id, type: "web", url });
+            uploaded++;
           } catch {
             failures++;
           }
+          tick();
         }
         for (const u of pendingWebUrls) {
           try {
             await addWebPhotoUrl.mutateAsync({ itemId: created.id, url: u });
+            uploaded++;
           } catch {
             failures++;
           }
+          tick();
         }
         if (failures > 0) {
           toast.warning(
             "Producto creado, pero algunas fotos no pudieron subirse. Puedes agregarlas editando el producto.",
           );
         } else {
-          toast.success("Producto creado.");
+          toast.success(
+            uploaded > 0
+              ? `Producto creado con ${uploaded} foto${uploaded === 1 ? "" : "s"}.`
+              : "Producto creado.",
+          );
         }
         onOpenChange(false);
       }
+
     } catch (e: any) {
       const msg = e?.message ?? "Error al guardar";
       if (msg.includes("sublime_merch_items_sku_web_key") || msg.includes("duplicate key")) {
