@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Upload, Camera, Link as LinkIcon, Trash2 } from "lucide-react";
+import { Upload, Camera, Link as LinkIcon, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   canMarkUploaded,
@@ -55,6 +55,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PhotoGallery } from "./PhotoGallery";
+import { CameraCaptureDialog } from "./CameraCaptureDialog";
+
 
 interface Props {
   open: boolean;
@@ -110,6 +112,8 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
   const [pendingWebUrls, setPendingWebUrls] = useState<string[]>([]);
   const [webUrlInput, setWebUrlInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
 
   const revokeAll = () => {
     pendingOrigen.forEach((p) => URL.revokeObjectURL(p.previewUrl));
@@ -181,7 +185,8 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
 
 
   const addPending = (
-    files: FileList | null,
+    files: FileList | File[] | null,
+
     kind: "origen" | "web",
   ) => {
     if (!files) return;
@@ -268,43 +273,63 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
     try {
       if (isEdit && item) {
         await updateItem.mutateAsync({ id: item.id, input: inputToSave, wasUploaded });
-        toast.success("Producto actualizado.");
+        toast.success("Producto guardado.");
         onOpenChange(false);
       } else {
         const created = await createItem.mutateAsync(inputToSave);
+        const totalPhotos =
+          pendingOrigen.length + pendingWebFiles.length + pendingWebUrls.length;
+        let done = 0;
+        let uploaded = 0;
         let failures = 0;
+        const tick = () => {
+          done++;
+          setProgress({ done, total: totalPhotos });
+        };
+        if (totalPhotos > 0) setProgress({ done: 0, total: totalPhotos });
         for (const p of pendingOrigen) {
           try {
             const url = await uploadSublimeMerchPhoto(created.id, "origen", p.file);
             await addPhotoToItem.mutateAsync({ itemId: created.id, type: "origen", url });
+            uploaded++;
           } catch {
             failures++;
           }
+          tick();
         }
         for (const p of pendingWebFiles) {
           try {
             const url = await uploadSublimeMerchPhoto(created.id, "web", p.file);
             await addPhotoToItem.mutateAsync({ itemId: created.id, type: "web", url });
+            uploaded++;
           } catch {
             failures++;
           }
+          tick();
         }
         for (const u of pendingWebUrls) {
           try {
             await addWebPhotoUrl.mutateAsync({ itemId: created.id, url: u });
+            uploaded++;
           } catch {
             failures++;
           }
+          tick();
         }
         if (failures > 0) {
           toast.warning(
             "Producto creado, pero algunas fotos no pudieron subirse. Puedes agregarlas editando el producto.",
           );
         } else {
-          toast.success("Producto creado.");
+          toast.success(
+            uploaded > 0
+              ? `Producto creado con ${uploaded} foto${uploaded === 1 ? "" : "s"}.`
+              : "Producto creado.",
+          );
         }
         onOpenChange(false);
       }
+
     } catch (e: any) {
       const msg = e?.message ?? "Error al guardar";
       if (msg.includes("sublime_merch_items_sku_web_key") || msg.includes("duplicate key")) {
@@ -314,13 +339,15 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
       }
     } finally {
       setSaving(false);
+      setProgress(null);
     }
+
   };
 
   void calculateTotalCost;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={(v) => { if (!saving) onOpenChange(v); }}>
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{isEdit ? "Editar producto" : "Agregar producto"}</SheetTitle>
@@ -566,16 +593,24 @@ export function ItemEditorSheet({ open, onOpenChange, item }: Props) {
         </div>
 
         <SheetFooter className="gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" disabled={saving} onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button
             onClick={submit}
             disabled={createItem.isPending || updateItem.isPending || saving}
           >
-            {isEdit ? "Guardar cambios" : "Crear producto"}
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {saving
+              ? progress
+                ? `Subiendo fotos ${progress.done} de ${progress.total}`
+                : "Guardando…"
+              : isEdit
+                ? "Guardar cambios"
+                : "Crear producto"}
           </Button>
         </SheetFooter>
+
       </SheetContent>
     </Sheet>
   );
@@ -589,11 +624,12 @@ function PendingPhotoPicker({
 }: {
   kind: "origen" | "web";
   pending: PendingFile[];
-  onAdd: (files: FileList | null) => void;
+  onAdd: (files: FileList | File[] | null) => void;
   onRemove: (idx: number) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   return (
     <div className="space-y-3">
@@ -633,12 +669,19 @@ function PendingPhotoPicker({
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => cameraRef.current?.click()}
+          onClick={() => setCameraOpen(true)}
         >
           <Camera className="h-4 w-4 mr-2" />
           Cámara
         </Button>
+        <CameraCaptureDialog
+          open={cameraOpen}
+          onOpenChange={setCameraOpen}
+          onCapture={(files) => onAdd(files)}
+          onUnavailable={() => cameraRef.current?.click()}
+        />
       </div>
+
 
       <p className="text-xs text-muted-foreground italic">
         Puedes tomar o adjuntar fotos ahora. Se subirán automáticamente al guardar el

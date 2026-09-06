@@ -12,6 +12,8 @@ import {
   type PhotoType,
 } from "@/lib/sublimeMerch";
 import { useMerchMutations } from "@/hooks/useSublimeMerch";
+import { CameraCaptureDialog } from "./CameraCaptureDialog";
+
 
 interface Props {
   itemId: string;
@@ -33,8 +35,9 @@ export function PhotoGallery({
   const cameraRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
-  const handleFiles = async (files: FileList | null) => {
+  const handleFiles = async (files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
     setBusy(true);
     try {
@@ -55,6 +58,7 @@ export function PhotoGallery({
       if (cameraRef.current) cameraRef.current.value = "";
     }
   };
+
 
   const handleAddUrl = async () => {
     const check = validatePhotoUrl(urlInput);
@@ -119,12 +123,19 @@ export function PhotoGallery({
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => cameraRef.current?.click()}
+          onClick={() => setCameraOpen(true)}
           disabled={busy}
         >
           <Camera className="h-4 w-4 mr-2" />
           Cámara
         </Button>
+        <CameraCaptureDialog
+          open={cameraOpen}
+          onOpenChange={setCameraOpen}
+          onCapture={(files) => handleFiles(files)}
+          onUnavailable={() => cameraRef.current?.click()}
+        />
+
         {showBankTools && (
           <>
             <Button
