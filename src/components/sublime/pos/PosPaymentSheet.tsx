@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, UserPlus, UserRound } from "lucide-react";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,12 @@ import {
 } from "@/lib/posPaymentMethods";
 import { POS_TAX_PCT } from "./usePosCart";
 import { PosChannelPicker } from "./PosChannelPicker";
+import {
+  PosCustomerForm,
+  PosCustomerSearch,
+  type PosCustomer,
+} from "./PosCustomerDialog";
+
 
 export interface PosPaymentLine {
   id: string;
@@ -54,6 +61,10 @@ export function PosPaymentSheet({
   setChannel,
   channelDetail,
   setChannelDetail,
+  customer,
+  onSelectCustomer,
+  invoiceNumber,
+  setInvoiceNumber,
   onConfirm,
 }: {
   open: boolean;
@@ -66,6 +77,10 @@ export function PosPaymentSheet({
   setChannel: (c: PosSalesChannelId | null) => void;
   channelDetail: string;
   setChannelDetail: (d: string) => void;
+  customer: PosCustomer | null;
+  onSelectCustomer: (c: PosCustomer) => void;
+  invoiceNumber: string;
+  setInvoiceNumber: (v: string) => void;
   onConfirm: () => void;
 }) {
   const paid = paidUsdOf(payments, rate);
@@ -77,6 +92,8 @@ export function PosPaymentSheet({
   const [fields, setFields] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(true);
+  const [customerMode, setCustomerMode] = useState<"search" | "new" | null>(null);
+
 
   const def = picker ? posMethod(picker) : null;
   const suggested = def ? (def.currency === "USD" ? missing : missing * rate) : 0;
@@ -124,25 +141,85 @@ export function PosPaymentSheet({
           <DialogTitle className="text-2xl font-black tracking-tight">Cobrar</DialogTitle>
         </DialogHeader>
 
-        <Card className="p-5 rounded-2xl border-border/60 grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Amount label="Total" value={total} rate={rate} size="lg" />
-          <Amount label="Pagado" value={paid} rate={rate} tone="primary" />
-          <Amount label="Faltante" value={missing} rate={rate} tone={missing > 0 ? "destructive" : "muted"} />
-          <Amount label="Cambio" value={change} rate={rate} tone={change > 0 ? "primary" : "muted"} />
-          <p className="col-span-2 sm:col-span-4 text-[11px] text-muted-foreground">
+        {/* 1 · Total a cobrar */}
+        <Card className="p-5 rounded-2xl border-border/60">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Total a cobrar</p>
+          <Money value={total} rate={rate} size="lg" align="left" />
+          <p className="text-[11px] text-muted-foreground mt-1">
             Precios con IVA {POS_TAX_PCT}% incluido · Tasa BCV Bs. {bsAmount(1, rate)} / REF
           </p>
         </Card>
 
-        <Card className="p-4 rounded-2xl border-border/60">
-          <PosChannelPicker
-            channel={channel}
-            setChannel={setChannel}
-            channelDetail={channelDetail}
-            setChannelDetail={setChannelDetail}
-          />
+        {/* 2 · Cliente */}
+        <Card className="p-4 rounded-2xl border-border/60 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground">
+              Cliente · opcional
+            </p>
+            {customer ? (
+              <Button variant="ghost" size="sm" onClick={() => { setCustomerMode("search"); }}>
+                Cambiar cliente
+              </Button>
+            ) : null}
+          </div>
+
+          {customer ? (
+            <div className="flex items-start gap-3 rounded-xl border border-border/60 p-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <UserRound className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0 text-sm">
+                <p className="font-bold truncate">{customer.name}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {[customer.idCard, customer.phone, customer.email].filter(Boolean).join(" · ") ||
+                    "Sin datos de contacto"}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Venta sin cliente. Puedes seleccionar uno o registrarlo ahora.
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Button
+              variant={customerMode === "search" ? "default" : "outline"}
+              className="h-11 font-bold"
+              onClick={() => setCustomerMode(customerMode === "search" ? null : "search")}
+            >
+              SELECCIONAR CLIENTE
+            </Button>
+            <Button
+              variant={customerMode === "new" ? "default" : "outline"}
+              className="h-11 font-bold"
+              onClick={() => setCustomerMode(customerMode === "new" ? null : "new")}
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              REGISTRAR NUEVO CLIENTE
+            </Button>
+          </div>
+
+          {customerMode === "search" ? (
+            <PosCustomerSearch
+              onSelect={(c) => {
+                onSelectCustomer(c);
+                setCustomerMode(null);
+              }}
+            />
+          ) : null}
+
+          {customerMode === "new" ? (
+            <PosCustomerForm
+              onSave={(c) => {
+                onSelectCustomer(c);
+                setCustomerMode(null);
+              }}
+            />
+          ) : null}
         </Card>
 
+        {/* 3 · Métodos de pago */}
         {payments.length > 0 ? (
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.18em] font-bold text-muted-foreground">
@@ -275,6 +352,40 @@ export function PosPaymentSheet({
           </Card>
         )}
 
+        {/* 4 · Total / Pagado / Faltante / Cambio */}
+        <Card className="p-5 rounded-2xl border-border/60 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Amount label="Total" value={total} rate={rate} />
+          <Amount label="Pagado" value={paid} rate={rate} tone="primary" />
+          <Amount label="Faltante" value={missing} rate={rate} tone={missing > 0 ? "destructive" : "muted"} />
+          <Amount label="Cambio" value={change} rate={rate} tone={change > 0 ? "primary" : "muted"} />
+        </Card>
+
+        {/* 5 · Origen de la venta */}
+        <Card className="p-4 rounded-2xl border-border/60">
+          <PosChannelPicker
+            channel={channel}
+            setChannel={setChannel}
+            channelDetail={channelDetail}
+            setChannelDetail={setChannelDetail}
+          />
+        </Card>
+
+        {/* 6 · Número de factura */}
+        <Card className="p-4 rounded-2xl border-border/60 space-y-1.5">
+          <Label className="text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground">
+            Número de factura · opcional
+          </Label>
+          <Input
+            value={invoiceNumber}
+            onChange={(e) => setInvoiceNumber(e.target.value)}
+            placeholder="Ej. 00012345"
+            className="h-11"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Déjalo vacío si esta venta no lleva factura. No bloquea el cierre.
+          </p>
+        </Card>
+
         <Button
           size="lg"
           className={cn("w-full h-16 text-base font-black", posChannelButtonClass(channel))}
@@ -297,6 +408,7 @@ export function PosPaymentSheet({
     </Dialog>
   );
 }
+
 
 function Amount({
   label,

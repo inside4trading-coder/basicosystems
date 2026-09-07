@@ -4,35 +4,35 @@
  * puede cobrarse con Cashea.
  *
  * El origen es obligatorio y nunca viene preseleccionado.
+ * En el POS solo se seleccionan manualmente WhatsApp, Cashea y Tienda.
+ * "web" existe para las ventas que llegarán identificadas automáticamente
+ * desde la integración de la tienda online.
  */
-export type PosSalesChannelId =
-  | "in_store"
-  | "web"
-  | "whatsapp"
-  | "cashea"
-  | "instagram"
-  | "phone"
-  | "other";
+export type PosSalesChannelId = "in_store" | "web" | "whatsapp" | "cashea";
 
 export interface PosSalesChannelDef {
   id: PosSalesChannelId;
   label: string;
   /** Pide detalle libre del origen. */
   requiresDetail?: boolean;
+  /** Se puede elegir manualmente en el POS. */
+  manual?: boolean;
 }
 
-export const POS_SALES_CHANNELS: PosSalesChannelDef[] = [
-  { id: "in_store", label: "Tienda física" },
-  { id: "whatsapp", label: "WhatsApp" },
-  { id: "cashea", label: "Cashea" },
-  { id: "instagram", label: "Instagram" },
-  { id: "phone", label: "Teléfono" },
+export const POS_ALL_SALES_CHANNELS: PosSalesChannelDef[] = [
+  { id: "whatsapp", label: "WhatsApp", manual: true },
+  { id: "cashea", label: "Cashea", manual: true },
+  { id: "in_store", label: "Tienda", manual: true },
   { id: "web", label: "Web" },
-  { id: "other", label: "Otro", requiresDetail: true },
 ];
 
+/** Opciones seleccionables por el cajero. */
+export const POS_SALES_CHANNELS: PosSalesChannelDef[] = POS_ALL_SALES_CHANNELS.filter(
+  (c) => c.manual
+);
+
 export const posChannel = (id: PosSalesChannelId): PosSalesChannelDef =>
-  POS_SALES_CHANNELS.find((c) => c.id === id) ?? POS_SALES_CHANNELS[0];
+  POS_ALL_SALES_CHANNELS.find((c) => c.id === id) ?? POS_ALL_SALES_CHANNELS[0];
 
 export const posChannelLabel = (id: PosSalesChannelId | null, detail?: string) => {
   if (!id) return "Sin origen";

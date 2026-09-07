@@ -18,6 +18,9 @@ export interface PosSaleDocument {
   at: string;
   session: PosSession;
   customer: PosCustomer | null;
+  /** Número de factura opcional registrado por el cajero. */
+  invoiceNumber?: string | null;
+
   channel: PosSalesChannelId | null;
   channelDetail: string;
   lines: PosCartLine[];
@@ -60,6 +63,9 @@ function DocumentBody({ doc, invoice }: { doc: PosSaleDocument; invoice: boolean
             {invoice ? "Factura" : "Ticket de venta"}
           </p>
           <p className="font-black text-lg tracking-tight">{doc.number}</p>
+          {doc.invoiceNumber ? (
+            <p className="text-xs font-bold">Factura N.º {doc.invoiceNumber}</p>
+          ) : null}
           <p className="text-xs text-muted-foreground">{doc.at}</p>
         </div>
         <Badge variant="secondary">{doc.status}</Badge>
@@ -71,8 +77,10 @@ function DocumentBody({ doc, invoice }: { doc: PosSaleDocument; invoice: boolean
         <Info label="Sesión" value={doc.session.sessionCode} />
         <Info label="Cajero / vendedor" value={doc.session.cashierName} />
         <Info label="Origen de la venta" value={posChannelLabel(doc.channel, doc.channelDetail)} />
+        <Info label="Número de factura" value={doc.invoiceNumber || "—"} />
         <Info label="Tasa aplicada" value={`Bs. ${bsAmount(1, rate)} / REF`} />
       </div>
+
 
       <Separator />
 
