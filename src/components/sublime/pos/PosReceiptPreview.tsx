@@ -63,7 +63,11 @@ function DocumentBody({ doc, invoice }: { doc: PosSaleDocument; invoice: boolean
             {invoice ? "Factura" : "Ticket de venta"}
           </p>
           <p className="font-black text-lg tracking-tight">{doc.number}</p>
+          {doc.invoiceNumber ? (
+            <p className="text-xs font-bold text-foreground">Factura N.º {doc.invoiceNumber}</p>
+          ) : null}
           <p className="text-xs text-muted-foreground">{doc.at}</p>
+
         </div>
         <Badge variant="secondary">{doc.status}</Badge>
       </div>

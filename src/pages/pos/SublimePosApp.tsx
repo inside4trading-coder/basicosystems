@@ -55,6 +55,7 @@ export default function SublimePosApp() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [payments, setPayments] = useState<PosPaymentLine[]>([]);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [doc, setDoc] = useState<PosSaleDocument | null>(null);
 
 
