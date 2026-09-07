@@ -30,6 +30,14 @@ import SublimeFichajePublico from "./pages/SublimeFichajePublico";
 import Sublime from "./pages/Sublime";
 import SublimeAdminFichaje from "./pages/SublimeAdminFichaje";
 import SublimeMercancia from "./pages/sublime/SublimeMercancia";
+import AbastecimientoLayout from "./pages/sublime/abastecimiento/AbastecimientoLayout";
+import AbastecimientoCompras from "./pages/sublime/abastecimiento/AbastecimientoCompras";
+import AbastecimientoTransito from "./pages/sublime/abastecimiento/AbastecimientoTransito";
+import AbastecimientoEnvios from "./pages/sublime/abastecimiento/AbastecimientoEnvios";
+import AbastecimientoRecepcion from "./pages/sublime/abastecimiento/AbastecimientoRecepcion";
+import SublimeInventarioUnidades from "./pages/sublime/SublimeInventarioUnidades";
+import SublimeInventarioConteos from "./pages/sublime/SublimeInventarioConteos";
+import SublimePosApp from "./pages/pos/SublimePosApp";
 import SublimeLayout from "./pages/sublime/SublimeLayout";
 import SublimeResumen from "./pages/sublime/SublimeResumen";
 import SublimeDashboard from "./pages/sublime/SublimeDashboard";
@@ -113,6 +121,14 @@ const App = () => (
             <Route path="/pos/:locationSlug/:publicToken" element={<PosPublico />} />
             <Route path="/operario" element={<OperatorPortal />} />
             <Route
+              path="/pos"
+              element={
+                <ProtectedRoute>
+                  <SublimePosApp />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               element={
                 <ProtectedRoute>
                   <AppLayout />
@@ -139,12 +155,22 @@ const App = () => (
                 <Route index element={<Sublime />} />
                 <Route path="resumen" element={<SublimeResumen />} />
                 <Route path="dashboard" element={<SublimeDashboard />} />
-                <Route path="mercancia" element={<SublimeMercancia />} />
-                <Route path="mercancia/preparacion" element={<SublimePreparacion />} />
+                <Route path="mercancia" element={<Navigate to="/sublime/abastecimiento/compras" replace />} />
+                <Route path="mercancia/preparacion" element={<Navigate to="/sublime/abastecimiento/preparacion" replace />} />
+                <Route path="abastecimiento" element={<AbastecimientoLayout />}>
+                  <Route index element={<Navigate to="/sublime/abastecimiento/compras" replace />} />
+                  <Route path="compras" element={<AbastecimientoCompras />} />
+                  <Route path="transito" element={<AbastecimientoTransito />} />
+                  <Route path="preparacion" element={<SublimePreparacion />} />
+                  <Route path="envios" element={<AbastecimientoEnvios />} />
+                  <Route path="recepcion" element={<AbastecimientoRecepcion />} />
+                </Route>
                 <Route path="mercancia/preparar/:id" element={<SublimePrepararProducto />} />
                 <Route path="inventario/almacen" element={<SublimeInventarioAlmacen />} />
                 <Route path="inventario/tienda" element={<SublimeInventarioTienda />} />
                 <Route path="inventario/movimientos" element={<SublimeMovimientos />} />
+                <Route path="inventario/unidades" element={<SublimeInventarioUnidades />} />
+                <Route path="inventario/conteos" element={<SublimeInventarioConteos />} />
                 <Route path="pos" element={<SublimePOS />} />
                 <Route path="pos/ventas" element={<SublimeVentas />} />
                 <Route path="clientes" element={<SublimeClientes />} />
