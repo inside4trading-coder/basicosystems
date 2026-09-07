@@ -61,6 +61,10 @@ export function PosPaymentSheet({
   setChannel,
   channelDetail,
   setChannelDetail,
+  customer,
+  onSelectCustomer,
+  invoiceNumber,
+  setInvoiceNumber,
   onConfirm,
 }: {
   open: boolean;
@@ -73,6 +77,10 @@ export function PosPaymentSheet({
   setChannel: (c: PosSalesChannelId | null) => void;
   channelDetail: string;
   setChannelDetail: (d: string) => void;
+  customer: PosCustomer | null;
+  onSelectCustomer: (c: PosCustomer) => void;
+  invoiceNumber: string;
+  setInvoiceNumber: (v: string) => void;
   onConfirm: () => void;
 }) {
   const paid = paidUsdOf(payments, rate);
@@ -84,6 +92,8 @@ export function PosPaymentSheet({
   const [fields, setFields] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(true);
+  const [customerMode, setCustomerMode] = useState<"search" | "new" | null>(null);
+
 
   const def = picker ? posMethod(picker) : null;
   const suggested = def ? (def.currency === "USD" ? missing : missing * rate) : 0;
