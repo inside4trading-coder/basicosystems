@@ -132,16 +132,6 @@ export function PosCart({
 
         <Separator />
 
-        <PosChannelPicker
-          channel={cart.channel}
-          setChannel={cart.setChannel}
-          channelDetail={cart.channelDetail}
-          setChannelDetail={cart.setChannelDetail}
-          compact
-        />
-
-        <Separator />
-
         <SummaryRow label="Subtotal regular">
           <Money value={cart.subtotalRegular} rate={rate} size="xs" />
         </SummaryRow>
