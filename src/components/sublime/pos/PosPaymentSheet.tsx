@@ -63,6 +63,8 @@ export function PosPaymentSheet({
   setChannelDetail,
   customer,
   onSelectCustomer,
+  invoiceNumber,
+  setInvoiceNumber,
   onConfirm,
 }: {
   open: boolean;
@@ -77,6 +79,8 @@ export function PosPaymentSheet({
   setChannelDetail: (d: string) => void;
   customer: PosCustomer | null;
   onSelectCustomer: (c: PosCustomer) => void;
+  invoiceNumber: string;
+  setInvoiceNumber: (v: string) => void;
   onConfirm: () => void;
 }) {
   const paid = paidUsdOf(payments, rate);
