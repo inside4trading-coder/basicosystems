@@ -122,6 +122,7 @@ export default function SublimePosApp() {
     setDoc(null);
     setPayments([]);
     setCustomer(null);
+    setInvoiceNumber("");
     cart.clear();
   };
 
