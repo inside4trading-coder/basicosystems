@@ -1,97 +1,51 @@
-# Informe de auditoría — "Generar desde partidas" (192 necesidades)
+# Corrección del generador + reversión quirúrgica del run 182c7ea6
 
-Solo lectura. No se ha borrado, revertido ni modificado nada.
+Incidente auditado: `generation_run_id = 182c7ea6-490f-491e-9dc0-e5616f7d8785` (6 sep 2026, 22:03–22:05 UTC).
+Causa raíz confirmada: la consulta que comprueba "qué partidas ya se convirtieron antes" se envía con cientos de identificadores en una sola petición; al superar el límite falla, el código descarta el error y continúa como si **ninguna** partida se hubiera procesado, regenerando todo el histórico.
 
-## 1. Causa raíz
+## Fase 1 — Preflight obligatorio (solo lectura)
 
-El proceso sí tiene control anti-duplicados, pero **ese control dejó de funcionar cuando la lista de partidas superó ~350 registros**.
+Recalcular en base de datos justo antes de escribir:
 
-Antes de crear necesidades, el proceso pregunta a la base de datos: "de estas 438 partidas, ¿cuáles ya fueron convertidas antes en una necesidad?". Esa pregunta se envía metiendo los 438 identificadores dentro de la dirección de la consulta, y a partir de cierto tamaño la petición se rechaza. El código **no comprueba si esa consulta falló**: al no recibir respuesta, asume "ninguna partida fue procesada antes" y vuelve a tratar **todo el histórico como demanda nueva**.
+1. Filas con ese `generation_run_id`.
+2. Cuáles tienen vínculo en `core_production_need_sources` y cuáles no.
+3. Suma real de cantidades de las partidas vinculadas, por necesidad.
+4. Estado actual de `ec8e4675-bece-4e03-9158-3fcf9332b6d7`.
 
-Evidencia en las ejecuciones registradas:
+Umbral de continuidad: ~192 tocadas, ~170 sin vínculo, ~22 con vínculo. Si no cuadra de forma consistente, **abortar y reportar** sin escribir nada.
 
-| Fecha | Partidas revisadas | "Ya procesadas" detectadas | Necesidades creadas |
-|---|---|---|---|
-| 12 ago | 123 | 82 | 18 |
-| 24 ago | 265 | 166 | 31 |
-| 27 ago | 339 | 200 | 54 |
-| 28 ago | 348 | 266 | 5 |
-| 3 sep | 407 | **0** | 187 |
-| 6 sep | 438 | **0** | 191 |
+## Fase 2 — Corrección permanente del generador
 
-El corte está exactamente entre 348 y 407 partidas: coincide con el límite de tamaño de la petición, no con un cambio de datos.
+Archivo: `supabase/functions/core-generate-production-needs/index.ts`.
 
-Confirmación adicional: el mismo fallo afecta a la detección de anulaciones (reversals detectados = 0) y, al intentar volver a enlazar partidas ya enlazadas, la base de datos rechazó los duplicados: de 192 necesidades solo se enlazaron 24 partidas nuevas. Los 350 vínculos históricos siguen intactos y **no hay ningún vínculo huérfano**, lo que descarta que las partidas se hubieran regenerado.
+1. **Nunca ignorar errores.** Las lecturas de vínculos, anulaciones, control de reposición, variantes y productos capturan `error`. Ante cualquier error: no se inserta nada, el run se registra como `failed` y el usuario ve "No se pudo validar el historial de partidas. No se generó ninguna necesidad."
+2. **Consultas por lotes.** Helper reutilizable que trocea los identificadores en bloques de 150 y une resultados. Se aplica a partidas ya vinculadas y a anulaciones. Si falla cualquier lote, se aborta la generación completa (nunca resultado parcial).
+3. **Idempotencia real en base de datos.** Nueva RPC `core_create_need_from_movements` que, en una sola transacción: bloquea las partidas indicadas, descarta las que ya tengan vínculo, y solo si queda alguna partida nueva crea o actualiza la necesidad y inserta sus vínculos. Si no queda ninguna partida nueva, no crea nada ni incrementa cantidades. La función de servidor deja de insertar necesidad y vínculo por separado.
+4. **Cantidad = solo partidas nuevas.** `quantity_needed` se calcula exclusivamente con la suma de las partidas contabilizadas, no anuladas, no bloqueadas y sin vínculo previo. Nunca se re-agrega histórico.
+5. **Simulación y sanity check.** La simulación devuelve: partidas revisadas, ya procesadas, nuevas, bloqueadas, anuladas, necesidades a crear, a actualizar y unidades nuevas reales. Si existen vínculos históricos en la base y "ya procesadas" da 0, se bloquea la ejecución con el mensaje "Resultado anómalo detectado. La generación ha sido cancelada para evitar duplicados." La pantalla `CoreProductionNeeds.tsx` muestra ese desglose y el bloqueo.
 
-Otras hipótesis descartadas: no usa cantidad original en lugar de saldo (agrupa por partidas no enlazadas), no ignora necesidades convertidas a propósito, no faltan claves de origen, y las partidas no fueron recreadas.
+## Fase 3 — Reversión quirúrgica (una sola RPC transaccional)
 
-## 2. Qué ejecuta el botón
+Nueva RPC `core_revert_needs_run(p_run_id uuid)`, acotada exclusivamente a ese run. No actúa por fecha, producto ni estado general.
 
-- Pantalla: `src/pages/core/CoreProductionNeeds.tsx` → `runGeneration(false)`
-- Llama a la función de servidor `core-generate-production-needs`
-- **Lee**: partidas de fabricación (movimientos de venta contabilizados), vínculos partida↔necesidad, control de reposición, productos y variantes Core
-- **Escribe**: registro de ejecución, necesidades de producción, vínculos partida↔necesidad, registro de auditoría, y llama al motor de enrutado de reposición (que en esta ejecución escribió 3 eventos de política a las 22:03)
-- Regla actual de "unidad que se convierte en necesidad": toda partida de venta contabilizada que **no aparezca** en la lista de ya enlazadas y no esté bloqueada por control de reposición. Al fallar esa lista, la regla degeneró en "toda partida histórica".
+1. **170 duplicadas** (mismo run, sin vínculo): pasan a `ignored` con la nota "Anulada automáticamente por corrección del incidente 182c7ea6: generación duplicó demanda histórica ya procesada." No se borra nada físicamente, no se crean ni borran vínculos, no se tocan partidas. Un evento de auditoría por fila.
+2. **22 legítimas** (mismo run, con vínculo): se conservan. `quantity_needed` se recalcula como la suma real de las cantidades de sus vínculos actuales (no se asume 1). Se mantienen producto, variante, talla, prioridad, origen, vínculos, aprobaciones y conversiones.
+3. **Cantidades derivadas**: `quantity_pending = quantity_needed − quantity_converted_to_order`, con suelo 0; `quantity_approved` no se toca salvo que exceda lo necesario, en cuyo caso se limita. No se resetea ningún estado.
+4. **`ec8e4675-…` (preexistente)**: se lee la auditoría del run para obtener el valor previo y se resta exactamente el delta que introdujo esta ejecución. Se conservan `approved`, la unidad ya convertida, sus vínculos y su historial.
+5. **Los 24 vínculos nuevos se conservan**: corresponden a partidas realmente nuevas.
+6. **3 eventos de política del run**: se revisan uno a uno; se anulan por el mecanismo de auditoría existente solo los que provienen de una necesidad que queda anulada, y se conservan los asociados a demanda legítima.
+7. **No se tocan** partidas, órdenes de producción, inventario, reservas, fondos, movimientos ni WooCommerce.
 
-## 3. Qué son las "192 abiertas"
+**Validaciones antes de confirmar (si falla una, rollback completo):** 0 partidas modificadas, 0 órdenes, 0 inventario, 0 fondos, ningún vínculo histórico eliminado, 170 anuladas, legítimas con sus vínculos intactos, `ec8e4675…` conserva aprobación y conversión, sin cantidades negativas, `pending ≤ needed`, `converted` no disminuye, `approved` legítimo intacto.
 
-Ejecución aislada por: `generation_run_id = 182c7ea6-490f-491e-9dc0-e5616f7d8785`, del 2026-09-06 22:03:27 a 22:05:30 UTC.
+## Fase 4 — Verificación
 
-- **192** filas tocadas por la ejecución
-- **191 insertadas** nuevas
-- **1 preexistente actualizada**: `ec8e4675-bece-4e03-9158-3fcf9332b6d7` (Cargo Pant Basico Club, talla S, creada el 3 sep, ya aprobada y con 1 unidad convertida) — su cantidad subió de forma inflada
-- Ninguna de las 192 procede de necesidades "reabiertas": todas son de este run
-
-Clasificación:
-
-| Grupo | Nº necesidades | Unidades | Criterio |
-|---|---|---|---|
-| A. Legítimas | 22 (con partida nueva enlazada) | **26 unidades reales** | Tienen vínculo a partidas que nunca antes se habían convertido |
-| B. Duplicadas claras | **170** | 282 | Sin ningún vínculo a partida: corresponden a partidas ya enlazadas a necesidades anteriores |
-| C. Dudosas | Las mismas 22 del grupo A, en su **exceso de cantidad: 38 unidades** | 38 | Su cantidad agrega también partidas antiguas ya procesadas |
-
-187 de las 192 apuntan a variantes que ya tenían necesidad histórica (muchas ya `converted_to_order` en agosto). Ejemplos verificados: "Sakura Drift Club" talla M (convertida a OP el 5 ago), TRACKPANT WORLDWIDE talla L (convertida 5 ago y 27 ago), Stillz Tribute XL (convertida 9 ago).
-
-Nota: la ejecución del **3 de septiembre** sufrió exactamente el mismo fallo (187 creadas); esas ya fueron marcadas como `ignored` (214 en total), lo que confirma que es la segunda vez que ocurre.
-
-## 4. ¿Se alteraron las partidas originales?
-
-**NO.**
-
-Evidencia:
-- 0 movimientos de partidas creados o tocados entre 22:00 y 22:10
-- Los 350 vínculos partida↔necesidad son únicos por partida; la ejecución solo pudo añadir 24 nuevos, los demás fueron rechazados
-- Auditoría del rango: únicamente 191 `auto_create_from_movements` + 1 `auto_update_from_movements`, todos sobre necesidades
-- No hubo escrituras en órdenes de producción, inventario, reservas ni saldos de fondo
-
-Tablas afectadas: necesidades de producción (192 filas), vínculos partida↔necesidad (24 filas nuevas legítimas), registro de ejecución (1 fila), auditoría (192 filas), eventos de política de reposición (3 filas).
-
-## 5. Reversión propuesta (NO ejecutar aún)
-
-Todo acotado al identificador de ejecución, nunca por fecha ni por tipo:
-
-1. **Grupo B (170)**: marcar como `ignored` con nota "Anulada: ejecución 182c7ea6 duplicó demanda histórica" — no borrado físico, para conservar trazabilidad. Solo filas del run `182c7ea6…` **sin** vínculo en la tabla de orígenes.
-2. **Grupo A/C (22)**: no anular. Ajustar `quantity_needed` y `quantity_pending` a la suma real de sus partidas enlazadas (26 unidades en total, −38 de exceso).
-3. **La fila actualizada** `ec8e4675…`: restar exactamente el delta que le sumó esta ejecución, dejando su estado `approved` y su unidad ya convertida intactos.
-4. **No tocar** partidas, vínculos, órdenes, inventario ni fondos.
-5. Registrar cada cambio en auditoría con el identificador del run.
-
-## 6. Corrección permanente propuesta (NO ejecutar aún)
-
-1. **Fallar en vez de asumir**: si la consulta de "partidas ya procesadas" devuelve error, abortar la ejecución con mensaje claro. Nunca continuar con lista vacía.
-2. **Consultar por lotes** de 200 identificadores (o filtrar por rango de fechas en servidor) para no volver a superar el límite de tamaño. Igual para la detección de anulaciones.
-3. **Idempotencia garantizada en base de datos**: clave única sobre partida en la tabla de orígenes (ya existe de hecho) y, además, **crear la necesidad y su vínculo en la misma operación atómica**: si el vínculo no se puede insertar porque la partida ya fue procesada, la necesidad no se crea. Esto hace imposible el escenario actual aunque la lectura previa falle.
-4. **Saldo pendiente real** como fuente de verdad: cantidad = suma de partidas sin vínculo, nunca cantidad histórica agregada.
-5. **Simulación obligatoria**: mostrar el resultado del modo simulación antes de permitir la generación real, con aviso si "ya procesadas = 0" mientras existan vínculos históricos.
-
-Resultado esperado: pulsarlo dos veces seguidas → 0 necesidades nuevas la segunda vez.
+- Simulación de "Generar desde partidas": el histórico ya procesado no reaparece; se reporta el desglose completo.
+- Comprobación conceptual de idempotencia con la simulación (no se ejecuta generación real de prueba para no introducir demanda ficticia).
+- Informe final con archivos modificados, tamaño de lote, manejo de errores, mecanismo de atomicidad, cifras de la reversión y las cinco confirmaciones de "0 modificados".
 
 ## Detalle técnico
 
-- Función: `supabase/functions/core-generate-production-needs/index.ts`, bloques 2 y 3 (`reversedSet`, `linkedSet`): ambos usan `.in(...)` con hasta 5000 identificadores y descartan el error (`const { data } = await ...`).
-- Aislamiento del incidente: `core_production_needs.generation_run_id = '182c7ea6-490f-491e-9dc0-e5616f7d8785'`; run en `core_production_need_runs` (`needs_created=191`, `needs_updated=1`, `skipped_existing=0`, `movements_linked=24`, `movements_checked=438`).
-- Grupo B = ese run sin fila en `core_production_need_sources`; Grupo A = con fila.
-
-## Estado
-
-Informe entregado. No se ejecutará ninguna reversión ni corrección hasta tu autorización explícita.
+- Migraciones nuevas: `core_create_need_from_movements(...)` y `core_revert_needs_run(uuid)`, ambas `security definer`, `search_path = public`, restringidas a admin/manager vía `has_role`.
+- Cambios de código: `supabase/functions/core-generate-production-needs/index.ts` (helper `chunkedIn`, propagación de errores, run `failed`, uso de la RPC atómica, respuesta de simulación ampliada) y `src/pages/core/CoreProductionNeeds.tsx` (desglose de simulación, bloqueo por anomalía, mensaje de aborto).
+- No se modifica ninguna tabla existente ni sus datos fuera del alcance descrito.
