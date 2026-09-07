@@ -81,7 +81,34 @@ function MercanciaContent({ section }: { section?: MercanciaSection }) {
     }
   };
 
+  if (section) {
+    return (
+      <div className="space-y-6">
+        {section === "unassigned" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <StockValueCard
+              label="Stock value merch comprada"
+              hint="Productos comprados sin envío asignado."
+              summary={purchased}
+              icon={ShoppingCart}
+            />
+            <StockValueCard
+              label="Stock value merch en camino"
+              hint="Productos asignados a envío/caja en tránsito."
+              summary={inTransit}
+              icon={Ship}
+            />
+          </div>
+        )}
+        {section === "unassigned" && <ItemsUnassignedTab />}
+        {section === "in_transit" && <ItemsInTransitTab />}
+        {section === "available" && <ItemsAvailableTab />}
+      </div>
+    );
+  }
+
   return (
+
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-start gap-4">
