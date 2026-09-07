@@ -297,6 +297,8 @@ export default function SublimePosApp() {
         setChannelDetail={cart.setChannelDetail}
         customer={customer}
         onSelectCustomer={setCustomer}
+        invoiceNumber={invoiceNumber}
+        setInvoiceNumber={setInvoiceNumber}
         onConfirm={confirmPayment}
       />
 
