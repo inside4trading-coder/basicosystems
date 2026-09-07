@@ -21,7 +21,7 @@ export interface PosSalesChannelDef {
 
 export const POS_ALL_SALES_CHANNELS: PosSalesChannelDef[] = [
   { id: "whatsapp", label: "WhatsApp", manual: true },
-  { id: "cashea", label: "Cashea", manual: true },
+  { id: "cashea", label: "casheaonline", manual: true },
   { id: "in_store", label: "Tienda", manual: true },
   { id: "web", label: "Web" },
 ];
