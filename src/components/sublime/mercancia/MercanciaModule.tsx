@@ -27,15 +27,23 @@ import {
   type StockValueSummary,
 } from "@/lib/sublimeMerch";
 
-export function MercanciaModule({ config }: { config?: MerchBrandConfig }) {
+export type MercanciaSection = "unassigned" | "in_transit" | "available";
+
+export function MercanciaModule({
+  config,
+  section,
+}: {
+  config?: MerchBrandConfig;
+  section?: MercanciaSection;
+}) {
   return (
     <MerchBrandProvider config={config}>
-      <MercanciaContent />
+      <MercanciaContent section={section} />
     </MerchBrandProvider>
   );
 }
 
-function MercanciaContent() {
+function MercanciaContent({ section }: { section?: MercanciaSection }) {
   const { brand, title, subtitle } = useMerchBrandConfig();
   const { data: counts } = useItemsCounts();
   const { data: shipments = [] } = useSublimeShipments();
@@ -45,6 +53,7 @@ function MercanciaContent() {
   const [openManage, setOpenManage] = useState(false);
   const [openPricing, setOpenPricing] = useState(false);
   const [exporting, setExporting] = useState(false);
+
   const { data: summaryData } = useSublimeMerchSummary();
   const { purchased, inTransit } = useMemo(() => {
     const items = summaryData?.items ?? [];
