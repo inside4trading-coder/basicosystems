@@ -15,9 +15,11 @@ import type { PosSession } from "./PosHeader";
 
 export interface PosSaleDocument {
   number: string;
+  invoiceNumber?: string | null;
   at: string;
   session: PosSession;
   customer: PosCustomer | null;
+
 
   channel: PosSalesChannelId | null;
   channelDetail: string;

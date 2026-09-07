@@ -370,6 +370,21 @@ export function PosPaymentSheet({
           />
         </Card>
 
+        {/* 6 · Número de factura */}
+        <Card className="p-4 rounded-2xl border-border/60 space-y-2">
+          <Label className="text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground">
+            Número de factura
+          </Label>
+          <Input
+            value={invoiceNumber}
+            onChange={(e) => setInvoiceNumber(e.target.value)}
+            placeholder="Ej. 00012345"
+            className="h-11"
+          />
+        </Card>
+
+
+
         <Button
           size="lg"
           className={cn("w-full h-16 text-base font-black", posChannelButtonClass(channel))}
