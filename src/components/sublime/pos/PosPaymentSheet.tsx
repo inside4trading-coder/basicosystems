@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, UserPlus, UserRound } from "lucide-react";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,12 @@ import {
 } from "@/lib/posPaymentMethods";
 import { POS_TAX_PCT } from "./usePosCart";
 import { PosChannelPicker } from "./PosChannelPicker";
+import {
+  PosCustomerForm,
+  PosCustomerSearch,
+  type PosCustomer,
+} from "./PosCustomerDialog";
+
 
 export interface PosPaymentLine {
   id: string;
