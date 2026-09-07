@@ -1,0 +1,134 @@
+import { useState } from "react";
+import { UserRound } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { mockCustomers } from "@/lib/sublimeMock";
+
+export interface PosCustomer {
+  name: string;
+  idCard: string;
+  phone: string;
+  email: string;
+  birthDate: string;
+  address: string;
+}
+
+const EMPTY: PosCustomer = { name: "", idCard: "", phone: "", email: "", birthDate: "", address: "" };
+
+export function PosCustomerDialog({
+  open,
+  onOpenChange,
+  onSelect,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSelect: (c: PosCustomer) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [draft, setDraft] = useState<PosCustomer>(EMPTY);
+
+  const list = mockCustomers.filter((c) =>
+    `${c.name} ${c.idCard ?? ""} ${c.phone ?? ""}`.toLowerCase().includes(q.toLowerCase())
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Cliente de la venta</DialogTitle>
+        </DialogHeader>
+
+        <Tabs defaultValue="buscar">
+          <TabsList className="w-full">
+            <TabsTrigger value="buscar" className="flex-1">Buscar</TabsTrigger>
+            <TabsTrigger value="nuevo" className="flex-1">Crear cliente</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="buscar" className="space-y-3 pt-3">
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Nombre, cédula/RIF o teléfono…"
+              className="h-11"
+            />
+            <div className="space-y-2">
+              {list.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() =>
+                    onSelect({
+                      name: c.name,
+                      idCard: c.idCard ?? "",
+                      phone: c.phone ?? "",
+                      email: c.email ?? "",
+                      birthDate: c.birthDate ?? "",
+                      address: c.address ?? "",
+                    })
+                  }
+                  className="w-full flex items-center gap-3 rounded-xl border border-border/60 p-3 text-left hover:border-primary/50 transition-colors"
+                >
+                  <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <UserRound className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm truncate">{c.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {[c.idCard, c.phone].filter(Boolean).join(" · ") || "Sin datos de contacto"}
+                    </p>
+                  </div>
+                </button>
+              ))}
+              {list.length === 0 && (
+                <p className="text-sm text-muted-foreground py-6 text-center">Sin coincidencias.</p>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="nuevo" className="space-y-3 pt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Nombre / razón social" value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} />
+              <Field label="Cédula / RIF" value={draft.idCard} onChange={(v) => setDraft({ ...draft, idCard: v })} />
+              <Field label="Teléfono" value={draft.phone} onChange={(v) => setDraft({ ...draft, phone: v })} />
+              <Field label="Correo" value={draft.email} onChange={(v) => setDraft({ ...draft, email: v })} />
+              <Field label="Fecha de nacimiento" type="date" value={draft.birthDate} onChange={(v) => setDraft({ ...draft, birthDate: v })} />
+              <Field label="Dirección" value={draft.address} onChange={(v) => setDraft({ ...draft, address: v })} />
+            </div>
+            <Button
+              className="w-full"
+              disabled={draft.name.trim() === ""}
+              onClick={() => {
+                onSelect(draft);
+                setDraft(EMPTY);
+              }}
+            >
+              Usar este cliente
+            </Button>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">{label}</Label>
+      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
