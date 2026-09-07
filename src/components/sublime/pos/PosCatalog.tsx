@@ -141,11 +141,27 @@ function ProductCard({
         <p className="text-xs text-muted-foreground">{variantLabel(entry.variant)}</p>
         <p className="font-mono text-[10px] text-muted-foreground/80">{entry.variant.sku}</p>
         <div className="flex items-end justify-between pt-1 gap-2">
-          <div className="flex flex-col items-start">
+          <div className="flex flex-col items-start gap-0.5">
             {hasDiscount ? (
-              <Money value={entry.regularPrice} rate={rate} size="xs" align="left" strike />
+              <div className="leading-tight">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Precio full</p>
+                <Money value={entry.regularPrice} rate={rate} size="xs" align="left" strike />
+              </div>
             ) : null}
-            <Money value={entry.finalPrice} rate={rate} size="sm" align="left" />
+            <div className="leading-tight">
+              {hasDiscount ? (
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                  Precio actual
+                </p>
+              ) : null}
+              <Money
+                value={entry.finalPrice}
+                rate={rate}
+                size="sm"
+                align="left"
+                tone={hasDiscount ? "primary" : "default"}
+              />
+            </div>
           </div>
           <span className={cn("text-xs font-semibold", out ? "text-destructive" : "text-muted-foreground")}>
             {out ? "Sin stock" : `${entry.storeStock} disp.`}

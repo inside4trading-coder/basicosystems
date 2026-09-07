@@ -9,6 +9,10 @@ import { PosCart } from "@/components/sublime/pos/PosCart";
 import { PosFunctionsBar, type PosFunctionId } from "@/components/sublime/pos/PosFunctionsBar";
 import { PosCustomerDialog, type PosCustomer } from "@/components/sublime/pos/PosCustomerDialog";
 import { PosPaymentSheet, type PosPaymentLine } from "@/components/sublime/pos/PosPaymentSheet";
+import { PosManualItemDialog } from "@/components/sublime/pos/PosManualItemDialog";
+import { PosNoteDialog } from "@/components/sublime/pos/PosNoteDialog";
+import { PosCashDrawerDialog } from "@/components/sublime/pos/PosCashDrawerDialog";
+import { usePosCashDrawer } from "@/components/sublime/pos/usePosCashDrawer";
 import {
   PosCashierDialog,
   PosClosuresDialog,
@@ -35,9 +39,11 @@ export default function SublimePosApp() {
 
   const [registerId, setRegisterId] = useState("reg-1");
   const [cashierId, setCashierId] = useState("csh-1");
-  const [registerOpen, setRegisterOpen] = useState(true);
 
   const cart = usePosCart(registerId);
+  const drawerApi = usePosCashDrawer();
+  const drawer = drawerApi.drawerOf(registerId);
+
   const [customer, setCustomer] = useState<PosCustomer | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
@@ -45,6 +51,9 @@ export default function SublimePosApp() {
   const [registerPickerOpen, setRegisterPickerOpen] = useState(false);
   const [closuresOpen, setClosuresOpen] = useState(false);
   const [suspendedOpen, setSuspendedOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [payments, setPayments] = useState<PosPaymentLine[]>([]);
   const [doc, setDoc] = useState<PosSaleDocument | null>(null);
 
@@ -61,11 +70,11 @@ export default function SublimePosApp() {
       sessionCode: ses.code,
       cashierId: csh.id,
       cashierName: csh.name,
-      registerOpen,
+      registerOpen: drawer.open,
       rate: POS_BCV_RATE,
       online: true,
     };
-  }, [registerId, cashierId, registerOpen]);
+  }, [registerId, cashierId, drawer.open]);
 
   const auditCtx = {
     cashierId: session.cashierId,
@@ -87,9 +96,9 @@ export default function SublimePosApp() {
       lines: cart.lines,
       subtotalRegular: cart.subtotalRegular,
       discountTotal: cart.discountTotal,
-      subtotal: cart.subtotal - cart.cartDiscount,
-      taxUsd: cart.taxUsd,
       total: cart.total,
+      taxIncluded: cart.taxIncluded,
+      note: cart.note,
       payments,
       status: "Emitida",
     };
@@ -113,10 +122,10 @@ export default function SublimePosApp() {
   };
 
   const onFunction = (id: PosFunctionId, label: string) => {
-    if (id === "closures") {
-      setClosuresOpen(true);
-      return;
-    }
+    if (id === "closures") return setClosuresOpen(true);
+    if (id === "manual_item") return setManualOpen(true);
+    if (id === "note") return setNoteOpen(true);
+    if (id === "cash") return setDrawerOpen(true);
     if (id === "suspend") {
       const entry = cart.suspend({
         registerName: session.registerName,
@@ -132,10 +141,7 @@ export default function SublimePosApp() {
       toast.success(`Carrito ${entry.id} suspendido.`);
       return;
     }
-    if (id === "resume") {
-      setSuspendedOpen(true);
-      return;
-    }
+    if (id === "resume") return setSuspendedOpen(true);
     toast.info(`${label}: función prevista, aún sin activar.`);
   };
 
@@ -145,11 +151,7 @@ export default function SublimePosApp() {
         session={session}
         onChangeCashier={() => setCashierOpen(true)}
         onChangeRegister={() => setRegisterPickerOpen(true)}
-        onToggleRegisterState={() => {
-          setRegisterOpen((v) => !v);
-          posAudit(registerOpen ? "close_register" : "open_register", session.registerName, auditCtx);
-          toast.success(registerOpen ? "Caja cerrada." : "Caja abierta.");
-        }}
+        onOpenDrawer={() => setDrawerOpen(true)}
         onExit={() => navigate("/sublime")}
       />
 
@@ -170,6 +172,7 @@ export default function SublimePosApp() {
           onPickCustomer={() => setCustomerOpen(true)}
           onClearCustomer={() => setCustomer(null)}
           onCheckout={() => setPayOpen(true)}
+          onEditNote={() => setNoteOpen(true)}
         />
       </div>
 
@@ -179,6 +182,55 @@ export default function SublimePosApp() {
         onSelect={(c) => {
           setCustomer(c);
           setCustomerOpen(false);
+        }}
+      />
+
+      <PosManualItemDialog
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+        rate={session.rate}
+        onAdd={(item) => {
+          cart.addManual(item);
+          toast.success(`${item.name} añadido al carrito.`);
+        }}
+      />
+
+      <PosNoteDialog
+        open={noteOpen}
+        onOpenChange={setNoteOpen}
+        note={cart.note}
+        onSave={(n) => {
+          cart.setNote(n);
+          if (n) posAudit("note", n.slice(0, 60), auditCtx);
+        }}
+      />
+
+      <PosCashDrawerDialog
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        drawer={drawer}
+        registerName={session.registerName}
+        sessionCode={session.sessionCode}
+        cashierName={session.cashierName}
+        rate={session.rate}
+        onOpenRegister={(p) => {
+          drawerApi.openRegister(registerId, p);
+          posAudit("open_register", session.registerName, auditCtx);
+          toast.success("Caja abierta.");
+        }}
+        onCloseRegister={() => {
+          drawerApi.closeRegister(registerId);
+          posAudit("close_register", session.registerName, auditCtx);
+          toast.success("Caja cerrada.");
+          setDrawerOpen(false);
+        }}
+        onAddCash={(p) => {
+          drawerApi.addCash(registerId, p);
+          toast.success("Entrada de efectivo registrada.");
+        }}
+        onRemoveCash={(p) => {
+          drawerApi.removeCash(registerId, p);
+          toast.success("Retiro de efectivo registrado.");
         }}
       />
 
@@ -253,6 +305,9 @@ export default function SublimePosApp() {
               <PosReceiptPreview doc={doc} />
               <PosReceiptActions
                 onNewSale={newSale}
+                onViewInvoice={() =>
+                  toast.info("Estás viendo la factura de la venta en esta misma pantalla.")
+                }
                 onReprint={() => {
                   posAudit("reprint", doc.number, auditCtx);
                   toast.info("Impresión y envío: previstos para la versión conectada.");

@@ -5,21 +5,25 @@ import {
   Lock,
   PauseCircle,
   PlayCircle,
+  PlusSquare,
   Printer,
   RotateCcw,
   StickyNote,
   Ticket,
   UserSquare,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export type PosFunctionId =
+  | "manual_item"
   | "discount"
   | "note"
   | "coupon"
   | "suspend"
   | "resume"
+  | "cash"
   | "exchange"
   | "return"
   | "history"
@@ -28,8 +32,10 @@ export type PosFunctionId =
   | "closures";
 
 const FUNCTIONS: { id: PosFunctionId; icon: typeof BadgePercent; label: string }[] = [
-  { id: "discount", icon: BadgePercent, label: "Descuento" },
+  { id: "manual_item", icon: PlusSquare, label: "Agregar concepto" },
   { id: "note", icon: StickyNote, label: "Nota" },
+  { id: "cash", icon: Wallet, label: "Caja" },
+  { id: "discount", icon: BadgePercent, label: "Descuento" },
   { id: "coupon", icon: Ticket, label: "Cupón" },
   { id: "suspend", icon: PauseCircle, label: "Suspender" },
   { id: "resume", icon: PlayCircle, label: "Recuperar" },
@@ -59,10 +65,10 @@ export function PosFunctionsBar({
               ? onAction(f.id, f.label)
               : toast.info(`${f.label}: función prevista, aún sin activar.`)
           }
-          className="flex flex-col items-center justify-center gap-1 rounded-xl border border-border/60 bg-card px-3 py-2 min-w-[76px] text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors shrink-0"
+          className="flex flex-col items-center justify-center gap-1 rounded-xl border border-border/60 bg-card px-3 py-2 min-w-[86px] text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors shrink-0"
         >
           <f.icon className="h-4 w-4" />
-          <span className="text-[11px] font-semibold">{f.label}</span>
+          <span className="text-[11px] font-semibold whitespace-nowrap">{f.label}</span>
         </button>
       ))}
     </div>

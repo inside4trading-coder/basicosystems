@@ -15,7 +15,11 @@ export type PosAuditAction =
   | "open_register"
   | "close_register"
   | "change_cashier"
-  | "change_register";
+  | "change_register"
+  | "note"
+  | "cash_in"
+  | "cash_out"
+  | "manual_item";
 
 export interface PosAuditEntry {
   id: string;

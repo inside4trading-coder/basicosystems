@@ -1,4 +1,4 @@
-import { LogOut, Lock, MapPin, Monitor, RefreshCw, UserCog, Wifi } from "lucide-react";
+import { LogOut, MapPin, Monitor, RefreshCw, UserCog, Wallet, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { bsAmount } from "@/lib/posMoney";
@@ -10,13 +10,13 @@ export function PosHeader({
   session,
   onChangeCashier,
   onChangeRegister,
-  onToggleRegisterState,
+  onOpenDrawer,
   onExit,
 }: {
   session: PosSession;
   onChangeCashier: () => void;
   onChangeRegister: () => void;
-  onToggleRegisterState: () => void;
+  onOpenDrawer: () => void;
   onExit: () => void;
 }) {
   return (
@@ -33,9 +33,15 @@ export function PosHeader({
 
       <div className="flex items-center gap-4 flex-wrap text-sm">
         <Meta icon={MapPin} label="Sede" value={session.locationName} />
-        <Meta icon={Monitor} label="Caja" value={`${session.registerName} · ${session.sessionCode}`} />
+        <Meta icon={Monitor} label="Caja" value={session.registerName} />
+        <Meta label="Sesión" value={session.sessionCode} />
         <Meta label="Cajero" value={session.cashierName} />
-        <Meta label="Tasa BCV" value={`Bs. ${bsAmount(1, session.rate)} / REF`} />
+        <div className="leading-tight">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Tasa BCV</p>
+          <p className="num font-black text-foreground text-sm tabular-nums">
+            Bs. {bsAmount(1, session.rate)} <span className="text-[10px] text-muted-foreground">/ REF</span>
+          </p>
+        </div>
       </div>
 
       <div className="ml-auto flex items-center gap-2 flex-wrap">
@@ -54,9 +60,9 @@ export function PosHeader({
           <RefreshCw className="h-4 w-4 mr-2" />
           Cambiar caja
         </Button>
-        <Button variant="outline" size="sm" onClick={onToggleRegisterState}>
-          <Lock className="h-4 w-4 mr-2" />
-          {session.registerOpen ? "Cerrar caja" : "Abrir caja"}
+        <Button variant="outline" size="sm" onClick={onOpenDrawer}>
+          <Wallet className="h-4 w-4 mr-2" />
+          {session.registerOpen ? "Movimientos de caja" : "Abrir caja"}
         </Button>
         <Button variant="ghost" size="sm" onClick={onExit}>
           <LogOut className="h-4 w-4 mr-2" />
