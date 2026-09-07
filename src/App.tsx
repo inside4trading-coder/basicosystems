@@ -123,25 +123,39 @@ const App = () => (
               <Route path="/administracion" element={<Administracion />} />
               <Route path="/administracion/:id" element={<AdminObligationDetail />} />
               <Route path="/configuracion" element={<Configuracion />} />
-              <Route path="/sublime" element={<Sublime />} />
-              <Route path="/sublime/admin/fichaje" element={<SublimeAdminFichaje />} />
-              <Route path="/sublime/mercancia" element={<SublimeMercancia />} />
-              <Route
-                path="/sublime/admin/obligaciones"
-                element={
-                  <AdminScopeProvider scope="sublime">
-                    <Administracion />
-                  </AdminScopeProvider>
-                }
-              />
-              <Route
-                path="/sublime/admin/obligaciones/:id"
-                element={
-                  <AdminScopeProvider scope="sublime">
-                    <AdminObligationDetail />
-                  </AdminScopeProvider>
-                }
-              />
+              <Route path="/sublime" element={<SublimeLayout />}>
+                <Route index element={<Sublime />} />
+                <Route path="resumen" element={<SublimeResumen />} />
+                <Route path="dashboard" element={<SublimeDashboard />} />
+                <Route path="mercancia" element={<SublimeMercancia />} />
+                <Route path="mercancia/preparacion" element={<SublimePreparacion />} />
+                <Route path="mercancia/preparar/:id" element={<SublimePrepararProducto />} />
+                <Route path="inventario/almacen" element={<SublimeInventarioAlmacen />} />
+                <Route path="inventario/tienda" element={<SublimeInventarioTienda />} />
+                <Route path="inventario/movimientos" element={<SublimeMovimientos />} />
+                <Route path="pos" element={<SublimePOS />} />
+                <Route path="pos/ventas" element={<SublimeVentas />} />
+                <Route path="clientes" element={<SublimeClientes />} />
+                <Route path="cierres" element={<SublimeCierres />} />
+                <Route path="admin/fichaje" element={<SublimeAdminFichaje />} />
+                <Route
+                  path="admin/obligaciones"
+                  element={
+                    <AdminScopeProvider scope="sublime">
+                      <Administracion />
+                    </AdminScopeProvider>
+                  }
+                />
+                <Route
+                  path="admin/obligaciones/:id"
+                  element={
+                    <AdminScopeProvider scope="sublime">
+                      <AdminObligationDetail />
+                    </AdminScopeProvider>
+                  }
+                />
+              </Route>
+
               <Route path="/core" element={<CoreLayout />}>
                 <Route index element={<CoreDashboard />} />
                 <Route path="configuracion" element={<CoreConfiguracion />} />
