@@ -90,6 +90,7 @@ export default function SublimePosApp() {
   const confirmPayment = () => {
     const sale: PosSaleDocument = {
       number: `POS-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+      invoiceNumber: invoiceNumber.trim() || null,
       at: new Date().toLocaleString("es-VE"),
       session,
       customer,
