@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Shirt } from "lucide-react";
 import { Money } from "@/lib/posMoney";
 import { POS_TAX_PCT, type PosCartApi } from "./usePosCart";
-import { PosChannelPicker } from "./PosChannelPicker";
 
 export function PosCart({
   cart,
@@ -130,16 +129,6 @@ export function PosCart({
             {customerName ? "Cambiar" : "Seleccionar"}
           </Button>
         </div>
-
-        <Separator />
-
-        <PosChannelPicker
-          channel={cart.channel}
-          setChannel={cart.setChannel}
-          channelDetail={cart.channelDetail}
-          setChannelDetail={cart.setChannelDetail}
-          compact
-        />
 
         <Separator />
 
