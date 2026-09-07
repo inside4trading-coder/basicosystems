@@ -69,12 +69,17 @@ export function PosChannelPicker({
       </div>
 
       {def?.requiresDetail ? (
-        <Input
-          value={channelDetail}
-          onChange={(e) => setChannelDetail(e.target.value)}
-          placeholder="Detalle del origen"
-          className="h-9 text-sm"
-        />
+        <div className="space-y-1">
+          <p className="text-[11px] font-bold text-muted-foreground">
+            {def.detailLabel ?? "Detalle del origen"}
+          </p>
+          <Input
+            value={channelDetail}
+            onChange={(e) => setChannelDetail(e.target.value)}
+            placeholder={def.detailLabel ?? "Detalle del origen"}
+            className="h-9 text-sm"
+          />
+        </div>
       ) : null}
 
       <p className="text-[11px] text-muted-foreground">

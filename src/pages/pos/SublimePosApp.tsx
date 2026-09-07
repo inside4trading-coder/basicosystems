@@ -55,6 +55,7 @@ export default function SublimePosApp() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [payments, setPayments] = useState<PosPaymentLine[]>([]);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [doc, setDoc] = useState<PosSaleDocument | null>(null);
 
 
@@ -89,6 +90,7 @@ export default function SublimePosApp() {
   const confirmPayment = () => {
     const sale: PosSaleDocument = {
       number: `POS-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+      invoiceNumber: invoiceNumber.trim() || null,
       at: new Date().toLocaleString("es-VE"),
       session,
       customer,
@@ -120,6 +122,7 @@ export default function SublimePosApp() {
     setDoc(null);
     setPayments([]);
     setCustomer(null);
+    setInvoiceNumber("");
     cart.clear();
   };
 
@@ -294,6 +297,8 @@ export default function SublimePosApp() {
         setChannelDetail={cart.setChannelDetail}
         customer={customer}
         onSelectCustomer={setCustomer}
+        invoiceNumber={invoiceNumber}
+        setInvoiceNumber={setInvoiceNumber}
         onConfirm={confirmPayment}
       />
 
