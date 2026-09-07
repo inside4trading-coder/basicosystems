@@ -370,22 +370,6 @@ export function PosPaymentSheet({
           />
         </Card>
 
-        {/* 6 · Número de factura */}
-        <Card className="p-4 rounded-2xl border-border/60 space-y-1.5">
-          <Label className="text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground">
-            Número de factura · opcional
-          </Label>
-          <Input
-            value={invoiceNumber}
-            onChange={(e) => setInvoiceNumber(e.target.value)}
-            placeholder="Ej. 00012345"
-            className="h-11"
-          />
-          <p className="text-[11px] text-muted-foreground">
-            Déjalo vacío si esta venta no lleva factura. No bloquea el cierre.
-          </p>
-        </Card>
-
         <Button
           size="lg"
           className={cn("w-full h-16 text-base font-black", posChannelButtonClass(channel))}
