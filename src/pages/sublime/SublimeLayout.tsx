@@ -14,6 +14,11 @@ import {
   Sparkles,
   Wallet,
   Menu,
+  Truck,
+  Ship,
+  PackageCheck,
+  Boxes,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -31,19 +36,29 @@ const groups: { label: string; items: Section[] }[] = [
     ],
   },
   {
-    label: "Mercancía e inventario",
+    label: "Abastecimiento",
     items: [
-      { to: "/sublime/mercancia", label: "Mercancía", icon: Package },
-      { to: "/sublime/mercancia/preparacion", label: "Preparación", icon: Sparkles },
+      { to: "/sublime/abastecimiento/compras", label: "Compras", icon: Package },
+      { to: "/sublime/abastecimiento/transito", label: "En tránsito", icon: Truck },
+      { to: "/sublime/abastecimiento/preparacion", label: "Preparación", icon: Sparkles },
+      { to: "/sublime/abastecimiento/envios", label: "Envíos", icon: Ship },
+      { to: "/sublime/abastecimiento/recepcion", label: "Recepción", icon: PackageCheck },
+    ],
+  },
+  {
+    label: "Inventario",
+    items: [
       { to: "/sublime/inventario/almacen", label: "Almacén", icon: Warehouse },
       { to: "/sublime/inventario/tienda", label: "Tienda", icon: Store },
       { to: "/sublime/inventario/movimientos", label: "Movimientos", icon: ArrowLeftRight },
+      { to: "/sublime/inventario/unidades", label: "Unidades", icon: Boxes },
+      { to: "/sublime/inventario/conteos", label: "Conteos", icon: ClipboardList },
     ],
   },
   {
     label: "Comercial",
     items: [
-      { to: "/sublime/pos", label: "POS", icon: ShoppingCart },
+      { to: "/pos", label: "Abrir POS", icon: ShoppingCart },
       { to: "/sublime/pos/ventas", label: "Historial POS", icon: BarChart3 },
       { to: "/sublime/clientes", label: "Clientes", icon: Users },
     ],

@@ -29,7 +29,6 @@ import AdminObligationDetail from "./pages/AdminObligationDetail";
 import SublimeFichajePublico from "./pages/SublimeFichajePublico";
 import Sublime from "./pages/Sublime";
 import SublimeAdminFichaje from "./pages/SublimeAdminFichaje";
-import SublimeMercancia from "./pages/sublime/SublimeMercancia";
 import AbastecimientoLayout from "./pages/sublime/abastecimiento/AbastecimientoLayout";
 import AbastecimientoCompras from "./pages/sublime/abastecimiento/AbastecimientoCompras";
 import AbastecimientoTransito from "./pages/sublime/abastecimiento/AbastecimientoTransito";
