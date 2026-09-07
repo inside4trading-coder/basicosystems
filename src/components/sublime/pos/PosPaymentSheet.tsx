@@ -78,8 +78,8 @@ export function PosPaymentSheet({
 
   const def = posMethod(picker);
   const suggested = def.currency === "USD" ? missing : missing * rate;
-  const shownAmount =
-    amount !== "" ? amount : suggested > 0 ? (def.currency === "USD" ? refAmount(suggested) : bsAmount(suggested / rate, rate)).replace(/\./g, "").replace(",", ".") : "";
+  const shownAmount = amount !== "" ? amount : suggested > 0 ? suggested.toFixed(2) : "";
+
 
   const selectMethod = (id: PosPaymentMethodId) => {
     setPicker(id);
