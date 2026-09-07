@@ -4,44 +4,27 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Shirt } from "lucide-react";
-import { usdFormat, variantLabel } from "@/lib/sublimeMock";
-import { POS_TAX_PCT, type PosCartLine } from "./usePosCart";
+import { variantLabel } from "@/lib/sublimeMock";
+import { Money } from "@/lib/posMoney";
+import { POS_TAX_PCT, type PosCartApi } from "./usePosCart";
 
 export function PosCart({
-  lines,
-  units,
-  subtotal,
-  discountUsd,
-  setDiscountUsd,
-  taxEnabled,
-  setTaxEnabled,
-  taxUsd,
-  total,
+  cart,
   rate,
   customerName,
   onPickCustomer,
   onClearCustomer,
-  onChangeQty,
-  onRemove,
   onCheckout,
 }: {
-  lines: PosCartLine[];
-  units: number;
-  subtotal: number;
-  discountUsd: number;
-  setDiscountUsd: (n: number) => void;
-  taxEnabled: boolean;
-  setTaxEnabled: (v: boolean) => void;
-  taxUsd: number;
-  total: number;
+  cart: PosCartApi;
   rate: number;
   customerName: string | null;
   onPickCustomer: () => void;
   onClearCustomer: () => void;
-  onChangeQty: (variantId: string, delta: number) => void;
-  onRemove: (variantId: string) => void;
   onCheckout: () => void;
 }) {
+  const { lines } = cart;
+
   return (
     <aside className="flex flex-col min-h-0 h-full border-l border-border bg-card">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
@@ -49,7 +32,7 @@ export function PosCart({
           <ShoppingCart className="h-4 w-4 text-primary" />
           <h2 className="font-black tracking-tight text-foreground">Carrito</h2>
         </div>
-        <Badge variant="secondary">{units} und.</Badge>
+        <Badge variant="secondary">{cart.units} und.</Badge>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
@@ -70,7 +53,7 @@ export function PosCart({
                 </p>
                 <button
                   type="button"
-                  onClick={() => onRemove(l.variant.id)}
+                  onClick={() => cart.remove(l.variant.id)}
                   className="text-muted-foreground hover:text-destructive shrink-0"
                   aria-label="Eliminar línea"
                 >
@@ -78,13 +61,26 @@ export function PosCart({
                 </button>
               </div>
               <p className="text-xs text-muted-foreground">{variantLabel(l.variant)}</p>
+
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {l.unitDiscount > 0 ? (
+                  <>
+                    <Money value={l.regularPrice} rate={rate} size="xs" align="left" strike />
+                    <Money value={l.finalPrice} rate={rate} size="xs" align="left" tone="primary" />
+                    <Badge variant="secondary" className="text-[10px]">-{l.discountPct}%</Badge>
+                  </>
+                ) : (
+                  <Money value={l.finalPrice} rate={rate} size="xs" align="left" />
+                )}
+              </div>
+
               <div className="flex items-center justify-between mt-1.5">
                 <div className="flex items-center gap-1">
                   <Button
                     size="icon"
                     variant="outline"
                     className="h-7 w-7"
-                    onClick={() => onChangeQty(l.variant.id, -1)}
+                    onClick={() => cart.changeQty(l.variant.id, -1)}
                     aria-label="Restar"
                   >
                     <Minus className="h-3.5 w-3.5" />
@@ -94,16 +90,13 @@ export function PosCart({
                     size="icon"
                     variant="outline"
                     className="h-7 w-7"
-                    onClick={() => onChangeQty(l.variant.id, 1)}
+                    onClick={() => cart.changeQty(l.variant.id, 1)}
                     aria-label="Sumar"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <div className="text-right leading-tight">
-                  <p className="text-[11px] text-muted-foreground">{usdFormat(l.variant.pvp)} c/u</p>
-                  <p className="num text-sm font-black tabular-nums">{usdFormat(l.lineTotal)}</p>
-                </div>
+                <Money value={l.lineTotal} rate={rate} size="sm" />
               </div>
             </div>
           </div>
@@ -130,44 +123,65 @@ export function PosCart({
 
         <Separator />
 
-        <Row label="Subtotal" value={usdFormat(subtotal)} />
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Descuento</span>
+        <SummaryRow label="Subtotal regular">
+          <Money value={cart.subtotalRegular} rate={rate} size="xs" />
+        </SummaryRow>
+
+        {cart.discountTotal > 0 ? (
+          <SummaryRow label="Descuentos">
+            <Money value={cart.discountTotal} rate={rate} size="xs" sign="-" tone="destructive" />
+          </SummaryRow>
+        ) : null}
+
+        <div className="flex items-center justify-between text-sm gap-2">
+          <span className="text-muted-foreground">Descuento de carrito</span>
           <Input
             type="number"
             min={0}
-            value={discountUsd || ""}
-            onChange={(e) => setDiscountUsd(Number(e.target.value) || 0)}
+            value={cart.cartDiscount || ""}
+            onChange={(e) => cart.setCartDiscount(Number(e.target.value) || 0)}
             placeholder="0"
             className="h-8 w-24 text-right"
+            aria-label="Descuento de carrito en REF"
           />
         </div>
+        {cart.cartDiscount > 0 ? (
+          <Input
+            value={cart.cartDiscountReason}
+            onChange={(e) => cart.setCartDiscountReason(e.target.value)}
+            placeholder="Motivo del descuento (auditoría)"
+            className="h-8 text-xs"
+          />
+        ) : null}
+
+        <SummaryRow label="Subtotal final">
+          <Money value={cart.subtotal - cart.cartDiscount} rate={rate} size="xs" />
+        </SummaryRow>
+
         <div className="flex items-center justify-between text-sm">
           <button
             type="button"
-            onClick={() => setTaxEnabled(!taxEnabled)}
+            onClick={() => cart.setTaxEnabled(!cart.taxEnabled)}
             className="text-muted-foreground underline-offset-2 hover:underline"
           >
-            Impuesto {POS_TAX_PCT}% {taxEnabled ? "(aplicado)" : "(no aplica)"}
+            Impuesto {POS_TAX_PCT}% {cart.taxEnabled ? "(aplicado)" : "(no aplica)"}
           </button>
-          <span className="num tabular-nums">{usdFormat(taxUsd)}</span>
+          <Money value={cart.taxUsd} rate={rate} size="xs" />
         </div>
 
         <Separator />
 
         <div className="flex items-end justify-between">
           <span className="text-xs uppercase tracking-wider text-muted-foreground">Total</span>
-          <div className="text-right">
-            <p className="num text-3xl font-black tabular-nums text-foreground leading-none">
-              {usdFormat(total)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Bs. {(total * rate).toLocaleString("es-VE", { maximumFractionDigits: 2 })}
-            </p>
-          </div>
+          <Money value={cart.total} rate={rate} size="lg" />
         </div>
 
-        <Button size="lg" className="w-full h-14 text-base font-black" disabled={lines.length === 0} onClick={onCheckout}>
+        <Button
+          size="lg"
+          className="w-full h-14 text-base font-black"
+          disabled={lines.length === 0}
+          onClick={onCheckout}
+        >
           COBRAR
         </Button>
       </div>
@@ -175,11 +189,11 @@ export function PosCart({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function SummaryRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="num tabular-nums">{value}</span>
+      {children}
     </div>
   );
 }

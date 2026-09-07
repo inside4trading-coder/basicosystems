@@ -14,28 +14,51 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const FUNCTIONS = [
-  { icon: BadgePercent, label: "Descuento" },
-  { icon: StickyNote, label: "Nota" },
-  { icon: Ticket, label: "Cupón" },
-  { icon: PauseCircle, label: "Suspender" },
-  { icon: PlayCircle, label: "Recuperar" },
-  { icon: ArrowLeftRight, label: "Cambio" },
-  { icon: RotateCcw, label: "Devolución" },
-  { icon: History, label: "Historial" },
-  { icon: Printer, label: "Reimprimir" },
-  { icon: UserSquare, label: "Vendedor" },
-  { icon: Lock, label: "Caja" },
+export type PosFunctionId =
+  | "discount"
+  | "note"
+  | "coupon"
+  | "suspend"
+  | "resume"
+  | "exchange"
+  | "return"
+  | "history"
+  | "reprint"
+  | "seller"
+  | "closures";
+
+const FUNCTIONS: { id: PosFunctionId; icon: typeof BadgePercent; label: string }[] = [
+  { id: "discount", icon: BadgePercent, label: "Descuento" },
+  { id: "note", icon: StickyNote, label: "Nota" },
+  { id: "coupon", icon: Ticket, label: "Cupón" },
+  { id: "suspend", icon: PauseCircle, label: "Suspender" },
+  { id: "resume", icon: PlayCircle, label: "Recuperar" },
+  { id: "exchange", icon: ArrowLeftRight, label: "Cambio" },
+  { id: "return", icon: RotateCcw, label: "Devolución" },
+  { id: "history", icon: History, label: "Historial" },
+  { id: "reprint", icon: Printer, label: "Reimprimir" },
+  { id: "seller", icon: UserSquare, label: "Vendedor" },
+  { id: "closures", icon: Lock, label: "Cierres" },
 ];
 
-export function PosFunctionsBar({ className }: { className?: string }) {
+export function PosFunctionsBar({
+  className,
+  onAction,
+}: {
+  className?: string;
+  onAction?: (id: PosFunctionId, label: string) => void;
+}) {
   return (
     <div className={cn("flex gap-2 overflow-x-auto pb-1", className)}>
       {FUNCTIONS.map((f) => (
         <button
-          key={f.label}
+          key={f.id}
           type="button"
-          onClick={() => toast.info(`${f.label}: función prevista, aún sin activar.`)}
+          onClick={() =>
+            onAction
+              ? onAction(f.id, f.label)
+              : toast.info(`${f.label}: función prevista, aún sin activar.`)
+          }
           className="flex flex-col items-center justify-center gap-1 rounded-xl border border-border/60 bg-card px-3 py-2 min-w-[76px] text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors shrink-0"
         >
           <f.icon className="h-4 w-4" />

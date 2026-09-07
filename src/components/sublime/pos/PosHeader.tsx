@@ -1,22 +1,20 @@
-import { LogOut, Lock, MapPin, Monitor, RefreshCw, Wifi } from "lucide-react";
+import { LogOut, Lock, MapPin, Monitor, RefreshCw, UserCog, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { bsAmount } from "@/lib/posMoney";
+import type { PosSaleContext } from "@/lib/posSession";
 
-export interface PosSession {
-  storeName: string;
-  registerName: string;
-  cashier: string;
-  rate: number;
-  online: boolean;
-}
+export type PosSession = PosSaleContext;
 
 export function PosHeader({
   session,
+  onChangeCashier,
   onChangeRegister,
   onToggleRegisterState,
   onExit,
 }: {
   session: PosSession;
+  onChangeCashier: () => void;
   onChangeRegister: () => void;
   onToggleRegisterState: () => void;
   onExit: () => void;
@@ -34,24 +32,31 @@ export function PosHeader({
       </div>
 
       <div className="flex items-center gap-4 flex-wrap text-sm">
-        <Meta icon={MapPin} label="Sede" value={session.storeName} />
-        <Meta icon={Monitor} label="Caja" value={session.registerName} />
-        <Meta label="Cajero" value={session.cashier} />
-        <Meta label="Tasa BCV" value={`Bs. ${session.rate.toFixed(2)} / USD`} />
+        <Meta icon={MapPin} label="Sede" value={session.locationName} />
+        <Meta icon={Monitor} label="Caja" value={`${session.registerName} · ${session.sessionCode}`} />
+        <Meta label="Cajero" value={session.cashierName} />
+        <Meta label="Tasa BCV" value={`Bs. ${bsAmount(1, session.rate)} / REF`} />
       </div>
 
       <div className="ml-auto flex items-center gap-2 flex-wrap">
+        <Badge variant={session.registerOpen ? "secondary" : "destructive"}>
+          {session.registerOpen ? "Caja abierta" : "Caja cerrada"}
+        </Badge>
         <Badge variant={session.online ? "secondary" : "destructive"} className="gap-1.5">
           <Wifi className="h-3 w-3" />
           {session.online ? "En línea" : "Sin conexión"}
         </Badge>
+        <Button variant="outline" size="sm" onClick={onChangeCashier}>
+          <UserCog className="h-4 w-4 mr-2" />
+          Cambiar cajero
+        </Button>
         <Button variant="outline" size="sm" onClick={onChangeRegister}>
           <RefreshCw className="h-4 w-4 mr-2" />
           Cambiar caja
         </Button>
         <Button variant="outline" size="sm" onClick={onToggleRegisterState}>
           <Lock className="h-4 w-4 mr-2" />
-          Abrir / cerrar caja
+          {session.registerOpen ? "Cerrar caja" : "Abrir caja"}
         </Button>
         <Button variant="ghost" size="sm" onClick={onExit}>
           <LogOut className="h-4 w-4 mr-2" />
