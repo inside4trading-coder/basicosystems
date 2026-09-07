@@ -15,14 +15,22 @@ export interface PosSalesChannelDef {
   label: string;
   /** Pide detalle libre del origen. */
   requiresDetail?: boolean;
+  /** Etiqueta del campo de detalle. */
+  detailLabel?: string;
   /** Se puede elegir manualmente en el POS. */
   manual?: boolean;
 }
 
 export const POS_ALL_SALES_CHANNELS: PosSalesChannelDef[] = [
-  { id: "whatsapp", label: "WhatsApp", manual: true },
-  { id: "cashea", label: "casheaonline", manual: true },
   { id: "in_store", label: "Tienda", manual: true },
+  { id: "whatsapp", label: "WhatsApp", manual: true },
+  {
+    id: "cashea",
+    label: "casheaonline",
+    manual: true,
+    requiresDetail: true,
+    detailLabel: "Número de operación",
+  },
   { id: "web", label: "Web" },
 ];
 
