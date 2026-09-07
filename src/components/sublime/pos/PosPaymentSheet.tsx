@@ -63,8 +63,6 @@ export function PosPaymentSheet({
   setChannelDetail,
   customer,
   onSelectCustomer,
-  invoiceNumber,
-  setInvoiceNumber,
   onConfirm,
 }: {
   open: boolean;
@@ -79,8 +77,6 @@ export function PosPaymentSheet({
   setChannelDetail: (d: string) => void;
   customer: PosCustomer | null;
   onSelectCustomer: (c: PosCustomer) => void;
-  invoiceNumber: string;
-  setInvoiceNumber: (v: string) => void;
   onConfirm: () => void;
 }) {
   const paid = paidUsdOf(payments, rate);
@@ -368,22 +364,6 @@ export function PosPaymentSheet({
             channelDetail={channelDetail}
             setChannelDetail={setChannelDetail}
           />
-        </Card>
-
-        {/* 6 · Número de factura */}
-        <Card className="p-4 rounded-2xl border-border/60 space-y-1.5">
-          <Label className="text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground">
-            Número de factura · opcional
-          </Label>
-          <Input
-            value={invoiceNumber}
-            onChange={(e) => setInvoiceNumber(e.target.value)}
-            placeholder="Ej. 00012345"
-            className="h-11"
-          />
-          <p className="text-[11px] text-muted-foreground">
-            Déjalo vacío si esta venta no lleva factura. No bloquea el cierre.
-          </p>
         </Card>
 
         <Button
