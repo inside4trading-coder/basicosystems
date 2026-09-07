@@ -69,32 +69,94 @@ serve(async (req) => {
 
   // 2. Reversal detection: any movement_type='reversal' with related_movement_id targeting our movements
   const movIds = (movements ?? []).map((m: any) => m.id);
+
+  // Safe chunked "in" helper: never send hundreds of ids in a single request,
+  // and NEVER swallow an error (a failed history check would regenerate history).
+  const CHUNK_SIZE = 150;
+  async function chunkedIn<T = any>(
+    table: string,
+    columns: string,
+    column: string,
+    ids: (string | number)[],
+    extra?: (q: any) => any,
+  ): Promise<{ rows: T[]; error: any }> {
+    const rows: T[] = [];
+    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+      const slice = ids.slice(i, i + CHUNK_SIZE);
+      let q: any = supabase.from(table).select(columns).in(column, slice);
+      if (extra) q = extra(q);
+      const { data, error } = await q;
+      if (error) return { rows: [], error };
+      rows.push(...((data ?? []) as T[]));
+    }
+    return { rows, error: null };
+  }
+
+  async function abortRun(message: string, detail?: string) {
+    if (runId) {
+      await supabase.from("core_production_need_runs")
+        .update({ status: "failed", summary: { error: message, detail: detail ?? null } })
+        .eq("id", runId);
+    }
+    return json({
+      error: "history_validation_failed",
+      message: "No se pudo validar el historial de partidas. No se generó ninguna necesidad.",
+      detail: detail ?? message,
+    }, 500);
+  }
+
+  let runId: string | null = null;
+
   let reversedSet = new Set<string>();
   if (movIds.length > 0) {
-    const { data: revs } = await supabase
-      .from("core_fabrication_fund_movements")
-      .select("related_movement_id")
-      .eq("movement_type", "reversal")
-      .in("related_movement_id", movIds);
-    (revs ?? []).forEach((r: any) => r.related_movement_id && reversedSet.add(r.related_movement_id));
+    const { rows: revs, error: revErr } = await chunkedIn<any>(
+      "core_fabrication_fund_movements",
+      "related_movement_id",
+      "related_movement_id",
+      movIds,
+      (q) => q.eq("movement_type", "reversal"),
+    );
+    if (revErr) return await abortRun("reversal_lookup_failed", revErr.message);
+    revs.forEach((r: any) => r.related_movement_id && reversedSet.add(r.related_movement_id));
   }
   reversalsDetected = reversedSet.size;
 
   // 3. Already-linked movements
   let linkedSet = new Set<string>();
   if (movIds.length > 0) {
-    const { data: links } = await supabase
-      .from("core_production_need_sources")
-      .select("fabrication_fund_movement_id")
-      .in("fabrication_fund_movement_id", movIds);
-    (links ?? []).forEach((l: any) => l.fabrication_fund_movement_id && linkedSet.add(l.fabrication_fund_movement_id));
+    const { rows: links, error: linkErr } = await chunkedIn<any>(
+      "core_production_need_sources",
+      "fabrication_fund_movement_id",
+      "fabrication_fund_movement_id",
+      movIds,
+    );
+    if (linkErr) return await abortRun("linked_lookup_failed", linkErr.message);
+    links.forEach((l: any) => l.fabrication_fund_movement_id && linkedSet.add(l.fabrication_fund_movement_id));
   }
 
+  // Sanity check: if the database already holds historical links but this run
+  // believes nothing was ever processed, something went wrong — never write.
+  const { count: historicalLinks, error: histErr } = await supabase
+    .from("core_production_need_sources")
+    .select("id", { count: "exact", head: true })
+    .not("fabrication_fund_movement_id", "is", null);
+  if (histErr) return await abortRun("historical_link_count_failed", histErr.message);
+  if ((historicalLinks ?? 0) > 0 && linkedSet.size === 0 && movIds.length > 0) {
+    return json({
+      error: "anomalous_result",
+      message: "Resultado anómalo detectado. La generación ha sido cancelada para evitar duplicados.",
+      historical_links: historicalLinks,
+      movements_checked: movementsChecked,
+    }, 409);
+  }
+
+
   // 4. Active restock blocks
-  const { data: blocks } = await supabase
+  const { data: blocks, error: blocksErr } = await supabase
     .from("core_restock_control")
     .select("core_product_id, core_variant_id, woo_product_id, woo_variation_id, sku, status")
     .eq("status", "active");
+  if (blocksErr) return await abortRun("restock_control_lookup_failed", blocksErr.message);
   const blockedVariants = new Set<string>();
   const blockedProducts = new Set<string>();
   const blockedWooVar = new Set<number>();
@@ -109,15 +171,16 @@ serve(async (req) => {
   });
 
   // Create run record (skip if dryRun)
-  let runId: string | null = null;
   if (!dryRun) {
-    const { data: run } = await supabase
+    const { data: run, error: runErr } = await supabase
       .from("core_production_need_runs")
       .insert({ run_type: "generate_from_movements", status: "running", created_by: userId })
       .select("id")
       .single();
+    if (runErr) return json({ error: runErr.message }, 500);
     runId = run?.id ?? null;
   }
+
 
   // Group eligible movements by core_variant_id
   type Grp = {
@@ -165,25 +228,32 @@ serve(async (req) => {
     }
   }
 
-  // Fetch variant + product info for each group
+  // Fetch variant + product info for each group (chunked, errors abort)
   const variantIds = Array.from(groups.keys());
   const variantInfo = new Map<string, any>();
   if (variantIds.length > 0) {
-    const { data: variants } = await supabase
-      .from("core_product_variants")
-      .select("id, size, variant_label, variant_sku, woo_sku, core_product_id")
-      .in("id", variantIds);
-    (variants ?? []).forEach((v: any) => variantInfo.set(v.id, v));
+    const { rows: variants, error: vErr } = await chunkedIn<any>(
+      "core_product_variants",
+      "id, size, variant_label, variant_sku, woo_sku, core_product_id",
+      "id",
+      variantIds,
+    );
+    if (vErr) return await abortRun("variant_lookup_failed", vErr.message);
+    variants.forEach((v: any) => variantInfo.set(v.id, v));
   }
   const productIds = Array.from(new Set(Array.from(groups.values()).map(g => g.core_product_id)));
   const productInfo = new Map<string, any>();
   if (productIds.length > 0) {
-    const { data: prods } = await supabase
-      .from("core_products")
-      .select("id, name, core_sku, product_priority")
-      .in("id", productIds);
-    (prods ?? []).forEach((p: any) => productInfo.set(p.id, p));
+    const { rows: prods, error: pErr } = await chunkedIn<any>(
+      "core_products",
+      "id, name, core_sku, product_priority",
+      "id",
+      productIds,
+    );
+    if (pErr) return await abortRun("product_lookup_failed", pErr.message);
+    prods.forEach((p: any) => productInfo.set(p.id, p));
   }
+
 
   // ---- Central routing engine: evaluate every group BEFORE creating needs.
   // dry_run must never write; the RPC honours p_dry_run.
@@ -238,10 +308,32 @@ serve(async (req) => {
   }
 
   if (dryRun || routeOnly) {
+    const newUnits = allowedGroups.reduce((acc: number, x: any) => acc + Number(x.g.qty || 0), 0);
+    const existingVariantIds = new Set<string>();
+    if (allowedGroups.length > 0) {
+      const { rows: openNeeds, error: onErr } = await chunkedIn<any>(
+        "core_production_needs",
+        "core_variant_id",
+        "core_variant_id",
+        allowedGroups.map((x: any) => x.g.core_variant_id),
+        (q) => q.eq("need_type", "sale_generated").in("status", ["pending", "review", "approved", "partially_converted"]),
+      );
+      if (onErr) return await abortRun("open_needs_lookup_failed", onErr.message);
+      openNeeds.forEach((n: any) => existingVariantIds.add(n.core_variant_id));
+    }
+    const toUpdate = allowedGroups.filter((x: any) => existingVariantIds.has(x.g.core_variant_id)).length;
     return json({
       dry_run: dryRun,
       route_only: routeOnly,
       movements_checked: movementsChecked,
+      movements_already_processed: skippedExisting,
+      movements_new: (movements ?? []).length - skippedExisting - reversalsDetected - blockedCount - nonRestockableSkipped,
+      movements_blocked: blockedCount + nonRestockableSkipped,
+      movements_reversed: reversalsDetected,
+      historical_links: historicalLinks ?? 0,
+      needs_to_create: allowedGroups.length - toUpdate,
+      needs_to_update: toUpdate,
+      new_units: newUnits,
       eligible_groups: groups.size,
       routed_allowed: allowedGroups.length,
       routing_buckets: routingBuckets,
@@ -259,92 +351,36 @@ serve(async (req) => {
     });
   }
 
-  // Process only routed-allowed groups
+
+  // Process only routed-allowed groups.
+  // Need + source links are created by a single atomic RPC: a movement that is
+  // already linked can never generate demand again.
   for (const { g, v, p } of allowedGroups) {
     const priority = p?.product_priority === "core" || p?.product_priority === "essential" ? "alta" : "media";
 
-    // Find existing open auto need for this variant
-    const { data: existingNeed } = await supabase
-      .from("core_production_needs")
-      .select("id, quantity_needed, quantity_approved, quantity_converted_to_order")
-      .eq("core_variant_id", g.core_variant_id)
-      .eq("need_type", "sale_generated")
-      .in("status", ["pending", "review", "approved", "partially_converted"])
-      .maybeSingle();
-
-    let needId: string;
-    if (existingNeed) {
-      const newQtyNeeded = Number(existingNeed.quantity_needed) + g.qty;
-      const pending = newQtyNeeded - Number(existingNeed.quantity_converted_to_order || 0);
-      const { error: upErr } = await supabase
-        .from("core_production_needs")
-        .update({
-          quantity_needed: newQtyNeeded,
-          quantity_pending: pending,
-          last_sale_at: g.last_sale_at,
-          generation_run_id: runId,
-          updated_by: userId,
-        })
-        .eq("id", existingNeed.id);
-      if (upErr) { blockedCount++; skipReason("update_failed"); continue; }
-      needId = existingNeed.id;
-      needsUpdated++;
-    } else {
-      const { data: ins, error: insErr } = await supabase
-        .from("core_production_needs")
-        .insert({
-          need_type: "sale_generated",
-          status: "pending",
-          priority,
-          core_product_id: g.core_product_id,
-          core_variant_id: g.core_variant_id,
-          sku: p?.core_sku ?? g.sku ?? null,
-          variant_sku: v?.variant_sku ?? v?.woo_sku ?? null,
-          product_name: p?.name ?? g.product_name ?? null,
-          variant_label: v?.variant_label ?? null,
-          size: v?.size ?? null,
-          quantity_needed: g.qty,
-          quantity_approved: 0,
-          quantity_converted_to_order: 0,
-          quantity_pending: g.qty,
-          source: "auto_from_movements",
-          last_sale_at: g.last_sale_at,
-          generation_run_id: runId,
-          created_by: userId,
-          updated_by: userId,
-        })
-        .select("id")
-        .single();
-      if (insErr || !ins) { blockedCount++; skipReason("insert_failed:" + (insErr?.message || "")); continue; }
-      needId = ins.id;
-      needsCreated++;
-    }
-
-    // Link movements
-    for (const m of g.movements) {
-      const { error: linkErr } = await supabase
-        .from("core_production_need_sources")
-        .insert({
-          production_need_id: needId,
-          fabrication_fund_movement_id: m.id,
-          source_order_id: m.source_order_id,
-          source_order_item_id: m.source_order_item_id,
-          quantity: Number(m.quantity ?? 0),
-          amount: m.amount,
-          currency: m.currency ?? "USD",
-        });
-      if (!linkErr) movementsLinked++;
-    }
-
-    // Audit
-    await supabase.from("core_audit_logs").insert({
-      table_name: "core_production_needs",
-      record_id: needId,
-      action: existingNeed ? "auto_update_from_movements" : "auto_create_from_movements",
-      new_value: JSON.stringify({ qty_added: g.qty, movements: g.movements.length, run_id: runId }),
-      performed_by: userData?.user?.email ?? userId,
+    const { data: res, error: rpcErr } = await supabase.rpc("core_create_need_from_movements", {
+      p_core_product_id: g.core_product_id,
+      p_core_variant_id: g.core_variant_id,
+      p_movement_ids: g.movements.map((m: any) => m.id),
+      p_sku: p?.core_sku ?? g.sku ?? null,
+      p_variant_sku: v?.variant_sku ?? v?.woo_sku ?? null,
+      p_product_name: p?.name ?? g.product_name ?? null,
+      p_variant_label: v?.variant_label ?? null,
+      p_size: v?.size ?? null,
+      p_priority: priority,
+      p_run_id: runId,
+      p_user_id: userId,
     });
+
+    if (rpcErr) { blockedCount++; skipReason("atomic_create_failed:" + rpcErr.message); continue; }
+
+    const action = (res as any)?.action;
+    if (action === "created") needsCreated++;
+    else if (action === "updated") needsUpdated++;
+    else { skippedExisting++; continue; }
+    movementsLinked += Number((res as any)?.movements_linked ?? 0);
   }
+
 
   // Finalize run
   if (runId) {
