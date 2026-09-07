@@ -1,6 +1,7 @@
 /**
  * Definición central de métodos de pago del POS Sublime.
  * Añadir un método nuevo aquí no requiere tocar la interfaz de cobro.
+ * "Pago mixto" no es un método: la venta es mixta cuando se registran varios pagos.
  */
 export type PosPaymentMethodId =
   | "card"
@@ -18,6 +19,8 @@ export interface PosPaymentField {
   label: string;
   required?: boolean;
   placeholder?: string;
+  /** "bank" se resuelve como desplegable con el catálogo central de bancos. */
+  type?: "text" | "bank";
 }
 
 export interface PosPaymentMethodDef {
@@ -35,6 +38,7 @@ export const POS_PAYMENT_METHODS: PosPaymentMethodDef[] = [
     currency: "VES",
     fields: [
       { id: "terminal", label: "Terminal", required: true, placeholder: "Terminal 1" },
+      { id: "bank", label: "Banco del punto", type: "bank" },
       { id: "reference", label: "Referencia", placeholder: "Últimos 6 dígitos" },
     ],
   },
@@ -43,12 +47,12 @@ export const POS_PAYMENT_METHODS: PosPaymentMethodDef[] = [
     label: "Pago móvil",
     currency: "VES",
     fields: [
-      { id: "bank", label: "Banco", required: true, placeholder: "Banesco" },
+      { id: "bank", label: "Banco", required: true, type: "bank" },
       { id: "reference", label: "Referencia", required: true, placeholder: "004512" },
     ],
   },
   { id: "cash_usd", label: "Efectivo REF", currency: "USD", fields: [] },
-  { id: "cash_ves", label: "Efectivo VES", currency: "VES", fields: [] },
+  { id: "cash_ves", label: "Efectivo Bs.", currency: "VES", fields: [] },
   {
     id: "zelle",
     label: "Zelle",
@@ -63,7 +67,7 @@ export const POS_PAYMENT_METHODS: PosPaymentMethodDef[] = [
     label: "Transferencia",
     currency: "VES",
     fields: [
-      { id: "bank", label: "Banco", required: true, placeholder: "Mercantil" },
+      { id: "bank", label: "Banco", required: true, type: "bank" },
       { id: "reference", label: "Referencia", required: true },
     ],
   },
