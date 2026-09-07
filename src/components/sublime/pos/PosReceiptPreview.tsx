@@ -18,6 +18,9 @@ export interface PosSaleDocument {
   at: string;
   session: PosSession;
   customer: PosCustomer | null;
+  /** Número de factura opcional registrado por el cajero. */
+  invoiceNumber?: string | null;
+
   channel: PosSalesChannelId | null;
   channelDetail: string;
   lines: PosCartLine[];

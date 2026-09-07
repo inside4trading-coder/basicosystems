@@ -295,7 +295,12 @@ export default function SublimePosApp() {
         setChannel={cart.setChannel}
         channelDetail={cart.channelDetail}
         setChannelDetail={cart.setChannelDetail}
+        customer={customer}
+        onSelectCustomer={setCustomer}
+        invoiceNumber={invoiceNumber}
+        setInvoiceNumber={setInvoiceNumber}
         onConfirm={confirmPayment}
+
       />
 
       <Dialog open={doc !== null} onOpenChange={(v) => !v && newSale()}>
