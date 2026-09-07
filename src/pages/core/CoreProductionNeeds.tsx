@@ -179,17 +179,34 @@ export default function CoreProductionNeeds() {
       const { data, error } = await supabase.functions.invoke("core-generate-production-needs", {
         body,
       });
-      if (error) throw error;
       const d: any = data;
+      // Abortos controlados del servidor (historial no validable / resultado anómalo)
+      if (d?.error === "history_validation_failed" || d?.error === "anomalous_result") {
+        toast.error(d.message, { duration: 20000 });
+        return;
+      }
+      if (error) {
+        const ctx: any = (error as any)?.context;
+        let msg = error.message;
+        try {
+          const parsed = typeof ctx?.body === "string" ? JSON.parse(ctx.body) : null;
+          if (parsed?.message) msg = parsed.message;
+        } catch { /* ignore */ }
+        toast.error(msg, { duration: 20000 });
+        return;
+      }
       if (dry) {
-        toast.success(`Simulación: ${d.eligible_groups} grupos, ${d.movements_checked} movimientos`);
+        toast.success(
+          `Simulación: ${d.movements_checked} partidas revisadas · ${d.movements_already_processed ?? d.skipped_existing} ya procesadas · ${d.movements_new ?? 0} nuevas · ${d.movements_blocked ?? d.blocked ?? 0} bloqueadas · ${d.movements_reversed ?? d.reversals_detected ?? 0} anuladas → ${d.needs_to_create ?? 0} a crear, ${d.needs_to_update ?? 0} a actualizar, ${d.new_units ?? 0} unidades nuevas`,
+          { duration: 20000 },
+        );
       } else {
         toast.success(`Generado: ${d.needs_created} nuevas, ${d.needs_updated} actualizadas, ${d.movements_linked} mov. enlazados`);
       }
       // Alertas fuertes por descartes silenciosos
       const reasons = (d?.by_skip_reason ?? {}) as Record<string, number>;
       const missingIds = Number(reasons["missing_core_ids"] ?? 0);
-      const insertFails = Object.entries(reasons).filter(([k]) => k.startsWith("insert_failed") || k === "update_failed").reduce((a, [, v]) => a + Number(v ?? 0), 0);
+      const insertFails = Object.entries(reasons).filter(([k]) => k.startsWith("insert_failed") || k.startsWith("atomic_create_failed") || k === "update_failed").reduce((a, [, v]) => a + Number(v ?? 0), 0);
       if (missingIds > 0) {
         toast.error(
           `⚠️ ${missingIds} movimiento(s) DESCARTADOS por falta de variante/producto Core. Revisa "Partidas de Fabricación → Pendientes".`,
@@ -199,6 +216,7 @@ export default function CoreProductionNeeds() {
       if (insertFails > 0) {
         toast.error(`⚠️ ${insertFails} necesidad(es) fallaron al insertarse. Revisa logs.`, { duration: 15000 });
       }
+
       if (Number(d?.non_restockable_skipped ?? 0) > 0) {
         toast.warning(`${d.non_restockable_skipped} mov. omitidos por control de reposición activo.`, { duration: 8000 });
       }

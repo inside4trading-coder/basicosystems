@@ -9701,6 +9701,22 @@ export type Database = {
         Args: { p_dry_run?: boolean; p_event_ids: string[]; p_overrides?: Json }
         Returns: Json
       }
+      core_create_need_from_movements: {
+        Args: {
+          p_core_product_id: string
+          p_core_variant_id: string
+          p_movement_ids: string[]
+          p_priority?: string
+          p_product_name?: string
+          p_run_id?: string
+          p_size?: string
+          p_sku?: string
+          p_user_id?: string
+          p_variant_label?: string
+          p_variant_sku?: string
+        }
+        Returns: Json
+      }
       core_ext_po_audit: {
         Args: {
           p_action: string
@@ -9778,6 +9794,10 @@ export type Database = {
           p_movement_id: string
           p_replacement_event_id?: string
         }
+        Returns: Json
+      }
+      core_revert_needs_run: {
+        Args: { p_dry_run?: boolean; p_run_id: string }
         Returns: Json
       }
       core_sync_production_order_allocation: {
