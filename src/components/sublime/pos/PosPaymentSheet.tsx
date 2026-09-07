@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -14,17 +15,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Money, bsAmount, refAmount, toRef } from "@/lib/posMoney";
-import {
-  POS_SALES_CHANNELS,
-  posChannel,
-  type PosSalesChannelId,
-} from "@/lib/posSalesChannels";
+import { Money, bsAmount, toRef } from "@/lib/posMoney";
+import { POS_BANKS, posBankLabel } from "@/lib/posBanks";
+import { posChannelButtonClass } from "@/lib/posChannelStyle";
+import { posChannelLabel, type PosSalesChannelId } from "@/lib/posSalesChannels";
 import {
   POS_PAYMENT_METHODS,
   posMethod,
   type PosPaymentMethodId,
 } from "@/lib/posPaymentMethods";
+import { POS_TAX_PCT } from "./usePosCart";
+import { PosChannelPicker } from "./PosChannelPicker";
 
 export interface PosPaymentLine {
   id: string;
@@ -61,8 +62,8 @@ export function PosPaymentSheet({
   rate: number;
   payments: PosPaymentLine[];
   setPayments: (p: PosPaymentLine[]) => void;
-  channel: PosSalesChannelId;
-  setChannel: (c: PosSalesChannelId) => void;
+  channel: PosSalesChannelId | null;
+  setChannel: (c: PosSalesChannelId | null) => void;
   channelDetail: string;
   setChannelDetail: (d: string) => void;
   onConfirm: () => void;
@@ -71,15 +72,15 @@ export function PosPaymentSheet({
   const missing = Math.max(0, total - paid);
   const change = Math.max(0, paid - total);
 
-  const [picker, setPicker] = useState<PosPaymentMethodId>("card");
+  const [picker, setPicker] = useState<PosPaymentMethodId | null>(null);
   const [amount, setAmount] = useState("");
   const [fields, setFields] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(true);
 
-  const def = posMethod(picker);
-  const suggested = def.currency === "USD" ? missing : missing * rate;
+  const def = picker ? posMethod(picker) : null;
+  const suggested = def ? (def.currency === "USD" ? missing : missing * rate) : 0;
   const shownAmount = amount !== "" ? amount : suggested > 0 ? suggested.toFixed(2) : "";
-
 
   const selectMethod = (id: PosPaymentMethodId) => {
     setPicker(id);
@@ -89,6 +90,10 @@ export function PosPaymentSheet({
   };
 
   const usePaymentMethod = () => {
+    if (!picker || !def) {
+      setError("Selecciona un método de pago.");
+      return;
+    }
     const value = Number(shownAmount);
     if (!value || value <= 0) {
       setError("Indica el monto del pago.");
@@ -103,12 +108,14 @@ export function PosPaymentSheet({
       ...payments,
       { id: `pay-${Date.now()}`, method: picker, amount: String(value), fields },
     ]);
+    setPicker(null);
     setAmount("");
     setFields({});
     setError(null);
+    setAdding(false);
   };
 
-  const channelDef = posChannel(channel);
+  const canFinish = missing <= 0.009 && payments.length > 0 && channel !== null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -117,105 +124,48 @@ export function PosPaymentSheet({
           <DialogTitle className="text-2xl font-black tracking-tight">Cobrar</DialogTitle>
         </DialogHeader>
 
-        <Card className="p-5 rounded-2xl border-border/60 flex items-end justify-between gap-4 flex-wrap">
-          <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Total a cobrar</p>
-            <Money value={total} rate={rate} size="xl" align="left" />
-          </div>
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Tasa BCV</p>
-            <p className="num text-lg font-black tabular-nums">Bs. {bsAmount(1, rate)} / REF</p>
-          </div>
-        </Card>
-
-        {/* Selector de método */}
-        <div className="flex flex-wrap gap-2">
-          {POS_PAYMENT_METHODS.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => selectMethod(m.id)}
-              className={cn(
-                "rounded-xl border px-4 py-2 text-sm font-semibold transition-colors",
-                picker === m.id
-                  ? "border-primary bg-primary/10 text-foreground"
-                  : "border-border/60 text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {m.label}
-              <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-                {currencyLabel(m.currency)}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Campos del método seleccionado */}
-        <Card className="p-4 rounded-2xl border-border/60 space-y-3">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-bold">
-            {def.label}
+        <Card className="p-5 rounded-2xl border-border/60 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Amount label="Total" value={total} rate={rate} size="lg" />
+          <Amount label="Pagado" value={paid} rate={rate} tone="primary" />
+          <Amount label="Faltante" value={missing} rate={rate} tone={missing > 0 ? "destructive" : "muted"} />
+          <Amount label="Cambio" value={change} rate={rate} tone={change > 0 ? "primary" : "muted"} />
+          <p className="col-span-2 sm:col-span-4 text-[11px] text-muted-foreground">
+            Precios con IVA {POS_TAX_PCT}% incluido · Tasa BCV Bs. {bsAmount(1, rate)} / REF
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Monto en {currencyLabel(def.currency)}</Label>
-              <Input
-                type="number"
-                value={shownAmount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="h-11 text-base"
-              />
-              {def.currency === "VES" ? (
-                <p className="text-[11px] text-muted-foreground">
-                  Equivale a REF {refAmount((Number(shownAmount) || 0) / rate)}
-                </p>
-              ) : (
-                <p className="text-[11px] text-muted-foreground">
-                  Equivale a Bs. {bsAmount(Number(shownAmount) || 0, rate)}
-                </p>
-              )}
-            </div>
-            {def.fields.map((f) => (
-              <div key={f.id} className="space-y-1.5">
-                <Label className="text-xs">
-                  {f.label}
-                  {f.required ? " *" : ""}
-                </Label>
-                <Input
-                  value={fields[f.id] ?? ""}
-                  placeholder={f.placeholder}
-                  onChange={(e) => setFields({ ...fields, [f.id]: e.target.value })}
-                  className="h-11"
-                />
-              </div>
-            ))}
-          </div>
-          {error ? <p className="text-xs text-destructive font-semibold">{error}</p> : null}
-          <Button className="w-full h-12 font-black" onClick={usePaymentMethod}>
-            {payments.length === 0 ? (
-              "USAR ESTE MÉTODO DE PAGO"
-            ) : (
-              <>
-                <Plus className="h-4 w-4 mr-2" />
-                AÑADIR MÉTODO DE PAGO
-              </>
-            )}
-          </Button>
         </Card>
 
-        {/* Pagos registrados */}
+        <Card className="p-4 rounded-2xl border-border/60">
+          <PosChannelPicker
+            channel={channel}
+            setChannel={setChannel}
+            channelDetail={channelDetail}
+            setChannelDetail={setChannelDetail}
+          />
+        </Card>
+
         {payments.length > 0 ? (
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-bold">Pagos</p>
-            {payments.map((p, i) => {
+            <p className="text-xs uppercase tracking-[0.18em] font-bold text-muted-foreground">
+              Pagos registrados {payments.length > 1 ? "· venta mixta" : ""}
+            </p>
+            {payments.map((p) => {
               const d = posMethod(p.method);
               const ref = toRef(Number(p.amount) || 0, d.currency, rate);
               return (
-                <Card key={p.id} className="p-3 rounded-xl border-border/60 flex items-center gap-3">
-                  <span className="num text-sm font-black text-muted-foreground">{i + 1}.</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-sm text-foreground">{d.label}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {[p.fields.bank, p.fields.terminal, p.fields.holder, p.fields.reference && `Ref. ${p.fields.reference}`]
+                <Card key={p.id} className="p-3 rounded-xl flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm flex items-center gap-2">
+                      {d.label}
+                      <Badge variant="secondary">{currencyLabel(d.currency)}</Badge>
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {[
+                        p.fields.bank ? posBankLabel(p.fields.bank) : null,
+                        p.fields.terminal,
+                        p.fields.reference ? `Ref. ${p.fields.reference}` : null,
+                        p.fields.holder,
+                        p.fields.installments ? `${p.fields.installments} cuotas` : null,
+                      ]
                         .filter(Boolean)
                         .join(" · ") || "Sin datos adicionales"}
                     </p>
@@ -224,7 +174,7 @@ export function PosPaymentSheet({
                   <button
                     type="button"
                     onClick={() => setPayments(payments.filter((x) => x.id !== p.id))}
-                    className="text-muted-foreground hover:text-destructive"
+                    className="text-muted-foreground hover:text-destructive shrink-0"
                     aria-label="Quitar pago"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -235,79 +185,136 @@ export function PosPaymentSheet({
           </div>
         ) : null}
 
-        <Separator />
+        {!adding && payments.length > 0 ? (
+          <Button variant="outline" className="w-full h-12 font-black" onClick={() => setAdding(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            AÑADIR MÉTODO DE PAGO
+          </Button>
+        ) : (
+          <Card className="p-4 rounded-2xl border-border/60 space-y-3">
+            <p className="text-xs uppercase tracking-[0.18em] font-bold text-muted-foreground">
+              {payments.length === 0 ? "Método de pago" : "Nuevo método de pago"}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {POS_PAYMENT_METHODS.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => selectMethod(m.id)}
+                  className={cn(
+                    "rounded-xl border px-3 py-3 text-sm font-semibold transition-colors text-left",
+                    picker === m.id
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border/60 text-muted-foreground hover:border-primary/40"
+                  )}
+                >
+                  <span className="block">{m.label}</span>
+                  <span className="block text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {currencyLabel(m.currency)}
+                    {m.hint ? ` · ${m.hint}` : ""}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Total label="Total" value={total} rate={rate} />
-          <Total label="Pagado" value={paid} rate={rate} />
-          <Total label="Faltante" value={missing} rate={rate} tone={missing > 0.009 ? "warn" : "ok"} />
-          <Total label="Cambio" value={change} rate={rate} />
-        </div>
+            {def ? (
+              <>
+                <Separator />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Monto en {currencyLabel(def.currency)}</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={shownAmount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      className="h-12 text-lg font-bold"
+                    />
+                  </div>
+                  {def.fields.map((f) => (
+                    <div key={f.id} className="space-y-1.5">
+                      <Label>
+                        {f.label}
+                        {f.required ? " *" : ""}
+                      </Label>
+                      {f.type === "bank" ? (
+                        <Select
+                          value={fields[f.id] ?? ""}
+                          onValueChange={(v) => setFields({ ...fields, [f.id]: v })}
+                        >
+                          <SelectTrigger className="h-12">
+                            <SelectValue placeholder="Selecciona el banco" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {POS_BANKS.map((b) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          value={fields[f.id] ?? ""}
+                          onChange={(e) => setFields({ ...fields, [f.id]: e.target.value })}
+                          placeholder={f.placeholder}
+                          className="h-12"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
 
-        <Separator />
+            {error ? <p className="text-xs font-semibold text-destructive">{error}</p> : null}
 
-        {/* Canal / origen de la venta */}
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-bold">
-            Origen de la venta
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Select value={channel} onValueChange={(v) => setChannel(v as PosSalesChannelId)}>
-              <SelectTrigger className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {POS_SALES_CHANNELS.map((c) => (
-                  <SelectItem key={c.id} value={c.id} disabled={c.systemAssigned}>
-                    {c.label}
-                    {c.systemAssigned ? " (asignado por el pedido)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {channelDef.requiresDetail ? (
-              <Input
-                value={channelDetail}
-                onChange={(e) => setChannelDetail(e.target.value)}
-                placeholder="Detalle del origen"
-                className="h-11"
-              />
-            ) : (
-              <p className="text-xs text-muted-foreground self-center">
-                El origen es independiente del método de pago.
-              </p>
-            )}
-          </div>
-        </div>
+            <Button className="w-full h-12 font-black" disabled={!picker} onClick={usePaymentMethod}>
+              USAR ESTE MÉTODO DE PAGO
+            </Button>
+          </Card>
+        )}
 
         <Button
           size="lg"
-          className="w-full h-14 text-base font-black"
-          disabled={payments.length === 0 || missing > 0.009}
+          className={cn("w-full h-16 text-base font-black", posChannelButtonClass(channel))}
+          disabled={!canFinish}
           onClick={onConfirm}
         >
           FINALIZAR VENTA
+          {channel ? ` · ${posChannelLabel(channel, channelDetail)}` : ""}
         </Button>
+        {!canFinish ? (
+          <p className="text-xs text-center text-muted-foreground">
+            {channel === null
+              ? "Selecciona el origen de la venta para finalizar."
+              : missing > 0
+                ? "Registra pagos hasta que el faltante sea cero."
+                : "Registra al menos un método de pago."}
+          </p>
+        ) : null}
       </DialogContent>
     </Dialog>
   );
 }
 
-function Total({
+function Amount({
   label,
   value,
   rate,
+  size = "md",
   tone,
 }: {
   label: string;
   value: number;
   rate: number;
-  tone?: "ok" | "warn";
+  size?: "md" | "lg";
+  tone?: "default" | "muted" | "destructive" | "primary";
 }) {
   return (
-    <div className="rounded-xl border border-border/60 p-3">
+    <div>
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <Money value={value} rate={rate} size="md" align="left" tone={tone === "warn" ? "destructive" : "default"} />
+      <Money value={value} rate={rate} size={size} align="left" tone={tone} />
     </div>
   );
 }
