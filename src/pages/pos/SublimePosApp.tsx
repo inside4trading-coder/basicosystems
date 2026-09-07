@@ -55,7 +55,9 @@ export default function SublimePosApp() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [payments, setPayments] = useState<PosPaymentLine[]>([]);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [doc, setDoc] = useState<PosSaleDocument | null>(null);
+
 
   const session: PosSession = useMemo(() => {
     const reg = posRegister(registerId);
@@ -91,8 +93,10 @@ export default function SublimePosApp() {
       at: new Date().toLocaleString("es-VE"),
       session,
       customer,
+      invoiceNumber: invoiceNumber.trim() || null,
       channel: cart.channel,
       channelDetail: cart.channelDetail,
+
       lines: cart.lines,
       subtotalRegular: cart.subtotalRegular,
       discountTotal: cart.discountTotal,
@@ -118,8 +122,10 @@ export default function SublimePosApp() {
     setDoc(null);
     setPayments([]);
     setCustomer(null);
+    setInvoiceNumber("");
     cart.clear();
   };
+
 
   const onFunction = (id: PosFunctionId, label: string) => {
     if (id === "closures") return setClosuresOpen(true);
