@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Shirt } from "lucide-react";
 import { Money } from "@/lib/posMoney";
 import { POS_TAX_PCT, type PosCartApi } from "./usePosCart";
-import { PosChannelPicker } from "./PosChannelPicker";
 
 export function PosCart({
   cart,
