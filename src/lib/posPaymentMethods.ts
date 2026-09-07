@@ -47,7 +47,7 @@ export const POS_PAYMENT_METHODS: PosPaymentMethodDef[] = [
       { id: "reference", label: "Referencia", required: true, placeholder: "004512" },
     ],
   },
-  { id: "cash_usd", label: "Efectivo USD", currency: "USD", fields: [] },
+  { id: "cash_usd", label: "Efectivo REF", currency: "USD", fields: [] },
   { id: "cash_ves", label: "Efectivo VES", currency: "VES", fields: [] },
   {
     id: "zelle",
