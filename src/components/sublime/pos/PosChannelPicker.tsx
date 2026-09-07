@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { posChannelAccentClass } from "@/lib/posChannelStyle";
+import { posChannelAccentClass, posChannelRingClass } from "@/lib/posChannelStyle";
 import {
   POS_SALES_CHANNELS,
   posChannel,
@@ -43,7 +43,7 @@ export function PosChannelPicker({
         )}
       </div>
 
-      <div className={cn("flex flex-wrap gap-2", compact && "gap-1.5")}>
+      <div className={cn("grid grid-cols-3 gap-2", compact && "gap-1.5")}>
         {POS_SALES_CHANNELS.map((c) => {
           const active = channel === c.id;
           return (
@@ -52,9 +52,13 @@ export function PosChannelPicker({
               type="button"
               onClick={() => setChannel(active ? null : c.id)}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors",
+                "rounded-xl border px-3 py-3 text-sm font-black uppercase tracking-wide transition-all",
                 active
-                  ? cn(posChannelAccentClass(c.id), "border-transparent")
+                  ? cn(
+                      posChannelAccentClass(c.id),
+                      posChannelRingClass(c.id),
+                      "border-transparent ring-2 ring-offset-2 ring-offset-background scale-[1.02]"
+                    )
                   : "border-border/60 text-muted-foreground hover:border-primary/40"
               )}
             >
@@ -68,7 +72,7 @@ export function PosChannelPicker({
         <Input
           value={channelDetail}
           onChange={(e) => setChannelDetail(e.target.value)}
-          placeholder="Detalle del origen (feria, referido, TikTok…)"
+          placeholder="Detalle del origen"
           className="h-9 text-sm"
         />
       ) : null}
