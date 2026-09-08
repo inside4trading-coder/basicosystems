@@ -13,21 +13,39 @@ import {
   useDiscardProposal,
   useSublimeInventory,
   useSublimeLocations,
+  useSublimeMappings,
+  useSublimeWooCatalog,
 } from "@/hooks/useSublimeInventory";
 import { variantDisplay } from "@/lib/sublimeInventory";
+import { mappingKey } from "@/lib/sublimeWooMatch";
 
 /**
  * Validación inicial: hasta que un conteo físico se confirma aquí,
- * NADA de Abastecimiento se convierte en stock oficial.
+ * NADA de Abastecimiento ni de Woo se convierte en stock oficial.
+ * El stock Woo es solo comparativo.
  */
 export default function SublimeInventarioValidacion() {
   const { data, isLoading } = useSublimeInventory();
   const { data: locations = [] } = useSublimeLocations();
+  const { data: woo = [] } = useSublimeWooCatalog();
+  const { data: mappings = [] } = useSublimeMappings();
   const confirm = useConfirmProposal();
   const discard = useDiscardProposal();
 
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [onlyPending, setOnlyPending] = useState(true);
+
+  /** Stock Woo por variante del Hub, vía mapping (solo lectura/comparación). */
+  const wooQtyByVariant = useMemo(() => {
+    const wooByKey = new Map(woo.map((w) => [mappingKey(w.woo_product_id, w.woo_variation_id), w]));
+    const out = new Map<string, number | null>();
+    for (const m of mappings) {
+      if (m.status !== "mapped" || !m.variant_id) continue;
+      const w = wooByKey.get(mappingKey(m.external_product_id, m.external_variation_id));
+      if (w) out.set(m.variant_id, w.stock_quantity);
+    }
+    return out;
+  }, [woo, mappings]);
 
   const rows = useMemo(
     () => (data?.rows ?? []).filter((r) => r.proposals.length > 0),
