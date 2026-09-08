@@ -6,14 +6,20 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { variantLabel } from "@/lib/sublimeMock";
 import { Money } from "@/lib/posMoney";
-import { posCatalog, posCategories, type PosCatalogEntry } from "./usePosCart";
+import { type PosCatalogEntry } from "./usePosCart";
 
 export function PosCatalog({
   rate,
+  entries: allEntries,
+  categories,
+  loading,
   onPick,
   onScan,
 }: {
   rate: number;
+  entries: PosCatalogEntry[];
+  categories: string[];
+  loading?: boolean;
   onPick: (entry: PosCatalogEntry) => void;
   onScan: () => void;
 }) {
@@ -22,14 +28,14 @@ export function PosCatalog({
 
   const entries = useMemo(
     () =>
-      posCatalog.filter((e) => {
+      allEntries.filter((e) => {
         const matchCat = category === "all" || e.product.category === category;
         const text = `${e.product.title} ${e.variant.sku} ${e.variant.size} ${e.variant.color} ${
           e.product.manufacturerCode ?? ""
         }`.toLowerCase();
         return matchCat && (q.trim() === "" || text.includes(q.toLowerCase()));
       }),
-    [q, category]
+    [q, category, allEntries]
   );
 
   return (
@@ -55,7 +61,7 @@ export function PosCatalog({
         <Chip active={category === "all"} onClick={() => setCategory("all")}>
           Todo
         </Chip>
-        {posCategories.map((c) => (
+        {categories.map((c) => (
           <Chip key={c} active={category === c} onClick={() => setCategory(c)}>
             {c}
           </Chip>
@@ -72,7 +78,11 @@ export function PosCatalog({
           ))}
           {entries.length === 0 && (
             <p className="text-sm text-muted-foreground col-span-full py-10 text-center">
-              Sin resultados para esta búsqueda.
+              {loading
+                ? "Cargando catálogo…"
+                : allEntries.length === 0
+                  ? "Todavía no hay productos listos para vender en esta tienda. Completa el inventario en Sublime → Inventario."
+                  : "Sin resultados para esta búsqueda."}
             </p>
           )}
         </div>

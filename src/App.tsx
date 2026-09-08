@@ -43,6 +43,9 @@ import SublimeDashboard from "./pages/sublime/SublimeDashboard";
 import SublimePreparacion from "./pages/sublime/SublimePreparacion";
 import SublimePrepararProducto from "./pages/sublime/SublimePrepararProducto";
 import SublimeInventarioAlmacen from "./pages/sublime/SublimeInventarioAlmacen";
+import SublimeInventarioMaestro from "./pages/sublime/SublimeInventarioMaestro";
+import SublimeInventarioValidacion from "./pages/sublime/SublimeInventarioValidacion";
+import SublimeInventarioPendientes from "./pages/sublime/SublimeInventarioPendientes";
 import SublimeInventarioTienda from "./pages/sublime/SublimeInventarioTienda";
 import SublimeMovimientos from "./pages/sublime/SublimeMovimientos";
 import SublimePOS from "./pages/sublime/SublimePOS";
@@ -165,6 +168,9 @@ const App = () => (
                   <Route path="recepcion" element={<AbastecimientoRecepcion />} />
                 </Route>
                 <Route path="mercancia/preparar/:id" element={<SublimePrepararProducto />} />
+                <Route path="inventario" element={<SublimeInventarioMaestro />} />
+                <Route path="inventario/validacion" element={<SublimeInventarioValidacion />} />
+                <Route path="inventario/pendientes" element={<SublimeInventarioPendientes />} />
                 <Route path="inventario/almacen" element={<SublimeInventarioAlmacen />} />
                 <Route path="inventario/tienda" element={<SublimeInventarioTienda />} />
                 <Route path="inventario/movimientos" element={<SublimeMovimientos />} />
