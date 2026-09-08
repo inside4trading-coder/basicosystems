@@ -46,6 +46,43 @@ export interface SublimeInvVariant {
   discount_pct: number | null;
   is_active: boolean;
   pos_enabled: boolean;
+  cost_ref: number | null;
+  cost_source: CostSource | null;
+  cost_note: string | null;
+}
+
+/** Fila espejo del catálogo Woo (solo lectura, nunca fuente de verdad). */
+export interface SublimeWooCatalogRow {
+  id: string;
+  woo_product_id: number;
+  woo_variation_id: number | null;
+  parent_id: number | null;
+  woo_type: string | null;
+  name: string;
+  sku: string | null;
+  size_label: string | null;
+  color_label: string | null;
+  price: number | null;
+  regular_price: number | null;
+  stock_quantity: number | null;
+  stock_status: string | null;
+  woo_status: string | null;
+  image_url: string | null;
+  permalink: string | null;
+  last_read_at: string;
+}
+
+export interface SublimeChannelMapping {
+  id: string;
+  channel: string;
+  product_id: string | null;
+  variant_id: string | null;
+  external_product_id: number;
+  external_variation_id: number | null;
+  status: "mapped" | "ignored";
+  match_method: "saved_id" | "sku" | "reference" | "manual";
+  mapped_at: string;
+  note: string | null;
 }
 
 export interface SublimeInvStock {
@@ -151,16 +188,69 @@ export function isPosReady(args: Parameters<typeof posBlockers>[0]): boolean {
   return posBlockers(args).length === 0;
 }
 
-/** Datos que faltan por completar (independiente del stock). */
+export type CostSource = "abastecimiento" | "historico_manual" | "estimado" | "consignacion" | "otro";
+export const COST_SOURCE_LABEL: Record<CostSource, string> = {
+  abastecimiento: "Abastecimiento",
+  historico_manual: "Histórico manual",
+  estimado: "Estimado",
+  consignacion: "Consignación",
+  otro: "Otro",
+};
+
+export type MissingField =
+  | "SKU" | "Color" | "Categoría" | "Precio" | "Imagen" | "Talla"
+  | "Costo" | "Ubicación" | "Stock validado" | "Mapeo Woo";
+
+/**
+ * Datos que faltan por completar. Los últimos cuatro son opcionales porque
+ * dependen de tablas que no siempre están cargadas.
+ */
 export function missingFields(args: {
   product: Pick<SublimeInvProduct, "category" | "main_image_url">;
-  variant: Pick<SublimeInvVariant, "sku" | "color" | "current_price_ref">;
-}): string[] {
-  const out: string[] = [];
+  variant: Pick<SublimeInvVariant, "sku" | "color" | "size" | "current_price_ref"> & Partial<Pick<SublimeInvVariant, "cost_ref">>;
+  hasLocation?: boolean;
+  hasValidatedStock?: boolean;
+  hasWooMapping?: boolean;
+}): MissingField[] {
+  const out: MissingField[] = [];
   if (!args.variant.sku) out.push("SKU");
+  if (!args.variant.size) out.push("Talla");
   if (!args.variant.color) out.push("Color");
   if (!args.product.category) out.push("Categoría");
   if (!(Number(args.variant.current_price_ref ?? 0) > 0)) out.push("Precio");
   if (!args.product.main_image_url) out.push("Imagen");
+  if ("cost_ref" in args.variant && !(Number(args.variant.cost_ref ?? 0) > 0)) out.push("Costo");
+  if (args.hasLocation === false) out.push("Ubicación");
+  if (args.hasValidatedStock === false) out.push("Stock validado");
+  if (args.hasWooMapping === false) out.push("Mapeo Woo");
   return out;
+}
+
+// ---------------------------------------------------------------
+// Completitud
+// ---------------------------------------------------------------
+
+export type Completeness = "incomplete" | "operational" | "financial";
+export const COMPLETENESS_LABEL: Record<Completeness, string> = {
+  incomplete: "Incompleta",
+  operational: "Operativa",
+  financial: "Financiera",
+};
+
+/**
+ * Operativa: producto + variante + SKU + precio válido + stock confirmado en
+ * alguna ubicación. Financiera: además costo válido con origen declarado.
+ */
+export function completeness(args: {
+  variant: Pick<SublimeInvVariant, "sku" | "size" | "current_price_ref" | "full_price_ref" | "cost_ref" | "cost_source">;
+  hasValidatedStock: boolean;
+}): Completeness {
+  const v = args.variant;
+  const current = Number(v.current_price_ref ?? 0);
+  const full = v.full_price_ref == null ? null : Number(v.full_price_ref);
+  const priceOk = current > 0 && (full == null || full >= current);
+  const operational = !!v.sku?.trim() && !!v.size && priceOk && args.hasValidatedStock;
+  if (!operational) return "incomplete";
+  const costOk = Number(v.cost_ref ?? 0) > 0 && !!v.cost_source;
+  return costOk ? "financial" : "operational";
 }

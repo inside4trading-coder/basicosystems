@@ -8858,6 +8858,69 @@ export type Database = {
         }
         Relationships: []
       }
+      sublime_channel_mappings: {
+        Row: {
+          channel: string
+          created_at: string
+          external_product_id: number
+          external_variation_id: number | null
+          id: string
+          mapped_at: string
+          mapped_by: string | null
+          match_method: string
+          note: string | null
+          product_id: string | null
+          status: string
+          updated_at: string
+          variant_id: string | null
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          external_product_id: number
+          external_variation_id?: number | null
+          id?: string
+          mapped_at?: string
+          mapped_by?: string | null
+          match_method?: string
+          note?: string | null
+          product_id?: string | null
+          status?: string
+          updated_at?: string
+          variant_id?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          external_product_id?: number
+          external_variation_id?: number | null
+          id?: string
+          mapped_at?: string
+          mapped_by?: string | null
+          match_method?: string
+          note?: string | null
+          product_id?: string | null
+          status?: string
+          updated_at?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_channel_mappings_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_channel_mappings_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sublime_clock_config: {
         Row: {
           id: boolean
@@ -9510,6 +9573,7 @@ export type Database = {
           suggested_qty: number
           updated_at: string
           variant_id: string
+          woo_qty: number | null
         }
         Insert: {
           confirmed_at?: string | null
@@ -9524,6 +9588,7 @@ export type Database = {
           suggested_qty?: number
           updated_at?: string
           variant_id: string
+          woo_qty?: number | null
         }
         Update: {
           confirmed_at?: string | null
@@ -9538,6 +9603,7 @@ export type Database = {
           suggested_qty?: number
           updated_at?: string
           variant_id?: string
+          woo_qty?: number | null
         }
         Relationships: [
           {
@@ -9707,6 +9773,9 @@ export type Database = {
         Row: {
           barcode: string | null
           color: string | null
+          cost_note: string | null
+          cost_ref: number | null
+          cost_source: string | null
           created_at: string
           current_price_ref: number | null
           discount_pct: number | null
@@ -9723,6 +9792,9 @@ export type Database = {
         Insert: {
           barcode?: string | null
           color?: string | null
+          cost_note?: string | null
+          cost_ref?: number | null
+          cost_source?: string | null
           created_at?: string
           current_price_ref?: number | null
           discount_pct?: number | null
@@ -9739,6 +9811,9 @@ export type Database = {
         Update: {
           barcode?: string | null
           color?: string | null
+          cost_note?: string | null
+          cost_ref?: number | null
+          cost_source?: string | null
           created_at?: string
           current_price_ref?: number | null
           discount_pct?: number | null
@@ -9761,6 +9836,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sublime_woo_catalog: {
+        Row: {
+          attributes: Json | null
+          color_label: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          last_read_at: string
+          name: string
+          parent_id: number | null
+          permalink: string | null
+          price: number | null
+          raw: Json | null
+          regular_price: number | null
+          size_label: string | null
+          sku: string | null
+          stock_quantity: number | null
+          stock_status: string | null
+          updated_at: string
+          woo_product_id: number
+          woo_status: string | null
+          woo_type: string | null
+          woo_variation_id: number | null
+        }
+        Insert: {
+          attributes?: Json | null
+          color_label?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          last_read_at?: string
+          name: string
+          parent_id?: number | null
+          permalink?: string | null
+          price?: number | null
+          raw?: Json | null
+          regular_price?: number | null
+          size_label?: string | null
+          sku?: string | null
+          stock_quantity?: number | null
+          stock_status?: string | null
+          updated_at?: string
+          woo_product_id: number
+          woo_status?: string | null
+          woo_type?: string | null
+          woo_variation_id?: number | null
+        }
+        Update: {
+          attributes?: Json | null
+          color_label?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          last_read_at?: string
+          name?: string
+          parent_id?: number | null
+          permalink?: string | null
+          price?: number | null
+          raw?: Json | null
+          regular_price?: number | null
+          size_label?: string | null
+          sku?: string | null
+          stock_quantity?: number | null
+          stock_status?: string | null
+          updated_at?: string
+          woo_product_id?: number
+          woo_status?: string | null
+          woo_type?: string | null
+          woo_variation_id?: number | null
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {

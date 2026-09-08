@@ -4,12 +4,15 @@ import {
   normalizeName,
   posBlockers,
   SIZE_UNIQUE,
+  type CostSource,
+  type SublimeChannelMapping,
   type SublimeInvLocation,
   type SublimeInvLot,
   type SublimeInvProduct,
   type SublimeInvProposal,
   type SublimeInvStock,
   type SublimeInvVariant,
+  type SublimeWooCatalogRow,
 } from "@/lib/sublimeInventory";
 import {
   FALLBACK_PRICING_RULES,
@@ -302,6 +305,8 @@ export function useImportSublimeCatalog() {
         const finalPvp = getFinalPvp(item, rule, shipment);
         const totalUnits = Math.max(1, calculateTotalUnits(item));
         const unitCost = calculateTotalCost(item, shipment) / totalUnits;
+        const costRef = Number.isFinite(unitCost) && unitCost > 0 ? Number(unitCost.toFixed(2)) : null;
+        const costSource: CostSource = item.is_consignment ? "consignacion" : "abastecimiento";
 
         // 1) Producto destino: lote ya vinculado → SKU → nombre normalizado → nuevo.
         let productId = productByLotItem.get(item.id) ?? null;
@@ -364,6 +369,8 @@ export function useImportSublimeCatalog() {
                 current_price_ref: finalPvp,
                 is_active: true,
                 pos_enabled: false,
+                cost_ref: costRef,
+                cost_source: costRef != null ? costSource : null,
               })
               .select()
               .single();
@@ -372,12 +379,22 @@ export function useImportSublimeCatalog() {
             variants.push(variant);
             if (variant.sku) variantBySku.set(variant.sku.toLowerCase(), variant);
             res.variantsCreated++;
-          } else if (variant.current_price_ref == null && finalPvp != null) {
-            const { error } = await sb
-              .from(T_VAR)
-              .update({ current_price_ref: finalPvp, full_price_ref: finalPvp })
-              .eq("id", variant.id);
-            if (error) throw error;
+          } else {
+            const patch: Record<string, unknown> = {};
+            if (variant.current_price_ref == null && finalPvp != null) {
+              patch.current_price_ref = finalPvp;
+              patch.full_price_ref = finalPvp;
+            }
+            // Costo heredado del lote solo si la variante aún no tiene ninguno.
+            if (variant.cost_ref == null && costRef != null) {
+              patch.cost_ref = costRef;
+              patch.cost_source = costSource;
+            }
+            if (Object.keys(patch).length) {
+              const { error } = await sb.from(T_VAR).update(patch).eq("id", variant.id);
+              if (error) throw error;
+              Object.assign(variant, patch);
+            }
           }
 
           // 2) Lote: costo, envío y consignación siempre conservados.
@@ -546,5 +563,224 @@ export function useUnimportedMerchItems() {
         (i) => !linked.has(i.id)
       );
     },
+  });
+}
+
+// ---------------------------------------------------------------
+// C. Mapeo Woo ↔ Hub (Woo NUNCA es fuente de verdad)
+// ---------------------------------------------------------------
+
+const T_WOO = "sublime_woo_catalog";
+const T_MAP = "sublime_channel_mappings";
+
+export function useSublimeWooCatalog() {
+  return useQuery({
+    queryKey: ["sublime_woo_catalog"],
+    queryFn: async () => {
+      const { data, error } = await sb.from(T_WOO).select("*").order("name").order("woo_variation_id", { nullsFirst: true });
+      if (error) throw error;
+      return (data ?? []) as SublimeWooCatalogRow[];
+    },
+  });
+}
+
+export function useSublimeMappings() {
+  return useQuery({
+    queryKey: ["sublime_channel_mappings"],
+    queryFn: async () => {
+      const { data, error } = await sb.from(T_MAP).select("*").eq("channel", "woo");
+      if (error) throw error;
+      return (data ?? []) as SublimeChannelMapping[];
+    },
+  });
+}
+
+function invalidateWoo(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["sublime_woo_catalog"] });
+  qc.invalidateQueries({ queryKey: ["sublime_channel_mappings"] });
+  invalidate(qc);
+}
+
+/** Lee el catálogo Woo completo y refresca la tabla espejo (solo lectura de Woo). */
+export function useReadWooCatalog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("sublime-woo-catalog-read", { body: {} });
+      if (error) {
+        let msg = error.message;
+        try {
+          const ctx = (error as any).context;
+          if (ctx?.text) {
+            const j = JSON.parse(await ctx.text());
+            msg = j.message ?? j.error ?? msg;
+          }
+        } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      return data as { products: number; variations: number; rows: number; inserted: number; updated: number };
+    },
+    onSuccess: () => invalidateWoo(qc),
+  });
+}
+
+async function upsertMapping(payload: Partial<SublimeChannelMapping> & { external_product_id: number; external_variation_id: number | null }) {
+  const { data: userRes } = await supabase.auth.getUser();
+  const q = sb.from(T_MAP).select("id").eq("channel", "woo").eq("external_product_id", payload.external_product_id);
+  const { data: prev } = payload.external_variation_id
+    ? await q.eq("external_variation_id", payload.external_variation_id).maybeSingle()
+    : await q.is("external_variation_id", null).maybeSingle();
+  const row = { channel: "woo", ...payload, mapped_by: userRes?.user?.id ?? null, mapped_at: new Date().toISOString() };
+  const { error } = prev?.id
+    ? await sb.from(T_MAP).update(row).eq("id", prev.id)
+    : await sb.from(T_MAP).insert(row);
+  if (error) throw error;
+}
+
+/** Vincula una fila Woo a una variante existente y guarda el ID como espejo. */
+export function useLinkWooToVariant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      row,
+      variantId,
+      productId,
+      method,
+    }: {
+      row: SublimeWooCatalogRow;
+      variantId: string;
+      productId: string;
+      method: SublimeChannelMapping["match_method"];
+    }) => {
+      await upsertMapping({
+        external_product_id: row.woo_product_id,
+        external_variation_id: row.woo_variation_id,
+        variant_id: variantId,
+        product_id: productId,
+        status: "mapped",
+        match_method: method,
+      });
+      // Espejo de lectura para no romper V1 (nunca autoridad).
+      const { error: pe } = await sb.from(T_PROD).update({ woo_product_id: row.woo_product_id }).eq("id", productId);
+      if (pe) throw pe;
+      if (row.woo_variation_id) {
+        const { error: ve } = await sb.from(T_VAR).update({ woo_variation_id: row.woo_variation_id }).eq("id", variantId);
+        if (ve) throw ve;
+      }
+    },
+    onSuccess: () => invalidateWoo(qc),
+  });
+}
+
+/**
+ * Crea un producto maestro desde los datos Woo. Copia nombre, imagen, talla,
+ * color, precio y SKU si Woo lo trae. Categoría y costo quedan pendientes.
+ */
+export function useCreateProductFromWoo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ rows }: { rows: SublimeWooCatalogRow[] }) => {
+      if (!rows.length) return;
+      const parent = rows.find((r) => !r.woo_variation_id) ?? rows[0];
+      const variations = rows.filter((r) => r.woo_variation_id);
+      const { data: existingVars } = await sb.from(T_VAR).select("sku");
+      const taken = new Set(((existingVars ?? []) as { sku: string | null }[]).map((v) => v.sku?.trim().toLowerCase()).filter(Boolean));
+
+      const { data: prod, error: pe } = await sb
+        .from(T_PROD)
+        .insert({
+          name: parent.name.trim(),
+          brand: "sublime",
+          category: null,
+          main_image_url: parent.image_url,
+          is_active: true,
+          woo_product_id: parent.woo_product_id,
+        })
+        .select()
+        .single();
+      if (pe) throw pe;
+      const productId = (prod as SublimeInvProduct).id;
+
+      const toCreate = variations.length ? variations : [parent];
+      for (const r of toCreate) {
+        const skuRaw = r.sku?.trim() ?? "";
+        const sku = skuRaw && !taken.has(skuRaw.toLowerCase()) ? skuRaw : null;
+        if (sku) taken.add(sku.toLowerCase());
+        const price = r.price ?? r.regular_price ?? null;
+        const full = r.regular_price ?? r.price ?? null;
+        const { data: v, error: ve } = await sb
+          .from(T_VAR)
+          .insert({
+            product_id: productId,
+            size: r.size_label ?? (variations.length ? null : SIZE_UNIQUE),
+            color: r.color_label ?? null,
+            sku,
+            full_price_ref: full,
+            current_price_ref: price,
+            is_active: true,
+            pos_enabled: false,
+            woo_variation_id: r.woo_variation_id,
+          })
+          .select()
+          .single();
+        if (ve) throw ve;
+        await upsertMapping({
+          external_product_id: r.woo_product_id,
+          external_variation_id: r.woo_variation_id,
+          variant_id: (v as SublimeInvVariant).id,
+          product_id: productId,
+          status: "mapped",
+          match_method: "manual",
+        });
+      }
+      if (variations.length) {
+        await upsertMapping({
+          external_product_id: parent.woo_product_id,
+          external_variation_id: null,
+          variant_id: null,
+          product_id: productId,
+          status: "mapped",
+          match_method: "manual",
+        });
+      }
+      return productId;
+    },
+    onSuccess: () => invalidateWoo(qc),
+  });
+}
+
+export function useIgnoreWooItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ row, ignore }: { row: SublimeWooCatalogRow; ignore: boolean }) => {
+      if (ignore) {
+        await upsertMapping({
+          external_product_id: row.woo_product_id,
+          external_variation_id: row.woo_variation_id,
+          variant_id: null,
+          product_id: null,
+          status: "ignored",
+          match_method: "manual",
+        });
+      } else {
+        const q = sb.from(T_MAP).delete().eq("channel", "woo").eq("external_product_id", row.woo_product_id).eq("status", "ignored");
+        const { error } = row.woo_variation_id
+          ? await q.eq("external_variation_id", row.woo_variation_id)
+          : await q.is("external_variation_id", null);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => invalidateWoo(qc),
+  });
+}
+
+export function useUpdateVariantCost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, cost_ref, cost_source, cost_note }: { id: string; cost_ref: number | null; cost_source: CostSource | null; cost_note?: string | null }) => {
+      const { error } = await sb.from(T_VAR).update({ cost_ref, cost_source, cost_note: cost_note ?? null }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidate(qc),
   });
 }
