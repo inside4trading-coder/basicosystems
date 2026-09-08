@@ -106,6 +106,7 @@ export default function SublimeInventarioValidacion() {
               <TableHead>Producto</TableHead>
               <TableHead>Variante</TableHead>
               <TableHead className="text-right">Sugerido</TableHead>
+              <TableHead className="text-right whitespace-nowrap" title="Solo comparativo. Nunca se copia como stock oficial.">Woo</TableHead>
               {locations.map((l) => (
                 <TableHead key={l.id} className="text-right whitespace-nowrap">Físico {l.name}</TableHead>
               ))}
@@ -135,6 +136,9 @@ export default function SublimeInventarioValidacion() {
                     {variantDisplay(r.variant)}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{suggested}</TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                    {wooQtyByVariant.has(r.variant.id) ? (wooQtyByVariant.get(r.variant.id) ?? "—") : "sin mapeo"}
+                  </TableCell>
                   {locations.map((l) => (
                     <TableCell key={l.id} className="text-right">
                       <Input
@@ -186,7 +190,7 @@ export default function SublimeInventarioValidacion() {
             })}
             {visible.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6 + locations.length} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={7 + locations.length} className="text-center text-muted-foreground py-10">
                   {isLoading
                     ? "Cargando propuestas…"
                     : "No hay conteos por validar. Genera propuestas desde Inventario Maestro."}
