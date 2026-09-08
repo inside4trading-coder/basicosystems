@@ -46,6 +46,7 @@ import SublimeInventarioAlmacen from "./pages/sublime/SublimeInventarioAlmacen";
 import SublimeInventarioMaestro from "./pages/sublime/SublimeInventarioMaestro";
 import SublimeInventarioValidacion from "./pages/sublime/SublimeInventarioValidacion";
 import SublimeInventarioPendientes from "./pages/sublime/SublimeInventarioPendientes";
+import SublimeMapeoWoo from "./pages/sublime/SublimeMapeoWoo";
 import SublimeInventarioTienda from "./pages/sublime/SublimeInventarioTienda";
 import SublimeMovimientos from "./pages/sublime/SublimeMovimientos";
 import SublimePOS from "./pages/sublime/SublimePOS";
@@ -171,6 +172,7 @@ const App = () => (
                 <Route path="inventario" element={<SublimeInventarioMaestro />} />
                 <Route path="inventario/validacion" element={<SublimeInventarioValidacion />} />
                 <Route path="inventario/pendientes" element={<SublimeInventarioPendientes />} />
+                <Route path="mapeo-woo" element={<SublimeMapeoWoo />} />
                 <Route path="inventario/almacen" element={<SublimeInventarioAlmacen />} />
                 <Route path="inventario/tienda" element={<SublimeInventarioTienda />} />
                 <Route path="inventario/movimientos" element={<SublimeMovimientos />} />

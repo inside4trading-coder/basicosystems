@@ -18,7 +18,7 @@ import {
   useUpdateSublimeProduct,
   useUpdateSublimeVariant,
 } from "@/hooks/useSublimeInventory";
-import { POS_BLOCK_LABEL, posBlockers } from "@/lib/sublimeInventory";
+import { COMPLETENESS_LABEL, completeness, POS_BLOCK_LABEL, posBlockers } from "@/lib/sublimeInventory";
 
 export default function SublimeInventarioMaestro() {
   const { data, isLoading } = useSublimeInventory();
@@ -51,7 +51,9 @@ export default function SublimeInventarioMaestro() {
         const totalOnHand = r.stocks.reduce((a, s) => a + Number(s.quantity_on_hand ?? 0), 0);
         const totalReserved = r.stocks.reduce((a, s) => a + Number(s.quantity_reserved ?? 0), 0);
         const totalAvailable = r.stocks.reduce((a, s) => a + Number(s.quantity_available ?? 0), 0);
-        return { ...r, stockAt, posStock, blockers, totalOnHand, totalReserved, totalAvailable };
+        const hasValidatedStock = r.proposals.some((p) => p.status === "confirmed") || r.stocks.some((s) => s.last_counted_at);
+        const level = completeness({ variant: r.variant, hasValidatedStock });
+        return { ...r, stockAt, posStock, blockers, totalOnHand, totalReserved, totalAvailable, level };
       }),
     [rows, locations]
   );
@@ -242,6 +244,13 @@ export default function SublimeInventarioMaestro() {
                 <TableCell className="text-right tabular-nums">{r.totalReserved}</TableCell>
                 <TableCell className="text-right tabular-nums font-semibold">{r.totalAvailable}</TableCell>
                 <TableCell>
+                  <Badge
+                    variant={r.level === "incomplete" ? "outline" : "default"}
+                    className={`mb-1 text-[10px] whitespace-nowrap ${r.level === "financial" ? "bg-emerald-700 text-white" : ""}`}
+                    title="Operativa: SKU + precio + stock validado. Financiera: además costo con origen."
+                  >
+                    {COMPLETENESS_LABEL[r.level]}
+                  </Badge>
                   {r.blockers.length === 0 ? (
                     <Badge className="bg-emerald-600 text-white whitespace-nowrap">Lista para POS</Badge>
                   ) : (

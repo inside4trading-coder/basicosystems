@@ -13,21 +13,39 @@ import {
   useDiscardProposal,
   useSublimeInventory,
   useSublimeLocations,
+  useSublimeMappings,
+  useSublimeWooCatalog,
 } from "@/hooks/useSublimeInventory";
 import { variantDisplay } from "@/lib/sublimeInventory";
+import { mappingKey } from "@/lib/sublimeWooMatch";
 
 /**
  * Validación inicial: hasta que un conteo físico se confirma aquí,
- * NADA de Abastecimiento se convierte en stock oficial.
+ * NADA de Abastecimiento ni de Woo se convierte en stock oficial.
+ * El stock Woo es solo comparativo.
  */
 export default function SublimeInventarioValidacion() {
   const { data, isLoading } = useSublimeInventory();
   const { data: locations = [] } = useSublimeLocations();
+  const { data: woo = [] } = useSublimeWooCatalog();
+  const { data: mappings = [] } = useSublimeMappings();
   const confirm = useConfirmProposal();
   const discard = useDiscardProposal();
 
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [onlyPending, setOnlyPending] = useState(true);
+
+  /** Stock Woo por variante del Hub, vía mapping (solo lectura/comparación). */
+  const wooQtyByVariant = useMemo(() => {
+    const wooByKey = new Map(woo.map((w) => [mappingKey(w.woo_product_id, w.woo_variation_id), w]));
+    const out = new Map<string, number | null>();
+    for (const m of mappings) {
+      if (m.status !== "mapped" || !m.variant_id) continue;
+      const w = wooByKey.get(mappingKey(m.external_product_id, m.external_variation_id));
+      if (w) out.set(m.variant_id, w.stock_quantity);
+    }
+    return out;
+  }, [woo, mappings]);
 
   const rows = useMemo(
     () => (data?.rows ?? []).filter((r) => r.proposals.length > 0),
@@ -88,6 +106,7 @@ export default function SublimeInventarioValidacion() {
               <TableHead>Producto</TableHead>
               <TableHead>Variante</TableHead>
               <TableHead className="text-right">Sugerido</TableHead>
+              <TableHead className="text-right whitespace-nowrap" title="Solo comparativo. Nunca se copia como stock oficial.">Woo</TableHead>
               {locations.map((l) => (
                 <TableHead key={l.id} className="text-right whitespace-nowrap">Físico {l.name}</TableHead>
               ))}
@@ -117,6 +136,9 @@ export default function SublimeInventarioValidacion() {
                     {variantDisplay(r.variant)}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{suggested}</TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                    {wooQtyByVariant.has(r.variant.id) ? (wooQtyByVariant.get(r.variant.id) ?? "—") : "sin mapeo"}
+                  </TableCell>
                   {locations.map((l) => (
                     <TableCell key={l.id} className="text-right">
                       <Input
@@ -168,7 +190,7 @@ export default function SublimeInventarioValidacion() {
             })}
             {visible.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6 + locations.length} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={7 + locations.length} className="text-center text-muted-foreground py-10">
                   {isLoading
                     ? "Cargando propuestas…"
                     : "No hay conteos por validar. Genera propuestas desde Inventario Maestro."}

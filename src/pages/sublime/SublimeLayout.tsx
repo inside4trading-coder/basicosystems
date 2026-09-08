@@ -18,6 +18,7 @@ import {
   Ship,
   PackageCheck,
   Boxes,
+  Link2,
   ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ const groups: { label: string; items: Section[] }[] = [
       { to: "/sublime/inventario", label: "Inventario Maestro", icon: Boxes },
       { to: "/sublime/inventario/validacion", label: "Validación inicial", icon: ClipboardList },
       { to: "/sublime/inventario/pendientes", label: "Pendientes", icon: PackageCheck },
+      { to: "/sublime/mapeo-woo", label: "Mapeo Woo", icon: Link2 },
       { to: "/sublime/inventario/almacen", label: "Almacén", icon: Warehouse },
       { to: "/sublime/inventario/tienda", label: "Tienda", icon: Store },
       { to: "/sublime/inventario/movimientos", label: "Movimientos", icon: ArrowLeftRight },
