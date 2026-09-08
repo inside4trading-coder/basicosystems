@@ -9128,6 +9128,42 @@ export type Database = {
         }
         Relationships: []
       }
+      sublime_locations: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          sells_in_pos: boolean
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          sells_in_pos?: boolean
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          sells_in_pos?: boolean
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sublime_merch_boxes: {
         Row: {
           box_number: string
@@ -9415,6 +9451,162 @@ export type Database = {
         }
         Relationships: []
       }
+      sublime_products: {
+        Row: {
+          brand: string
+          category: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          main_image_url: string | null
+          name: string
+          notes: string | null
+          product_type: string | null
+          updated_at: string
+          woo_product_id: number | null
+        }
+        Insert: {
+          brand?: string
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          main_image_url?: string | null
+          name: string
+          notes?: string | null
+          product_type?: string | null
+          updated_at?: string
+          woo_product_id?: number | null
+        }
+        Update: {
+          brand?: string
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          main_image_url?: string | null
+          name?: string
+          notes?: string | null
+          product_type?: string | null
+          updated_at?: string
+          woo_product_id?: number | null
+        }
+        Relationships: []
+      }
+      sublime_stock_intake_proposals: {
+        Row: {
+          confirmed_at: string | null
+          confirmed_by: string | null
+          counted_qty: number | null
+          created_at: string
+          id: string
+          location_id: string
+          note: string | null
+          source_merch_item_id: string | null
+          status: string
+          suggested_qty: number
+          updated_at: string
+          variant_id: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          counted_qty?: number | null
+          created_at?: string
+          id?: string
+          location_id: string
+          note?: string | null
+          source_merch_item_id?: string | null
+          status?: string
+          suggested_qty?: number
+          updated_at?: string
+          variant_id: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          counted_qty?: number | null
+          created_at?: string
+          id?: string
+          location_id?: string
+          note?: string | null
+          source_merch_item_id?: string | null
+          status?: string
+          suggested_qty?: number
+          updated_at?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_stock_intake_proposals_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_stock_intake_proposals_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sublime_stocks: {
+        Row: {
+          created_at: string
+          id: string
+          last_counted_at: string | null
+          location_id: string
+          quantity_available: number | null
+          quantity_on_hand: number
+          quantity_reserved: number
+          updated_at: string
+          variant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_counted_at?: string | null
+          location_id: string
+          quantity_available?: number | null
+          quantity_on_hand?: number
+          quantity_reserved?: number
+          updated_at?: string
+          variant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_counted_at?: string | null
+          location_id?: string
+          quantity_available?: number | null
+          quantity_on_hand?: number
+          quantity_reserved?: number
+          updated_at?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_stocks_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_stocks_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sublime_stores: {
         Row: {
           active: boolean
@@ -9450,6 +9642,125 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      sublime_variant_lots: {
+        Row: {
+          consignment_commission_amount: number | null
+          consignment_commission_pct: number | null
+          created_at: string
+          id: string
+          is_consignment: boolean
+          merch_item_id: string
+          qty_from_lot: number
+          shipment_id: string | null
+          size: string | null
+          unit_cost_ref: number | null
+          updated_at: string
+          variant_id: string
+        }
+        Insert: {
+          consignment_commission_amount?: number | null
+          consignment_commission_pct?: number | null
+          created_at?: string
+          id?: string
+          is_consignment?: boolean
+          merch_item_id: string
+          qty_from_lot?: number
+          shipment_id?: string | null
+          size?: string | null
+          unit_cost_ref?: number | null
+          updated_at?: string
+          variant_id: string
+        }
+        Update: {
+          consignment_commission_amount?: number | null
+          consignment_commission_pct?: number | null
+          created_at?: string
+          id?: string
+          is_consignment?: boolean
+          merch_item_id?: string
+          qty_from_lot?: number
+          shipment_id?: string | null
+          size?: string | null
+          unit_cost_ref?: number | null
+          updated_at?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_variant_lots_merch_item_id_fkey"
+            columns: ["merch_item_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_merch_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_variant_lots_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sublime_variants: {
+        Row: {
+          barcode: string | null
+          color: string | null
+          created_at: string
+          current_price_ref: number | null
+          discount_pct: number | null
+          full_price_ref: number | null
+          id: string
+          is_active: boolean
+          pos_enabled: boolean
+          product_id: string
+          size: string | null
+          sku: string | null
+          updated_at: string
+          woo_variation_id: number | null
+        }
+        Insert: {
+          barcode?: string | null
+          color?: string | null
+          created_at?: string
+          current_price_ref?: number | null
+          discount_pct?: number | null
+          full_price_ref?: number | null
+          id?: string
+          is_active?: boolean
+          pos_enabled?: boolean
+          product_id: string
+          size?: string | null
+          sku?: string | null
+          updated_at?: string
+          woo_variation_id?: number | null
+        }
+        Update: {
+          barcode?: string | null
+          color?: string | null
+          created_at?: string
+          current_price_ref?: number | null
+          discount_pct?: number | null
+          full_price_ref?: number | null
+          id?: string
+          is_active?: boolean
+          pos_enabled?: boolean
+          product_id?: string
+          size?: string | null
+          sku?: string | null
+          updated_at?: string
+          woo_variation_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

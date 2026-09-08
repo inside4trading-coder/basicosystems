@@ -25,6 +25,7 @@ import {
   type PosSaleDocument,
 } from "@/components/sublime/pos/PosReceiptPreview";
 import { POS_BCV_RATE, usePosCart } from "@/components/sublime/pos/usePosCart";
+import { useSublimePosCatalog } from "@/components/sublime/pos/useSublimePosCatalog";
 import { POS_STORE, posCashier, posRegister, posSessionOf } from "@/lib/posSession";
 import { posAudit } from "@/lib/posAudit";
 import { posChannelLabel } from "@/lib/posSalesChannels";
@@ -40,7 +41,11 @@ export default function SublimePosApp() {
   const [registerId, setRegisterId] = useState("reg-1");
   const [cashierId, setCashierId] = useState("csh-1");
 
-  const cart = usePosCart(registerId);
+  const catalogQuery = useSublimePosCatalog();
+  const catalog = catalogQuery.data?.entries ?? [];
+  const categories = catalogQuery.data?.categories ?? [];
+
+  const cart = usePosCart(registerId, catalog);
   const drawerApi = usePosCashDrawer();
   const drawer = drawerApi.drawerOf(registerId);
 
@@ -166,6 +171,9 @@ export default function SublimePosApp() {
           <PosFunctionsBar onAction={onFunction} />
           <PosCatalog
             rate={session.rate}
+            entries={catalog}
+            categories={categories}
+            loading={catalogQuery.isLoading}
             onPick={(e) => cart.add(e.variant.id)}
             onScan={() => toast.info("Escaneo: conecta un lector o usa la búsqueda por SKU.")}
           />

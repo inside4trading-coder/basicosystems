@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { mockProducts, mockUnits, mockVariants, variantLabel } from "@/lib/sublimeMock";
+import { variantLabel } from "@/lib/sublimeMock";
 import type { SublimeProduct, SublimeVariant } from "@/types/sublimeHub";
 import type { PosSalesChannelId } from "@/lib/posSalesChannels";
 
@@ -75,43 +75,11 @@ export interface PosCartLine {
   discount: PosLineDiscount | null;
 }
 
-/** Disponibilidad exclusiva de la tienda activa: nunca suma almacén. */
-export function storeStockOf(variantId: string, locationId = POS_STORE_LOCATION) {
-  return mockUnits.filter(
-    (u) => u.variantId === variantId && u.locationId === locationId && u.status === "available"
-  ).length;
-}
-
 /**
- * Precios promocionales simulados: precio regular por variante.
- * El precio vigente sigue siendo el `pvp` del catálogo.
+ * El catálogo del POS ya NO vive aquí: proviene del Inventario Maestro Sublime
+ * (`useSublimePosCatalog`) y se inyecta al carrito.
  */
-const POS_REGULAR_PRICES: Record<string, number> = {
-  "var-1": 40,
-  "var-2": 40,
-  "var-4": 60,
-  "var-7": 92,
-};
 
-export const posCatalog: PosCatalogEntry[] = mockVariants.map((variant) => {
-  const finalPrice = variant.pvp;
-  const regularPrice = Math.max(POS_REGULAR_PRICES[variant.id] ?? finalPrice, finalPrice);
-  const unitDiscount = Math.max(0, regularPrice - finalPrice);
-  return {
-    variant,
-    product: mockProducts.find((p) => p.id === variant.productId)!,
-    storeStock: storeStockOf(variant.id),
-    regularPrice,
-    finalPrice,
-    unitDiscount,
-    discountPct: regularPrice > 0 ? Math.round((unitDiscount / regularPrice) * 100) : 0,
-    discountSource: unitDiscount > 0 ? ("promo" as PosDiscountSource) : null,
-  };
-});
-
-export const posCategories = Array.from(
-  new Set(posCatalog.map((e) => e.product.category).filter(Boolean) as string[])
-);
 
 interface RegisterCartState {
   items: Record<string, number>;
@@ -156,7 +124,7 @@ const MANUAL_KIND_LABEL: Record<PosManualKind, string> = {
  * Cada caja/sesión mantiene su propio carrito activo: Caja 1 y Caja 2 no
  * comparten carrito. El inventario, en cambio, es único por sede.
  */
-export function usePosCart(registerId: string) {
+export function usePosCart(registerId: string, catalog: PosCatalogEntry[] = []) {
   const [carts, setCarts] = useState<Record<string, RegisterCartState>>({});
   const [suspended, setSuspended] = useState<PosSuspendedCart[]>([]);
 
@@ -169,9 +137,10 @@ export function usePosCart(registerId: string) {
   );
 
   const lines: PosCartLine[] = useMemo(() => {
-    const catalogLines = Object.entries(state.items).map(([variantId, qty]) => {
-      const entry = posCatalog.find((e) => e.variant.id === variantId)!;
-      return {
+    const catalogLines = Object.entries(state.items).flatMap(([variantId, qty]) => {
+      const entry = catalog.find((e) => e.variant.id === variantId);
+      if (!entry) return [];
+      return [{
         key: entry.variant.id,
         kind: "catalog" as const,
         title: entry.product.title,
@@ -191,7 +160,7 @@ export function usePosCart(registerId: string) {
           entry.unitDiscount > 0
             ? { source: entry.discountSource ?? "promo", amount: entry.unitDiscount }
             : null,
-      };
+      }];
     });
 
     const manualLines = state.manual.map((m) => ({
@@ -212,7 +181,7 @@ export function usePosCart(registerId: string) {
     }));
 
     return [...catalogLines, ...manualLines];
-  }, [state.items, state.manual]);
+  }, [state.items, state.manual, catalog]);
 
   const subtotalRegular = lines.reduce((a, l) => a + l.regularTotal, 0);
   const lineDiscounts = lines.reduce((a, l) => a + l.discountTotal, 0);
