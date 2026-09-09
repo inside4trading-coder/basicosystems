@@ -54,6 +54,9 @@ const num = (v: unknown) => {
   return v === "" || v == null || !Number.isFinite(n) ? null : n;
 };
 
+const ACTIVE = ["queued", "fetching_woo", "matching"];
+const JOBS = "sublime_woo_read_jobs";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -63,12 +66,50 @@ Deno.serve(async (req) => {
   const cfg = wooConfig();
   if (!cfg) return json({ error: "woo_not_configured", message: "Faltan las credenciales de la tienda Woo de Sublime." }, 400);
 
+  // Un solo job activo a la vez.
+  const { data: active } = await admin.from(JOBS).select("*").in("status", ACTIVE).limit(1).maybeSingle();
+  if (active) return json({ ok: true, already_running: true, job: active }, 200);
+
+  const { data: job, error: jobErr } = await admin
+    .from(JOBS)
+    .insert({ status: "queued", started_at: new Date().toISOString() })
+    .select("*")
+    .single();
+  if (jobErr) {
+    if ((jobErr as any).code === "23505") {
+      const { data: other } = await admin.from(JOBS).select("*").in("status", ACTIVE).limit(1).maybeSingle();
+      return json({ ok: true, already_running: true, job: other }, 200);
+    }
+    return json({ error: "job_create_failed", message: jobErr.message }, 500);
+  }
+
+  const run = processCatalog(admin, cfg, job.id).catch(async (e) => {
+    await admin
+      .from(JOBS)
+      .update({ status: "failed", error_message: (e as Error).message, finished_at: new Date().toISOString() })
+      .eq("id", job.id);
+  });
+  // El trabajo continúa aunque el usuario cierre la pantalla o el navegador.
+  (globalThis as any).EdgeRuntime?.waitUntil?.(run);
+
+  return json({ ok: true, started: true, job }, 202);
+});
+
+async function processCatalog(admin: any, cfg: NonNullable<ReturnType<typeof wooConfig>>, jobId: string) {
+  const setJob = (patch: Record<string, unknown>) => admin.from(JOBS).update(patch).eq("id", jobId);
+  const fail = async (message: string) => {
+    await setJob({ status: "failed", error_message: message, finished_at: new Date().toISOString() });
+  };
+
+  await setJob({ status: "fetching_woo" });
+
   let products: any[];
   try {
     products = await wcFetchAll(cfg, "/products", { status: "any" });
   } catch (e) {
-    return json({ error: "woo_fetch_failed", message: (e as Error).message }, 502);
+    return await fail((e as Error).message);
   }
+  await setJob({ total_items: products.length });
 
   const now = new Date().toISOString();
   const rows: any[] = [];
