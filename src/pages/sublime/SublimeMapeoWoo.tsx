@@ -92,10 +92,13 @@ export default function SublimeMapeoWoo() {
     return true;
   });
 
+  const jobActive = !!job && WOO_JOB_ACTIVE.includes(job.status);
+
   const doRead = async () => {
     try {
       const r = await read.mutateAsync();
-      toast.success(`Catálogo Woo leído: ${r.products} productos, ${r.variations} variaciones.`);
+      if (r?.already_running) toast.info("Ya hay una actualización en curso.");
+      else toast.success("Actualización iniciada. Continúa en segundo plano.");
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo leer el catálogo Woo.");
     }
