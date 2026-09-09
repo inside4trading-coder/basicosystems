@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -601,7 +602,57 @@ function invalidateWoo(qc: ReturnType<typeof useQueryClient>) {
   invalidate(qc);
 }
 
-/** Lee el catálogo Woo completo y refresca la tabla espejo (solo lectura de Woo). */
+export interface WooReadJob {
+  id: string;
+  status: "queued" | "fetching_woo" | "matching" | "completed" | "failed";
+  started_at: string | null;
+  finished_at: string | null;
+  total_items: number;
+  processed_items: number;
+  mapped_count: number;
+  possible_match_count: number;
+  unmapped_count: number;
+  incomplete_count: number;
+  ignored_count: number;
+  error_message: string | null;
+}
+
+export const WOO_JOB_ACTIVE: WooReadJob["status"][] = ["queued", "fetching_woo", "matching"];
+
+/** Último trabajo de lectura Woo. Se consulta en segundo plano mientras esté activo. */
+export function useWooReadJob() {
+  const qc = useQueryClient();
+  const lastCompleted = useRef<string | null>(null);
+  const query = useQuery({
+    queryKey: ["sublime_woo_read_job"],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("sublime_woo_read_jobs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as WooReadJob | null;
+    },
+    refetchInterval: (q) => {
+      const j = q.state.data as WooReadJob | null | undefined;
+      return j && WOO_JOB_ACTIVE.includes(j.status) ? 3000 : false;
+    },
+  });
+
+  useEffect(() => {
+    const j = query.data;
+    if (j && j.status === "completed" && lastCompleted.current !== j.id) {
+      lastCompleted.current = j.id;
+      invalidateWoo(qc);
+    }
+  }, [query.data, qc]);
+
+  return query;
+}
+
+/** Inicia el trabajo de lectura del catálogo Woo (se ejecuta en el backend). */
 export function useReadWooCatalog() {
   const qc = useQueryClient();
   return useMutation({
@@ -618,9 +669,9 @@ export function useReadWooCatalog() {
         } catch { /* ignore */ }
         throw new Error(msg);
       }
-      return data as { products: number; variations: number; rows: number; inserted: number; updated: number };
+      return data as { started?: boolean; already_running?: boolean; job: WooReadJob };
     },
-    onSuccess: () => invalidateWoo(qc),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sublime_woo_read_job"] }),
   });
 }
 

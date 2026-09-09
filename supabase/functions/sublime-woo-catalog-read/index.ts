@@ -54,6 +54,9 @@ const num = (v: unknown) => {
   return v === "" || v == null || !Number.isFinite(n) ? null : n;
 };
 
+const ACTIVE = ["queued", "fetching_woo", "matching"];
+const JOBS = "sublime_woo_read_jobs";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -63,19 +66,59 @@ Deno.serve(async (req) => {
   const cfg = wooConfig();
   if (!cfg) return json({ error: "woo_not_configured", message: "Faltan las credenciales de la tienda Woo de Sublime." }, 400);
 
+  // Un solo job activo a la vez.
+  const { data: active } = await admin.from(JOBS).select("*").in("status", ACTIVE).limit(1).maybeSingle();
+  if (active) return json({ ok: true, already_running: true, job: active }, 200);
+
+  const { data: job, error: jobErr } = await admin
+    .from(JOBS)
+    .insert({ status: "queued", started_at: new Date().toISOString() })
+    .select("*")
+    .single();
+  if (jobErr) {
+    if ((jobErr as any).code === "23505") {
+      const { data: other } = await admin.from(JOBS).select("*").in("status", ACTIVE).limit(1).maybeSingle();
+      return json({ ok: true, already_running: true, job: other }, 200);
+    }
+    return json({ error: "job_create_failed", message: jobErr.message }, 500);
+  }
+
+  const run = processCatalog(admin, cfg, job.id).catch(async (e) => {
+    await admin
+      .from(JOBS)
+      .update({ status: "failed", error_message: (e as Error).message, finished_at: new Date().toISOString() })
+      .eq("id", job.id);
+  });
+  // El trabajo continúa aunque el usuario cierre la pantalla o el navegador.
+  (globalThis as any).EdgeRuntime?.waitUntil?.(run);
+
+  return json({ ok: true, started: true, job }, 202);
+});
+
+async function processCatalog(admin: any, cfg: NonNullable<ReturnType<typeof wooConfig>>, jobId: string) {
+  const setJob = (patch: Record<string, unknown>) => admin.from(JOBS).update(patch).eq("id", jobId);
+  const fail = async (message: string) => {
+    await setJob({ status: "failed", error_message: message, finished_at: new Date().toISOString() });
+  };
+
+  await setJob({ status: "fetching_woo" });
+
   let products: any[];
   try {
     products = await wcFetchAll(cfg, "/products", { status: "any" });
   } catch (e) {
-    return json({ error: "woo_fetch_failed", message: (e as Error).message }, 502);
+    return await fail((e as Error).message);
   }
+  await setJob({ total_items: products.length });
 
   const now = new Date().toISOString();
   const rows: any[] = [];
   let variationsCount = 0;
 
+  let processed = 0;
   for (const p of products) {
     const img = Array.isArray(p.images) && p.images[0]?.src ? String(p.images[0].src) : null;
+
     rows.push({
       woo_product_id: Number(p.id),
       woo_variation_id: null,
@@ -101,8 +144,9 @@ Deno.serve(async (req) => {
       try {
         vars = await wcFetchAll(cfg, `/products/${p.id}/variations`, { status: "any" });
       } catch (e) {
-        return json({ error: "woo_variations_failed", message: (e as Error).message, woo_product_id: p.id }, 502);
+        return await fail(`${(e as Error).message} (producto ${p.id})`);
       }
+
       for (const v of vars) {
         const { size, color } = pickSizeColor(v.attributes);
         variationsCount++;
@@ -128,39 +172,61 @@ Deno.serve(async (req) => {
         });
       }
     }
+    processed++;
+    if (processed % 10 === 0 || processed === products.length) await setJob({ processed_items: processed });
   }
+
+  await setJob({ status: "matching", processed_items: processed });
 
   // Upsert por clave (woo_product_id, coalesce(variation,0)): se resuelve en
   // dos pasos porque PostgREST no soporta onConflict sobre índices con expresión.
   const { data: existing, error: exErr } = await admin
     .from("sublime_woo_catalog")
     .select("id, woo_product_id, woo_variation_id");
-  if (exErr) return json({ error: "db_read_failed", message: exErr.message }, 500);
+  if (exErr) return await fail(exErr.message);
   const idByKey = new Map(
     (existing ?? []).map((r: any) => [`${r.woo_product_id}|${r.woo_variation_id ?? 0}`, r.id as string])
   );
   const inserts: any[] = [];
-  let updated = 0;
   for (const r of rows) {
     const id = idByKey.get(`${r.woo_product_id}|${r.woo_variation_id ?? 0}`);
     if (id) {
       const { error } = await admin.from("sublime_woo_catalog").update(r).eq("id", id);
-      if (error) return json({ error: "db_update_failed", message: error.message }, 500);
-      updated++;
+      if (error) return await fail(error.message);
     } else inserts.push(r);
   }
   for (let i = 0; i < inserts.length; i += 200) {
     const { error } = await admin.from("sublime_woo_catalog").insert(inserts.slice(i, i + 200));
-    if (error) return json({ error: "db_insert_failed", message: error.message }, 500);
+    if (error) return await fail(error.message);
   }
 
-  return json({
-    ok: true,
-    products: products.length,
-    variations: variationsCount,
-    rows: rows.length,
-    inserted: inserts.length,
-    updated,
-    read_at: now,
+  // Contadores informativos según los mapeos guardados (la clasificación fina
+  // sigue calculándose en la pantalla con las reglas de coincidencia actuales).
+  const { data: maps } = await admin
+    .from("sublime_channel_mappings")
+    .select("external_product_id, external_variation_id, status")
+    .eq("channel", "woo");
+  const mapStatus = new Map<string, string>();
+  for (const m of maps ?? []) mapStatus.set(`${m.external_product_id}|${m.external_variation_id ?? 0}`, m.status);
+  let mapped = 0, ignored = 0, unmapped = 0;
+  for (const r of rows) {
+    const s = mapStatus.get(`${r.woo_product_id}|${r.woo_variation_id ?? 0}`);
+    if (s === "mapped") mapped++;
+    else if (s === "ignored") ignored++;
+    else unmapped++;
+  }
+
+  await setJob({
+    status: "completed",
+    finished_at: new Date().toISOString(),
+    total_items: products.length,
+    processed_items: products.length,
+    mapped_count: mapped,
+    ignored_count: ignored,
+    unmapped_count: unmapped,
+    possible_match_count: 0,
+    incomplete_count: 0,
+    error_message: null,
   });
-});
+  void variationsCount;
+}
