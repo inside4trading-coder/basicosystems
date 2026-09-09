@@ -115,8 +115,10 @@ async function processCatalog(admin: any, cfg: NonNullable<ReturnType<typeof woo
   const rows: any[] = [];
   let variationsCount = 0;
 
+  let processed = 0;
   for (const p of products) {
     const img = Array.isArray(p.images) && p.images[0]?.src ? String(p.images[0].src) : null;
+
     rows.push({
       woo_product_id: Number(p.id),
       woo_variation_id: null,
