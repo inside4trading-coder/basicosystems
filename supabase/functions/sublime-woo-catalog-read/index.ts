@@ -172,39 +172,61 @@ async function processCatalog(admin: any, cfg: NonNullable<ReturnType<typeof woo
         });
       }
     }
+    processed++;
+    if (processed % 10 === 0 || processed === products.length) await setJob({ processed_items: processed });
   }
+
+  await setJob({ status: "matching", processed_items: processed });
 
   // Upsert por clave (woo_product_id, coalesce(variation,0)): se resuelve en
   // dos pasos porque PostgREST no soporta onConflict sobre índices con expresión.
   const { data: existing, error: exErr } = await admin
     .from("sublime_woo_catalog")
     .select("id, woo_product_id, woo_variation_id");
-  if (exErr) return json({ error: "db_read_failed", message: exErr.message }, 500);
+  if (exErr) return await fail(exErr.message);
   const idByKey = new Map(
     (existing ?? []).map((r: any) => [`${r.woo_product_id}|${r.woo_variation_id ?? 0}`, r.id as string])
   );
   const inserts: any[] = [];
-  let updated = 0;
   for (const r of rows) {
     const id = idByKey.get(`${r.woo_product_id}|${r.woo_variation_id ?? 0}`);
     if (id) {
       const { error } = await admin.from("sublime_woo_catalog").update(r).eq("id", id);
-      if (error) return json({ error: "db_update_failed", message: error.message }, 500);
-      updated++;
+      if (error) return await fail(error.message);
     } else inserts.push(r);
   }
   for (let i = 0; i < inserts.length; i += 200) {
     const { error } = await admin.from("sublime_woo_catalog").insert(inserts.slice(i, i + 200));
-    if (error) return json({ error: "db_insert_failed", message: error.message }, 500);
+    if (error) return await fail(error.message);
   }
 
-  return json({
-    ok: true,
-    products: products.length,
-    variations: variationsCount,
-    rows: rows.length,
-    inserted: inserts.length,
-    updated,
-    read_at: now,
+  // Contadores informativos según los mapeos guardados (la clasificación fina
+  // sigue calculándose en la pantalla con las reglas de coincidencia actuales).
+  const { data: maps } = await admin
+    .from("sublime_channel_mappings")
+    .select("external_product_id, external_variation_id, status")
+    .eq("channel", "woo");
+  const mapStatus = new Map<string, string>();
+  for (const m of maps ?? []) mapStatus.set(`${m.external_product_id}|${m.external_variation_id ?? 0}`, m.status);
+  let mapped = 0, ignored = 0, unmapped = 0;
+  for (const r of rows) {
+    const s = mapStatus.get(`${r.woo_product_id}|${r.woo_variation_id ?? 0}`);
+    if (s === "mapped") mapped++;
+    else if (s === "ignored") ignored++;
+    else unmapped++;
+  }
+
+  await setJob({
+    status: "completed",
+    finished_at: new Date().toISOString(),
+    total_items: products.length,
+    processed_items: products.length,
+    mapped_count: mapped,
+    ignored_count: ignored,
+    unmapped_count: unmapped,
+    possible_match_count: 0,
+    incomplete_count: 0,
+    error_message: null,
   });
-});
+  void variationsCount;
+}
