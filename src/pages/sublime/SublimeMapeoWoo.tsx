@@ -139,12 +139,37 @@ export default function SublimeMapeoWoo() {
         title="Mapeo Woo ↔ Hub"
         subtitle="La tienda web solo se lee. El Inventario Maestro es la fuente de verdad; nada se fusiona solo por nombre."
         actions={
-          <Button onClick={doRead} disabled={read.isPending}>
-            <RefreshCcw className={`h-4 w-4 mr-2 ${read.isPending ? "animate-spin" : ""}`} />
-            Leer catálogo Woo
+          <Button onClick={doRead} disabled={read.isPending || jobActive}>
+            <RefreshCcw className={`h-4 w-4 mr-2 ${read.isPending || jobActive ? "animate-spin" : ""}`} />
+            {jobActive ? "Actualizando…" : "Leer catálogo Woo"}
           </Button>
         }
       />
+
+      {jobActive && (
+        <Card className="rounded-2xl border-border/60 p-4 space-y-2">
+          <p className="text-sm font-medium">
+            Actualizando catálogo Woo…{" "}
+            {job!.total_items > 0 ? `${job!.processed_items} de ${job!.total_items} productos` : "preparando lectura"}
+          </p>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all"
+              style={{ width: `${job!.total_items > 0 ? Math.min(100, Math.round((job!.processed_items / job!.total_items) * 100)) : 5}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Puedes salir de esta pantalla. La actualización continuará en segundo plano.
+          </p>
+        </Card>
+      )}
+
+      {job?.status === "failed" && (
+        <Card className="rounded-2xl border-destructive/50 p-4">
+          <p className="text-sm text-destructive">La última actualización falló: {job.error_message ?? "error desconocido"}</p>
+        </Card>
+      )}
+
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {(Object.keys(counts) as WooMapStatus[]).map((k) => (
