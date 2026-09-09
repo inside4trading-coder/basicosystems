@@ -144,8 +144,9 @@ async function processCatalog(admin: any, cfg: NonNullable<ReturnType<typeof woo
       try {
         vars = await wcFetchAll(cfg, `/products/${p.id}/variations`, { status: "any" });
       } catch (e) {
-        return json({ error: "woo_variations_failed", message: (e as Error).message, woo_product_id: p.id }, 502);
+        return await fail(`${(e as Error).message} (producto ${p.id})`);
       }
+
       for (const v of vars) {
         const { size, color } = pickSizeColor(v.attributes);
         variationsCount++;
