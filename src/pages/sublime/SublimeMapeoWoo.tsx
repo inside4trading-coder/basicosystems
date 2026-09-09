@@ -48,6 +48,7 @@ export default function SublimeMapeoWoo() {
   const { data: inv } = useSublimeInventory();
   const { data: locations = [] } = useSublimeLocations();
   const read = useReadWooCatalog();
+  const { data: job } = useWooReadJob();
   const link = useLinkWooToVariant();
   const create = useCreateProductFromWoo();
   const ignore = useIgnoreWooItem();
