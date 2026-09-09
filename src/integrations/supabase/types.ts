@@ -9909,6 +9909,60 @@ export type Database = {
         }
         Relationships: []
       }
+      sublime_woo_read_jobs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          ignored_count: number
+          incomplete_count: number
+          mapped_count: number
+          possible_match_count: number
+          processed_items: number
+          started_at: string | null
+          status: string
+          total_items: number
+          unmapped_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          ignored_count?: number
+          incomplete_count?: number
+          mapped_count?: number
+          possible_match_count?: number
+          processed_items?: number
+          started_at?: string | null
+          status?: string
+          total_items?: number
+          unmapped_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          ignored_count?: number
+          incomplete_count?: number
+          mapped_count?: number
+          possible_match_count?: number
+          processed_items?: number
+          started_at?: string | null
+          status?: string
+          total_items?: number
+          unmapped_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
