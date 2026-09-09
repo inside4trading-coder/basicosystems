@@ -19,6 +19,8 @@ import {
   useSublimeLocations,
   useSublimeMappings,
   useSublimeWooCatalog,
+  useWooReadJob,
+  WOO_JOB_ACTIVE,
 } from "@/hooks/useSublimeInventory";
 import { normalizeName, posBlockers, variantDisplay, type SublimeWooCatalogRow } from "@/lib/sublimeInventory";
 import {
