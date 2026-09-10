@@ -604,7 +604,7 @@ function invalidateWoo(qc: ReturnType<typeof useQueryClient>) {
 
 export interface WooReadJob {
   id: string;
-  status: "queued" | "fetching_woo" | "matching" | "completed" | "failed";
+  status: "queued" | "fetching_woo" | "matching" | "completed" | "failed" | "cancelled";
   started_at: string | null;
   finished_at: string | null;
   updated_at: string;
@@ -682,6 +682,31 @@ export function useReadWooCatalog() {
         throw new Error(msg);
       }
       return data as { started?: boolean; already_running?: boolean; resumed?: boolean; job: WooReadJob };
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sublime_woo_read_job"] }),
+  });
+}
+
+/** Cancela un trabajo activo. Los lotes posteriores detectan el estado y no continúan. */
+export function useCancelWooReadJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      const { data, error } = await supabase.functions.invoke("sublime-woo-catalog-read", {
+        body: { cancel_job_id: jobId },
+      });
+      if (error) {
+        let msg = error.message;
+        try {
+          const ctx = (error as any).context;
+          if (ctx?.text) {
+            const payload = JSON.parse(await ctx.text());
+            msg = payload.message ?? payload.error ?? msg;
+          }
+        } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      return data as { cancelled: boolean; job: WooReadJob };
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sublime_woo_read_job"] }),
   });
