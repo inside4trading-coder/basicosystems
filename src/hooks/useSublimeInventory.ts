@@ -662,12 +662,14 @@ export function useWooReadJob() {
   return query;
 }
 
-/** Inicia el trabajo de lectura del catálogo Woo (se ejecuta en el backend). */
+/** Inicia (o reanuda) el trabajo de lectura del catálogo Woo en el backend. */
 export function useReadWooCatalog() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke("sublime-woo-catalog-read", { body: {} });
+    mutationFn: async (opts?: { resume?: boolean }) => {
+      const { data, error } = await supabase.functions.invoke("sublime-woo-catalog-read", {
+        body: { resume: opts?.resume === true },
+      });
       if (error) {
         let msg = error.message;
         try {
@@ -679,11 +681,12 @@ export function useReadWooCatalog() {
         } catch { /* ignore */ }
         throw new Error(msg);
       }
-      return data as { started?: boolean; already_running?: boolean; job: WooReadJob };
+      return data as { started?: boolean; already_running?: boolean; resumed?: boolean; job: WooReadJob };
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sublime_woo_read_job"] }),
   });
 }
+
 
 async function upsertMapping(payload: Partial<SublimeChannelMapping> & { external_product_id: number; external_variation_id: number | null }) {
   const { data: userRes } = await supabase.auth.getUser();
