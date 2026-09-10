@@ -9911,8 +9911,11 @@ export type Database = {
       }
       sublime_woo_read_jobs: {
         Row: {
+          batch_size: number
           created_at: string
           created_by: string | null
+          cursor_page: number
+          error_items: Json
           error_message: string | null
           finished_at: string | null
           id: string
@@ -9928,8 +9931,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          batch_size?: number
           created_at?: string
           created_by?: string | null
+          cursor_page?: number
+          error_items?: Json
           error_message?: string | null
           finished_at?: string | null
           id?: string
@@ -9945,8 +9951,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          batch_size?: number
           created_at?: string
           created_by?: string | null
+          cursor_page?: number
+          error_items?: Json
           error_message?: string | null
           finished_at?: string | null
           id?: string
