@@ -115,6 +115,26 @@ Deno.serve(async (req) => {
   // ---- Llamada del usuario ----------------------------------------------
   const { result, admin } = await authorizeAction(req, "sublime.manage", "sublime.woo.catalog_read");
   if (!result.ok) return json({ error: result.errorCode, message: result.message }, result.status);
+
+  const cancelJobId = typeof body?.cancel_job_id === "string" ? body.cancel_job_id : null;
+  if (cancelJobId) {
+    const { data: cancelled, error: cancelError } = await admin
+      .from(JOBS)
+      .update({
+        status: "cancelled",
+        finished_at: new Date().toISOString(),
+        error_message: "Cancelado manualmente.",
+      })
+      .eq("id", cancelJobId)
+      .in("status", ACTIVE)
+      .select("*")
+      .maybeSingle();
+    if (cancelError) return json({ error: "cancel_failed", message: cancelError.message }, 500);
+    if (!cancelled) return json({ error: "job_not_active", message: "La actualización ya no está activa." }, 409);
+    console.log(JSON.stringify({ job_id: cancelJobId, status: "cancelled", at: new Date().toISOString() }));
+    return json({ ok: true, cancelled: true, job: cancelled });
+  }
+
   if (!cfg) return json({ error: "woo_not_configured", message: "Faltan las credenciales de la tienda Woo de Sublime." }, 400);
 
   const resume = body?.resume === true;

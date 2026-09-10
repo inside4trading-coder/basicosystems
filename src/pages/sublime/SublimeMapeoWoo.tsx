@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link2, RefreshCcw, Search } from "lucide-react";
+import { Link2, RefreshCcw, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { HubHeader } from "@/components/sublime/hub/HubHeader";
 import { InvThumb } from "@/components/sublime/inventario/InvThumb";
 import {
   useCreateProductFromWoo,
+  useCancelWooReadJob,
   useIgnoreWooItem,
   useLinkWooToVariant,
   useReadWooCatalog,
@@ -50,6 +51,7 @@ export default function SublimeMapeoWoo() {
   const { data: inv } = useSublimeInventory();
   const { data: locations = [] } = useSublimeLocations();
   const read = useReadWooCatalog();
+  const cancelRead = useCancelWooReadJob();
   const { data: job } = useWooReadJob();
   const link = useLinkWooToVariant();
   const create = useCreateProductFromWoo();
@@ -108,6 +110,16 @@ export default function SublimeMapeoWoo() {
     }
   };
 
+  const doCancel = async () => {
+    if (!job) return;
+    try {
+      await cancelRead.mutateAsync(job.id);
+      toast.success("Actualización cancelada.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "No se pudo cancelar la actualización.");
+    }
+  };
+
 
   const doLink = async (x: WooClassified, variantId: string, productId: string, method: Parameters<typeof persistedMethod>[0] | "manual") => {
     try {
@@ -163,9 +175,15 @@ export default function SublimeMapeoWoo() {
               style={{ width: `${job!.total_items > 0 ? Math.min(100, Math.round((job!.processed_items / job!.total_items) * 100)) : 5}%` }}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Puedes salir de esta pantalla. La actualización continuará en segundo plano.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              Puedes salir de esta pantalla. La actualización continuará en segundo plano.
+            </p>
+            <Button variant="outline" size="sm" onClick={doCancel} disabled={cancelRead.isPending}>
+              <X className="h-4 w-4 mr-2" />
+              {cancelRead.isPending ? "Cancelando…" : "Cancelar actualización"}
+            </Button>
+          </div>
         </Card>
       )}
 
@@ -174,9 +192,10 @@ export default function SublimeMapeoWoo() {
           <p className="text-sm text-destructive">
             Actualización interrumpida en {job!.processed_items} de {job!.total_items || "?"}.
           </p>
-          <Button variant="outline" onClick={() => doRead(true)} disabled={read.isPending}>
-            Reanudar actualización
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={doCancel} disabled={cancelRead.isPending}>Cancelar</Button>
+            <Button variant="outline" onClick={() => doRead(true)} disabled={read.isPending}>Reanudar actualización</Button>
+          </div>
         </Card>
       )}
 
