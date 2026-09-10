@@ -92,17 +92,20 @@ export default function SublimeMapeoWoo() {
     return true;
   });
 
-  const jobActive = !!job && WOO_JOB_ACTIVE.includes(job.status);
+  const stalled = isWooJobStalled(job);
+  const jobActive = !!job && WOO_JOB_ACTIVE.includes(job.status) && !stalled;
 
-  const doRead = async () => {
+  const doRead = async (resume = false) => {
     try {
-      const r = await read.mutateAsync();
+      const r = await read.mutateAsync({ resume });
       if (r?.already_running) toast.info("Ya hay una actualización en curso.");
+      else if (r?.resumed) toast.success("Reanudando desde el último punto guardado.");
       else toast.success("Actualización iniciada. Continúa en segundo plano.");
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo leer el catálogo Woo.");
     }
   };
+
 
   const doLink = async (x: WooClassified, variantId: string, productId: string, method: Parameters<typeof persistedMethod>[0] | "manual") => {
     try {
