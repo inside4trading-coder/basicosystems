@@ -142,7 +142,7 @@ export default function SublimeMapeoWoo() {
         title="Mapeo Woo ↔ Hub"
         subtitle="La tienda web solo se lee. El Inventario Maestro es la fuente de verdad; nada se fusiona solo por nombre."
         actions={
-          <Button onClick={doRead} disabled={read.isPending || jobActive}>
+          <Button onClick={() => doRead(false)} disabled={read.isPending || jobActive}>
             <RefreshCcw className={`h-4 w-4 mr-2 ${read.isPending || jobActive ? "animate-spin" : ""}`} />
             {jobActive ? "Actualizando…" : "Leer catálogo Woo"}
           </Button>
@@ -167,11 +167,27 @@ export default function SublimeMapeoWoo() {
         </Card>
       )}
 
-      {job?.status === "failed" && (
-        <Card className="rounded-2xl border-destructive/50 p-4">
-          <p className="text-sm text-destructive">La última actualización falló: {job.error_message ?? "error desconocido"}</p>
+      {stalled && (
+        <Card className="rounded-2xl border-destructive/50 p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-destructive">
+            Actualización interrumpida en {job!.processed_items} de {job!.total_items || "?"}.
+          </p>
+          <Button variant="outline" onClick={() => doRead(true)} disabled={read.isPending}>
+            Reanudar actualización
+          </Button>
         </Card>
       )}
+
+      {job?.status === "failed" && (
+        <Card className="rounded-2xl border-destructive/50 p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-destructive">La última actualización falló: {job.error_message ?? "error desconocido"}</p>
+          <Button variant="outline" onClick={() => doRead(true)} disabled={read.isPending}>
+            Reintentar desde último punto
+          </Button>
+        </Card>
+      )}
+
+
 
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
