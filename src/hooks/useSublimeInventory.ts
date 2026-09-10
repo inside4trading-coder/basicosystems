@@ -607,6 +607,7 @@ export interface WooReadJob {
   status: "queued" | "fetching_woo" | "matching" | "completed" | "failed";
   started_at: string | null;
   finished_at: string | null;
+  updated_at: string;
   total_items: number;
   processed_items: number;
   mapped_count: number;
@@ -615,9 +616,18 @@ export interface WooReadJob {
   incomplete_count: number;
   ignored_count: number;
   error_message: string | null;
+  cursor_page?: number;
+  error_items?: unknown[];
 }
 
 export const WOO_JOB_ACTIVE: WooReadJob["status"][] = ["queued", "fetching_woo", "matching"];
+
+/** Un job activo sin latido durante 3 minutos se considera interrumpido. */
+export function isWooJobStalled(j: WooReadJob | null | undefined) {
+  if (!j || !WOO_JOB_ACTIVE.includes(j.status)) return false;
+  return Date.now() - new Date(j.updated_at).getTime() > 3 * 60 * 1000;
+}
+
 
 /** Último trabajo de lectura Woo. Se consulta en segundo plano mientras esté activo. */
 export function useWooReadJob() {
