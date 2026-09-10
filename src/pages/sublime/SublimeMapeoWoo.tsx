@@ -21,6 +21,8 @@ import {
   useSublimeWooCatalog,
   useWooReadJob,
   WOO_JOB_ACTIVE,
+  isWooJobStalled,
+
 } from "@/hooks/useSublimeInventory";
 import { normalizeName, posBlockers, variantDisplay, type SublimeWooCatalogRow } from "@/lib/sublimeInventory";
 import {
