@@ -21,6 +21,8 @@ import {
   useSublimeWooCatalog,
   useWooReadJob,
   WOO_JOB_ACTIVE,
+  isWooJobStalled,
+
 } from "@/hooks/useSublimeInventory";
 import { normalizeName, posBlockers, variantDisplay, type SublimeWooCatalogRow } from "@/lib/sublimeInventory";
 import {
@@ -92,17 +94,20 @@ export default function SublimeMapeoWoo() {
     return true;
   });
 
-  const jobActive = !!job && WOO_JOB_ACTIVE.includes(job.status);
+  const stalled = isWooJobStalled(job);
+  const jobActive = !!job && WOO_JOB_ACTIVE.includes(job.status) && !stalled;
 
-  const doRead = async () => {
+  const doRead = async (resume = false) => {
     try {
-      const r = await read.mutateAsync();
+      const r = await read.mutateAsync({ resume });
       if (r?.already_running) toast.info("Ya hay una actualización en curso.");
+      else if (r?.resumed) toast.success("Reanudando desde el último punto guardado.");
       else toast.success("Actualización iniciada. Continúa en segundo plano.");
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo leer el catálogo Woo.");
     }
   };
+
 
   const doLink = async (x: WooClassified, variantId: string, productId: string, method: Parameters<typeof persistedMethod>[0] | "manual") => {
     try {
@@ -139,7 +144,7 @@ export default function SublimeMapeoWoo() {
         title="Mapeo Woo ↔ Hub"
         subtitle="La tienda web solo se lee. El Inventario Maestro es la fuente de verdad; nada se fusiona solo por nombre."
         actions={
-          <Button onClick={doRead} disabled={read.isPending || jobActive}>
+          <Button onClick={() => doRead(false)} disabled={read.isPending || jobActive}>
             <RefreshCcw className={`h-4 w-4 mr-2 ${read.isPending || jobActive ? "animate-spin" : ""}`} />
             {jobActive ? "Actualizando…" : "Leer catálogo Woo"}
           </Button>
@@ -164,11 +169,27 @@ export default function SublimeMapeoWoo() {
         </Card>
       )}
 
-      {job?.status === "failed" && (
-        <Card className="rounded-2xl border-destructive/50 p-4">
-          <p className="text-sm text-destructive">La última actualización falló: {job.error_message ?? "error desconocido"}</p>
+      {stalled && (
+        <Card className="rounded-2xl border-destructive/50 p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-destructive">
+            Actualización interrumpida en {job!.processed_items} de {job!.total_items || "?"}.
+          </p>
+          <Button variant="outline" onClick={() => doRead(true)} disabled={read.isPending}>
+            Reanudar actualización
+          </Button>
         </Card>
       )}
+
+      {job?.status === "failed" && (
+        <Card className="rounded-2xl border-destructive/50 p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-destructive">La última actualización falló: {job.error_message ?? "error desconocido"}</p>
+          <Button variant="outline" onClick={() => doRead(true)} disabled={read.isPending}>
+            Reintentar desde último punto
+          </Button>
+        </Card>
+      )}
+
+
 
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
