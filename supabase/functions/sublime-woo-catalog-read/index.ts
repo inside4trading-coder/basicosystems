@@ -1,11 +1,21 @@
 // SOLO LECTURA: trae el catálogo completo de la tienda Woo de Sublime y lo
 // guarda en la tabla espejo sublime_woo_catalog. Nunca escribe en Woo y nunca
 // toca sublime_products / sublime_variants / sublime_stocks.
+//
+// Procesamiento por LOTES persistentes: cada invocación procesa `batch_size`
+// productos (página Woo), guarda el cursor y encadena la siguiente ejecución.
+// Así no depende de la pantalla ni del límite de ejecución de una sola llamada.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { authorizeAction } from "../_shared/authz.ts";
 
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+const JOBS = "sublime_woo_read_jobs";
+const ACTIVE = ["queued", "fetching_woo", "matching"];
+/** Un job activo sin latido durante este tiempo se considera interrumpido. */
+const STALL_MS = 3 * 60 * 1000;
 
 function wooConfig() {
   const key = Deno.env.get("WC_SUBLIME_CONSUMER_KEY");
@@ -16,20 +26,30 @@ function wooConfig() {
   return { key, secret, base: `${withProto.replace(/\/+$/, "")}/wp-json/wc/v3` };
 }
 
-async function wcFetchAll(cfg: NonNullable<ReturnType<typeof wooConfig>>, path: string, params: Record<string, string> = {}) {
+type Cfg = NonNullable<ReturnType<typeof wooConfig>>;
+
+async function wcFetch(cfg: Cfg, path: string, params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params);
+  const res = await fetch(`${cfg.base}${path}?${qs}`, {
+    headers: { Authorization: `Basic ${btoa(`${cfg.key}:${cfg.secret}`)}` },
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    const err = new Error(`Woo ${res.status}: ${text.slice(0, 200)}`);
+    (err as any).httpStatus = res.status;
+    throw err;
+  }
+  return { data: JSON.parse(text), headers: res.headers };
+}
+
+async function wcFetchAllPages(cfg: Cfg, path: string) {
   const out: any[] = [];
   let page = 1;
   for (;;) {
-    const qs = new URLSearchParams({ per_page: "100", page: String(page), ...params });
-    const res = await fetch(`${cfg.base}${path}?${qs}`, {
-      headers: { Authorization: `Basic ${btoa(`${cfg.key}:${cfg.secret}`)}` },
-    });
-    const text = await res.text();
-    if (!res.ok) throw new Error(`Woo ${res.status}: ${text.slice(0, 200)}`);
-    const data = JSON.parse(text);
+    const { data, headers } = await wcFetch(cfg, path, { per_page: "100", page: String(page), status: "any" });
     if (!Array.isArray(data)) break;
     out.push(...data);
-    const totalPages = Number(res.headers.get("X-WP-TotalPages") ?? "1");
+    const totalPages = Number(headers.get("X-WP-TotalPages") ?? "1");
     if (page >= totalPages || data.length === 0) break;
     page++;
   }
@@ -54,25 +74,79 @@ const num = (v: unknown) => {
   return v === "" || v == null || !Number.isFinite(n) ? null : n;
 };
 
-const ACTIVE = ["queued", "fetching_woo", "matching"];
-const JOBS = "sublime_woo_read_jobs";
+function adminClient() {
+  return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+}
+
+function isStalled(job: any) {
+  return ACTIVE.includes(job.status) && Date.now() - new Date(job.updated_at).getTime() > STALL_MS;
+}
+
+/** Encadena el siguiente lote en una nueva ejecución de la propia función. */
+function scheduleNextBatch(jobId: string) {
+  const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sublime-woo-catalog-read`;
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const p = fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "x-internal-key": key },
+    body: JSON.stringify({ __batch: jobId }),
+  }).catch((e) => console.log(JSON.stringify({ job_id: jobId, chain_error: String(e) })));
+  (globalThis as any).EdgeRuntime?.waitUntil?.(p);
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const { result, admin } = await authorizeAction(req, "sublime.manage", "sublime.woo.catalog_read");
-  if (!result.ok) return json({ error: result.errorCode, message: result.message }, result.status);
+  const body = await req.json().catch(() => ({} as any));
+  const internalKey = req.headers.get("x-internal-key");
+  const isInternal = !!body?.__batch && internalKey && internalKey === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
   const cfg = wooConfig();
+
+  // ---- Ejecución interna de un lote -------------------------------------
+  if (isInternal) {
+    if (!cfg) return json({ error: "woo_not_configured" }, 400);
+    const admin = adminClient();
+    const run = processBatch(admin, cfg, String(body.__batch));
+    (globalThis as any).EdgeRuntime?.waitUntil?.(run);
+    return json({ ok: true, batch: true }, 202);
+  }
+
+  // ---- Llamada del usuario ----------------------------------------------
+  const { result, admin } = await authorizeAction(req, "sublime.manage", "sublime.woo.catalog_read");
+  if (!result.ok) return json({ error: result.errorCode, message: result.message }, result.status);
   if (!cfg) return json({ error: "woo_not_configured", message: "Faltan las credenciales de la tienda Woo de Sublime." }, 400);
 
-  // Un solo job activo a la vez.
+  const resume = body?.resume === true;
+
   const { data: active } = await admin.from(JOBS).select("*").in("status", ACTIVE).limit(1).maybeSingle();
-  if (active) return json({ ok: true, already_running: true, job: active }, 200);
+  if (active) {
+    if (resume || isStalled(active)) {
+      await admin.from(JOBS).update({ status: "fetching_woo", error_message: null }).eq("id", active.id);
+      scheduleNextBatch(active.id);
+      return json({ ok: true, resumed: true, job: active }, 202);
+    }
+    return json({ ok: true, already_running: true, job: active }, 200);
+  }
+
+  if (resume) {
+    const { data: last } = await admin
+      .from(JOBS)
+      .select("*")
+      .eq("status", "failed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (last) {
+      await admin.from(JOBS).update({ status: "fetching_woo", error_message: null, finished_at: null }).eq("id", last.id);
+      scheduleNextBatch(last.id);
+      return json({ ok: true, resumed: true, job: last }, 202);
+    }
+  }
 
   const { data: job, error: jobErr } = await admin
     .from(JOBS)
-    .insert({ status: "queued", started_at: new Date().toISOString() })
+    .insert({ status: "fetching_woo", started_at: new Date().toISOString(), cursor_page: 1, processed_items: 0, error_items: [] })
     .select("*")
     .single();
   if (jobErr) {
@@ -83,42 +157,43 @@ Deno.serve(async (req) => {
     return json({ error: "job_create_failed", message: jobErr.message }, 500);
   }
 
-  const run = processCatalog(admin, cfg, job.id).catch(async (e) => {
-    await admin
-      .from(JOBS)
-      .update({ status: "failed", error_message: (e as Error).message, finished_at: new Date().toISOString() })
-      .eq("id", job.id);
-  });
-  // El trabajo continúa aunque el usuario cierre la pantalla o el navegador.
-  (globalThis as any).EdgeRuntime?.waitUntil?.(run);
-
+  scheduleNextBatch(job.id);
   return json({ ok: true, started: true, job }, 202);
 });
 
-async function processCatalog(admin: any, cfg: NonNullable<ReturnType<typeof wooConfig>>, jobId: string) {
+async function processBatch(admin: any, cfg: Cfg, jobId: string) {
   const setJob = (patch: Record<string, unknown>) => admin.from(JOBS).update(patch).eq("id", jobId);
   const fail = async (message: string) => {
+    console.log(JSON.stringify({ job_id: jobId, status: "failed", error: message, at: new Date().toISOString() }));
     await setJob({ status: "failed", error_message: message, finished_at: new Date().toISOString() });
   };
 
-  await setJob({ status: "fetching_woo" });
+  const { data: job, error: jobErr } = await admin.from(JOBS).select("*").eq("id", jobId).maybeSingle();
+  if (jobErr || !job) return;
+  if (!ACTIVE.includes(job.status)) return;
 
-  let products: any[];
+  const page = Math.max(1, Number(job.cursor_page) || 1);
+  const perPage = Math.min(50, Math.max(10, Number(job.batch_size) || 25));
+  const processedBefore = Number(job.processed_items) || 0;
+  const errorItems: any[] = Array.isArray(job.error_items) ? job.error_items : [];
+
+  let products: any[] = [];
+  let totalItems = Number(job.total_items) || 0;
+  let totalPages = 1;
   try {
-    products = await wcFetchAll(cfg, "/products", { status: "any" });
+    const { data, headers } = await wcFetch(cfg, "/products", { per_page: String(perPage), page: String(page), status: "any" });
+    products = Array.isArray(data) ? data : [];
+    totalItems = Number(headers.get("X-WP-Total") ?? totalItems) || totalItems;
+    totalPages = Number(headers.get("X-WP-TotalPages") ?? "1") || 1;
   } catch (e) {
-    return await fail((e as Error).message);
+    return await fail(`${(e as Error).message} (página ${page})`);
   }
-  await setJob({ total_items: products.length });
 
   const now = new Date().toISOString();
   const rows: any[] = [];
-  let variationsCount = 0;
 
-  let processed = 0;
   for (const p of products) {
     const img = Array.isArray(p.images) && p.images[0]?.src ? String(p.images[0].src) : null;
-
     rows.push({
       woo_product_id: Number(p.id),
       woo_variation_id: null,
@@ -139,17 +214,24 @@ async function processCatalog(admin: any, cfg: NonNullable<ReturnType<typeof woo
       raw: { id: p.id, categories: p.categories?.map((c: any) => c.name) ?? [], variations: p.variations ?? [] },
       last_read_at: now,
     });
+
     if (p.type === "variable") {
       let vars: any[] = [];
       try {
-        vars = await wcFetchAll(cfg, `/products/${p.id}/variations`, { status: "any" });
+        vars = await wcFetchAllPages(cfg, `/products/${p.id}/variations`);
       } catch (e) {
-        return await fail(`${(e as Error).message} (producto ${p.id})`);
+        // Un producto con error no bloquea la actualización completa.
+        errorItems.push({
+          woo_product_id: Number(p.id),
+          http_status: (e as any).httpStatus ?? null,
+          error: (e as Error).message,
+          at: new Date().toISOString(),
+        });
+        console.log(JSON.stringify({ job_id: jobId, page, woo_product_id: p.id, error: (e as Error).message }));
+        continue;
       }
-
       for (const v of vars) {
         const { size, color } = pickSizeColor(v.attributes);
-        variationsCount++;
         rows.push({
           woo_product_id: Number(p.id),
           woo_variation_id: Number(v.id),
@@ -172,36 +254,67 @@ async function processCatalog(admin: any, cfg: NonNullable<ReturnType<typeof woo
         });
       }
     }
-    processed++;
-    if (processed % 10 === 0 || processed === products.length) await setJob({ processed_items: processed });
   }
 
-  await setJob({ status: "matching", processed_items: processed });
-
-  // Upsert por clave (woo_product_id, coalesce(variation,0)): se resuelve en
-  // dos pasos porque PostgREST no soporta onConflict sobre índices con expresión.
-  const { data: existing, error: exErr } = await admin
-    .from("sublime_woo_catalog")
-    .select("id, woo_product_id, woo_variation_id");
-  if (exErr) return await fail(exErr.message);
-  const idByKey = new Map(
-    (existing ?? []).map((r: any) => [`${r.woo_product_id}|${r.woo_variation_id ?? 0}`, r.id as string])
-  );
-  const inserts: any[] = [];
-  for (const r of rows) {
-    const id = idByKey.get(`${r.woo_product_id}|${r.woo_variation_id ?? 0}`);
-    if (id) {
-      const { error } = await admin.from("sublime_woo_catalog").update(r).eq("id", id);
+  // Upsert por clave (woo_product_id, coalesce(variation,0)): dos pasos porque
+  // PostgREST no soporta onConflict sobre índices con expresión.
+  if (rows.length) {
+    const ids = [...new Set(rows.map((r) => r.woo_product_id))];
+    const { data: existing, error: exErr } = await admin
+      .from("sublime_woo_catalog")
+      .select("id, woo_product_id, woo_variation_id")
+      .in("woo_product_id", ids);
+    if (exErr) return await fail(exErr.message);
+    const idByKey = new Map(
+      (existing ?? []).map((r: any) => [`${r.woo_product_id}|${r.woo_variation_id ?? 0}`, r.id as string]),
+    );
+    const inserts: any[] = [];
+    for (const r of rows) {
+      const id = idByKey.get(`${r.woo_product_id}|${r.woo_variation_id ?? 0}`);
+      if (id) {
+        const { error } = await admin.from("sublime_woo_catalog").update(r).eq("id", id);
+        if (error) return await fail(error.message);
+      } else inserts.push(r);
+    }
+    for (let i = 0; i < inserts.length; i += 200) {
+      const { error } = await admin.from("sublime_woo_catalog").insert(inserts.slice(i, i + 200));
       if (error) return await fail(error.message);
-    } else inserts.push(r);
-  }
-  for (let i = 0; i < inserts.length; i += 200) {
-    const { error } = await admin.from("sublime_woo_catalog").insert(inserts.slice(i, i + 200));
-    if (error) return await fail(error.message);
+    }
   }
 
-  // Contadores informativos según los mapeos guardados (la clasificación fina
-  // sigue calculándose en la pantalla con las reglas de coincidencia actuales).
+  const processedAfter = processedBefore + products.length;
+  console.log(
+    JSON.stringify({
+      job_id: jobId,
+      page,
+      items_received: products.length,
+      processed_before: processedBefore,
+      processed_after: processedAfter,
+      total_items: totalItems,
+      at: new Date().toISOString(),
+    }),
+  );
+
+  const done = products.length === 0 || page >= totalPages;
+  await setJob({
+    status: done ? "matching" : "fetching_woo",
+    cursor_page: page + 1,
+    processed_items: processedAfter,
+    total_items: totalItems,
+    error_items: errorItems,
+    error_message: null,
+  });
+
+  if (!done) {
+    scheduleNextBatch(jobId);
+    return;
+  }
+
+  await finalize(admin, jobId, processedAfter, totalItems, errorItems);
+}
+
+async function finalize(admin: any, jobId: string, processed: number, totalItems: number, errorItems: any[]) {
+  const { data: rows } = await admin.from("sublime_woo_catalog").select("woo_product_id, woo_variation_id");
   const { data: maps } = await admin
     .from("sublime_channel_mappings")
     .select("external_product_id, external_variation_id, status")
@@ -209,24 +322,27 @@ async function processCatalog(admin: any, cfg: NonNullable<ReturnType<typeof woo
   const mapStatus = new Map<string, string>();
   for (const m of maps ?? []) mapStatus.set(`${m.external_product_id}|${m.external_variation_id ?? 0}`, m.status);
   let mapped = 0, ignored = 0, unmapped = 0;
-  for (const r of rows) {
+  for (const r of rows ?? []) {
     const s = mapStatus.get(`${r.woo_product_id}|${r.woo_variation_id ?? 0}`);
     if (s === "mapped") mapped++;
     else if (s === "ignored") ignored++;
     else unmapped++;
   }
 
-  await setJob({
-    status: "completed",
-    finished_at: new Date().toISOString(),
-    total_items: products.length,
-    processed_items: products.length,
-    mapped_count: mapped,
-    ignored_count: ignored,
-    unmapped_count: unmapped,
-    possible_match_count: 0,
-    incomplete_count: 0,
-    error_message: null,
-  });
-  void variationsCount;
+  await admin
+    .from(JOBS)
+    .update({
+      status: "completed",
+      finished_at: new Date().toISOString(),
+      total_items: totalItems,
+      processed_items: processed,
+      mapped_count: mapped,
+      ignored_count: ignored,
+      unmapped_count: unmapped,
+      possible_match_count: 0,
+      incomplete_count: 0,
+      error_items: errorItems,
+      error_message: errorItems.length ? `${errorItems.length} producto(s) con error de lectura.` : null,
+    })
+    .eq("id", jobId);
 }
