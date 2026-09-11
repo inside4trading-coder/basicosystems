@@ -9191,6 +9191,67 @@ export type Database = {
         }
         Relationships: []
       }
+      sublime_inventory_movements: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          movement_type: string
+          note: string | null
+          performed_by: string | null
+          proposal_id: string | null
+          qty_delta: number
+          qty_result: number
+          variant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          movement_type: string
+          note?: string | null
+          performed_by?: string | null
+          proposal_id?: string | null
+          qty_delta?: number
+          qty_result?: number
+          variant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          movement_type?: string
+          note?: string | null
+          performed_by?: string | null
+          proposal_id?: string | null
+          qty_delta?: number
+          qty_result?: number
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_inventory_movements_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_inventory_movements_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_stock_intake_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_inventory_movements_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sublime_locations: {
         Row: {
           code: string
@@ -10633,6 +10694,10 @@ export type Database = {
           p_woo_product_id?: number
           p_woo_variation_id?: number
         }
+        Returns: Json
+      }
+      sublime_confirm_initial_validation: {
+        Args: { p_counts: Json; p_note?: string; p_variant_id: string }
         Returns: Json
       }
       unaccent: { Args: { "": string }; Returns: string }
