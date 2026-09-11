@@ -71,16 +71,7 @@ export function PosCustomerSearch({ onSelect }: { onSelect: (c: PosCustomer) => 
           <button
             key={c.id}
             type="button"
-            onClick={() =>
-              onSelect({
-                name: c.name,
-                idCard: c.idCard ?? "",
-                phone: c.phone ?? "",
-                email: c.email ?? "",
-                birthDate: c.birthDate ?? "",
-                address: c.address ?? "",
-              })
-            }
+            onClick={() => onSelect(c)}
             className="w-full flex items-center gap-3 rounded-xl border border-border/60 p-3 text-left hover:border-primary/50 transition-colors"
           >
             <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -95,7 +86,9 @@ export function PosCustomerSearch({ onSelect }: { onSelect: (c: PosCustomer) => 
           </button>
         ))}
         {list.length === 0 && (
-          <p className="text-sm text-muted-foreground py-6 text-center">Sin coincidencias.</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            {isLoading ? "Cargando clientes…" : "Sin coincidencias."}
+          </p>
         )}
       </div>
     </div>
