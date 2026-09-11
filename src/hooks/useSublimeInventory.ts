@@ -652,6 +652,7 @@ export function useConfirmProposal() {
         p_note: note ?? null,
       });
       if (error) throw error;
+      await syncPosEnabledForVariant(variantId);
     },
     onSuccess: () => invalidate(qc),
   });
@@ -679,8 +680,12 @@ export function useConfirmProposalsBulk() {
           })),
           p_note: e.note ?? null,
         });
-        if (error) out.failed.push({ variantId: e.variantId, message: error.message });
-        else out.ok.push(e.variantId);
+        if (error) {
+          out.failed.push({ variantId: e.variantId, message: error.message });
+        } else {
+          out.ok.push(e.variantId);
+          await syncPosEnabledForVariant(e.variantId);
+        }
       }
       return out;
     },
