@@ -10700,6 +10700,16 @@ export type Database = {
         Args: { p_counts: Json; p_note?: string; p_variant_id: string }
         Returns: Json
       }
+      sublime_transfer_stock: {
+        Args: {
+          p_from_location: string
+          p_note?: string
+          p_qty: number
+          p_to_location: string
+          p_variant_id: string
+        }
+        Returns: Json
+      }
       unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
