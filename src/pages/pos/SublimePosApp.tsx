@@ -137,6 +137,12 @@ export default function SublimePosApp() {
       toast.error("Selecciona el origen de la venta.");
       return;
     }
+    if (!cashSession) {
+      toast.error("Debes abrir caja antes de vender.");
+      setPayOpen(false);
+      setDrawerOpen(true);
+      return;
+    }
 
     try {
       const result = await registerSale.mutateAsync({
@@ -153,6 +159,7 @@ export default function SublimePosApp() {
         registerCode: session.registerName,
         cashierCode: session.cashierName,
         sessionCode: session.sessionCode,
+        cashSessionId: cashSession.id,
       });
 
       const sale: PosSaleDocument = {
