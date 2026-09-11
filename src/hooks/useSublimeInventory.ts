@@ -199,6 +199,117 @@ export function useRecalcPosReadiness() {
   });
 }
 
+/**
+ * Recalcula `pos_enabled` de UNA variante tras un cambio de stock/precio/SKU.
+ * Se usa para que la elegibilidad POS nunca quede desactualizada.
+ */
+export async function syncPosEnabledForVariant(variantId: string) {
+  const [varRes, locRes, stockRes] = await Promise.all([
+    sb.from(T_VAR).select("*").eq("id", variantId).maybeSingle(),
+    sb.from(T_LOC).select("*").eq("is_active", true).eq("sells_in_pos", true),
+    sb.from(T_STOCK).select("*").eq("variant_id", variantId),
+  ]);
+  const variant = varRes.data as SublimeInvVariant | null;
+  if (!variant) return;
+  const prodRes = await sb.from(T_PROD).select("*").eq("id", variant.product_id).maybeSingle();
+  const product = prodRes.data as SublimeInvProduct | null;
+  if (!product) return;
+  const posLocs = new Set(((locRes.data ?? []) as SublimeInvLocation[]).map((l) => l.id));
+  const posStock = ((stockRes.data ?? []) as SublimeInvStock[])
+    .filter((s) => posLocs.has(s.location_id))
+    .reduce((a, s) => a + Number(s.quantity_available ?? 0), 0);
+  const ready = posBlockers({ product, variant, posStock }).length === 0;
+  if (ready === variant.pos_enabled) return;
+  await sb.from(T_VAR).update({ pos_enabled: ready }).eq("id", variantId);
+}
+
+// ---------------------------------------------------------------
+// Movimientos reales de inventario
+// ---------------------------------------------------------------
+
+const T_MOV = "sublime_inventory_movements";
+
+export interface SublimeMovementRow {
+  id: string;
+  variant_id: string;
+  location_id: string;
+  movement_type: string;
+  qty_delta: number;
+  qty_result: number;
+  proposal_id: string | null;
+  performed_by: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+export const MOVEMENT_TYPE_LABEL: Record<string, string> = {
+  initial_inventory_validation: "Validación inicial",
+  location_transfer: "Traslado entre ubicaciones",
+};
+
+export function useSublimeMovements() {
+  return useQuery({
+    queryKey: ["sublime_inv_movements"],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from(T_MOV)
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      return (data ?? []) as SublimeMovementRow[];
+    },
+  });
+}
+
+/** Nombre legible de los usuarios que ejecutaron movimientos. */
+export function useSublimeUserNames() {
+  return useQuery({
+    queryKey: ["sublime_user_names"],
+    queryFn: async () => {
+      const { data, error } = await sb.from("profiles").select("id, full_name, email");
+      if (error) return {} as Record<string, string>;
+      const out: Record<string, string> = {};
+      for (const p of (data ?? []) as any[]) out[p.id] = p.full_name || p.email || "";
+      return out;
+    },
+  });
+}
+
+/** Traslado real entre ubicaciones: atómico en base de datos. */
+export function useTransferStock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      variantId,
+      fromLocationId,
+      toLocationId,
+      qty,
+      note,
+    }: {
+      variantId: string;
+      fromLocationId: string;
+      toLocationId: string;
+      qty: number;
+      note?: string;
+    }) => {
+      const { error } = await sb.rpc("sublime_transfer_stock", {
+        p_variant_id: variantId,
+        p_from_location: fromLocationId,
+        p_to_location: toLocationId,
+        p_qty: Math.floor(Number(qty) || 0),
+        p_note: note?.trim() ? note.trim() : null,
+      });
+      if (error) throw error;
+      await syncPosEnabledForVariant(variantId);
+    },
+    onSuccess: () => {
+      invalidate(qc);
+      qc.invalidateQueries({ queryKey: ["sublime_inv_movements"] });
+    },
+  });
+}
+
 // ---------------------------------------------------------------
 // A. Importación de CATÁLOGO desde Abastecimiento
 // ---------------------------------------------------------------
