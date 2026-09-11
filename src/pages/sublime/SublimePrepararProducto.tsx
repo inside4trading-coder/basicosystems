@@ -1,16 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  ArrowLeft,
-  Check,
-  Circle,
-  History,
-  Image as ImageIcon,
-  Loader2,
-  Sparkles,
-  Trash2,
-  Wand2,
-} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Check, Circle, Loader2, Save, Sparkles, Wand2 } from "lucide-react";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,379 +11,394 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "sonner";
 import { HubHeader } from "@/components/sublime/hub/HubHeader";
-import { MockNotice } from "@/components/sublime/hub/MockNotice";
-import { LifecycleDialog } from "@/components/sublime/hub/LifecycleTimeline";
+import { InvThumb } from "@/components/sublime/inventario/InvThumb";
+import { supabase } from "@/integrations/supabase/client";
 import {
-  mockPreparationChecklist,
-  mockPreparationState,
-  mockProducts,
-  mockVariants,
-  usdFormat,
-} from "@/lib/sublimeMock";
+  useSublimeInventory,
+  useSublimeLocations,
+  useUpdateSublimeProduct,
+  useUpdateSublimeVariant,
+} from "@/hooks/useSublimeInventory";
+import { POS_BLOCK_LABEL, posBlockers, posWarnings, variantDisplay } from "@/lib/sublimeInventory";
+import { PREP_CHECKLIST, prepDone, prepPercent, prepStatus } from "@/lib/sublimePrep";
+import { detectSkuConvention, displaySku, isValidSku, nextSublimeSku, normalizeSku, skuConflict } from "@/lib/sublimeSku";
 import { PREPARATION_LABEL } from "@/types/sublimeHub";
 
-type VariantRow = { id: string; size: string; color: string; quantity: number; sku: string };
+interface VariantDraft {
+  id: string;
+  sku: string;
+  size: string;
+  color: string;
+  full: string;
+  current: string;
+  active: boolean;
+}
 
 export default function SublimePrepararProducto() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const product = mockProducts.find((p) => p.id === id) ?? mockProducts[0];
+  const { data, isLoading } = useSublimeInventory();
+  const { data: locations = [] } = useSublimeLocations();
+  const updProduct = useUpdateSublimeProduct();
+  const updVariant = useUpdateSublimeVariant();
 
-  const [title, setTitle] = useState(product.title);
-  const [brand, setBrand] = useState(product.brand ?? "");
-  const [category, setCategory] = useState(product.category ?? "");
-  const [collection, setCollection] = useState(product.collection ?? "");
-  const [color, setColor] = useState("");
-  const [description, setDescription] = useState(product.description ?? "");
-  const [tags, setTags] = useState(product.tags.join(", "));
-  const [aiBusy, setAiBusy] = useState<string | null>(null);
+  const rows = useMemo(() => (data?.rows ?? []).filter((r) => r.product.id === id), [data, id]);
+  const product = rows[0]?.product ?? null;
+  const allVariants = data?.variants ?? [];
 
-  const [variants, setVariants] = useState<VariantRow[]>(() =>
-    mockVariants
-      .filter((v) => v.productId === product.id)
-      .map((v) => ({ id: v.id, size: v.size, color: v.color, quantity: v.quantity, sku: v.sku }))
+  const [title, setTitle] = useState("");
+  const [brand, setBrand] = useState("");
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [productActive, setProductActive] = useState(true);
+  const [drafts, setDrafts] = useState<VariantDraft[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!product) return;
+    setTitle(product.name ?? "");
+    setBrand(product.brand ?? "");
+    setCategory(product.category ?? "");
+    setDescription(product.notes ?? "");
+    setImageUrl(product.main_image_url ?? "");
+    setProductActive(!!product.is_active);
+    setDrafts(
+      rows.map((r) => ({
+        id: r.variant.id,
+        sku: displaySku(r.variant.sku) ?? "",
+        size: r.variant.size ?? "",
+        color: r.variant.color ?? "",
+        full: r.variant.full_price_ref == null ? "" : String(r.variant.full_price_ref),
+        current: r.variant.current_price_ref == null ? "" : String(r.variant.current_price_ref),
+        active: !!r.variant.is_active,
+      }))
+    );
+  }, [product?.id, rows.length, data]);
+
+  /** SKU provenientes de Abastecimiento (lotes de compra) para poder adoptarlos. */
+  const lotIds = rows.flatMap((r) => r.lots.map((l) => l.merch_item_id)).filter(Boolean);
+  const { data: sourceSkus = {} } = useQuery({
+    queryKey: ["sublime_prep_source_skus", id, lotIds.join(",")],
+    enabled: lotIds.length > 0,
+    queryFn: async () => {
+      const { data: items } = await (supabase as any)
+        .from("sublime_merch_items")
+        .select("id, sku_web")
+        .in("id", Array.from(new Set(lotIds)));
+      const map: Record<string, string> = {};
+      for (const it of items ?? []) if (isValidSku(it.sku_web)) map[it.id] = normalizeSku(it.sku_web);
+      return map;
+    },
+  });
+
+  const convention = useMemo(() => detectSkuConvention(allVariants.map((v) => v.sku)), [allVariants]);
+
+  const posLocationIds = useMemo(
+    () => new Set(locations.filter((l) => l.sells_in_pos && l.is_active).map((l) => l.id)),
+    [locations]
   );
 
-  const baseVariant = mockVariants.find((v) => v.productId === product.id);
-  const purchase = baseVariant ? baseVariant.unitCost * 0.78 : 0;
-  const shipping = baseVariant ? baseVariant.unitCost * 0.22 : 0;
-  const totalCost = purchase + shipping;
-  const [margin, setMargin] = useState(120);
-  const iva = 16;
-  const suggested = totalCost * (1 + margin / 100) * (1 + iva / 100);
-  const [manualPvp, setManualPvp] = useState<string>("");
-  const finalPvp = manualPvp.trim() === "" ? suggested : Number(manualPvp) || 0;
+  const prepInput = {
+    product: { name: title, notes: description, main_image_url: imageUrl },
+    variants: drafts.map((d) => ({ sku: d.sku, size: d.size, current_price_ref: Number(d.current) || 0 })),
+  };
+  const pct = prepPercent(prepInput);
+  const done = prepDone(prepInput);
+  const status = prepStatus(pct, !!product?.woo_product_id);
 
-  const [imagesOpen, setImagesOpen] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [generated, setGenerated] = useState<string[]>([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [channels, setChannels] = useState<string[]>(["sublime.com.ve"]);
+  const setDraft = (vid: string, patch: Partial<VariantDraft>) =>
+    setDrafts((prev) => prev.map((d) => (d.id === vid ? { ...d, ...patch } : d)));
 
-  const doneKeys = mockPreparationState[product.id] ?? [];
-  const pct = Math.round((doneKeys.length / mockPreparationChecklist.length) * 100);
-
-  const consignmentBreakdown = useMemo(() => {
-    if (product.acquisition !== "consignment" || !product.consignmentPct) return null;
-    const commission = (finalPvp * product.consignmentPct) / 100;
-    const ivaPart = finalPvp - finalPvp / (1 + iva / 100);
-    return {
-      commission,
-      ivaPart,
-      supplier: finalPvp - commission - ivaPart,
-    };
-  }, [product, finalPvp]);
-
-  const runAi = (kind: string) => {
-    setAiBusy(kind);
-    window.setTimeout(() => {
-      setAiBusy(null);
-      if (kind === "title") setTitle(`${product.brand ?? "Sublime"} ${product.category ?? "Prenda"} vintage`);
-      if (kind === "description")
-        setDescription(
-          "Pieza seleccionada a mano por Sublime. Corte clásico, tejido resistente y detalles originales de época."
-        );
-      if (kind === "seo") setTags("vintage, sublime, segunda mano, barquisimeto");
-      toast.success("Contenido generado (simulado).");
-    }, 900);
+  const generateSku = (vid: string) => {
+    const taken = [
+      ...allVariants.filter((v) => !drafts.some((d) => d.id === v.id)).map((v) => v.sku),
+      ...drafts.filter((d) => d.id !== vid).map((d) => d.sku),
+    ];
+    setDraft(vid, { sku: nextSublimeSku(taken, convention) });
   };
 
-  const generateImages = () => {
-    setImagesOpen(true);
-    setGenerating(true);
-    setGenerated([]);
-    window.setTimeout(() => {
-      setGenerating(false);
-      setGenerated(["Imagen 1", "Imagen 2", "Imagen 3"]);
-    }, 1400);
+  const sourceSkuFor = (vid: string) => {
+    const row = rows.find((r) => r.variant.id === vid);
+    for (const lot of row?.lots ?? []) {
+      const s = sourceSkus[lot.merch_item_id];
+      if (s) return s;
+    }
+    return null;
   };
+
+  const save = async () => {
+    if (!product) return;
+    // Validación de SKU: únicos, no vacíos, sin placeholders.
+    const seen = new Set<string>();
+    for (const d of drafts) {
+      if (!d.sku.trim()) continue;
+      const conflict = skuConflict(d.sku, d.id, allVariants.map((v) => ({ id: v.id, sku: v.sku })));
+      if (conflict) return toast.error(conflict);
+      const norm = normalizeSku(d.sku);
+      if (seen.has(norm)) return toast.error(`El SKU ${norm} está repetido en este producto.`);
+      seen.add(norm);
+    }
+
+    setSaving(true);
+    try {
+      await updProduct.mutateAsync({
+        id: product.id,
+        patch: {
+          name: title.trim() || product.name,
+          brand: brand.trim(),
+          category: category.trim() || null,
+          notes: description.trim() || null,
+          main_image_url: imageUrl.trim() || null,
+          is_active: productActive,
+        } as any,
+      });
+      for (const d of drafts) {
+        await updVariant.mutateAsync({
+          id: d.id,
+          patch: {
+            sku: d.sku.trim() ? normalizeSku(d.sku) : null,
+            size: d.size.trim() || null,
+            color: d.color.trim() || null,
+            full_price_ref: d.full.trim() === "" ? null : Number(d.full),
+            current_price_ref: d.current.trim() === "" ? null : Number(d.current),
+            is_active: d.active,
+          } as any,
+        });
+      }
+      toast.success("Preparación guardada. Se recalculó la elegibilidad POS.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "No se pudo guardar la preparación.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Cargando producto…</p>;
+  if (!product)
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/sublime/abastecimiento/preparacion")}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> Volver a Preparación
+        </Button>
+        <Card className="p-8 rounded-2xl text-center text-sm text-muted-foreground">
+          Este producto ya no existe en el catálogo Sublime.
+        </Card>
+      </div>
+    );
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" className="-ml-2" onClick={() => navigate("/sublime/mercancia/preparacion")}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ml-2"
+        onClick={() => navigate("/sublime/abastecimiento/preparacion")}
+      >
         <ArrowLeft className="h-4 w-4 mr-2" /> Volver a Preparación
       </Button>
 
       <HubHeader
         icon={Sparkles}
-        title="Preparar producto"
-        subtitle={product.provisionalName}
+        title={product.name}
+        subtitle="Completa los datos comerciales de este producto real"
         actions={
-          <>
-            <Button variant="outline" onClick={() => setHistoryOpen(true)}>
-              <History className="h-4 w-4 mr-2" /> Ver historial
-            </Button>
-            <Badge variant="secondary" className="self-center">{PREPARATION_LABEL[product.preparation]}</Badge>
-          </>
+          <Button onClick={save} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Guardar preparación
+          </Button>
         }
       />
-      <MockNotice text="Workspace de prototipo: los cambios no se guardan todavía en el sistema real." />
 
-      {/* A. Datos de origen */}
       <Card className="p-5 rounded-2xl border-border/60 space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">A · Datos de origen</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-          <Field label="Nombre provisional" value={product.provisionalName} />
-          <Field label="Código fabricante" value={product.manufacturerCode ?? "—"} />
-          <Field label="Costo compra" value={usdFormat(purchase)} />
-          <Field label="Envío" value={usdFormat(shipping)} />
-          <Field label="Costo total unitario" value={usdFormat(totalCost)} />
-          <Field label="Tallas" value={variants.map((v) => v.size).join(", ") || "—"} />
-          <Field label="Cantidades" value={String(variants.reduce((a, v) => a + v.quantity, 0))} />
-          <Field
-            label="Adquisición"
-            value={product.acquisition === "consignment" ? `Consignación ${product.consignmentPct}%` : "Propia"}
-          />
-          <Field label="SKU web (legacy)" value={product.legacyWebSku ?? "—"} />
-        </div>
-      </Card>
-
-      {/* B. Producto */}
-      <Card className="p-5 rounded-2xl border-border/60 space-y-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">B · Producto</h2>
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" disabled={aiBusy !== null} onClick={() => runAi("title")}>
-              {aiBusy === "title" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-              Título con IA
-            </Button>
-            <Button size="sm" variant="outline" disabled={aiBusy !== null} onClick={() => runAi("description")}>
-              {aiBusy === "description" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-              Descripción con IA
-            </Button>
-            <Button size="sm" variant="outline" disabled={aiBusy !== null} onClick={() => runAi("seo")}>
-              {aiBusy === "seo" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-              SEO con IA
-            </Button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <InvThumb url={imageUrl || product.main_image_url} alt={product.name} />
+            <div>
+              <p className="text-xs text-muted-foreground">Preparación web</p>
+              <p className="text-lg font-bold tabular-nums">{pct}%</p>
+            </div>
           </div>
+          <Badge variant={status === "published" ? "default" : "secondary"}>{PREPARATION_LABEL[status]}</Badge>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Labeled label="Título"><Input value={title} onChange={(e) => setTitle(e.target.value)} /></Labeled>
-          <Labeled label="Marca"><Input value={brand} onChange={(e) => setBrand(e.target.value)} /></Labeled>
-          <Labeled label="Categoría"><Input value={category} onChange={(e) => setCategory(e.target.value)} /></Labeled>
-          <Labeled label="Colección"><Input value={collection} onChange={(e) => setCollection(e.target.value)} /></Labeled>
-          <Labeled label="Color principal"><Input value={color} onChange={(e) => setColor(e.target.value)} /></Labeled>
-          <Labeled label="Etiquetas"><Input value={tags} onChange={(e) => setTags(e.target.value)} /></Labeled>
-        </div>
-        <Labeled label="Descripción">
-          <Textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
-        </Labeled>
-      </Card>
-
-      {/* C. Variantes */}
-      <Card className="p-5 rounded-2xl border-border/60 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">C · Variantes</h2>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() =>
-              setVariants((p) => [
-                ...p,
-                { id: `new-${p.length + 1}`, size: "", color: "", quantity: 0, sku: "" },
-              ])
-            }
-          >
-            Añadir variante
-          </Button>
+        <Progress value={pct} />
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {PREP_CHECKLIST.map((item) => (
+            <span
+              key={item.key}
+              className={`inline-flex items-center gap-1 text-xs ${done[item.key] ? "text-foreground" : "text-muted-foreground"}`}
+            >
+              {done[item.key] ? <Check className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+              {item.label}
+            </span>
+          ))}
         </div>
         <p className="text-xs text-muted-foreground">
-          El SKU nace aquí, a nivel de variante. Cada unidad física recibirá luego su propio UNIT ID.
+          La preparación web no bloquea la venta física: una variante con SKU, precio y stock en tienda ya puede
+          venderse aunque falten descripción o imágenes.
         </p>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Talla</TableHead>
-                <TableHead>Color</TableHead>
-                <TableHead>Cantidad</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {variants.map((v, i) => (
-                <TableRow key={v.id}>
-                  <TableCell><Input className="h-9 w-24" value={v.size} onChange={(e) => setVariants((p) => p.map((x, j) => j === i ? { ...x, size: e.target.value } : x))} /></TableCell>
-                  <TableCell><Input className="h-9 w-32" value={v.color} onChange={(e) => setVariants((p) => p.map((x, j) => j === i ? { ...x, color: e.target.value } : x))} /></TableCell>
-                  <TableCell><Input className="h-9 w-24" type="number" value={v.quantity} onChange={(e) => setVariants((p) => p.map((x, j) => j === i ? { ...x, quantity: Number(e.target.value) || 0 } : x))} /></TableCell>
-                  <TableCell><Input className="h-9 w-44 font-mono text-xs" value={v.sku} onChange={(e) => setVariants((p) => p.map((x, j) => j === i ? { ...x, sku: e.target.value } : x))} /></TableCell>
-                  <TableCell className="text-right">
-                    <Button size="icon" variant="ghost" onClick={() => setVariants((p) => p.filter((_, j) => j !== i))}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
       </Card>
 
-      {/* D. Precio */}
-      <Card className="p-5 rounded-2xl border-border/60 space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">D · Precio</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-          <Field label="Compra" value={usdFormat(purchase)} />
-          <Field label="Costo de envío" value={usdFormat(shipping)} />
-          <Field label="Costo total unitario" value={usdFormat(totalCost)} />
-          <Field label="IVA" value={`${iva}%`} />
+      <Card className="p-5 rounded-2xl border-border/60 space-y-4">
+        <p className="text-sm font-semibold">Datos comerciales</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Título comercial</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Marca</Label>
+            <Input value={brand} onChange={(e) => setBrand(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Categoría</Label>
+            <Input value={category} onChange={(e) => setCategory(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Imagen principal (URL o ruta guardada)</Label>
+            <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+          </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <Label>Descripción</Label>
+            <Textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
         </div>
         <Separator />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Labeled label="Margen (%)">
-            <Input type="number" value={margin} onChange={(e) => setMargin(Number(e.target.value) || 0)} />
-          </Labeled>
-          <Labeled label="PVP sugerido">
-            <Input readOnly value={usdFormat(suggested)} />
-          </Labeled>
-          <Labeled label="PVP manual">
-            <Input placeholder="Opcional" value={manualPvp} onChange={(e) => setManualPvp(e.target.value)} />
-          </Labeled>
-        </div>
-        <div className="rounded-xl border border-border/60 p-3">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">PVP final</p>
-          <p className="num text-2xl font-black tabular-nums">{usdFormat(finalPvp)}</p>
-        </div>
-        {consignmentBreakdown && (
-          <div className="rounded-xl border border-border/60 p-3 space-y-1 text-sm">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Consignación</p>
-            <p>Porcentaje Sublime: <span className="font-semibold">{product.consignmentPct}%</span></p>
-            <p>Comisión Sublime: <span className="font-semibold tabular-nums">{usdFormat(consignmentBreakdown.commission)}</span></p>
-            <p>IVA (Sublime): <span className="font-semibold tabular-nums">{usdFormat(consignmentBreakdown.ivaPart)}</span></p>
-            <p>Monto proveedor: <span className="font-semibold tabular-nums">{usdFormat(consignmentBreakdown.supplier)}</span></p>
-            <p className="text-xs text-muted-foreground">La comisión de consignación no es lo mismo que el margen propio.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Producto activo</p>
+            <p className="text-xs text-muted-foreground">Si se desactiva, ninguna variante puede venderse.</p>
           </div>
-        )}
-      </Card>
-
-      {/* E. Imágenes */}
-      <Card className="p-5 rounded-2xl border-border/60 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">E · Imágenes</h2>
-          <Button size="sm" variant="outline" onClick={generateImages}>
-            <Wand2 className="h-4 w-4 mr-2" /> Generar imágenes con IA
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <ImageBlock title="Imágenes de referencia" />
-          <ImageBlock title="Imágenes para web" />
+          <Switch checked={productActive} onCheckedChange={setProductActive} />
         </div>
       </Card>
 
-      {/* F. Publicación */}
-      <Card className="p-5 rounded-2xl border-border/60 space-y-4">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">F · Publicación</h2>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Estado de preparación</span>
-            <span className="font-semibold tabular-nums">{pct}%</span>
-          </div>
-          <Progress value={pct} />
+      <Card className="rounded-2xl border-border/60 overflow-x-auto">
+        <div className="p-4 pb-0">
+          <p className="text-sm font-semibold">Variantes y SKU definitivo</p>
+          <p className="text-xs text-muted-foreground">
+            Convención detectada: {convention.prefix}
+            {"0".repeat(Math.max(0, convention.digits - 1))}1 · siguiente libre {nextSublimeSku(allVariants.map((v) => v.sku), convention)}
+          </p>
         </div>
-        <div className="flex flex-wrap gap-x-5 gap-y-1">
-          {mockPreparationChecklist.map((c) => {
-            const ok = doneKeys.includes(c.key);
-            return (
-              <span key={c.key} className={`inline-flex items-center gap-1 text-sm ${ok ? "text-foreground" : "text-muted-foreground"}`}>
-                {ok ? <Check className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />} {c.label}
-              </span>
-            );
-          })}
-        </div>
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Canales</p>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={channels.includes("sublime.com.ve")}
-              onCheckedChange={(v) =>
-                setChannels(v ? ["sublime.com.ve"] : [])
-              }
-            />
-            sublime.com.ve
-          </label>
-          <p className="text-xs text-muted-foreground">Otros canales se habilitarán más adelante.</p>
-        </div>
-        <Button className="w-full h-12" onClick={() => toast.success("Publicación simulada: el producto quedaría listo en sublime.com.ve.")}>
-          Publicar producto
-        </Button>
-      </Card>
-
-      <Dialog open={imagesOpen} onOpenChange={setImagesOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Generar imágenes con IA</DialogTitle>
-          </DialogHeader>
-          {generating ? (
-            <div className="py-10 text-center space-y-3">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-              <p className="text-sm text-muted-foreground">Generando 3 imágenes…</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <MockNotice text="Resultados simulados. Se conectará con el generador visual ya existente en Basico." />
-              {generated.map((g) => (
-                <div key={g} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
-                      <ImageIcon className="h-5 w-5 text-muted-foreground" />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Variante</TableHead>
+              <TableHead>Talla</TableHead>
+              <TableHead>Color</TableHead>
+              <TableHead>SKU definitivo</TableHead>
+              <TableHead className="text-right">Precio full</TableHead>
+              <TableHead className="text-right">Precio vigente</TableHead>
+              <TableHead className="text-right">Stock tienda</TableHead>
+              <TableHead>Activa</TableHead>
+              <TableHead>POS</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {drafts.map((d) => {
+              const row = rows.find((r) => r.variant.id === d.id)!;
+              const posStock = row.stocks
+                .filter((s) => posLocationIds.has(s.location_id))
+                .reduce((a, s) => a + Number(s.quantity_available ?? 0), 0);
+              const blockers = posBlockers({
+                product: { is_active: productActive, category },
+                variant: {
+                  is_active: d.active,
+                  sku: d.sku,
+                  size: d.size,
+                  full_price_ref: d.full === "" ? null : Number(d.full),
+                  current_price_ref: d.current === "" ? null : Number(d.current),
+                },
+                posStock,
+              });
+              const warnings = posWarnings({
+                product: { category, main_image_url: imageUrl },
+                variant: {
+                  size: d.size,
+                  color: d.color,
+                  full_price_ref: d.full === "" ? null : Number(d.full),
+                  current_price_ref: d.current === "" ? null : Number(d.current),
+                },
+              });
+              const source = sourceSkuFor(d.id);
+              return (
+                <TableRow key={d.id}>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {variantDisplay({ size: d.size || null, color: d.color || null })}
+                  </TableCell>
+                  <TableCell>
+                    <Input className="w-24" value={d.size} onChange={(e) => setDraft(d.id, { size: e.target.value })} />
+                  </TableCell>
+                  <TableCell>
+                    <Input className="w-28" value={d.color} onChange={(e) => setDraft(d.id, { color: e.target.value })} />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        className="w-36 font-mono"
+                        placeholder="Sin asignar"
+                        value={d.sku}
+                        onChange={(e) => setDraft(d.id, { sku: e.target.value.toUpperCase() })}
+                      />
+                      <Button size="sm" variant="outline" onClick={() => generateSku(d.id)}>
+                        <Wand2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
-                    <span className="text-sm font-medium">{g}</span>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="outline" onClick={() => toast.success(`${g} aprobada.`)}>Aprobar</Button>
-                    <Button size="sm" variant="ghost" onClick={generateImages}>Regenerar</Button>
-                    <Button size="sm" variant="ghost" onClick={() => setGenerated((p) => p.filter((x) => x !== g))}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <LifecycleDialog open={historyOpen} onOpenChange={setHistoryOpen} productTitle={product.title} productId={product.id} />
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-semibold text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-    </div>
-  );
-}
-
-function ImageBlock({ title }: { title: string }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border p-4 space-y-2">
-      <p className="text-sm font-semibold">{title}</p>
-      <div className="grid grid-cols-3 gap-2">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="aspect-square rounded-lg bg-muted flex items-center justify-center">
-            <ImageIcon className="h-5 w-5 text-muted-foreground" />
-          </div>
-        ))}
-      </div>
-      <p className="text-xs text-muted-foreground">Ejemplo visual.</p>
+                    {source && normalizeSku(d.sku) !== source && (
+                      <button
+                        type="button"
+                        className="mt-1 text-xs text-primary underline"
+                        onClick={() => setDraft(d.id, { sku: source })}
+                      >
+                        Adoptar {source} (Abastecimiento)
+                      </button>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Input
+                      className="w-24 text-right"
+                      inputMode="decimal"
+                      value={d.full}
+                      onChange={(e) => setDraft(d.id, { full: e.target.value })}
+                    />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Input
+                      className="w-24 text-right"
+                      inputMode="decimal"
+                      value={d.current}
+                      onChange={(e) => setDraft(d.id, { current: e.target.value })}
+                    />
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{posStock}</TableCell>
+                  <TableCell>
+                    <Switch checked={d.active} onCheckedChange={(v) => setDraft(d.id, { active: v })} />
+                  </TableCell>
+                  <TableCell>
+                    {blockers.length === 0 ? (
+                      <Badge className="bg-emerald-600 hover:bg-emerald-600">Listo para POS</Badge>
+                    ) : (
+                      <div className="space-y-1">
+                        <Badge variant="outline">No listo</Badge>
+                        <p className="text-[11px] text-muted-foreground">
+                          {blockers.map((b) => POS_BLOCK_LABEL[b]).join(" · ")}
+                        </p>
+                      </div>
+                    )}
+                    {warnings.length > 0 && (
+                      <p className="text-[11px] text-amber-600 mt-1">Web: {warnings.join(" · ")}</p>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
