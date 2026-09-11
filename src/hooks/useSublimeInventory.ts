@@ -106,6 +106,7 @@ export function useSublimeInventory() {
 function invalidate(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["sublime_inv_all"] });
   qc.invalidateQueries({ queryKey: ["sublime_pos_catalog"] });
+  qc.invalidateQueries({ queryKey: ["sublime_inv_movements"] });
 }
 
 export function useUpdateSublimeVariant() {
