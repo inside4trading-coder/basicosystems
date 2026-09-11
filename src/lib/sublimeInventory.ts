@@ -163,8 +163,9 @@ export const POS_BLOCK_LABEL: Record<PosBlockReason, string> = {
 };
 
 /**
- * Condiciones para que una variante sea vendible en el POS.
- * La imagen NO es requisito: si falta se muestra un marcador de posición.
+ * Condiciones que IMPIDEN vender la variante en el POS:
+ * producto/variante activos, SKU, precio vigente y stock disponible en tienda.
+ * Categoría, talla, color, imagen y mapeo Woo NO bloquean: son advertencias.
  */
 export function posBlockers(args: {
   product: Pick<SublimeInvProduct, "is_active" | "category">;
@@ -178,11 +179,23 @@ export function posBlockers(args: {
   if (!variant.sku || !variant.sku.trim()) out.push("no_sku");
   const current = Number(variant.current_price_ref ?? 0);
   if (!(current > 0)) out.push("no_price");
-  const full = variant.full_price_ref == null ? null : Number(variant.full_price_ref);
-  if (full != null && current > 0 && full < current) out.push("bad_price");
-  if (!product.category) out.push("no_category");
-  if (!variant.size) out.push("no_size");
   if (!(posStock > 0)) out.push("no_stock");
+  return out;
+}
+
+/** Avisos que no bloquean la venta pero conviene completar. */
+export function posWarnings(args: {
+  product: Pick<SublimeInvProduct, "category" | "main_image_url">;
+  variant: Pick<SublimeInvVariant, "size" | "color" | "full_price_ref" | "current_price_ref">;
+}): string[] {
+  const out: string[] = [];
+  const current = Number(args.variant.current_price_ref ?? 0);
+  const full = args.variant.full_price_ref == null ? null : Number(args.variant.full_price_ref);
+  if (full != null && current > 0 && full < current) out.push(POS_BLOCK_LABEL.bad_price);
+  if (!args.product.category) out.push(POS_BLOCK_LABEL.no_category);
+  if (!args.variant.size) out.push(POS_BLOCK_LABEL.no_size);
+  if (!args.variant.color) out.push("Sin color");
+  if (!args.product.main_image_url) out.push("Sin imagen");
   return out;
 }
 
