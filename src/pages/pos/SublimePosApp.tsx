@@ -295,29 +295,63 @@ export default function SublimePosApp() {
       <PosCashDrawerDialog
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
-        drawer={drawer}
         registerName={session.registerName}
-        sessionCode={session.sessionCode}
         cashierName={session.cashierName}
-        rate={session.rate}
-        onOpenRegister={(p) => {
-          drawerApi.openRegister(registerId, p);
-          posAudit("open_register", session.registerName, auditCtx);
-          toast.success("Caja abierta.");
+        session={cashSession}
+        movements={movementsQuery.data ?? []}
+        summary={summaryQuery.data ?? null}
+        busy={openSession.isPending || cashMovement.isPending || closeSession.isPending}
+        onOpenSession={async (p) => {
+          if (!registerId) return toast.error("Selecciona una caja.");
+          try {
+            const r = await openSession.mutateAsync({
+              registerId,
+              openingRef: p.ref,
+              openingBs: p.bs,
+              cashierName: session.cashierName,
+              note: p.note,
+            });
+            posAudit("open_register", `${session.registerName} · ${r.session_number}`, auditCtx);
+            toast.success(r.already_open ? "Esta caja ya estaba abierta." : "Caja abierta.");
+          } catch (e: any) {
+            toast.error(e?.message ?? "No se pudo abrir la caja.");
+          }
         }}
-        onCloseRegister={() => {
-          drawerApi.closeRegister(registerId);
-          posAudit("close_register", session.registerName, auditCtx);
-          toast.success("Caja cerrada.");
-          setDrawerOpen(false);
+        onMovement={async (p) => {
+          if (!cashSession) return;
+          try {
+            await cashMovement.mutateAsync({
+              sessionId: cashSession.id,
+              type: p.type,
+              currency: p.currency,
+              amount: p.amount,
+              note: p.note,
+              idempotencyKey: crypto.randomUUID(),
+            });
+            toast.success(
+              p.type === "cash_in" ? "Entrada de efectivo registrada." : "Retiro de efectivo registrado."
+            );
+          } catch (e: any) {
+            toast.error(e?.message ?? "No se pudo registrar el movimiento.");
+          }
         }}
-        onAddCash={(p) => {
-          drawerApi.addCash(registerId, p);
-          toast.success("Entrada de efectivo registrada.");
-        }}
-        onRemoveCash={(p) => {
-          drawerApi.removeCash(registerId, p);
-          toast.success("Retiro de efectivo registrado.");
+        onCloseSession={async (p) => {
+          if (!cashSession) return;
+          try {
+            const r = await closeSession.mutateAsync({
+              sessionId: cashSession.id,
+              countedRef: p.countedRef,
+              countedBs: p.countedBs,
+              note: p.note,
+            });
+            posAudit("close_register", `${session.registerName} · ${cashSession.session_number}`, auditCtx);
+            toast.success(
+              `Caja cerrada. Diferencia REF ${r.difference_ref} · Bs. ${r.difference_bs}`
+            );
+            setDrawerOpen(false);
+          } catch (e: any) {
+            toast.error(e?.message ?? "No se pudo cerrar la caja.");
+          }
         }}
       />
 
@@ -335,11 +369,12 @@ export default function SublimePosApp() {
       <PosRegisterDialog
         open={registerPickerOpen}
         onOpenChange={setRegisterPickerOpen}
+        registers={registers}
         currentRegisterId={registerId}
         onSelect={(id) => {
           setRegisterId(id);
           setRegisterPickerOpen(false);
-          posAudit("change_register", posRegister(id).name, auditCtx);
+          posAudit("change_register", registers.find((r) => r.id === id)?.name ?? id, auditCtx);
         }}
       />
 
