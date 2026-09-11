@@ -11,7 +11,8 @@ import { MoveMerchandiseDialog } from "./MoveMerchandiseDialog";
 import { InvThumb } from "@/components/sublime/inventario/InvThumb";
 import { useSublimeInventory, useSublimeLocations } from "@/hooks/useSublimeInventory";
 import { POS_BLOCK_LABEL, posBlockers, variantDisplay } from "@/lib/sublimeInventory";
-import { usdFormat } from "@/lib/sublimeMerch";
+/** Precios y costos de Sublime se expresan en REF. */
+const refFormat = (n: number) => `REF ${n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** Vista de existencias oficiales de una ubicación real de Sublime. */
 export function InventoryLocationView({
@@ -107,7 +108,7 @@ export function InventoryLocationView({
         </Card>
         <Card className="p-4 rounded-2xl border-border/60">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Valor inventario</p>
-          <p className="num text-2xl font-black tabular-nums">{usdFormat(totalValue)}</p>
+          <p className="num text-2xl font-black tabular-nums">{refFormat(totalValue)}</p>
         </Card>
       </div>
 
@@ -166,14 +167,14 @@ export function InventoryLocationView({
                 <TableCell className="text-right tabular-nums">{r.onHand}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.reserved}</TableCell>
                 <TableCell className="text-right tabular-nums font-semibold">{r.available}</TableCell>
-                <TableCell className="text-right tabular-nums">{r.cost == null ? "—" : usdFormat(r.cost)}</TableCell>
+                <TableCell className="text-right tabular-nums">{r.cost == null ? "—" : refFormat(r.cost)}</TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {r.variant.full_price_ref == null ? "—" : usdFormat(Number(r.variant.full_price_ref))}
+                  {r.variant.full_price_ref == null ? "—" : refFormat(Number(r.variant.full_price_ref))}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {r.variant.current_price_ref == null ? "—" : usdFormat(Number(r.variant.current_price_ref))}
+                  {r.variant.current_price_ref == null ? "—" : refFormat(Number(r.variant.current_price_ref))}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">{r.value == null ? "—" : usdFormat(r.value)}</TableCell>
+                <TableCell className="text-right tabular-nums">{r.value == null ? "—" : refFormat(r.value)}</TableCell>
                 <TableCell>
                   {showPosStatus ? (
                     r.blockers.length === 0 ? (

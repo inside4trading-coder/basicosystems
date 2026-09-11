@@ -142,8 +142,12 @@ export default function SublimeInventarioMaestro() {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Stat label="Productos" value={data?.products.length ?? 0} />
         <Stat label="Variantes" value={rows.length} />
-        <Stat label="Listas para POS" value={readyCount} />
-        <Stat label="Unidades disponibles" value={enriched.reduce((a, r) => a + r.totalAvailable, 0)} />
+        <Stat label="Listas para POS" value={readyCount} hint="Variantes vendibles hoy en tienda" />
+        <Stat
+          label="Unidades disponibles"
+          value={enriched.reduce((a, r) => a + r.totalAvailable, 0)}
+          hint="Total oficial de todas las ubicaciones"
+        />
       </div>
 
       <Card className="p-4 rounded-2xl border-border/60 space-y-3">
@@ -283,11 +287,12 @@ export default function SublimeInventarioMaestro() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value, hint }: { label: string; value: number; hint?: string }) {
   return (
     <Card className="p-4 rounded-2xl border-border/60">
       <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className="num text-2xl font-black tabular-nums">{value}</p>
+      {hint && <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>}
     </Card>
   );
 }

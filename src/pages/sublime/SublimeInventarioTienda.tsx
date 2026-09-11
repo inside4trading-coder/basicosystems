@@ -3,9 +3,10 @@ import { InventoryLocationView } from "@/components/sublime/hub/InventoryLocatio
 export default function SublimeInventarioTienda() {
   return (
     <InventoryLocationView
-      locationId="loc-bq"
+      locationCode="BQ"
       title="Sublime Barquicenter"
-      subtitle="Inventario físico por variante y unidad en tienda"
+      subtitle="Existencias oficiales en tienda: esta es la fuente de stock vendible en POS"
+      showPosStatus
     />
   );
 }
