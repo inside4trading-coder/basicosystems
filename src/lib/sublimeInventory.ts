@@ -118,7 +118,9 @@ export interface SublimeInvProposal {
   source_merch_item_id: string | null;
   note: string | null;
   confirmed_at: string | null;
+  confirmed_by: string | null;
 }
+
 
 /** Nombre normalizado: sin acentos, minúsculas, espacios colapsados. */
 export function normalizeName(name: string | null | undefined): string {
