@@ -44,6 +44,10 @@ export default function SublimePosApp() {
   const catalogQuery = useSublimePosCatalog();
   const catalog = catalogQuery.data?.entries ?? [];
   const categories = catalogQuery.data?.categories ?? [];
+  const location = catalogQuery.data?.location ?? null;
+  const registerSale = useRegisterSublimePosSale();
+  /** Identificador del intento de cobro: protege contra dobles ventas. */
+  const [attemptKey, setAttemptKey] = useState(() => crypto.randomUUID());
 
   const cart = usePosCart(registerId, catalog);
   const drawerApi = usePosCashDrawer();
@@ -92,34 +96,64 @@ export default function SublimePosApp() {
     locationId: session.locationId,
   };
 
-  const confirmPayment = () => {
-    const sale: PosSaleDocument = {
-      number: `POS-${String(Math.floor(Math.random() * 9000) + 1000)}`,
-      invoiceNumber: invoiceNumber.trim() || null,
-      at: new Date().toLocaleString("es-VE"),
-      session,
-      customer,
-      channel: cart.channel,
-      channelDetail: cart.channelDetail,
+  const confirmPayment = async () => {
+    if (registerSale.isPending) return;
+    if (!location) {
+      toast.error("No hay una tienda configurada para vender.");
+      return;
+    }
+    if (!cart.channel) {
+      toast.error("Selecciona el origen de la venta.");
+      return;
+    }
 
-      lines: cart.lines,
-      subtotalRegular: cart.subtotalRegular,
-      discountTotal: cart.discountTotal,
-      total: cart.total,
-      taxIncluded: cart.taxIncluded,
-      note: cart.note,
-      payments,
-      status: "Emitida",
-    };
-    setDoc(sale);
-    setPayOpen(false);
-    posAudit(
-      "sale",
-      `${sale.number} · ${posChannelLabel(sale.channel, sale.channelDetail)} · ${payments.length} método(s)`,
-      auditCtx
-    );
-    if (cart.discountTotal > 0) {
-      posAudit("discount", `${sale.number} · descuento ${cart.discountTotal.toFixed(2)} REF`, auditCtx);
+    try {
+      const result = await registerSale.mutateAsync({
+        idempotencyKey: attemptKey,
+        locationId: location.id,
+        channel: cart.channel,
+        channelDetail: cart.channelDetail,
+        lines: cart.lines,
+        payments,
+        customer,
+        invoiceNumber: invoiceNumber.trim(),
+        note: cart.note,
+        rate: session.rate,
+        registerCode: session.registerName,
+        cashierCode: session.cashierName,
+        sessionCode: session.sessionCode,
+      });
+
+      const sale: PosSaleDocument = {
+        number: result.sale_number,
+        invoiceNumber: invoiceNumber.trim() || null,
+        at: new Date().toLocaleString("es-VE"),
+        session,
+        customer,
+        channel: cart.channel,
+        channelDetail: cart.channelDetail,
+
+        lines: cart.lines,
+        subtotalRegular: cart.subtotalRegular,
+        discountTotal: cart.discountTotal,
+        total: cart.total,
+        taxIncluded: cart.taxIncluded,
+        note: cart.note,
+        payments,
+        status: "Emitida",
+      };
+      setDoc(sale);
+      setPayOpen(false);
+      posAudit(
+        "sale",
+        `${sale.number} · ${posChannelLabel(sale.channel, sale.channelDetail)} · ${payments.length} método(s)`,
+        auditCtx
+      );
+      if (cart.discountTotal > 0) {
+        posAudit("discount", `${sale.number} · descuento ${cart.discountTotal.toFixed(2)} REF`, auditCtx);
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "No se pudo completar la venta.");
     }
   };
 
@@ -128,6 +162,7 @@ export default function SublimePosApp() {
     setPayments([]);
     setCustomer(null);
     setInvoiceNumber("");
+    setAttemptKey(crypto.randomUUID());
     cart.clear();
   };
 
