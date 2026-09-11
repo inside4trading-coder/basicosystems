@@ -66,6 +66,7 @@ export function PosPaymentSheet({
   invoiceNumber,
   setInvoiceNumber,
   onConfirm,
+  busy = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -82,6 +83,8 @@ export function PosPaymentSheet({
   invoiceNumber: string;
   setInvoiceNumber: (v: string) => void;
   onConfirm: () => void;
+  /** Cobro en curso: evita dobles ventas por doble clic. */
+  busy?: boolean;
 }) {
   const paid = paidUsdOf(payments, rate);
   const missing = Math.max(0, total - paid);

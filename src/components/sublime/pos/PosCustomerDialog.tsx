@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { UserRound } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { mockCustomers } from "@/lib/sublimeMock";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface PosCustomer {
+  /** Presente cuando el cliente ya existe en la ficha de clientes. */
+  id?: string;
   name: string;
   idCard: string;
   phone: string;
@@ -18,15 +21,42 @@ export interface PosCustomer {
 
 const EMPTY: PosCustomer = { name: "", idCard: "", phone: "", email: "", birthDate: "", address: "" };
 
+const sb = supabase as any;
+
+/** Clientes reales de Sublime. */
+function useSublimeCustomers() {
+  return useQuery({
+    queryKey: ["sublime_pos_customers"],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("sublime_customers")
+        .select("*")
+        .order("name")
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+}
+
 /** Buscador de clientes existentes (nombre, cédula/RIF, teléfono y correo). */
 export function PosCustomerSearch({ onSelect }: { onSelect: (c: PosCustomer) => void }) {
   const [q, setQ] = useState("");
+  const { data: customers = [], isLoading } = useSublimeCustomers();
 
-  const list = mockCustomers.filter((c) =>
-    `${c.name} ${c.idCard ?? ""} ${c.phone ?? ""} ${c.email ?? ""}`
-      .toLowerCase()
-      .includes(q.toLowerCase())
-  );
+  const list = customers
+    .map((c) => ({
+      id: c.id as string,
+      name: c.name as string,
+      idCard: (c.id_card as string) ?? "",
+      phone: (c.phone as string) ?? "",
+      email: (c.email as string) ?? "",
+      birthDate: (c.birth_date as string) ?? "",
+      address: (c.address as string) ?? "",
+    }))
+    .filter((c) =>
+      `${c.name} ${c.idCard} ${c.phone} ${c.email}`.toLowerCase().includes(q.toLowerCase())
+    );
 
   return (
     <div className="space-y-3">
