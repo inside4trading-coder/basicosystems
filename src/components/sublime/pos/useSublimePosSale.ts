@@ -99,9 +99,8 @@ export function useRegisterSublimePosSale() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sublime_pos_catalog"] });
-      qc.invalidateQueries({ queryKey: ["sublime_inventory"] });
-      qc.invalidateQueries({ queryKey: ["sublime_stocks"] });
-      qc.invalidateQueries({ queryKey: ["sublime_inventory_movements"] });
+      qc.invalidateQueries({ queryKey: ["sublime_inv_all"] });
+      qc.invalidateQueries({ queryKey: ["sublime_inv_movements"] });
       qc.invalidateQueries({ queryKey: ["sublime_pos_sales"] });
     },
   });

@@ -388,11 +388,11 @@ export function PosPaymentSheet({
         <Button
           size="lg"
           className={cn("w-full h-16 text-base font-black", posChannelButtonClass(channel))}
-          disabled={!canFinish}
+          disabled={!canFinish || busy}
           onClick={onConfirm}
         >
-          FINALIZAR VENTA
-          {channel ? ` · ${posChannelLabel(channel, channelDetail)}` : ""}
+          {busy ? "PROCESANDO VENTA…" : "FINALIZAR VENTA"}
+          {!busy && channel ? ` · ${posChannelLabel(channel, channelDetail)}` : ""}
         </Button>
         {!canFinish ? (
           <p className="text-xs text-center text-muted-foreground">
