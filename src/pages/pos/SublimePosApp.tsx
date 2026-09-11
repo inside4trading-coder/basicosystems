@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -12,7 +12,15 @@ import { PosPaymentSheet, type PosPaymentLine } from "@/components/sublime/pos/P
 import { PosManualItemDialog } from "@/components/sublime/pos/PosManualItemDialog";
 import { PosNoteDialog } from "@/components/sublime/pos/PosNoteDialog";
 import { PosCashDrawerDialog } from "@/components/sublime/pos/PosCashDrawerDialog";
-import { usePosCashDrawer } from "@/components/sublime/pos/usePosCashDrawer";
+import {
+  useActiveCashSession,
+  useCashMovements,
+  useCashSessionSummary,
+  useCloseCashSession,
+  useOpenCashSession,
+  useRegisterCashMovement,
+  useSublimeRegisters,
+} from "@/components/sublime/pos/useSublimeCashSession";
 import {
   PosCashierDialog,
   PosClosuresDialog,
@@ -27,7 +35,7 @@ import {
 import { POS_BCV_RATE, usePosCart } from "@/components/sublime/pos/usePosCart";
 import { useSublimePosCatalog } from "@/components/sublime/pos/useSublimePosCatalog";
 import { useRegisterSublimePosSale } from "@/components/sublime/pos/useSublimePosSale";
-import { POS_STORE, posCashier, posRegister, posSessionOf } from "@/lib/posSession";
+import { posCashier } from "@/lib/posSession";
 import { posAudit } from "@/lib/posAudit";
 import { posChannelLabel } from "@/lib/posSalesChannels";
 
@@ -39,7 +47,6 @@ import { posChannelLabel } from "@/lib/posSalesChannels";
 export default function SublimePosApp() {
   const navigate = useNavigate();
 
-  const [registerId, setRegisterId] = useState("reg-1");
   const [cashierId, setCashierId] = useState("csh-1");
 
   const catalogQuery = useSublimePosCatalog();
@@ -50,9 +57,32 @@ export default function SublimePosApp() {
   /** Identificador del intento de cobro: protege contra dobles ventas. */
   const [attemptKey, setAttemptKey] = useState(() => crypto.randomUUID());
 
-  const cart = usePosCart(registerId, catalog);
-  const drawerApi = usePosCashDrawer();
-  const drawer = drawerApi.drawerOf(registerId);
+  // Cajas reales de la sede. La caja elegida se recuerda solo como comodidad:
+  // el dato oficial (sesión, efectivo, ventas) siempre viene del servidor.
+  const registersQuery = useSublimeRegisters(location?.id);
+  const registers = registersQuery.data ?? [];
+  const [registerId, setRegisterId] = useState<string | null>(
+    () => localStorage.getItem("sublime_pos_register")
+  );
+  useEffect(() => {
+    if (!registers.length) return;
+    if (!registerId || !registers.some((r) => r.id === registerId)) {
+      setRegisterId(registers[0].id);
+    }
+  }, [registers, registerId]);
+  useEffect(() => {
+    if (registerId) localStorage.setItem("sublime_pos_register", registerId);
+  }, [registerId]);
+
+  const activeSessionQuery = useActiveCashSession(registerId);
+  const cashSession = activeSessionQuery.data ?? null;
+  const movementsQuery = useCashMovements(cashSession?.id);
+  const summaryQuery = useCashSessionSummary(cashSession?.id);
+  const openSession = useOpenCashSession();
+  const cashMovement = useRegisterCashMovement();
+  const closeSession = useCloseCashSession();
+
+  const cart = usePosCart(registerId ?? "sin-caja", catalog);
 
   const [customer, setCustomer] = useState<PosCustomer | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
@@ -69,24 +99,24 @@ export default function SublimePosApp() {
   const [doc, setDoc] = useState<PosSaleDocument | null>(null);
 
 
+  const register = registers.find((r) => r.id === registerId) ?? null;
+
   const session: PosSession = useMemo(() => {
-    const reg = posRegister(registerId);
-    const ses = posSessionOf(registerId);
     const csh = posCashier(cashierId);
     return {
-      locationId: POS_STORE.id,
-      locationName: POS_STORE.name,
-      registerId: reg.id,
-      registerName: reg.name,
-      posSessionId: ses.id,
-      sessionCode: ses.code,
+      locationId: location?.id ?? "",
+      locationName: location?.name ?? "Sin sede",
+      registerId: register?.id ?? "",
+      registerName: register?.name ?? "Sin caja",
+      posSessionId: cashSession?.id ?? "",
+      sessionCode: cashSession?.session_number ?? "Sin sesión",
       cashierId: csh.id,
-      cashierName: csh.name,
-      registerOpen: drawer.open,
+      cashierName: cashSession?.cashier_name ?? csh.name,
+      registerOpen: !!cashSession,
       rate: POS_BCV_RATE,
       online: true,
     };
-  }, [registerId, cashierId, drawer.open]);
+  }, [cashierId, location, register, cashSession]);
 
   const auditCtx = {
     cashierId: session.cashierId,
@@ -107,6 +137,12 @@ export default function SublimePosApp() {
       toast.error("Selecciona el origen de la venta.");
       return;
     }
+    if (!cashSession) {
+      toast.error("Debes abrir caja antes de vender.");
+      setPayOpen(false);
+      setDrawerOpen(true);
+      return;
+    }
 
     try {
       const result = await registerSale.mutateAsync({
@@ -123,6 +159,7 @@ export default function SublimePosApp() {
         registerCode: session.registerName,
         cashierCode: session.cashierName,
         sessionCode: session.sessionCode,
+        cashSessionId: cashSession.id,
       });
 
       const sale: PosSaleDocument = {
@@ -258,29 +295,63 @@ export default function SublimePosApp() {
       <PosCashDrawerDialog
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
-        drawer={drawer}
         registerName={session.registerName}
-        sessionCode={session.sessionCode}
         cashierName={session.cashierName}
-        rate={session.rate}
-        onOpenRegister={(p) => {
-          drawerApi.openRegister(registerId, p);
-          posAudit("open_register", session.registerName, auditCtx);
-          toast.success("Caja abierta.");
+        session={cashSession}
+        movements={movementsQuery.data ?? []}
+        summary={summaryQuery.data ?? null}
+        busy={openSession.isPending || cashMovement.isPending || closeSession.isPending}
+        onOpenSession={async (p) => {
+          if (!registerId) return toast.error("Selecciona una caja.");
+          try {
+            const r = await openSession.mutateAsync({
+              registerId,
+              openingRef: p.ref,
+              openingBs: p.bs,
+              cashierName: session.cashierName,
+              note: p.note,
+            });
+            posAudit("open_register", `${session.registerName} · ${r.session_number}`, auditCtx);
+            toast.success(r.already_open ? "Esta caja ya estaba abierta." : "Caja abierta.");
+          } catch (e: any) {
+            toast.error(e?.message ?? "No se pudo abrir la caja.");
+          }
         }}
-        onCloseRegister={() => {
-          drawerApi.closeRegister(registerId);
-          posAudit("close_register", session.registerName, auditCtx);
-          toast.success("Caja cerrada.");
-          setDrawerOpen(false);
+        onMovement={async (p) => {
+          if (!cashSession) return;
+          try {
+            await cashMovement.mutateAsync({
+              sessionId: cashSession.id,
+              type: p.type,
+              currency: p.currency,
+              amount: p.amount,
+              note: p.note,
+              idempotencyKey: crypto.randomUUID(),
+            });
+            toast.success(
+              p.type === "cash_in" ? "Entrada de efectivo registrada." : "Retiro de efectivo registrado."
+            );
+          } catch (e: any) {
+            toast.error(e?.message ?? "No se pudo registrar el movimiento.");
+          }
         }}
-        onAddCash={(p) => {
-          drawerApi.addCash(registerId, p);
-          toast.success("Entrada de efectivo registrada.");
-        }}
-        onRemoveCash={(p) => {
-          drawerApi.removeCash(registerId, p);
-          toast.success("Retiro de efectivo registrado.");
+        onCloseSession={async (p) => {
+          if (!cashSession) return;
+          try {
+            const r = await closeSession.mutateAsync({
+              sessionId: cashSession.id,
+              countedRef: p.countedRef,
+              countedBs: p.countedBs,
+              note: p.note,
+            });
+            posAudit("close_register", `${session.registerName} · ${cashSession.session_number}`, auditCtx);
+            toast.success(
+              `Caja cerrada. Diferencia REF ${r.difference_ref} · Bs. ${r.difference_bs}`
+            );
+            setDrawerOpen(false);
+          } catch (e: any) {
+            toast.error(e?.message ?? "No se pudo cerrar la caja.");
+          }
         }}
       />
 
@@ -298,11 +369,12 @@ export default function SublimePosApp() {
       <PosRegisterDialog
         open={registerPickerOpen}
         onOpenChange={setRegisterPickerOpen}
+        registers={registers}
         currentRegisterId={registerId}
         onSelect={(id) => {
           setRegisterId(id);
           setRegisterPickerOpen(false);
-          posAudit("change_register", posRegister(id).name, auditCtx);
+          posAudit("change_register", registers.find((r) => r.id === id)?.name ?? id, auditCtx);
         }}
       />
 

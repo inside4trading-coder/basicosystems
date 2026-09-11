@@ -23,6 +23,8 @@ export interface RegisterSaleInput {
   registerCode: string;
   cashierCode: string;
   sessionCode: string;
+  /** Sesión de caja abierta: sin ella el servidor rechaza la venta. */
+  cashSessionId: string;
 }
 
 const toRef = (amount: number, currency: "USD" | "VES", rate: number) =>
@@ -93,6 +95,7 @@ export function useRegisterSublimePosSale() {
         p_register_code: input.registerCode,
         p_cashier_code: input.cashierCode,
         p_session_code: input.sessionCode,
+        p_cash_session_id: input.cashSessionId,
       });
       if (error) throw error;
       return data as { sale_id: string; sale_number: string; duplicate: boolean };
@@ -102,6 +105,8 @@ export function useRegisterSublimePosSale() {
       qc.invalidateQueries({ queryKey: ["sublime_inv_all"] });
       qc.invalidateQueries({ queryKey: ["sublime_inv_movements"] });
       qc.invalidateQueries({ queryKey: ["sublime_pos_sales"] });
+      qc.invalidateQueries({ queryKey: ["sublime_cash_movements"] });
+      qc.invalidateQueries({ queryKey: ["sublime_cash_summary"] });
     },
   });
 }

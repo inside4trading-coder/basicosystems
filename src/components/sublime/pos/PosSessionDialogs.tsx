@@ -56,16 +56,18 @@ export function PosCashierDialog({
   );
 }
 
-/** Cambiar caja: cada caja tiene su sesión y su carrito activo independiente. */
+/** Cambiar caja: cada caja tiene su sesión real y su carrito activo independiente. */
 export function PosRegisterDialog({
   open,
   onOpenChange,
+  registers,
   currentRegisterId,
   onSelect,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  currentRegisterId: string;
+  registers: { id: string; name: string }[];
+  currentRegisterId: string | null;
   onSelect: (registerId: string) => void;
 }) {
   return (
@@ -75,12 +77,16 @@ export function PosRegisterDialog({
           <DialogTitle>Cambiar caja</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">
-          Cada caja mantiene su propio carrito activo. El inventario es de la sede y se comparte.
+          Cada caja mantiene su propia sesión, su efectivo y su carrito. El inventario es de la
+          sede y se comparte.
         </p>
         <div className="space-y-2">
-          {POS_REGISTERS.map((r) => {
-            const s = posSessionOf(r.id);
-            return (
+          {registers.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No hay cajas configuradas en esta sede.
+            </p>
+          ) : (
+            registers.map((r) => (
               <button
                 key={r.id}
                 type="button"
@@ -93,12 +99,9 @@ export function PosRegisterDialog({
                 )}
               >
                 <p className="font-bold text-foreground">{r.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {s.code} · abierta {s.openedAt}
-                </p>
               </button>
-            );
-          })}
+            ))
+          )}
         </div>
       </DialogContent>
     </Dialog>
