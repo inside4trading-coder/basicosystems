@@ -115,6 +115,7 @@ export function useUpdateSublimeVariant() {
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<SublimeInvVariant> }) => {
       const { error } = await sb.from(T_VAR).update(patch).eq("id", id);
       if (error) throw error;
+      if (!("pos_enabled" in patch)) await syncPosEnabledForVariant(id);
     },
     onSuccess: () => invalidate(qc),
   });
