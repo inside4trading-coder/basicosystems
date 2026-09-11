@@ -9131,6 +9131,48 @@ export type Database = {
           },
         ]
       }
+      sublime_customers: {
+        Row: {
+          address: string | null
+          birth_date: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          id_card: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          birth_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          id_card?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          birth_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          id_card?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sublime_daily_shifts: {
         Row: {
           break_minutes: number
@@ -9619,6 +9661,222 @@ export type Database = {
           woo_product_id?: number | null
         }
         Relationships: []
+      }
+      sublime_sale_items: {
+        Row: {
+          created_at: string
+          discount_ref: number
+          id: string
+          line_kind: string
+          line_total_ref: number
+          product_id: string | null
+          qty: number
+          sale_id: string
+          sku: string | null
+          subtitle: string | null
+          title: string
+          unit_final_ref: number
+          unit_regular_ref: number
+          variant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          discount_ref?: number
+          id?: string
+          line_kind?: string
+          line_total_ref?: number
+          product_id?: string | null
+          qty: number
+          sale_id: string
+          sku?: string | null
+          subtitle?: string | null
+          title: string
+          unit_final_ref?: number
+          unit_regular_ref?: number
+          variant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          discount_ref?: number
+          id?: string
+          line_kind?: string
+          line_total_ref?: number
+          product_id?: string | null
+          qty?: number
+          sale_id?: string
+          sku?: string | null
+          subtitle?: string | null
+          title?: string
+          unit_final_ref?: number
+          unit_regular_ref?: number
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_sale_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sublime_sale_payments: {
+        Row: {
+          amount: number
+          amount_ref: number
+          bank: string | null
+          created_at: string
+          currency: string
+          extra: Json
+          id: string
+          method: string
+          reference: string | null
+          sale_id: string
+        }
+        Insert: {
+          amount: number
+          amount_ref: number
+          bank?: string | null
+          created_at?: string
+          currency: string
+          extra?: Json
+          id?: string
+          method: string
+          reference?: string | null
+          sale_id: string
+        }
+        Update: {
+          amount?: number
+          amount_ref?: number
+          bank?: string | null
+          created_at?: string
+          currency?: string
+          extra?: Json
+          id?: string
+          method?: string
+          reference?: string | null
+          sale_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_sale_payments_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sublime_sales: {
+        Row: {
+          bcv_rate: number
+          cashier_code: string | null
+          created_at: string
+          customer_id: string | null
+          customer_name: string | null
+          discount_total_ref: number
+          id: string
+          idempotency_key: string
+          invoice_number: string | null
+          location_id: string
+          note: string | null
+          origin_detail: string | null
+          register_code: string | null
+          sale_number: string
+          sale_origin: string
+          session_code: string | null
+          sold_at: string
+          sold_by: string | null
+          status: string
+          subtotal_regular_ref: number
+          tax_included_ref: number
+          total_ref: number
+          units: number
+          updated_at: string
+        }
+        Insert: {
+          bcv_rate?: number
+          cashier_code?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          discount_total_ref?: number
+          id?: string
+          idempotency_key: string
+          invoice_number?: string | null
+          location_id: string
+          note?: string | null
+          origin_detail?: string | null
+          register_code?: string | null
+          sale_number: string
+          sale_origin: string
+          session_code?: string | null
+          sold_at?: string
+          sold_by?: string | null
+          status?: string
+          subtotal_regular_ref?: number
+          tax_included_ref?: number
+          total_ref?: number
+          units?: number
+          updated_at?: string
+        }
+        Update: {
+          bcv_rate?: number
+          cashier_code?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          discount_total_ref?: number
+          id?: string
+          idempotency_key?: string
+          invoice_number?: string | null
+          location_id?: string
+          note?: string | null
+          origin_detail?: string | null
+          register_code?: string | null
+          sale_number?: string
+          sale_origin?: string
+          session_code?: string | null
+          sold_at?: string
+          sold_by?: string | null
+          status?: string
+          subtotal_regular_ref?: number
+          tax_included_ref?: number
+          total_ref?: number
+          units?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_sales_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_locations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sublime_stock_intake_proposals: {
         Row: {
@@ -10698,6 +10956,24 @@ export type Database = {
       }
       sublime_confirm_initial_validation: {
         Args: { p_counts: Json; p_note?: string; p_variant_id: string }
+        Returns: Json
+      }
+      sublime_register_pos_sale: {
+        Args: {
+          p_bcv_rate?: number
+          p_cashier_code?: string
+          p_customer?: Json
+          p_idempotency_key: string
+          p_invoice_number?: string
+          p_items: Json
+          p_location_id: string
+          p_note?: string
+          p_origin_detail?: string
+          p_payments: Json
+          p_register_code?: string
+          p_sale_origin: string
+          p_session_code?: string
+        }
         Returns: Json
       }
       sublime_transfer_stock: {

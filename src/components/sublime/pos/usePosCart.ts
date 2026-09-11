@@ -193,15 +193,23 @@ export function usePosCart(registerId: string, catalog: PosCatalogEntry[] = []) 
   const taxIncluded = includedTax(total);
   const units = lines.reduce((a, l) => a + l.qty, 0);
 
-  const add = (variantId: string) =>
-    patch({ items: { ...state.items, [variantId]: (state.items[variantId] ?? 0) + 1 } });
+  /** Tope de unidades: nunca por encima del disponible real en Tienda. */
+  const stockOf = (variantId: string) =>
+    catalog.find((e) => e.variant.id === variantId)?.storeStock ?? 0;
+
+  const add = (variantId: string) => {
+    const max = stockOf(variantId);
+    const next = Math.min((state.items[variantId] ?? 0) + 1, max);
+    if (next <= 0) return;
+    patch({ items: { ...state.items, [variantId]: next } });
+  };
 
   const addManual = (item: Omit<PosManualItem, "id">) =>
     patch({ manual: [...state.manual, { ...item, id: `man-${Date.now()}` }] });
 
   const changeQty = (key: string, delta: number) => {
     if (state.items[key] !== undefined) {
-      const next = (state.items[key] ?? 0) + delta;
+      const next = Math.min((state.items[key] ?? 0) + delta, stockOf(key));
       const items = { ...state.items };
       if (next <= 0) delete items[key];
       else items[key] = next;

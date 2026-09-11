@@ -66,6 +66,7 @@ export function PosPaymentSheet({
   invoiceNumber,
   setInvoiceNumber,
   onConfirm,
+  busy = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -82,6 +83,8 @@ export function PosPaymentSheet({
   invoiceNumber: string;
   setInvoiceNumber: (v: string) => void;
   onConfirm: () => void;
+  /** Cobro en curso: evita dobles ventas por doble clic. */
+  busy?: boolean;
 }) {
   const paid = paidUsdOf(payments, rate);
   const missing = Math.max(0, total - paid);
@@ -388,11 +391,11 @@ export function PosPaymentSheet({
         <Button
           size="lg"
           className={cn("w-full h-16 text-base font-black", posChannelButtonClass(channel))}
-          disabled={!canFinish}
+          disabled={!canFinish || busy}
           onClick={onConfirm}
         >
-          FINALIZAR VENTA
-          {channel ? ` · ${posChannelLabel(channel, channelDetail)}` : ""}
+          {busy ? "PROCESANDO VENTA…" : "FINALIZAR VENTA"}
+          {!busy && channel ? ` · ${posChannelLabel(channel, channelDetail)}` : ""}
         </Button>
         {!canFinish ? (
           <p className="text-xs text-center text-muted-foreground">
