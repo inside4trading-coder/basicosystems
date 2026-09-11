@@ -8858,6 +8858,166 @@ export type Database = {
         }
         Relationships: []
       }
+      sublime_cash_movements: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          idempotency_key: string | null
+          movement_type: string
+          note: string | null
+          performed_by: string | null
+          register_id: string
+          sale_id: string | null
+          session_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          id?: string
+          idempotency_key?: string | null
+          movement_type: string
+          note?: string | null
+          performed_by?: string | null
+          register_id: string
+          sale_id?: string | null
+          session_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          idempotency_key?: string | null
+          movement_type?: string
+          note?: string | null
+          performed_by?: string | null
+          register_id?: string
+          sale_id?: string | null
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_cash_movements_register_id_fkey"
+            columns: ["register_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_registers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_cash_movements_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_cash_movements_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_cash_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sublime_cash_sessions: {
+        Row: {
+          cashier_name: string | null
+          cashier_user_id: string
+          closed_at: string | null
+          closed_by: string | null
+          closing_note: string | null
+          closing_summary: Json | null
+          counted_bs: number | null
+          counted_ref: number | null
+          created_at: string
+          difference_bs: number | null
+          difference_ref: number | null
+          expected_bs: number | null
+          expected_ref: number | null
+          id: string
+          location_id: string
+          opened_at: string
+          opened_by: string | null
+          opening_bs: number
+          opening_note: string | null
+          opening_ref: number
+          register_id: string
+          session_number: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cashier_name?: string | null
+          cashier_user_id: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_note?: string | null
+          closing_summary?: Json | null
+          counted_bs?: number | null
+          counted_ref?: number | null
+          created_at?: string
+          difference_bs?: number | null
+          difference_ref?: number | null
+          expected_bs?: number | null
+          expected_ref?: number | null
+          id?: string
+          location_id: string
+          opened_at?: string
+          opened_by?: string | null
+          opening_bs?: number
+          opening_note?: string | null
+          opening_ref?: number
+          register_id: string
+          session_number: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cashier_name?: string | null
+          cashier_user_id?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_note?: string | null
+          closing_summary?: Json | null
+          counted_bs?: number | null
+          counted_ref?: number | null
+          created_at?: string
+          difference_bs?: number | null
+          difference_ref?: number | null
+          expected_bs?: number | null
+          expected_ref?: number | null
+          id?: string
+          location_id?: string
+          opened_at?: string
+          opened_by?: string | null
+          opening_bs?: number
+          opening_note?: string | null
+          opening_ref?: number
+          register_id?: string
+          session_number?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_cash_sessions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_cash_sessions_register_id_fkey"
+            columns: ["register_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_registers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sublime_channel_mappings: {
         Row: {
           channel: string
@@ -9662,6 +9822,44 @@ export type Database = {
         }
         Relationships: []
       }
+      sublime_registers: {
+        Row: {
+          code: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          location_id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location_id: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location_id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_registers_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sublime_sale_items: {
         Row: {
           created_at: string
@@ -9785,6 +9983,7 @@ export type Database = {
       sublime_sales: {
         Row: {
           bcv_rate: number
+          cash_session_id: string | null
           cashier_code: string | null
           created_at: string
           customer_id: string | null
@@ -9797,6 +9996,7 @@ export type Database = {
           note: string | null
           origin_detail: string | null
           register_code: string | null
+          register_id: string | null
           sale_number: string
           sale_origin: string
           session_code: string | null
@@ -9811,6 +10011,7 @@ export type Database = {
         }
         Insert: {
           bcv_rate?: number
+          cash_session_id?: string | null
           cashier_code?: string | null
           created_at?: string
           customer_id?: string | null
@@ -9823,6 +10024,7 @@ export type Database = {
           note?: string | null
           origin_detail?: string | null
           register_code?: string | null
+          register_id?: string | null
           sale_number: string
           sale_origin: string
           session_code?: string | null
@@ -9837,6 +10039,7 @@ export type Database = {
         }
         Update: {
           bcv_rate?: number
+          cash_session_id?: string | null
           cashier_code?: string | null
           created_at?: string
           customer_id?: string | null
@@ -9849,6 +10052,7 @@ export type Database = {
           note?: string | null
           origin_detail?: string | null
           register_code?: string | null
+          register_id?: string | null
           sale_number?: string
           sale_origin?: string
           session_code?: string | null
@@ -9863,6 +10067,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "sublime_sales_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sublime_sales_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
@@ -9874,6 +10085,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "sublime_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_sales_register_id_fkey"
+            columns: ["register_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_registers"
             referencedColumns: ["id"]
           },
         ]
@@ -10954,13 +11172,48 @@ export type Database = {
         }
         Returns: Json
       }
+      sublime_cash_session_summary: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
+      sublime_close_cash_session: {
+        Args: {
+          p_counted_bs: number
+          p_counted_ref: number
+          p_note?: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
       sublime_confirm_initial_validation: {
         Args: { p_counts: Json; p_note?: string; p_variant_id: string }
+        Returns: Json
+      }
+      sublime_open_cash_session: {
+        Args: {
+          p_cashier_name?: string
+          p_note?: string
+          p_opening_bs?: number
+          p_opening_ref?: number
+          p_register_id: string
+        }
+        Returns: Json
+      }
+      sublime_register_cash_movement: {
+        Args: {
+          p_amount: number
+          p_currency: string
+          p_idempotency_key?: string
+          p_movement_type: string
+          p_note: string
+          p_session_id: string
+        }
         Returns: Json
       }
       sublime_register_pos_sale: {
         Args: {
           p_bcv_rate?: number
+          p_cash_session_id?: string
           p_cashier_code?: string
           p_customer?: Json
           p_idempotency_key: string
