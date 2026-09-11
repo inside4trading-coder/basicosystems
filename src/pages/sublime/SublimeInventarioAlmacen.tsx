@@ -3,9 +3,9 @@ import { InventoryLocationView } from "@/components/sublime/hub/InventoryLocatio
 export default function SublimeInventarioAlmacen() {
   return (
     <InventoryLocationView
-      locationId="loc-wh"
+      locationCode="WH"
       title="Almacén Sublime"
-      subtitle="Inventario físico por variante y unidad en el almacén"
+      subtitle="Existencias oficiales por variante en el almacén"
     />
   );
 }
