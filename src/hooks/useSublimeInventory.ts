@@ -436,29 +436,39 @@ export interface ProposeStockResult {
   itemsSkippedNotReceived: number;
 }
 
+/**
+ * Crea propuestas de conteo para TODAS las variantes activas en TODAS las
+ * ubicaciones activas. La cantidad sugerida sale de mercancía ya recibida;
+ * si no hay dato fiable queda en 0 ("Sin referencia"). Nunca duplica ni toca
+ * propuestas ya confirmadas.
+ */
 export function useProposeInitialStock() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (locationId: string): Promise<ProposeStockResult> => {
+    mutationFn: async (): Promise<ProposeStockResult> => {
       const { items } = await loadMerchContext();
-      const [lots, props] = await Promise.all([
+      const [lots, props, vars, locs] = await Promise.all([
         sb.from(T_LOT).select("*"),
-        sb.from(T_PROP).select("*").eq("location_id", locationId),
+        sb.from(T_PROP).select("*"),
+        sb.from(T_VAR).select("id, is_active"),
+        sb.from(T_LOC).select("*").eq("is_active", true),
       ]);
-      for (const r of [lots, props]) if (r.error) throw r.error;
+      for (const r of [lots, props, vars, locs]) if (r.error) throw r.error;
       const allLots = (lots.data ?? []) as SublimeInvLot[];
       const existing = (props.data ?? []) as SublimeInvProposal[];
+      const variants = ((vars.data ?? []) as { id: string; is_active: boolean }[]).filter((v) => v.is_active);
+      const locations = (locs.data ?? []) as SublimeInvLocation[];
 
       const received = items.filter((i) => RECEIVED_STATES.includes(String(i.estado ?? "")));
+      const receivedIds = new Set(received.map((i) => i.id));
       const suggested = new Map<string, { qty: number; item: string }>();
-      for (const item of received) {
-        for (const l of allLots.filter((x) => x.merch_item_id === item.id)) {
-          const prev = suggested.get(l.variant_id);
-          suggested.set(l.variant_id, {
-            qty: (prev?.qty ?? 0) + Number(l.qty_from_lot ?? 0),
-            item: item.id,
-          });
-        }
+      for (const l of allLots) {
+        if (!receivedIds.has(l.merch_item_id)) continue;
+        const prev = suggested.get(l.variant_id);
+        suggested.set(l.variant_id, {
+          qty: (prev?.qty ?? 0) + Number(l.qty_from_lot ?? 0),
+          item: l.merch_item_id,
+        });
       }
 
       const res: ProposeStockResult = {
@@ -468,27 +478,44 @@ export function useProposeInitialStock() {
         itemsSkippedNotReceived: items.length - received.length,
       };
 
-      for (const [variantId, info] of suggested) {
-        const prev = existing.find((p) => p.variant_id === variantId);
-        if (prev && prev.status === "confirmed") continue;
-        const { error } = await sb.from(T_PROP).upsert(
-          {
-            variant_id: variantId,
-            location_id: locationId,
-            suggested_qty: info.qty,
-            source_merch_item_id: info.item,
+      // La cantidad sugerida se atribuye a la ubicación que vende en POS;
+      // el resto arranca en 0 y se completa con el conteo físico.
+      const posLocId = locations.find((l) => l.sells_in_pos)?.id ?? locations[0]?.id ?? null;
+      const payload: Record<string, unknown>[] = [];
+      for (const v of variants) {
+        const confirmed = existing.some((p) => p.variant_id === v.id && p.status === "confirmed");
+        if (confirmed) continue;
+        const info = suggested.get(v.id) ?? null;
+        for (const l of locations) {
+          const prev = existing.find((p) => p.variant_id === v.id && p.location_id === l.id);
+          const qty = info && l.id === posLocId ? info.qty : 0;
+          payload.push({
+            variant_id: v.id,
+            location_id: l.id,
+            suggested_qty: qty,
+            source_merch_item_id: info?.item ?? null,
             status: "pending",
-          },
-          { onConflict: "variant_id,location_id" }
-        );
+          });
+          if (prev) res.proposalsUpdated++;
+          else res.proposalsCreated++;
+        }
+      }
+
+      for (let i = 0; i < payload.length; i += 200) {
+        const { error } = await sb
+          .from(T_PROP)
+          .upsert(payload.slice(i, i + 200), { onConflict: "variant_id,location_id" });
         if (error) throw error;
-        if (prev) res.proposalsUpdated++;
-        else res.proposalsCreated++;
       }
       return res;
     },
     onSuccess: () => invalidate(qc),
   });
+}
+
+export interface ConfirmCount {
+  locationId: string;
+  qty: number;
 }
 
 /** Confirma el conteo físico: aquí (y solo aquí) nace el stock oficial. */
@@ -501,42 +528,54 @@ export function useConfirmProposal() {
       note,
     }: {
       variantId: string;
-      counts: { locationId: string; qty: number }[];
+      counts: ConfirmCount[];
       note?: string;
     }) => {
-      const now = new Date().toISOString();
-      const { data: userRes } = await supabase.auth.getUser();
-      for (const c of counts) {
-        const qty = Math.max(0, Math.floor(c.qty));
-        const { error: stockErr } = await sb.from(T_STOCK).upsert(
-          {
-            variant_id: variantId,
-            location_id: c.locationId,
-            quantity_on_hand: qty,
-            last_counted_at: now,
-          },
-          { onConflict: "variant_id,location_id" }
-        );
-        if (stockErr) throw stockErr;
-        const { error: propErr } = await sb.from(T_PROP).upsert(
-          {
-            variant_id: variantId,
-            location_id: c.locationId,
-            suggested_qty: 0,
-            counted_qty: qty,
-            status: "confirmed",
-            note: note ?? null,
-            confirmed_at: now,
-            confirmed_by: userRes?.user?.id ?? null,
-          },
-          { onConflict: "variant_id,location_id", ignoreDuplicates: false }
-        );
-        if (propErr) throw propErr;
-      }
+      const { error } = await sb.rpc("sublime_confirm_initial_validation", {
+        p_variant_id: variantId,
+        p_counts: counts.map((c) => ({
+          location_id: c.locationId,
+          qty: Math.max(0, Math.floor(Number(c.qty) || 0)),
+        })),
+        p_note: note ?? null,
+      });
+      if (error) throw error;
     },
     onSuccess: () => invalidate(qc),
   });
 }
+
+export interface BulkConfirmResult {
+  ok: string[];
+  failed: { variantId: string; message: string }[];
+}
+
+/** Confirmación masiva: cada variante es atómica y los fallos no detienen al resto. */
+export function useConfirmProposalsBulk() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      entries: { variantId: string; counts: ConfirmCount[]; note?: string }[]
+    ): Promise<BulkConfirmResult> => {
+      const out: BulkConfirmResult = { ok: [], failed: [] };
+      for (const e of entries) {
+        const { error } = await sb.rpc("sublime_confirm_initial_validation", {
+          p_variant_id: e.variantId,
+          p_counts: e.counts.map((c) => ({
+            location_id: c.locationId,
+            qty: Math.max(0, Math.floor(Number(c.qty) || 0)),
+          })),
+          p_note: e.note ?? null,
+        });
+        if (error) out.failed.push({ variantId: e.variantId, message: error.message });
+        else out.ok.push(e.variantId);
+      }
+      return out;
+    },
+    onSuccess: () => invalidate(qc),
+  });
+}
+
 
 export function useDiscardProposal() {
   const qc = useQueryClient();

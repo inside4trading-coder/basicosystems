@@ -94,17 +94,17 @@ export default function SublimeInventarioMaestro() {
   };
 
   const runPropose = async () => {
-    const posLoc = locations.find((l) => l.sells_in_pos);
-    if (!posLoc) return toast.error("No hay una ubicación de tienda configurada.");
+    if (!locations.length) return toast.error("No hay ubicaciones activas configuradas.");
     try {
-      const res = await proposeStock.mutateAsync(posLoc.id);
+      const res = await proposeStock.mutateAsync();
       toast.success(
-        `Propuestas de conteo: ${res.proposalsCreated} nuevas, ${res.proposalsUpdated} actualizadas. ${res.itemsSkippedNotReceived} compras aún no recibidas quedaron fuera.`
+        `Propuestas de conteo: ${res.proposalsCreated} nuevas, ${res.proposalsUpdated} actualizadas en ${locations.length} ubicaciones.`
       );
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudieron proponer cantidades.");
     }
   };
+
 
   const runRecalc = async () => {
     try {
