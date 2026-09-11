@@ -26,6 +26,7 @@ import {
 } from "@/components/sublime/pos/PosReceiptPreview";
 import { POS_BCV_RATE, usePosCart } from "@/components/sublime/pos/usePosCart";
 import { useSublimePosCatalog } from "@/components/sublime/pos/useSublimePosCatalog";
+import { useRegisterSublimePosSale } from "@/components/sublime/pos/useSublimePosSale";
 import { POS_STORE, posCashier, posRegister, posSessionOf } from "@/lib/posSession";
 import { posAudit } from "@/lib/posAudit";
 import { posChannelLabel } from "@/lib/posSalesChannels";
@@ -343,6 +344,7 @@ export default function SublimePosApp() {
         invoiceNumber={invoiceNumber}
         setInvoiceNumber={setInvoiceNumber}
         onConfirm={confirmPayment}
+        busy={registerSale.isPending}
       />
 
       <Dialog open={doc !== null} onOpenChange={(v) => !v && newSale()}>
