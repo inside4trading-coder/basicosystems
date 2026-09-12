@@ -16,6 +16,7 @@ import ManualFabricationDialog, { MANUAL_REASON_LABEL } from "@/components/espan
 import ProductionNoteDialog from "@/components/espana/ProductionNoteDialog";
 import FabricationNoteDialog from "@/components/espana/FabricationNoteDialog";
 import MaterialOverridePicker, { MaterialOption, materialLabel } from "@/components/espana/MaterialOverridePicker";
+import FamilyVariantsHint from "@/components/espana/FamilyVariantsHint";
 
 
 
@@ -648,7 +649,17 @@ export default function EspanaFabricacion() {
                                     {m.material_size && <span className="text-muted-foreground"> · talla {m.material_size}</span>}
                                     {m.material_sku && <div className="font-mono text-[10px] text-muted-foreground">{m.material_sku}</div>}
                                   </>
-                                ) : <span className="text-amber-600 italic">No resuelto · {m.reason || "—"}</span>}
+                                ) : (
+                                  <>
+                                    <span className="text-amber-600 italic">No resuelto · {m.reason || "—"}</span>
+                                    <FamilyVariantsHint
+                                      materialType={m.family_material_type || m.material_type || null}
+                                      familyName={m.family_name || null}
+                                      familyColor={m.family_color || null}
+                                      requestedSize={(preflight.data.normalized_size as string) || null}
+                                    />
+                                  </>
+                                )}
                                 {!locked && (
                                   <MaterialOverridePicker
                                     locationId={preflight.data.location_id || null}

@@ -83,12 +83,16 @@ export default function MaterialOverridePicker({
     return () => { cancelled = true; };
   }, [open, loaded, materialType, locationId]);
 
-  const sorted = useMemo(() => {
-    const fam = (m: MaterialOption) =>
-      (!familyName || m.name === familyName) && (!familyColor || (m.color || "") === (familyColor || "")) ? 0 : 1;
-    return [...options]
-      .filter((m) => m.id !== expectedMaterialId)
-      .sort((a, b) => fam(a) - fam(b) || a.name.localeCompare(b.name) || (a.size || "").localeCompare(b.size || ""));
+  const { familyOptions, otherOptions } = useMemo(() => {
+    const isFam = (m: MaterialOption) =>
+      (!familyName || m.name === familyName) && (!familyColor || (m.color || "") === (familyColor || ""));
+    const bySize = (a: MaterialOption, b: MaterialOption) =>
+      a.name.localeCompare(b.name) || (a.size || "").localeCompare(b.size || "", undefined, { numeric: true });
+    const list = options.filter((m) => m.id !== expectedMaterialId);
+    return {
+      familyOptions: list.filter(isFam).sort(bySize),
+      otherOptions: list.filter((m) => !isFam(m)).sort(bySize),
+    };
   }, [options, familyName, familyColor, expectedMaterialId]);
 
   return (
@@ -114,27 +118,34 @@ export default function MaterialOverridePicker({
                 </div>
               )}
               <CommandEmpty>Sin materiales.</CommandEmpty>
-              <CommandGroup>
-                {sorted.map((m) => {
-                  const enough = m.available >= requiredQty;
-                  return (
-                    <CommandItem
-                      key={m.id}
-                      value={`${m.name} ${m.size || ""} ${m.color || ""} ${m.sku || ""}`}
-                      onSelect={() => { onSelect(m); setOpen(false); }}
-                    >
-                      <Check className={cn("mr-2 h-3.5 w-3.5", value?.id === m.id ? "opacity-100" : "opacity-0")} />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-xs font-medium">{materialLabel(m)}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono">
-                          {m.sku || "sin SKU"} · stock {m.available}
-                        </div>
-                      </div>
-                      {!enough && <span className="text-[10px] text-amber-600 ml-2 shrink-0">sin stock</span>}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
+              {([
+                ["Variantes reales de este material", familyOptions] as const,
+                ["Otros materiales del inventario", otherOptions] as const,
+              ]).map(([heading, list]) =>
+                list.length ? (
+                  <CommandGroup key={heading} heading={heading}>
+                    {list.map((m) => {
+                      const enough = m.available >= requiredQty;
+                      return (
+                        <CommandItem
+                          key={m.id}
+                          value={`${m.name} ${m.size || ""} ${m.color || ""} ${m.sku || ""}`}
+                          onSelect={() => { onSelect(m); setOpen(false); }}
+                        >
+                          <Check className={cn("mr-2 h-3.5 w-3.5", value?.id === m.id ? "opacity-100" : "opacity-0")} />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-xs font-medium">{materialLabel(m)}</div>
+                            <div className="text-[10px] text-muted-foreground font-mono">
+                              {m.sku || "sin SKU"} · stock {m.available}
+                            </div>
+                          </div>
+                          {!enough && <span className="text-[10px] text-amber-600 ml-2 shrink-0">sin stock</span>}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                ) : null,
+              )}
             </CommandList>
           </Command>
         </PopoverContent>
