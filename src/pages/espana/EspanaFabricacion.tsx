@@ -16,6 +16,7 @@ import ManualFabricationDialog, { MANUAL_REASON_LABEL } from "@/components/espan
 import ProductionNoteDialog from "@/components/espana/ProductionNoteDialog";
 import FabricationNoteDialog from "@/components/espana/FabricationNoteDialog";
 import MaterialOverridePicker, { MaterialOption, materialLabel } from "@/components/espana/MaterialOverridePicker";
+import FamilyVariantsHint from "@/components/espana/FamilyVariantsHint";
 
 
 
