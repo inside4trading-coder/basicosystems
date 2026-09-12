@@ -83,12 +83,16 @@ export default function MaterialOverridePicker({
     return () => { cancelled = true; };
   }, [open, loaded, materialType, locationId]);
 
-  const sorted = useMemo(() => {
-    const fam = (m: MaterialOption) =>
-      (!familyName || m.name === familyName) && (!familyColor || (m.color || "") === (familyColor || "")) ? 0 : 1;
-    return [...options]
-      .filter((m) => m.id !== expectedMaterialId)
-      .sort((a, b) => fam(a) - fam(b) || a.name.localeCompare(b.name) || (a.size || "").localeCompare(b.size || ""));
+  const { familyOptions, otherOptions } = useMemo(() => {
+    const isFam = (m: MaterialOption) =>
+      (!familyName || m.name === familyName) && (!familyColor || (m.color || "") === (familyColor || ""));
+    const bySize = (a: MaterialOption, b: MaterialOption) =>
+      a.name.localeCompare(b.name) || (a.size || "").localeCompare(b.size || "", undefined, { numeric: true });
+    const list = options.filter((m) => m.id !== expectedMaterialId);
+    return {
+      familyOptions: list.filter(isFam).sort(bySize),
+      otherOptions: list.filter((m) => !isFam(m)).sort(bySize),
+    };
   }, [options, familyName, familyColor, expectedMaterialId]);
 
   return (
