@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.esp_resolve_fabrication_materials(uuid, uuid) TO authenticated;
