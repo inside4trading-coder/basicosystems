@@ -118,27 +118,34 @@ export default function MaterialOverridePicker({
                 </div>
               )}
               <CommandEmpty>Sin materiales.</CommandEmpty>
-              <CommandGroup>
-                {sorted.map((m) => {
-                  const enough = m.available >= requiredQty;
-                  return (
-                    <CommandItem
-                      key={m.id}
-                      value={`${m.name} ${m.size || ""} ${m.color || ""} ${m.sku || ""}`}
-                      onSelect={() => { onSelect(m); setOpen(false); }}
-                    >
-                      <Check className={cn("mr-2 h-3.5 w-3.5", value?.id === m.id ? "opacity-100" : "opacity-0")} />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-xs font-medium">{materialLabel(m)}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono">
-                          {m.sku || "sin SKU"} · stock {m.available}
-                        </div>
-                      </div>
-                      {!enough && <span className="text-[10px] text-amber-600 ml-2 shrink-0">sin stock</span>}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
+              {([
+                ["Variantes reales de este material", familyOptions] as const,
+                ["Otros materiales del inventario", otherOptions] as const,
+              ]).map(([heading, list]) =>
+                list.length ? (
+                  <CommandGroup key={heading} heading={heading}>
+                    {list.map((m) => {
+                      const enough = m.available >= requiredQty;
+                      return (
+                        <CommandItem
+                          key={m.id}
+                          value={`${m.name} ${m.size || ""} ${m.color || ""} ${m.sku || ""}`}
+                          onSelect={() => { onSelect(m); setOpen(false); }}
+                        >
+                          <Check className={cn("mr-2 h-3.5 w-3.5", value?.id === m.id ? "opacity-100" : "opacity-0")} />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-xs font-medium">{materialLabel(m)}</div>
+                            <div className="text-[10px] text-muted-foreground font-mono">
+                              {m.sku || "sin SKU"} · stock {m.available}
+                            </div>
+                          </div>
+                          {!enough && <span className="text-[10px] text-amber-600 ml-2 shrink-0">sin stock</span>}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                ) : null,
+              )}
             </CommandList>
           </Command>
         </PopoverContent>
