@@ -417,6 +417,26 @@ export default function SublimePosApp() {
         onExit={() => navigate("/sublime")}
       />
 
+      {pendingExchange && (
+        <div className="px-4 py-2 text-sm bg-primary/10 border-b border-primary/30 flex items-center justify-between gap-3">
+          <span>
+            Cambio en curso: devolución {pendingExchange.returnNumber} de la venta {pendingExchange.saleNumber}.
+            Esta venta quedará enlazada como producto nuevo.
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              clearPendingExchange();
+              setPendingExchangeState(null);
+            }}
+          >
+            Cancelar cambio
+          </Button>
+        </div>
+      )}
+
+
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,68fr)_minmax(340px,32fr)]">
         <section className="flex flex-col min-h-0 p-4 gap-3">
           <PosFunctionsBar onAction={onFunction} />
