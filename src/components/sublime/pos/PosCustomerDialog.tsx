@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { UserRound } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle, UserRound } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  findCustomerDuplicates,
+  useSublimeCustomers,
+} from "@/hooks/useSublimeSalesHistory";
 
 export interface PosCustomer {
   /** Presente cuando el cliente ya existe en la ficha de clientes. */
@@ -21,42 +23,26 @@ export interface PosCustomer {
 
 const EMPTY: PosCustomer = { name: "", idCard: "", phone: "", email: "", birthDate: "", address: "" };
 
-const sb = supabase as any;
-
-/** Clientes reales de Sublime. */
-function useSublimeCustomers() {
-  return useQuery({
-    queryKey: ["sublime_pos_customers"],
-    queryFn: async () => {
-      const { data, error } = await sb
-        .from("sublime_customers")
-        .select("*")
-        .order("name")
-        .limit(500);
-      if (error) throw error;
-      return (data ?? []) as any[];
-    },
-  });
-}
-
 /** Buscador de clientes existentes (nombre, cédula/RIF, teléfono y correo). */
 export function PosCustomerSearch({ onSelect }: { onSelect: (c: PosCustomer) => void }) {
   const [q, setQ] = useState("");
   const { data: customers = [], isLoading } = useSublimeCustomers();
 
+
   const list = customers
     .map((c) => ({
-      id: c.id as string,
-      name: c.name as string,
-      idCard: (c.id_card as string) ?? "",
-      phone: (c.phone as string) ?? "",
-      email: (c.email as string) ?? "",
-      birthDate: (c.birth_date as string) ?? "",
-      address: (c.address as string) ?? "",
+      id: c.id,
+      name: c.name,
+      idCard: c.id_card ?? "",
+      phone: c.phone ?? "",
+      email: c.email ?? "",
+      birthDate: c.birth_date ?? "",
+      address: c.address ?? "",
     }))
     .filter((c) =>
       `${c.name} ${c.idCard} ${c.phone} ${c.email}`.toLowerCase().includes(q.toLowerCase())
     );
+
 
   return (
     <div className="space-y-3">
@@ -104,6 +90,11 @@ export function PosCustomerForm({
   submitLabel?: string;
 }) {
   const [draft, setDraft] = useState<PosCustomer>(EMPTY);
+  const { data: customers = [] } = useSublimeCustomers();
+  const duplicates = findCustomerDuplicates(
+    { phone: draft.phone, email: draft.email, idCard: draft.idCard },
+    customers
+  );
 
   return (
     <div className="space-y-3">
@@ -115,6 +106,18 @@ export function PosCustomerForm({
         <Field label="Fecha de nacimiento" type="date" value={draft.birthDate} onChange={(v) => setDraft({ ...draft, birthDate: v })} />
         <Field label="Dirección" value={draft.address} onChange={(v) => setDraft({ ...draft, address: v })} />
       </div>
+      {duplicates.length > 0 && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs space-y-1">
+          <p className="flex items-center gap-2 font-semibold text-destructive">
+            <AlertTriangle className="h-3.5 w-3.5" /> Ya existe un cliente con estos datos.
+          </p>
+          {duplicates.slice(0, 3).map((c) => (
+            <p key={c.id} className="text-muted-foreground">
+              {c.name} · {[c.id_card, c.phone, c.email].filter(Boolean).join(" · ")}
+            </p>
+          ))}
+        </div>
+      )}
       <Button
         className="w-full"
         disabled={draft.name.trim() === ""}
@@ -127,6 +130,7 @@ export function PosCustomerForm({
       </Button>
     </div>
   );
+
 }
 
 export function PosCustomerDialog({
