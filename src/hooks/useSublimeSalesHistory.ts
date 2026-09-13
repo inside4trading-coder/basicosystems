@@ -40,6 +40,8 @@ export interface SaleRow {
   origin_detail: string | null;
   customer_id: string | null;
   customer_name: string | null;
+  /** Teléfono de la ficha del cliente, si la venta tiene cliente. */
+  customer_phone: string | null;
   invoice_number: string | null;
   note: string | null;
   subtotal_regular_ref: number;
