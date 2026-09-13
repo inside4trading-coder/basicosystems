@@ -332,7 +332,7 @@ export default function Landing() {
           </div>
           <div className="nav__right">
             <Link to="/login" className="nav__login">
-              {user ? "Panel" : "Acceso equipo"}
+              {user ? "Panel" : "Panel"}
             </Link>
             <button type="button" className="btn fill sm" onPointerDown={ripple} onClick={scrollTo("contacto")}>
               Hablemos
@@ -365,7 +365,7 @@ export default function Landing() {
                 </nav>
                 <div className="sheet__foot">
                   <Link to="/login" onClick={() => setMobileNavOpen(false)}>
-                    {user ? "Panel" : "Acceso equipo"}
+                    Panel
                   </Link>
                   <button
                     type="button"
@@ -391,56 +391,34 @@ export default function Landing() {
           Hacemos que tu empresa funcione <em>mejor</em>
         </h1>
         <p className="sub">
-          Software construido alrededor de cómo trabaja tu empresa. Ya existe uno listo, o te construimos el tuyo.
+          Empieza con todo lo necesario para administrar y operar tu negocio: ventas, inventario, administración y reportes. Y cuando tu empresa necesite una operación específica, construimos B Systems alrededor de ella.
         </p>
+        <p className="hero__offer">B Systems Start · $29.99/mes · sin costo de inicio</p>
         <div className="ctas">
-          <button type="button" className="btn fill" onPointerDown={ripple} onClick={scrollTo("dos-formas")}>
-            Quiero activarlo
+          <button type="button" className="btn fill" onPointerDown={ripple} onClick={() => chooseInterest("saas")}>
+            Empezar con Start
           </button>
-          <button type="button" className="btn ghost" onClick={scrollTo("contacto")}>
-            Quiero uno a medida
+          <button type="button" className="btn ghost" onClick={() => chooseInterest("tailor")}>
+            Pedir presupuesto
           </button>
         </div>
       </header>
 
       <div className="below">
-        {/* MANIFIESTO — mismo patrón que la pieza "nuestra diferencia" */}
+        {/* UNA PLATAFORMA, DOS FORMAS */}
         <section className="block reveal">
-          <p className="kicker">Nuestra diferencia</p>
-          <div className="manifest">
-            {[
-              "No te preguntamos qué software quieres.",
-              "Primero entendemos cómo funciona tu empresa.",
-              "Después construimos el sistema que hace falta.",
-            ].map((line, i) => (
-              <div key={line}>
-                <span className="n">0{i + 1}</span>
-                <p>{line}</p>
-              </div>
-            ))}
+          <p className="kicker">Una plataforma. Dos formas de empezar.</p>
+          <h2>Empieza hoy.<br />Crece sin quedarte corto.</h2>
+          <div className="manifest manifest--two">
+            <div><span className="n">01</span><h3>Start</h3><p>Una base lista para administrar y operar tu negocio.</p></div>
+            <div><span className="n">02</span><h3>Custom</h3><p>B Systems construido alrededor de la operación específica de tu empresa.</p></div>
           </div>
-        </section>
-
-        {/* CÓMO FUNCIONA — grid "antes de construir", mismo patrón que la pieza
-            "entendemos tu operación" (Personas·Procesos·Herramientas·Datos·
-            Decisiones·Tareas manuales). Reutiliza el componente .cards.three. */}
-        <section className="block reveal">
-          <p className="kicker">Antes de construir</p>
-          <h2>Primero entendemos tu operación.</h2>
-          <p className="lede">Vemos qué ocurre, quién interviene y dónde se pierde tiempo.</p>
-          <div className="cards three">
-            {understand.map((u) => (
-              <div key={u.title} className="card">
-                <h3>{u.title}</h3>
-                <p>{u.desc}</p>
-              </div>
-            ))}
-          </div>
+          <p className="lede">No tienes que elegir entre un software cerrado o desarrollar todo desde cero.</p>
         </section>
 
         {/* DOS FORMAS DE EMPEZAR */}
-        <section className="block reveal" id="dos-formas">
-          <p className="kicker">Dos caminos</p>
+        <section className="block reveal" id="start">
+          <p className="kicker">Empieza con lo que necesitas</p>
           <h2>Dos formas de empezar</h2>
           <div className="paths">
             <article className="path">
@@ -448,60 +426,55 @@ export default function Landing() {
                 <span className="path__dot r" />
                 <span className="path__dot y" />
                 <span className="path__dot g" />
-                <span className="path__label">basico.systems</span>
+                <span className="path__label">start.bsystems</span>
               </div>
               <div className="path__body">
-                <p className="tag">Ya existe</p>
-                <h3>Basico System</h3>
-                <p className="sub2">Lo activas y esta semana ya estás ordenando tu empresa.</p>
+                <p className="tag">Listo para empezar</p>
+                <h3>B Systems Start</h3>
+                <p className="path__price">$29.99 <small>/ mes</small></p>
+                <p className="sub2">Pagado en bolívares a tasa BCV del día.</p>
+                <span className="path__badge">Sin costo de inicio</span>
+                <p className="sub2">Todo lo esencial para administrar y operar tu negocio desde un solo sistema.</p>
                 <ul>
-                  {[
-                    "Ya trae ventas, inventario, producción, finanzas, equipo y compras conectados",
-                    "Se ajusta a tu marca en días, no en meses",
-                    "Ya usa las herramientas que tienes hoy — no reemplazas nada",
-                    "Tu equipo lo aprende acompañado",
-                  ].map((b) => (
+                  {["POS", "Inventario", "Administración", "Reportes"].map((b) => (
                     <li key={b}>{b}</li>
                   ))}
                 </ul>
+                <p className="path__note">Activa otros módulos de B Systems según cómo trabaja tu negocio.</p>
                 <button
                   type="button"
                   className="btn fill"
                   onPointerDown={ripple}
-                  onClick={() => { setInterest("saas"); scrollTo("contacto")(); }}
+                  onClick={() => chooseInterest("saas")}
                 >
-                  Quiero activarlo
+                  Empezar con Start
                 </button>
               </div>
             </article>
 
-            <article className="path dark">
+            <article className="path dark" id="custom">
               <div className="path__bar">
                 <span className="path__dot r" />
                 <span className="path__dot y" />
                 <span className="path__dot g" />
-                <span className="path__label">estudio.basico.systems</span>
+                <span className="path__label">custom.bsystems</span>
               </div>
               <div className="path__body">
                 <p className="tag">A tu medida</p>
-                <h3>Hecho a medida</h3>
-                <p className="sub2">No existe todavía. Lo construimos alrededor de cómo trabaja tu empresa.</p>
+                <h3>B Systems Custom</h3>
+                <p className="path__quote">Pedir presupuesto</p>
+                <p className="sub2">Construimos B Systems alrededor de cómo opera tu empresa.</p>
                 <ul>
-                  {[
-                    "Primero vemos cómo trabajas hoy",
-                    "Construimos módulos que no existen en ningún lado más",
-                    "Se conecta con cualquier herramienta que ya uses",
-                    "Seguimos contigo después de construirlo",
-                  ].map((b) => (
+                  {["Módulos a medida", "Integraciones", "Automatizaciones", "Flujos propios", "Dashboards", "Roles y permisos"].map((b) => (
                     <li key={b}>{b}</li>
                   ))}
                 </ul>
                 <button
                   type="button"
                   className="btn ghost"
-                  onClick={() => { setInterest("tailor"); scrollTo("contacto")(); }}
+                  onClick={() => chooseInterest("tailor")}
                 >
-                  Hablar con el estudio
+                  Pedir presupuesto
                 </button>
               </div>
             </article>
