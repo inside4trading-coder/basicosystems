@@ -23,45 +23,40 @@ const leadSchema = z.object({
 });
 
 const modules = [
-  { n: "01", title: "Pedidos", desc: "Conectado con tu tienda online: estados, costos y márgenes en vivo.", icon: "bsys-cart" },
-  { n: "02", title: "CRM", desc: "Clientes unificados, segmentación y comportamiento de compra.", icon: "bsys-user" },
-  { n: "03", title: "Planning", desc: "Calendario editorial sincronizado con Notion y tu equipo.", icon: "bsys-clock" },
-  { n: "04", title: "Crew", desc: "RRHH completo: nómina, documentos, incidencias y tareas.", icon: "bsys-users" },
-  { n: "05", title: "RRPP", desc: "Red de influencers, colaboraciones, cupones y métricas.", icon: "bsys-branch" },
-  { n: "06", title: "Campañas", desc: "Email marketing, audiencias y resultados en un solo lugar.", icon: "bsys-mail" },
-  { n: "07", title: "Llamadas", desc: "Telefonía conectada, grabaciones y analítica por agente.", icon: "bsys-chat" },
-  { n: "08", title: "Administración", desc: "Obligaciones, vencimientos y control financiero.", icon: "bsys-file" },
-  { n: "09", title: "Core", desc: "Fabricación completa: costos por prenda, órdenes de producción, partidas y nómina de taller.", icon: "bsys-terminal", wide: true },
-  { n: "10", title: "Retail", desc: "Punto de venta de tienda, catálogo conectado con tu tienda online e inventario en un solo stock.", icon: "bsys-tag", wide: true },
+  { n: "01", group: "BASE START", title: "POS", desc: "Registra ventas, métodos de pago, clientes, descuentos y cierres de caja desde un solo punto.", icon: "bsys-cart" },
+  { n: "02", group: "BASE START", title: "Inventario", desc: "Conoce qué tienes, dónde está y cómo se mueve tu mercancía.", icon: "bsys-tag" },
+  { n: "03", group: "BASE START", title: "Reportes", desc: "Ventas, caja, inventario y resultados con información actual.", icon: "bsys-file" },
+  { n: "04", group: "BASE START", title: "Administración", desc: "Controla obligaciones, vencimientos, movimientos y la información administrativa del negocio.", icon: "bsys-terminal" },
+  { n: "05", group: "MÁS MÓDULOS B SYSTEMS", title: "WhatsApp CRM + POS", desc: "Convierte conversaciones de WhatsApp en clientes y pedidos conectados directamente con tu POS e inventario.", note: "CHAT → CLIENTE → PEDIDO → POS → INVENTARIO", icon: "bsys-chat", wide: true },
+  { n: "06", group: "MÁS MÓDULOS B SYSTEMS", title: "Planificación en equipo", desc: "Organiza tareas, responsables, horarios y trabajo del equipo desde un mismo lugar.", icon: "bsys-clock" },
+  { n: "07", group: "MÁS MÓDULOS B SYSTEMS", title: "Fichaje", desc: "Entradas, salidas, horas trabajadas y asistencia de tu equipo.", icon: "bsys-users" },
+  { n: "08", group: "MÁS MÓDULOS B SYSTEMS", title: "Telefonía comercial", desc: "Gestiona las llamadas comerciales de tu equipo: métricas, duración, historial, resultados, grabaciones y seguimiento.", note: "CON TECNOLOGÍA ZADARMA", icon: "bsys-user" },
+  { n: "09", group: "MÁS MÓDULOS B SYSTEMS", title: "B Systems Studio", desc: "Prepara contenido y material de producto directamente desde B Systems.", icon: "bsys-branch" },
+  { n: "10", group: "SERVICIO ADICIONAL", title: "Web / Ecommerce", desc: "Creamos o conectamos tu tienda online para que trabaje junto a tu operación.", icon: "bsys-mail" },
 ];
 
 const customization = [
-  { title: "Tu marca", desc: "Tus colores, tu logo, tu tipografía. Sin rastro de Basico." },
-  { title: "Módulos", desc: "Activa solo los que tu marca necesita. Apaga el resto." },
-  { title: "Quién ve qué", desc: "Decides qué hace y qué ve cada persona de tu equipo." },
-  { title: "Integraciones", desc: "Conectamos las herramientas que ya usas. No al revés." },
+  { title: "Módulos", desc: "Activa solo lo que tu negocio necesita." },
+  { title: "Roles y permisos", desc: "Define qué puede hacer y ver cada persona." },
+  { title: "Integraciones", desc: "Conecta las herramientas que forman parte de tu operación." },
+  { title: "A tu medida", desc: "Construimos procesos y módulos específicos para tu empresa." },
 ];
 
 const industries = [
-  { title: "Moda", desc: "Stock, drops, devoluciones y RRPP." },
-  { title: "Restauración", desc: "Reservas, inventario, turnos y delivery." },
-  { title: "Hoteles", desc: "Reservas, limpieza de habitaciones y experiencia del huésped." },
-  { title: "Servicios", desc: "Clientes, propuestas, horas y facturación." },
-  { title: "Eventos", desc: "Productores, proveedores, agenda y caja." },
-  { title: "Retail físico", desc: "Punto de venta, stock por tienda, equipo y cliente." },
+  { title: "Tienda", desc: "POS · Inventario · WhatsApp · Ecommerce" },
+  { title: "Distribuidora", desc: "Vendedores en calle · Rutas · Pedidos mayoristas · Crédito · Cobranzas · Descuentos" },
+  { title: "Marca / Fabricante", desc: "Producción · Costos · Proveedores · Materiales · Trazabilidad" },
+  { title: "Clínica", desc: "Pacientes · Citas · Seguimiento · Recordatorios" },
+  { title: "Restauración", desc: "Reservas · Inventario · Equipo · Delivery" },
+  { title: "Servicios", desc: "Clientes · Propuestas · Horas · Facturación" },
 ];
 
-const process = [
-  { n: "01", title: "Entendemos", desc: "Vemos qué ocurre, quién interviene y dónde se pierde tiempo. 1–2 semanas." },
-  { n: "02", title: "Ordenamos", desc: "Mapeamos módulos, datos y permisos." },
-  { n: "03", title: "Construimos", desc: "Avanzamos cada semana contigo dentro." },
-  { n: "04", title: "Mejoramos", desc: "Seguimos contigo. El sistema evoluciona con tu empresa." },
-];
+const processes = {
+  start: ["Activa", "Configura", "Empieza", "Crece"],
+  custom: ["Entendemos", "Diseñamos", "Construimos", "Mejoramos"],
+};
 
-const stack = [
-  "LangChain", "RAG", "Claude", "Shopify", "WooCommerce", "Supabase", "Vercel",
-  "Antigravity", "Cursor", "Zadarma", "n8n", "Docker", "Obsidian",
-];
+const integrations = ["WhatsApp", "Instagram", "WooCommerce", "Shopify", "Zadarma", "+ Más integraciones"];
 
 // Mapa de conexión de la sección Módulos: mismo patrón que la pieza de
 // Instagram "puede conectar las partes clave de tu operación" — nodo central
@@ -93,8 +88,9 @@ const decisions = [
 ];
 
 const navItems = [
-  { id: "dos-formas", label: "Empezar" },
+  { id: "start", label: "Start" },
   { id: "modulos", label: "Módulos" },
+  { id: "custom", label: "Custom" },
   { id: "proceso", label: "Proceso" },
 ];
 
@@ -105,7 +101,6 @@ export default function Landing() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
-  const [moduleCount, setModuleCount] = useState(0);
   const heroRef = useRef<HTMLElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const curtainRef = useRef<HTMLDivElement>(null);
@@ -197,7 +192,6 @@ export default function Landing() {
     const nodes = document.querySelectorAll(".reveal");
     if (reduced) {
       nodes.forEach((n) => n.classList.add("in-view"));
-      setModuleCount(modules.length);
       return;
     }
     const io = new IntersectionObserver(
@@ -205,21 +199,6 @@ export default function Landing() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.classList.add("in-view");
-            // El contador de "Módulos" cuenta hasta el tamaño real del
-            // array — no es una cifra decorativa, es modules.length. Nace
-            // aquí, al revelarse la sección, para que el conteo acompañe a
-            // la entrada en vez de haber terminado antes de que se vea.
-            if (entry.target.id === "modulos") {
-              const total = modules.length;
-              const start = performance.now();
-              const dur = 900;
-              const tick = (now: number) => {
-                const p = Math.min(1, (now - start) / dur);
-                setModuleCount(Math.round(total * (1 - Math.pow(1 - p, 3))));
-                if (p < 1) requestAnimationFrame(tick);
-              };
-              requestAnimationFrame(tick);
-            }
             io.unobserve(entry.target);
           }
         });
@@ -315,6 +294,10 @@ export default function Landing() {
   };
 
   const scrollTo = (id: string) => () => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  const chooseInterest = (next: "saas" | "tailor" | "unsure") => {
+    setInterest(next);
+    document.getElementById("hablemos")?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <div className="landing-bsystems">
