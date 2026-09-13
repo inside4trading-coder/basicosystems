@@ -308,6 +308,39 @@ export function SaleDetailDialog({ sale, onClose }: { sale: SaleRow | null; onCl
               </div>
             </Section>
 
+            {returns.length > 0 && (
+              <Section title="Devoluciones, anulaciones y cambios">
+                {returns.map((r) => (
+                  <div key={r.id} className="rounded-xl border border-border/60 p-3 space-y-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-semibold font-mono text-xs">{r.return_number}</p>
+                      <Badge variant={r.kind === "void" ? "destructive" : "secondary"}>
+                        {r.kind === "void" ? "Anulación" : r.kind === "exchange" ? "Cambio" : "Devolución"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {dt(r.created_at)} · {r.units} und. · valor {refFormat(r.total_returned_ref)}
+                      {r.reason ? ` · ${r.reason}` : ""}
+                    </p>
+                    {r.items.map((i) => (
+                      <p key={i.id} className="text-xs tabular-nums">
+                        {i.qty} × {i.title} {i.sku ? `· ${i.sku}` : ""}
+                        {i.restocked ? " · devuelto a stock de tienda" : ""}
+                      </p>
+                    ))}
+                    {r.refunds.map((f) => (
+                      <p key={f.id} className="text-xs">
+                        Reembolso {posMethod(f.method as any).label} · {f.currency}{" "}
+                        {f.amount.toLocaleString("es-VE")} ({refFormat(f.amount_ref)})
+                        {f.bank ? ` · ${posBankLabel(f.bank)}` : ""}
+                        {f.reference ? ` · Ref ${f.reference}` : ""}
+                      </p>
+                    ))}
+                  </div>
+                ))}
+              </Section>
+            )}
+
             <p className="text-xs text-muted-foreground">Solo lectura: una venta finalizada no se edita desde esta pantalla.</p>
           </div>
         )}
