@@ -180,6 +180,13 @@ export default function SublimeVentas() {
         open={receipt !== null}
         onOpenChange={(v) => !v && setReceiptId(null)}
       />
+
+      <SaleReturnDialog
+        sale={returnSale}
+        mode={returnTarget?.mode ?? "return"}
+        open={returnSale !== null}
+        onOpenChange={(v) => !v && setReturnTarget(null)}
+      />
     </div>
   );
 }
