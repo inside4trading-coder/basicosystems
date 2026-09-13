@@ -40,6 +40,8 @@ export interface SaleRow {
   origin_detail: string | null;
   customer_id: string | null;
   customer_name: string | null;
+  /** Teléfono de la ficha del cliente, si la venta tiene cliente. */
+  customer_phone: string | null;
   invoice_number: string | null;
   note: string | null;
   subtotal_regular_ref: number;
@@ -61,6 +63,35 @@ export interface SaleRow {
 
 const num = (v: unknown) => Number(v ?? 0);
 
+const SALE_SELECT =
+  "*, sublime_sale_items(*), sublime_sale_payments(*), sublime_cash_sessions(session_number, status), sublime_customers(name, phone)";
+
+const mapSale = (s: any): SaleRow => ({
+  ...s,
+  subtotal_regular_ref: num(s.subtotal_regular_ref),
+  discount_total_ref: num(s.discount_total_ref),
+  total_ref: num(s.total_ref),
+  bcv_rate: num(s.bcv_rate),
+  units: num(s.units),
+  customer_name: s.customer_name ?? s.sublime_customers?.name ?? null,
+  customer_phone: s.sublime_customers?.phone ?? null,
+  session_number: s.sublime_cash_sessions?.session_number ?? null,
+  session_status: s.sublime_cash_sessions?.status ?? null,
+  items: (s.sublime_sale_items ?? []).map((i: any) => ({
+    ...i,
+    qty: num(i.qty),
+    unit_regular_ref: num(i.unit_regular_ref),
+    unit_final_ref: num(i.unit_final_ref),
+    discount_ref: num(i.discount_ref),
+    line_total_ref: num(i.line_total_ref),
+  })),
+  payments: (s.sublime_sale_payments ?? []).map((p: any) => ({
+    ...p,
+    amount: num(p.amount),
+    amount_ref: num(p.amount_ref),
+  })),
+});
+
 /** Historial real de ventas Sublime con sus líneas, pagos y sesión de caja. */
 export function useSublimeSalesHistory() {
   return useQuery({
@@ -68,35 +99,28 @@ export function useSublimeSalesHistory() {
     queryFn: async (): Promise<SaleRow[]> => {
       const { data, error } = await sb
         .from("sublime_sales")
-        .select(
-          "*, sublime_sale_items(*), sublime_sale_payments(*), sublime_cash_sessions(session_number, status)"
-        )
+        .select(SALE_SELECT)
         .order("sold_at", { ascending: false })
         .limit(1000);
       if (error) throw error;
-      return (data ?? []).map((s: any) => ({
-        ...s,
-        subtotal_regular_ref: num(s.subtotal_regular_ref),
-        discount_total_ref: num(s.discount_total_ref),
-        total_ref: num(s.total_ref),
-        bcv_rate: num(s.bcv_rate),
-        units: num(s.units),
-        session_number: s.sublime_cash_sessions?.session_number ?? null,
-        session_status: s.sublime_cash_sessions?.status ?? null,
-        items: (s.sublime_sale_items ?? []).map((i: any) => ({
-          ...i,
-          qty: num(i.qty),
-          unit_regular_ref: num(i.unit_regular_ref),
-          unit_final_ref: num(i.unit_final_ref),
-          discount_ref: num(i.discount_ref),
-          line_total_ref: num(i.line_total_ref),
-        })),
-        payments: (s.sublime_sale_payments ?? []).map((p: any) => ({
-          ...p,
-          amount: num(p.amount),
-          amount_ref: num(p.amount_ref),
-        })),
-      }));
+      return (data ?? []).map(mapSale);
+    },
+  });
+}
+
+/** Venta persistida concreta: fuente única del comprobante tras cobrar. */
+export function useSublimeSaleByNumber(saleNumber: string | null) {
+  return useQuery({
+    queryKey: ["sublime_sale_by_number", saleNumber],
+    enabled: !!saleNumber,
+    queryFn: async (): Promise<SaleRow | null> => {
+      const { data, error } = await sb
+        .from("sublime_sales")
+        .select(SALE_SELECT)
+        .eq("sale_number", saleNumber)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? mapSale(data) : null;
     },
   });
 }

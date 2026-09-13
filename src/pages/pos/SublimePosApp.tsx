@@ -27,11 +27,9 @@ import {
   PosRegisterDialog,
   PosSuspendedDialog,
 } from "@/components/sublime/pos/PosSessionDialogs";
-import {
-  PosReceiptActions,
-  PosReceiptPreview,
-  type PosSaleDocument,
-} from "@/components/sublime/pos/PosReceiptPreview";
+import { type PosSaleDocument } from "@/components/sublime/pos/PosReceiptPreview";
+import { SaleReceiptActions, SaleReceiptBody } from "@/components/sublime/pos/SaleReceipt";
+import { useSublimeSaleByNumber } from "@/hooks/useSublimeSalesHistory";
 import { POS_BCV_RATE, usePosCart, type PosManualItem } from "@/components/sublime/pos/usePosCart";
 import { useSublimePosCatalog } from "@/components/sublime/pos/useSublimePosCatalog";
 import { useRegisterSublimePosSale } from "@/components/sublime/pos/useSublimePosSale";
@@ -105,6 +103,9 @@ export default function SublimePosApp() {
   const [payments, setPayments] = useState<PosPaymentLine[]>([]);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [doc, setDoc] = useState<PosSaleDocument | null>(null);
+  /** El comprobante se lee de la venta ya registrada, nunca del carrito. */
+  const saleQuery = useSublimeSaleByNumber(doc?.number ?? null);
+  const persistedSale = saleQuery.data ?? null;
 
   // Carritos suspendidos reales (servidor)
   const suspendedQuery = useSublimeSuspendedCarts();
@@ -601,17 +602,21 @@ export default function SublimePosApp() {
           </DialogHeader>
           {doc ? (
             <div className="space-y-4">
-              <PosReceiptPreview doc={doc} />
-              <PosReceiptActions
-                onNewSale={newSale}
-                onViewInvoice={() =>
-                  toast.info("Estás viendo la factura de la venta en esta misma pantalla.")
-                }
-                onReprint={() => {
-                  posAudit("reprint", doc.number, auditCtx);
-                  toast.info("Impresión y envío: previstos para la versión conectada.");
-                }}
-              />
+              {persistedSale ? (
+                <>
+                  <SaleReceiptBody sale={persistedSale} />
+                  <SaleReceiptActions sale={persistedSale} phone={persistedSale.customer_phone}>
+                    <Button onClick={newSale}>Nueva venta</Button>
+                  </SaleReceiptActions>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Venta {doc.number} registrada. Cargando comprobante…
+                  </p>
+                  <Button onClick={newSale}>Nueva venta</Button>
+                </div>
+              )}
             </div>
           ) : null}
         </DialogContent>

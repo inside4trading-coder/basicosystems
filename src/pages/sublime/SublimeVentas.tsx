@@ -12,6 +12,7 @@ import { refFormat } from "@/lib/posMoney";
 import { POS_ALL_SALES_CHANNELS, posChannelLabel } from "@/lib/posSalesChannels";
 import { POS_PAYMENT_METHODS, posMethod } from "@/lib/posPaymentMethods";
 import { posBankLabel } from "@/lib/posBanks";
+import { SaleReceiptDialog } from "@/components/sublime/pos/SaleReceipt";
 import {
   useSaleInventoryMovements,
   useSublimeSalesHistory,
@@ -36,6 +37,7 @@ export default function SublimeVentas() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
 
   const uniq = (vals: (string | null)[]) =>
     Array.from(new Set(vals.filter((v): v is string => !!v))).sort();
@@ -72,6 +74,7 @@ export default function SublimeVentas() {
   );
 
   const sale = sales.find((s) => s.id === openId) ?? null;
+  const receipt = sales.find((s) => s.id === receiptId) ?? null;
 
   return (
     <div className="space-y-6">
@@ -135,7 +138,10 @@ export default function SublimeVentas() {
                 <TableCell><Badge>{statusLabel(s.status)}</Badge></TableCell>
                 <TableCell className="text-right tabular-nums font-semibold">{refFormat(s.total_ref)}</TableCell>
                 <TableCell className="text-right">
-                  <Button size="sm" variant="outline" onClick={() => setOpenId(s.id)}>Ver detalle</Button>
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setReceiptId(s.id)}>Ver comprobante</Button>
+                    <Button size="sm" variant="outline" onClick={() => setOpenId(s.id)}>Ver detalle</Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -151,6 +157,13 @@ export default function SublimeVentas() {
       </Card>
 
       <SaleDetailDialog sale={sale} onClose={() => setOpenId(null)} />
+
+      <SaleReceiptDialog
+        sale={receipt}
+        phone={receipt?.customer_phone}
+        open={receipt !== null}
+        onOpenChange={(v) => !v && setReceiptId(null)}
+      />
     </div>
   );
 }
