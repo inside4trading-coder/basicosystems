@@ -30,6 +30,8 @@ import {
 import { type PosSaleDocument } from "@/components/sublime/pos/PosReceiptPreview";
 import { SaleReceiptActions, SaleReceiptBody } from "@/components/sublime/pos/SaleReceipt";
 import { useSublimeSaleByNumber } from "@/hooks/useSublimeSalesHistory";
+import { useLinkExchangeSale } from "@/hooks/useSublimeSaleReturns";
+import { clearPendingExchange, getPendingExchange } from "@/lib/posExchange";
 import { POS_BCV_RATE, usePosCart, type PosManualItem } from "@/components/sublime/pos/usePosCart";
 import { useSublimePosCatalog } from "@/components/sublime/pos/useSublimePosCatalog";
 import { useRegisterSublimePosSale } from "@/components/sublime/pos/useSublimePosSale";
