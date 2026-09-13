@@ -13,16 +13,20 @@ import { POS_ALL_SALES_CHANNELS, posChannelLabel } from "@/lib/posSalesChannels"
 import { POS_PAYMENT_METHODS, posMethod } from "@/lib/posPaymentMethods";
 import { posBankLabel } from "@/lib/posBanks";
 import { SaleReceiptDialog } from "@/components/sublime/pos/SaleReceipt";
+import { SaleReturnDialog } from "@/components/sublime/pos/SaleReturnDialog";
 import {
   useSaleInventoryMovements,
   useSublimeSalesHistory,
   type SaleRow,
 } from "@/hooks/useSublimeSalesHistory";
+import { saleStatusLabel, useSaleReturns } from "@/hooks/useSublimeSaleReturns";
 
 const ALL = "all";
 
-const statusLabel = (s: string) =>
-  s === "completed" ? "Completada" : s === "voided" ? "Anulada" : s;
+const statusLabel = saleStatusLabel;
+
+const statusVariant = (s: string) =>
+  s === "completed" ? "default" : s === "voided" ? "destructive" : "secondary";
 
 const dt = (iso: string) => new Date(iso).toLocaleString("es-VE");
 
