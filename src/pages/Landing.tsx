@@ -9,7 +9,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import ConfettiSphere from "@/components/landing/ConfettiSphere";
 import BrandMark from "@/components/BrandMark";
 import "@/components/landing/landing-bsystems.css";
@@ -83,7 +82,6 @@ const navItems = [
 ];
 
 export default function Landing() {
-  const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [interest, setInterest] = useState<"saas" | "tailor" | "unsure">("unsure");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
