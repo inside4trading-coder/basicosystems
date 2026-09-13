@@ -42,6 +42,7 @@ export default function SublimeVentas() {
   const [to, setTo] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [receiptId, setReceiptId] = useState<string | null>(null);
+  const [returnTarget, setReturnTarget] = useState<{ id: string; mode: "return" | "void" } | null>(null);
 
   const uniq = (vals: (string | null)[]) =>
     Array.from(new Set(vals.filter((v): v is string => !!v))).sort();
@@ -79,6 +80,7 @@ export default function SublimeVentas() {
 
   const sale = sales.find((s) => s.id === openId) ?? null;
   const receipt = sales.find((s) => s.id === receiptId) ?? null;
+  const returnSale = sales.find((s) => s.id === returnTarget?.id) ?? null;
 
   return (
     <div className="space-y-6">
