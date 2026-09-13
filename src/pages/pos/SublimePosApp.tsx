@@ -32,9 +32,17 @@ import {
   PosReceiptPreview,
   type PosSaleDocument,
 } from "@/components/sublime/pos/PosReceiptPreview";
-import { POS_BCV_RATE, usePosCart } from "@/components/sublime/pos/usePosCart";
+import { POS_BCV_RATE, usePosCart, type PosManualItem } from "@/components/sublime/pos/usePosCart";
 import { useSublimePosCatalog } from "@/components/sublime/pos/useSublimePosCatalog";
 import { useRegisterSublimePosSale } from "@/components/sublime/pos/useSublimePosSale";
+import {
+  useSetSuspendedCartStatus,
+  useSublimeSuspendedCarts,
+  useSuspendCart,
+  type SuspendedCart,
+} from "@/components/sublime/pos/useSublimeSuspendedCarts";
+import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { posCashier } from "@/lib/posSession";
 import { posAudit } from "@/lib/posAudit";
 import { posChannelLabel } from "@/lib/posSalesChannels";
@@ -97,6 +105,16 @@ export default function SublimePosApp() {
   const [payments, setPayments] = useState<PosPaymentLine[]>([]);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [doc, setDoc] = useState<PosSaleDocument | null>(null);
+
+  // Carritos suspendidos reales (servidor)
+  const suspendedQuery = useSublimeSuspendedCarts();
+  const suspendCart = useSuspendCart();
+  const setCartStatus = useSetSuspendedCartStatus();
+  /** Clave del intento de suspensión: el doble clic nunca crea dos carritos. */
+  const [suspendKey, setSuspendKey] = useState(() => crypto.randomUUID());
+  /** Carrito suspendido que se está cobrando ahora mismo. */
+  const [resumedCartId, setResumedCartId] = useState<string | null>(null);
+  const [resumeNotices, setResumeNotices] = useState<string[] | null>(null);
 
 
   const register = registers.find((r) => r.id === registerId) ?? null;
@@ -190,6 +208,17 @@ export default function SublimePosApp() {
       if (cart.discountTotal > 0) {
         posAudit("discount", `${sale.number} · descuento ${cart.discountTotal.toFixed(2)} REF`, auditCtx);
       }
+      if (resumedCartId) {
+        try {
+          await setCartStatus.mutateAsync({
+            cartId: resumedCartId,
+            status: "converted_to_sale",
+            saleId: result.sale_id,
+          });
+        } catch {
+          /* la venta ya está registrada: el carrito se concilia al recargar */
+        }
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo completar la venta.");
     }
@@ -201,30 +230,160 @@ export default function SublimePosApp() {
     setCustomer(null);
     setInvoiceNumber("");
     setAttemptKey(crypto.randomUUID());
+    setSuspendKey(crypto.randomUUID());
+    setResumedCartId(null);
     cart.clear();
   };
 
+  /** Suspender: guarda el carrito en el servidor. No toca stock ni ventas. */
+  const doSuspend = async () => {
+    if (suspendCart.isPending) return;
+    if (cart.lines.length === 0) {
+      toast.info("No hay carrito que suspender.");
+      return;
+    }
+    try {
+      const res = await suspendCart.mutateAsync({
+        idempotencyKey: suspendKey,
+        items: cart.lines.map((l) => ({
+          line_kind: l.kind,
+          product_id: l.product?.id ?? null,
+          variant_id: l.variant?.id ?? null,
+          sku: l.sku ?? null,
+          title: l.title,
+          subtitle: l.subtitle ?? null,
+          qty: l.qty,
+          unit_regular_ref: Number(l.regularPrice.toFixed(2)),
+          unit_final_ref: Number(l.finalPrice.toFixed(2)),
+          line_total_ref: Number(l.lineTotal.toFixed(2)),
+        })),
+        locationId: location?.id ?? null,
+        registerId: registerId,
+        registerCode: session.registerName,
+        cashSessionId: cashSession?.id ?? null,
+        sessionCode: session.sessionCode,
+        cashierCode: session.cashierName,
+        customer: customer ? { id: (customer as any).id || undefined, name: customer.name } : null,
+        saleOrigin: cart.channel,
+        originDetail: cart.channelDetail || null,
+        note: cart.note || null,
+        cartDiscountRef: cart.cartDiscount,
+        cartDiscountReason: cart.cartDiscountReason || null,
+      });
+      posAudit("suspend", `Carrito ${res.cart_number}`, auditCtx);
+      setCustomer(null);
+      setResumedCartId(null);
+      setSuspendKey(crypto.randomUUID());
+      cart.clear();
+      toast.success(
+        res.duplicate
+          ? `Este carrito ya estaba suspendido (${res.cart_number}).`
+          : `Carrito ${res.cart_number} suspendido.`
+      );
+    } catch (e: any) {
+      toast.error(e?.message ?? "No se pudo suspender el carrito.");
+    }
+  };
+
+  /** Recuperar: revalida variante, precio y stock REAL en este momento. */
+  const doResume = async (sc: SuspendedCart) => {
+    const notices: string[] = [];
+    const items: Record<string, number> = {};
+    const manual: PosManualItem[] = [];
+
+    for (const it of sc.items) {
+      if (it.line_kind === "manual") {
+        manual.push({
+          id: `man-${it.id}`,
+          name: it.title,
+          kind: "producto",
+          priceRef: it.unit_final_ref,
+          qty: it.qty,
+        });
+        continue;
+      }
+      const entry = catalog.find((e) => e.variant.id === it.variant_id);
+      if (!entry) {
+        notices.push(`${it.title} (${it.sku ?? "sin SKU"}) ya no está disponible para vender.`);
+        continue;
+      }
+      if (Math.abs(entry.finalPrice - it.unit_final_ref) > 0.009) {
+        notices.push(
+          `El precio de ${it.title} cambió desde que se suspendió. Antes REF ${it.unit_final_ref.toFixed(2)} · ahora REF ${entry.finalPrice.toFixed(2)}. Se usará el precio vigente.`
+        );
+      }
+      const qty = Math.min(it.qty, entry.storeStock);
+      if (qty <= 0) {
+        notices.push(`Stock actualizado: ${it.title} ya no tiene unidades disponibles.`);
+        continue;
+      }
+      if (qty < it.qty) {
+        notices.push(
+          `Stock actualizado: solicitadas ${it.qty}, disponibles ${qty} de ${it.title}. Se ajustó la cantidad.`
+        );
+      }
+      items[entry.variant.id] = qty;
+    }
+
+    if (Object.keys(items).length === 0 && manual.length === 0) {
+      toast.error("Este carrito ya no tiene productos disponibles.");
+      setResumeNotices(notices.length ? notices : ["El carrito quedó vacío al revalidarlo."]);
+      return;
+    }
+
+    cart.restore({
+      items,
+      manual,
+      note: sc.note ?? "",
+      cartDiscount: sc.cart_discount_ref,
+      cartDiscountReason: sc.cart_discount_reason ?? "",
+      channel: (sc.sale_origin as any) ?? null,
+      channelDetail: sc.origin_detail ?? "",
+    });
+    setCustomer(
+      sc.customer_id
+        ? ({
+            id: sc.customer_id,
+            name: sc.customer_name ?? "Cliente",
+            idCard: null,
+            phone: null,
+            email: null,
+            birthDate: null,
+            address: null,
+          } as any)
+        : null
+    );
+    setResumedCartId(sc.id);
+    setAttemptKey(crypto.randomUUID());
+    setSuspendedOpen(false);
+    try {
+      await setCartStatus.mutateAsync({ cartId: sc.id, status: "recovered" });
+    } catch {
+      /* la recuperación visual ya ocurrió */
+    }
+    posAudit("resume", `Carrito ${sc.cart_number}`, auditCtx);
+    if (notices.length) setResumeNotices(notices);
+    else toast.success(`Carrito ${sc.cart_number} recuperado.`);
+  };
+
+  const doCancelSuspended = async (sc: SuspendedCart) => {
+    if (!window.confirm(`¿Cancelar el carrito ${sc.cart_number}? No se puede deshacer.`)) return;
+    try {
+      await setCartStatus.mutateAsync({ cartId: sc.id, status: "cancelled" });
+      if (resumedCartId === sc.id) setResumedCartId(null);
+      posAudit("void", `Carrito cancelado ${sc.cart_number}`, auditCtx);
+      toast.success(`Carrito ${sc.cart_number} cancelado.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "No se pudo cancelar el carrito.");
+    }
+  };
 
   const onFunction = (id: PosFunctionId, label: string) => {
     if (id === "closures") return setClosuresOpen(true);
     if (id === "manual_item") return setManualOpen(true);
     if (id === "note") return setNoteOpen(true);
     if (id === "cash") return setDrawerOpen(true);
-    if (id === "suspend") {
-      const entry = cart.suspend({
-        registerName: session.registerName,
-        cashierName: session.cashierName,
-        customerName: customer?.name ?? null,
-      });
-      if (!entry) {
-        toast.info("No hay carrito que suspender.");
-        return;
-      }
-      posAudit("suspend", `Carrito ${entry.id}`, auditCtx);
-      setCustomer(null);
-      toast.success(`Carrito ${entry.id} suspendido.`);
-      return;
-    }
+    if (id === "suspend") return void doSuspend();
     if (id === "resume") return setSuspendedOpen(true);
     toast.info(`${label}: función prevista, aún sin activar.`);
   };
@@ -388,17 +547,30 @@ export default function SublimePosApp() {
       <PosSuspendedDialog
         open={suspendedOpen}
         onOpenChange={setSuspendedOpen}
-        carts={cart.suspended}
+        carts={suspendedQuery.data ?? []}
+        loading={suspendedQuery.isLoading}
+        busy={setCartStatus.isPending}
         rate={session.rate}
-        onResume={(id) => {
-          const found = cart.resume(id);
-          if (found) {
-            posAudit("resume", `Carrito ${found.id}`, auditCtx);
-            toast.success(`Carrito ${found.id} recuperado.`);
-          }
-          setSuspendedOpen(false);
-        }}
+        onResume={(sc) => void doResume(sc)}
+        onCancelCart={(sc) => void doCancelSuspended(sc)}
       />
+
+      <Dialog open={resumeNotices !== null} onOpenChange={(v) => !v && setResumeNotices(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-primary" />
+              Cambios desde que se suspendió
+            </DialogTitle>
+          </DialogHeader>
+          <ul className="space-y-2 text-sm text-muted-foreground list-disc pl-5">
+            {(resumeNotices ?? []).map((n, i) => (
+              <li key={i}>{n}</li>
+            ))}
+          </ul>
+          <Button onClick={() => setResumeNotices(null)}>Entendido</Button>
+        </DialogContent>
+      </Dialog>
 
       <PosPaymentSheet
         open={payOpen}

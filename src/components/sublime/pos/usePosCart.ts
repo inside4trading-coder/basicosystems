@@ -103,15 +103,15 @@ const emptyCart = (): RegisterCartState => ({
   channelDetail: "",
 });
 
-export interface PosSuspendedCart {
-  id: string;
-  registerId: string;
-  registerName: string;
-  cashierName: string;
-  customerName: string | null;
-  at: string;
-  totalRef: number;
-  state: RegisterCartState;
+/** Contenido recuperable de un carrito suspendido real (servidor). */
+export interface PosRestoreCart {
+  items: Record<string, number>;
+  manual: PosManualItem[];
+  note?: string;
+  cartDiscount?: number;
+  cartDiscountReason?: string;
+  channel?: PosSalesChannelId | null;
+  channelDetail?: string;
 }
 
 const MANUAL_KIND_LABEL: Record<PosManualKind, string> = {
@@ -126,7 +126,7 @@ const MANUAL_KIND_LABEL: Record<PosManualKind, string> = {
  */
 export function usePosCart(registerId: string, catalog: PosCatalogEntry[] = []) {
   const [carts, setCarts] = useState<Record<string, RegisterCartState>>({});
-  const [suspended, setSuspended] = useState<PosSuspendedCart[]>([]);
+
 
   const state = carts[registerId] ?? emptyCart();
 
@@ -234,28 +234,22 @@ export function usePosCart(registerId: string, catalog: PosCatalogEntry[] = []) 
 
   const clear = () => setCarts((c) => ({ ...c, [registerId]: emptyCart() }));
 
-  const suspend = (info: { registerName: string; cashierName: string; customerName: string | null }) => {
-    if (lines.length === 0) return null;
-    const entry: PosSuspendedCart = {
-      id: `SUS-${String(suspended.length + 1).padStart(3, "0")}`,
-      registerId,
-      at: new Date().toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" }),
-      totalRef: total,
-      state,
-      ...info,
-    };
-    setSuspended((s) => [entry, ...s]);
-    clear();
-    return entry;
-  };
+  /** Carga en la caja actual el contenido de un carrito suspendido ya revalidado. */
+  const restore = (data: PosRestoreCart) =>
+    setCarts((c) => ({
+      ...c,
+      [registerId]: {
+        ...emptyCart(),
+        items: data.items,
+        manual: data.manual,
+        note: data.note ?? "",
+        cartDiscount: data.cartDiscount ?? 0,
+        cartDiscountReason: data.cartDiscountReason ?? "",
+        channel: data.channel ?? null,
+        channelDetail: data.channelDetail ?? "",
+      },
+    }));
 
-  const resume = (id: string) => {
-    const found = suspended.find((s) => s.id === id);
-    if (!found) return null;
-    setCarts((c) => ({ ...c, [registerId]: found.state }));
-    setSuspended((s) => s.filter((x) => x.id !== id));
-    return found;
-  };
 
   return {
     lines,
@@ -283,9 +277,7 @@ export function usePosCart(registerId: string, catalog: PosCatalogEntry[] = []) 
     changeQty,
     remove,
     clear,
-    suspend,
-    resume,
-    suspended,
+    restore,
   };
 }
 

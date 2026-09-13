@@ -10246,6 +10246,187 @@ export type Database = {
         }
         Relationships: []
       }
+      sublime_suspended_cart_items: {
+        Row: {
+          cart_id: string
+          created_at: string
+          id: string
+          line_kind: string
+          line_total_ref: number
+          product_id: string | null
+          qty: number
+          sku: string | null
+          subtitle: string | null
+          title: string
+          unit_final_ref: number
+          unit_regular_ref: number
+          variant_id: string | null
+        }
+        Insert: {
+          cart_id: string
+          created_at?: string
+          id?: string
+          line_kind?: string
+          line_total_ref?: number
+          product_id?: string | null
+          qty: number
+          sku?: string | null
+          subtitle?: string | null
+          title: string
+          unit_final_ref?: number
+          unit_regular_ref?: number
+          variant_id?: string | null
+        }
+        Update: {
+          cart_id?: string
+          created_at?: string
+          id?: string
+          line_kind?: string
+          line_total_ref?: number
+          product_id?: string | null
+          qty?: number
+          sku?: string | null
+          subtitle?: string | null
+          title?: string
+          unit_final_ref?: number
+          unit_regular_ref?: number
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_suspended_cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_suspended_carts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sublime_suspended_carts: {
+        Row: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cart_discount_reason: string | null
+          cart_discount_ref: number
+          cart_number: string
+          cashier_code: string | null
+          converted_at: string | null
+          created_at: string
+          customer_id: string | null
+          customer_name: string | null
+          id: string
+          idempotency_key: string | null
+          location_id: string | null
+          note: string | null
+          origin_cash_session_id: string | null
+          origin_detail: string | null
+          origin_session_code: string | null
+          recovered_at: string | null
+          recovered_by: string | null
+          register_code: string | null
+          register_id: string | null
+          sale_id: string | null
+          sale_origin: string | null
+          status: string
+          suspended_at: string
+          suspended_by: string | null
+          total_ref: number
+          units: number
+          updated_at: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cart_discount_reason?: string | null
+          cart_discount_ref?: number
+          cart_number: string
+          cashier_code?: string | null
+          converted_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          id?: string
+          idempotency_key?: string | null
+          location_id?: string | null
+          note?: string | null
+          origin_cash_session_id?: string | null
+          origin_detail?: string | null
+          origin_session_code?: string | null
+          recovered_at?: string | null
+          recovered_by?: string | null
+          register_code?: string | null
+          register_id?: string | null
+          sale_id?: string | null
+          sale_origin?: string | null
+          status?: string
+          suspended_at?: string
+          suspended_by?: string | null
+          total_ref?: number
+          units?: number
+          updated_at?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cart_discount_reason?: string | null
+          cart_discount_ref?: number
+          cart_number?: string
+          cashier_code?: string | null
+          converted_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          id?: string
+          idempotency_key?: string | null
+          location_id?: string | null
+          note?: string | null
+          origin_cash_session_id?: string | null
+          origin_detail?: string | null
+          origin_session_code?: string | null
+          recovered_at?: string | null
+          recovered_by?: string | null
+          register_code?: string | null
+          register_id?: string | null
+          sale_id?: string | null
+          sale_origin?: string | null
+          status?: string
+          suspended_at?: string
+          suspended_by?: string | null
+          total_ref?: number
+          units?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_suspended_carts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_suspended_carts_origin_cash_session_id_fkey"
+            columns: ["origin_cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_suspended_carts_register_id_fkey"
+            columns: ["register_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_registers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_suspended_carts_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sublime_variant_lots: {
         Row: {
           consignment_commission_amount: number | null
@@ -11225,6 +11406,29 @@ export type Database = {
           p_payments: Json
           p_register_code?: string
           p_sale_origin: string
+          p_session_code?: string
+        }
+        Returns: Json
+      }
+      sublime_set_suspended_cart_status: {
+        Args: { p_cart_id: string; p_sale_id?: string; p_status: string }
+        Returns: Json
+      }
+      sublime_suspend_cart: {
+        Args: {
+          p_cart_discount_reason?: string
+          p_cart_discount_ref?: number
+          p_cash_session_id?: string
+          p_cashier_code?: string
+          p_customer?: Json
+          p_idempotency_key: string
+          p_items: Json
+          p_location_id?: string
+          p_note?: string
+          p_origin_detail?: string
+          p_register_code?: string
+          p_register_id?: string
+          p_sale_origin?: string
           p_session_code?: string
         }
         Returns: Json

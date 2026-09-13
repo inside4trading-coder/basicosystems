@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.sublime_suspend_cart(text,jsonb,uuid,uuid,text,uuid,text,text,jsonb,text,text,text,numeric,text) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.sublime_set_suspended_cart_status(uuid,text,uuid) FROM PUBLIC, anon;
