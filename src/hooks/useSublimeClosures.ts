@@ -142,7 +142,7 @@ export function useClosureData(date: string, locationId: string | null) {
     queryFn: async (): Promise<ClosureReturn[]> => {
       const { data, error } = await sb
         .from("sublime_sale_returns")
-        .select("*, sublime_sale_refunds(*), sublime_sales(sale_number)")
+        .select("*, sublime_sale_refunds(*), sale:sublime_sales!sublime_sale_returns_sale_id_fkey(sale_number)")
         .eq("location_id", locationId)
         .gte("created_at", from)
         .lte("created_at", to)
