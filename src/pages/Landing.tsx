@@ -65,18 +65,6 @@ const operationMap = [
   "Ventas", "Inventario", "Producción", "Finanzas", "Equipo", "Clientes", "Compras",
 ];
 
-// Grid "antes de construir" — mismo patrón que la pieza de Instagram
-// "entendemos tu operación" (Personas · Procesos · Herramientas · Datos ·
-// Decisiones · Tareas manuales), reutilizando el componente .cards.three.
-const understand = [
-  { title: "Personas", desc: "Quién hace qué en tu equipo." },
-  { title: "Procesos", desc: "Cómo se mueve cada tarea, paso a paso." },
-  { title: "Herramientas", desc: "Qué usas hoy, y qué tan conectado está." },
-  { title: "Datos", desc: "Qué información tienes, y dónde vive." },
-  { title: "Decisiones", desc: "Qué se decide, y con qué información." },
-  { title: "Tareas manuales", desc: "Qué se repite, y qué se puede automatizar." },
-];
-
 // Árbol de decisión "No todo necesita IA" — mismo patrón que la pieza
 // [B] Principle / 001. Sustituye el listado de herramientas como mensaje
 // principal del bloque Stack; el listado baja a nota al pie.
@@ -485,20 +473,13 @@ export default function Landing() {
             conectar las partes clave de tu operación": nodo [B] arriba, las
             áreas que conecta debajo, antes de entrar al detalle de cada módulo. */}
         <section className="block reveal" id="modulos">
-          <p className="kicker">Lo que puede conectar</p>
+          <p className="kicker">Módulos B Systems</p>
           <div className="section-head">
             <div>
-              <h2>Puede conectar las partes clave de tu operación.</h2>
+              <h2>Todo conectado en el mismo negocio.</h2>
               <p className="lede">
-                Ventas, inventario, producción, finanzas, equipo, clientes y compras — todo en un mismo lugar.
+                Empieza con las herramientas esenciales y conecta nuevos módulos a medida que tu operación crece.
               </p>
-            </div>
-            {/* moduleCount cuenta hasta modules.length al revelarse la sección
-                (ver el useEffect del observer) — es el número real de módulos,
-                no una cifra suelta. */}
-            <div className="stat" aria-hidden="true">
-              <span className="stat__n">{moduleCount}</span>
-              <span className="stat__label">Módulos</span>
             </div>
           </div>
           <div className="map">
@@ -512,10 +493,10 @@ export default function Landing() {
               ))}
             </div>
           </div>
-          <p className="lede" style={{ marginTop: "2.75rem" }}>Así se ve por dentro, módulo por módulo:</p>
+          <p className="module-group">Base Start</p>
           <div className="mods">
-            {modules.map((m) => (
-              <div key={m.n} className={m.wide ? "mod wide" : "mod"}>
+            {modules.slice(0, 4).map((m) => (
+              <div key={m.n} className="mod">
                 <div className="mod__head">
                   <span className="mod__icon">
                     <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
@@ -529,12 +510,27 @@ export default function Landing() {
               </div>
             ))}
           </div>
+          <p className="module-group">Más módulos B Systems</p>
+          <div className="mods">
+            {modules.slice(4).map((m) => (
+              <div key={m.n} className={m.wide ? "mod wide" : "mod"}>
+                <div className="mod__head">
+                  <span className="mod__icon"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><use href={`/icons.svg#${m.icon}`} /></svg></span>
+                  <span className="n">{m.group}</span>
+                </div>
+                <h3>{m.title}</h3>
+                <p>{m.desc}</p>
+                {m.note && <p className="mod__note">{m.note}</p>}
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* PERSONALIZACIÓN */}
         <section className="block reveal">
-          <p className="kicker">Personalización</p>
-          <h2>Tu marca, no la nuestra.</h2>
+          <p className="kicker">Flexible por diseño</p>
+          <h2>Tu operación, no una plantilla.</h2>
+          <p className="lede">B Systems se configura alrededor de las personas, procesos y herramientas de tu empresa.</p>
           <div className="cards">
             {customization.map((c) => (
               <div key={c.title} className="card">
@@ -561,36 +557,30 @@ export default function Landing() {
           </ol>
           <p className="decision__msg">Usamos lo que tenga sentido. No incorporamos IA porque esté de moda.</p>
           <div className="stackwrap">
-            <p className="kicker" style={{ color: "var(--blue-300)" }}>Por dentro</p>
-            {/* Cinta infinita: el segundo bloque es una copia exacta del
-                primero, colocada justo a continuación. La animación sólo
-                recorre -50% del ancho total, así que cuando el primer bloque
-                sale por la izquierda el segundo ocupa exactamente su lugar —
-                el salto es invisible. La copia lleva aria-hidden para que un
-                lector de pantalla no anuncie la lista dos veces. */}
+            <p className="kicker" style={{ color: "var(--blue-300)" }}>Integraciones</p>
+            <h3 className="integration-title">B Systems se conecta con tu operación.</h3>
+            <p className="integration-copy">Podemos conectar B Systems con las herramientas que tu empresa ya utiliza.</p>
             <div className="marquee">
               <div className="marquee__track">
-                {stack.map((s) => (
+                {integrations.map((s) => (
                   <span key={s}>{s}</span>
                 ))}
                 <div aria-hidden="true" className="marquee__dup">
-                  {stack.map((s) => (
+                  {integrations.map((s) => (
                     <span key={s}>{s}</span>
                   ))}
                 </div>
               </div>
             </div>
-            <p className="stacknote">Si tu marca usa otras herramientas, las conectamos.</p>
           </div>
         </section>
 
         {/* RUBROS */}
         <section className="block reveal">
-          <p className="kicker">Para cualquier negocio</p>
-          <h2>No importa a qué te dediques</h2>
+          <p className="kicker">B Systems Custom</p>
+          <h2>B Systems se adapta a cómo opera tu empresa.</h2>
           <p className="lede">
-            Lo que cambia es el negocio. Lo que se mantiene es el método. Cada rubro arranca con
-            Basico System y crece a medida según el negocio.
+            No todas las empresas trabajan igual. Por eso B Systems puede configurarse y construirse alrededor de cada operación.
           </p>
           <div className="cards three">
             {industries.map((i) => (
@@ -600,46 +590,42 @@ export default function Landing() {
               </div>
             ))}
           </div>
+          <p className="custom-message">Tu empresa no tiene que adaptarse al software.<br />B Systems puede adaptarse a tu empresa.</p>
+          <p className="lede">Estos son ejemplos de configuración, no productos prefabricados.</p>
         </section>
 
         {/* PROCESO — secuencia con flechas, mismo patrón que la pieza
             "después decidimos qué hacer" (01→02→03→04). */}
         <section className="block reveal" id="proceso">
-          <p className="kicker">Cómo trabajamos</p>
-          <h2>Primero entendemos. Después construimos.</h2>
-          <p className="steps__flow" aria-hidden="true">
-            {process.map((p, i) => (
-              <span key={p.n}>
-                <span>{p.title}</span>
-                {i < process.length - 1 && <span className="arrow"> → </span>}
-              </span>
+          <p className="kicker">Cómo empezamos</p>
+          <h2>Dos caminos.<br />El mismo sistema.</h2>
+          <div className="process-paths">
+            {(["start", "custom"] as const).map((kind) => (
+              <div className={`process-path process-path--${kind}`} key={kind}>
+                <h3>{kind}</h3>
+                <ol className="steps">
+                  {processes[kind].map((title, index) => <li key={title}><span className="n">0{index + 1}</span><h4>{title}</h4></li>)}
+                </ol>
+                <p>{kind === "start" ? "Empieza con una base lista y activa nuevas herramientas cuando tu negocio las necesite." : "Entendemos cómo opera tu empresa y construimos B Systems alrededor de ella."}</p>
+              </div>
             ))}
-          </p>
-          <ul className="steps">
-            {process.map((p) => (
-              <li key={p.n}>
-                <span className="n">{p.n}</span>
-                <h3>{p.title}</h3>
-                <p>{p.desc}</p>
-              </li>
-            ))}
-          </ul>
+          </div>
         </section>
 
         {/* BANDA DE MARCA */}
         <section className="band reveal">
           <div className="inner">
-            <p className="k">Un área de Basico</p>
-            <h2>El mismo ADN: producto, diseño, obsesión por el detalle.</h2>
+            <p className="k">[B] Systems</p>
+            <h2>Producto.<br />Diseño.<br />Obsesión por el detalle.</h2>
           </div>
         </section>
 
         {/* CONTACTO */}
-        <section className="block contact reveal" id="contacto">
-          <p className="kicker">Primera pregunta</p>
-          <h2>¿Cómo funciona tu empresa?</h2>
+        <section className="block contact reveal" id="hablemos">
+          <p className="kicker">Hablemos</p>
+          <h2>¿Cómo podemos ayudarte?</h2>
           <p className="lede">
-            Ahí empieza nuestro trabajo. Cuéntanos y te decimos por dónde empezar. Respondemos en menos de 48 horas.
+            Empieza con B Systems Start o cuéntanos qué necesitas construir. Respondemos en menos de 48 horas.
           </p>
 
           <form onSubmit={handleSubmit}>
@@ -651,7 +637,7 @@ export default function Landing() {
                 className="radio-row"
               >
                 {([
-                  ["saas", "Quiero activarlo"],
+                  ["saas", "Quiero B Systems Start"],
                   ["tailor", "Quiero uno a medida"],
                   ["unsure", "Aún no lo sé"],
                 ] as const).map(([v, l]) => (
@@ -697,30 +683,30 @@ export default function Landing() {
           </div>
           <div className="foot__cols">
             <div className="foot__col">
-              <p className="foot__col-title">Ya existe</p>
+              <p className="foot__col-title">Start</p>
               <button
                 type="button"
-                onClick={() => { setInterest("saas"); scrollTo("contacto")(); }}
+                onClick={() => chooseInterest("saas")}
               >
-                Quiero activarlo →
+                Empezar →
               </button>
             </div>
             <div className="foot__col">
-              <p className="foot__col-title">A tu medida</p>
+              <p className="foot__col-title">Custom</p>
               <button
                 type="button"
-                onClick={() => { setInterest("tailor"); scrollTo("contacto")(); }}
+                onClick={() => chooseInterest("tailor")}
               >
-                Quiero uno a medida →
+                Pedir presupuesto →
               </button>
             </div>
             <div className="foot__col">
               <p className="foot__col-title">Empresa</p>
-              <Link to="/login">{user ? "Ir al panel" : "Acceso equipo"}</Link>
+              <Link to="/login">Ir al panel →</Link>
             </div>
           </div>
-          <p className="foot__tagline">Primero entendemos. Después construimos.</p>
-          <p className="foot__copy">© {new Date().getFullYear()} [B] Systems · Un área de Basico</p>
+          <p className="foot__tagline">Hacemos que tu empresa funcione mejor.</p>
+          <p className="foot__copy">© 2026 [B] SYSTEMS</p>
         </footer>
       </div>
     </div>
