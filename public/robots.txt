@@ -1,4 +1,4 @@
-# Basico System — https://basicosystems.lovable.app
+# B Systems — https://basicosystems.com
 #
 # La única página pública es la landing. Todo lo demás son rutas del panel, y
 # como es una SPA sirven el mismo index.html: sin estas reglas Google acabaría
@@ -30,4 +30,4 @@ Disallow: /core
 Disallow: /sublime
 Disallow: /espana
 
-Sitemap: https://basicosystems.lovable.app/sitemap.xml
+Sitemap: https://basicosystems.com/sitemap.xml

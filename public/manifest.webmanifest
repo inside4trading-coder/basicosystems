@@ -1,7 +1,7 @@
 {
-  "name": "BASICO SYSTEM",
-  "short_name": "BASICO",
-  "description": "Sistema de gestión modular para marcas: pedidos, CRM, planning, RRHH, RRPP, campañas, llamadas, administración, fabricación y retail.",
+  "name": "B SYSTEMS",
+  "short_name": "B SYSTEMS",
+  "description": "Software para administrar y operar tu negocio, listo para empezar o construido a medida.",
   "lang": "es",
   "start_url": "/",
   "scope": "/",
