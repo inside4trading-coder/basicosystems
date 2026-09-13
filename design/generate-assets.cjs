@@ -51,7 +51,7 @@ function construirIco(pngs) {
 }
 
 (async () => {
-  const navegador = await chromium.launch({ headless: true });
+  const navegador = await chromium.launch({ channel: "chrome" });
 
   /* ---------- Iconos ----------
      Blanco sobre azul primario #0A37FF: variante `onPrimary` del BrandMark.
