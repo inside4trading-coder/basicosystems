@@ -217,6 +217,7 @@ function Filter({
 
 export function SaleDetailDialog({ sale, onClose }: { sale: SaleRow | null; onClose: () => void }) {
   const { data: movements = [] } = useSaleInventoryMovements(sale?.sale_number ?? null);
+  const { data: returns = [] } = useSaleReturns(sale?.id ?? null);
 
   return (
     <Dialog open={sale !== null} onOpenChange={(v) => !v && onClose()}>
