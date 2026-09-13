@@ -152,7 +152,7 @@ export function useClosureData(date: string, locationId: string | null) {
         ...r,
         units: num(r.units),
         total_refund_ref: num(r.total_refund_ref),
-        sale_number: r.sublime_sales?.sale_number ?? null,
+        sale_number: r.sale?.sale_number ?? null,
         refunds: (r.sublime_sale_refunds ?? []).map((f: any) => ({
           ...f,
           amount: num(f.amount),
