@@ -62,6 +62,9 @@ export default function SublimePosApp() {
   const categories = catalogQuery.data?.categories ?? [];
   const location = catalogQuery.data?.location ?? null;
   const registerSale = useRegisterSublimePosSale();
+  const linkExchange = useLinkExchangeSale();
+  /** Cambio en curso: la nueva venta se enlazará con su devolución de origen. */
+  const [pendingExchange, setPendingExchangeState] = useState(() => getPendingExchange());
   /** Identificador del intento de cobro: protege contra dobles ventas. */
   const [attemptKey, setAttemptKey] = useState(() => crypto.randomUUID());
 
