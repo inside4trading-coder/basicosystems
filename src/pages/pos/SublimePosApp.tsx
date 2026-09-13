@@ -225,6 +225,19 @@ export default function SublimePosApp() {
           /* la venta ya está registrada: el carrito se concilia al recargar */
         }
       }
+      if (pendingExchange) {
+        try {
+          await linkExchange.mutateAsync({
+            returnId: pendingExchange.returnId,
+            newSaleId: result.sale_id,
+          });
+          toast.success(`Cambio enlazado con la devolución ${pendingExchange.returnNumber}.`);
+        } catch {
+          toast.error("La venta quedó registrada, pero no se pudo enlazar el cambio.");
+        }
+        clearPendingExchange();
+        setPendingExchangeState(null);
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo completar la venta.");
     }
