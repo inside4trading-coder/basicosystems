@@ -10,7 +10,12 @@ import {
   POS_STORE,
   posSessionOf,
 } from "@/lib/posSession";
-import type { PosSuspendedCart } from "./usePosCart";
+import { Button } from "@/components/ui/button";
+import {
+  SUSPENDED_STATUS_LABEL,
+  type SuspendedCart,
+} from "./useSublimeSuspendedCarts";
+import { posChannelLabel } from "@/lib/posSalesChannels";
 
 /** Cambiar cajero: la caja y su sesión no cambian. */
 export function PosCashierDialog({
@@ -187,55 +192,104 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-/** Carritos suspendidos, recuperables por caja. */
+/** Carritos suspendidos REALES: persisten en el servidor, recuperables siempre. */
 export function PosSuspendedDialog({
   open,
   onOpenChange,
   carts,
   rate,
+  loading,
+  busy,
   onResume,
+  onCancelCart,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  carts: PosSuspendedCart[];
+  carts: SuspendedCart[];
   rate: number;
-  onResume: (id: string) => void;
+  loading?: boolean;
+  busy?: boolean;
+  onResume: (cart: SuspendedCart) => void;
+  onCancelCart: (cart: SuspendedCart) => void;
 }) {
+  const openCarts = carts.filter((c) => c.status === "open" || c.status === "recovered");
+  const history = carts.filter((c) => c.status === "cancelled" || c.status === "converted_to_sale");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Carritos suspendidos</DialogTitle>
         </DialogHeader>
-        {carts.length === 0 ? (
+
+        {loading ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">Cargando…</p>
+        ) : openCarts.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">
             No hay carritos suspendidos.
           </p>
         ) : (
           <div className="space-y-2">
-            {carts.map((c) => (
-              <Card key={c.id} className="p-3 rounded-xl flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-bold text-sm flex items-center gap-2">
-                    {c.id}
-                    <Badge variant="secondary">{c.registerName}</Badge>
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {c.cashierName} · {c.customerName ?? "Sin cliente"} · {c.at}
-                  </p>
+            {openCarts.map((c) => (
+              <Card key={c.id} className="p-3 rounded-xl space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm flex items-center gap-2 flex-wrap">
+                      {c.cart_number}
+                      <Badge variant="secondary">{c.register_code ?? "Sin caja"}</Badge>
+                      <Badge variant="outline">{SUSPENDED_STATUS_LABEL[c.status]}</Badge>
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {c.cashier_code ?? "Sin cajero"} · {c.customer_name ?? "Sin cliente"} ·{" "}
+                      {new Date(c.suspended_at).toLocaleString("es-VE")}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {c.units} artículo(s) ·{" "}
+                      {c.sale_origin ? posChannelLabel(c.sale_origin as any, c.origin_detail ?? "") : "Sin origen"} ·
+                      sesión {c.origin_session_code ?? "—"}
+                    </p>
+                  </div>
+                  <Money value={c.total_ref} rate={rate} size="sm" />
                 </div>
-                <Money value={c.totalRef} rate={rate} size="sm" />
-                <button
-                  type="button"
-                  onClick={() => onResume(c.id)}
-                  className="text-xs font-bold text-primary hover:underline shrink-0"
-                >
-                  Recuperar
-                </button>
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => onCancelCart(c)}
+                    className="text-destructive"
+                  >
+                    Cancelar carrito
+                  </Button>
+                  <Button size="sm" disabled={busy} onClick={() => onResume(c)}>
+                    Recuperar
+                  </Button>
+                </div>
               </Card>
             ))}
           </div>
         )}
+
+        {history.length > 0 ? (
+          <div className="pt-2">
+            <Section title="Histórico">
+              <div className="space-y-1.5">
+                {history.slice(0, 20).map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between gap-2 text-xs text-muted-foreground"
+                  >
+                    <span className="truncate">
+                      {c.cart_number} · {new Date(c.suspended_at).toLocaleString("es-VE")} ·{" "}
+                      {SUSPENDED_STATUS_LABEL[c.status]}
+                    </span>
+                    <Money value={c.total_ref} rate={rate} size="xs" />
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+        ) : null}
       </DialogContent>
     </Dialog>
   );
