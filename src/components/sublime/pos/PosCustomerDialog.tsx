@@ -31,17 +31,18 @@ export function PosCustomerSearch({ onSelect }: { onSelect: (c: PosCustomer) => 
 
   const list = customers
     .map((c) => ({
-      id: c.id as string,
-      name: c.name as string,
-      idCard: (c.id_card as string) ?? "",
-      phone: (c.phone as string) ?? "",
-      email: (c.email as string) ?? "",
-      birthDate: (c.birth_date as string) ?? "",
-      address: (c.address as string) ?? "",
+      id: c.id,
+      name: c.name,
+      idCard: c.id_card ?? "",
+      phone: c.phone ?? "",
+      email: c.email ?? "",
+      birthDate: c.birth_date ?? "",
+      address: c.address ?? "",
     }))
     .filter((c) =>
       `${c.name} ${c.idCard} ${c.phone} ${c.email}`.toLowerCase().includes(q.toLowerCase())
     );
+
 
   return (
     <div className="space-y-3">
