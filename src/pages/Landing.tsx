@@ -319,10 +319,8 @@ export default function Landing() {
             ))}
           </div>
           <div className="nav__right">
-            <Link to="/login" className="nav__login">
-              {user ? "Panel" : "Panel"}
-            </Link>
-            <button type="button" className="btn fill sm" onPointerDown={ripple} onClick={scrollTo("contacto")}>
+            <Link to="/login" className="nav__login">Panel</Link>
+            <button type="button" className="btn fill sm" onPointerDown={ripple} onClick={scrollTo("hablemos")}>
               Hablemos
             </button>
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
@@ -359,7 +357,7 @@ export default function Landing() {
                     type="button"
                     onClick={() => {
                       setMobileNavOpen(false);
-                      setTimeout(() => document.getElementById("contacto")?.scrollIntoView({ behavior: "smooth" }), 100);
+                      setTimeout(() => document.getElementById("hablemos")?.scrollIntoView({ behavior: "smooth" }), 100);
                     }}
                   >
                     Hablemos
@@ -674,9 +672,7 @@ export default function Landing() {
           </form>
         </section>
 
-        {/* FOOTER — opción A: doble camino. Reproduce la misma disyuntiva que
-            el hero y "Dos formas de empezar" (activar / a medida) en vez de
-            cerrar con un genérico "un área de Basico". */}
+        {/* FOOTER — la misma decisión Start / Custom del hero. */}
         <footer className="foot">
           <div className="foot__top">
             <BrandMark variant="negative" style={{ fontSize: "1.625rem" }} />
