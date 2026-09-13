@@ -9,7 +9,7 @@
  *   icon-512.png            512×512 circular
  *   icon-512-maskable.png   512×512 a sangre, para la máscara de Android
  *   apple-touch-icon.png    180×180 a sangre, para la máscara de iOS
- *   og-basico-systems.jpg   1200×630, JPEG por peso (ver más abajo)
+ *   og-b-systems.jpg        1200×630, JPEG por peso (ver más abajo)
  *
  * Se captura con Playwright —ya está en las devDependencies— porque los
  * originales son HTML con la fuente Fixedsys, y así el icono usa exactamente
@@ -116,7 +116,7 @@ function construirIco(pngs) {
   await og.evaluate(() => document.fonts.ready);
   await og.waitForTimeout(400);
   await og.screenshot({
-    path: path.join(PUBLIC, "og-basico-systems.jpg"),
+    path: path.join(PUBLIC, "og-b-systems.jpg"),
     type: "jpeg",
     quality: 88,
   });
@@ -125,7 +125,7 @@ function construirIco(pngs) {
   await navegador.close();
 
   for (const f of ["favicon.ico", "icon-192.png", "icon-512.png", "icon-512-maskable.png",
-                   "apple-touch-icon.png", "og-basico-systems.jpg"]) {
+                   "apple-touch-icon.png", "og-b-systems.jpg"]) {
     const b = fs.statSync(path.join(PUBLIC, f)).size;
     console.log(`  ${f.padEnd(24)} ${(b / 1024).toFixed(1)} kB`);
   }
