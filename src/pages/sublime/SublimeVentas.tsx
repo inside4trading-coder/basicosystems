@@ -141,12 +141,22 @@ export default function SublimeVentas() {
                   {s.payments.map((p) => posMethod(p.method).label).join(" + ") || "—"}
                 </TableCell>
                 <TableCell className="text-sm">{s.invoice_number ?? "—"}</TableCell>
-                <TableCell><Badge>{statusLabel(s.status)}</Badge></TableCell>
+                <TableCell><Badge variant={statusVariant(s.status) as any}>{statusLabel(s.status)}</Badge></TableCell>
                 <TableCell className="text-right tabular-nums font-semibold">{refFormat(s.total_ref)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button size="sm" variant="outline" onClick={() => setReceiptId(s.id)}>Ver comprobante</Button>
                     <Button size="sm" variant="outline" onClick={() => setOpenId(s.id)}>Ver detalle</Button>
+                    {s.status !== "voided" && s.status !== "returned" && (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => setReturnTarget({ id: s.id, mode: "return" })}>
+                          Devolver
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setReturnTarget({ id: s.id, mode: "void" })}>
+                          Anular
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
