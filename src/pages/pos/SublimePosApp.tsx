@@ -30,6 +30,8 @@ import {
 import { type PosSaleDocument } from "@/components/sublime/pos/PosReceiptPreview";
 import { SaleReceiptActions, SaleReceiptBody } from "@/components/sublime/pos/SaleReceipt";
 import { useSublimeSaleByNumber } from "@/hooks/useSublimeSalesHistory";
+import { useLinkExchangeSale } from "@/hooks/useSublimeSaleReturns";
+import { clearPendingExchange, getPendingExchange } from "@/lib/posExchange";
 import { POS_BCV_RATE, usePosCart, type PosManualItem } from "@/components/sublime/pos/usePosCart";
 import { useSublimePosCatalog } from "@/components/sublime/pos/useSublimePosCatalog";
 import { useRegisterSublimePosSale } from "@/components/sublime/pos/useSublimePosSale";
@@ -60,6 +62,9 @@ export default function SublimePosApp() {
   const categories = catalogQuery.data?.categories ?? [];
   const location = catalogQuery.data?.location ?? null;
   const registerSale = useRegisterSublimePosSale();
+  const linkExchange = useLinkExchangeSale();
+  /** Cambio en curso: la nueva venta se enlazará con su devolución de origen. */
+  const [pendingExchange, setPendingExchangeState] = useState(() => getPendingExchange());
   /** Identificador del intento de cobro: protege contra dobles ventas. */
   const [attemptKey, setAttemptKey] = useState(() => crypto.randomUUID());
 
@@ -219,6 +224,19 @@ export default function SublimePosApp() {
         } catch {
           /* la venta ya está registrada: el carrito se concilia al recargar */
         }
+      }
+      if (pendingExchange) {
+        try {
+          await linkExchange.mutateAsync({
+            returnId: pendingExchange.returnId,
+            newSaleId: result.sale_id,
+          });
+          toast.success(`Cambio enlazado con la devolución ${pendingExchange.returnNumber}.`);
+        } catch {
+          toast.error("La venta quedó registrada, pero no se pudo enlazar el cambio.");
+        }
+        clearPendingExchange();
+        setPendingExchangeState(null);
       }
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo completar la venta.");
@@ -398,6 +416,26 @@ export default function SublimePosApp() {
         onOpenDrawer={() => setDrawerOpen(true)}
         onExit={() => navigate("/sublime")}
       />
+
+      {pendingExchange && (
+        <div className="px-4 py-2 text-sm bg-primary/10 border-b border-primary/30 flex items-center justify-between gap-3">
+          <span>
+            Cambio en curso: devolución {pendingExchange.returnNumber} de la venta {pendingExchange.saleNumber}.
+            Esta venta quedará enlazada como producto nuevo.
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              clearPendingExchange();
+              setPendingExchangeState(null);
+            }}
+          >
+            Cancelar cambio
+          </Button>
+        </div>
+      )}
+
 
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,68fr)_minmax(340px,32fr)]">
         <section className="flex flex-col min-h-0 p-4 gap-3">

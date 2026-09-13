@@ -134,7 +134,7 @@ export function useSaleInventoryMovements(saleNumber: string | null) {
       const { data, error } = await sb
         .from("sublime_inventory_movements")
         .select("id, movement_type, qty_delta, qty_result, note, created_at")
-        .eq("movement_type", "pos_sale")
+        .in("movement_type", ["pos_sale", "pos_return", "pos_void"])
         .ilike("note", `%${saleNumber}%`)
         .order("created_at");
       if (error) throw error;

@@ -13,16 +13,20 @@ import { POS_ALL_SALES_CHANNELS, posChannelLabel } from "@/lib/posSalesChannels"
 import { POS_PAYMENT_METHODS, posMethod } from "@/lib/posPaymentMethods";
 import { posBankLabel } from "@/lib/posBanks";
 import { SaleReceiptDialog } from "@/components/sublime/pos/SaleReceipt";
+import { SaleReturnDialog } from "@/components/sublime/pos/SaleReturnDialog";
 import {
   useSaleInventoryMovements,
   useSublimeSalesHistory,
   type SaleRow,
 } from "@/hooks/useSublimeSalesHistory";
+import { saleStatusLabel, useSaleReturns } from "@/hooks/useSublimeSaleReturns";
 
 const ALL = "all";
 
-const statusLabel = (s: string) =>
-  s === "completed" ? "Completada" : s === "voided" ? "Anulada" : s;
+const statusLabel = saleStatusLabel;
+
+const statusVariant = (s: string) =>
+  s === "completed" ? "default" : s === "voided" ? "destructive" : "secondary";
 
 const dt = (iso: string) => new Date(iso).toLocaleString("es-VE");
 
@@ -38,6 +42,7 @@ export default function SublimeVentas() {
   const [to, setTo] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [receiptId, setReceiptId] = useState<string | null>(null);
+  const [returnTarget, setReturnTarget] = useState<{ id: string; mode: "return" | "void" } | null>(null);
 
   const uniq = (vals: (string | null)[]) =>
     Array.from(new Set(vals.filter((v): v is string => !!v))).sort();
@@ -75,6 +80,7 @@ export default function SublimeVentas() {
 
   const sale = sales.find((s) => s.id === openId) ?? null;
   const receipt = sales.find((s) => s.id === receiptId) ?? null;
+  const returnSale = sales.find((s) => s.id === returnTarget?.id) ?? null;
 
   return (
     <div className="space-y-6">
@@ -135,12 +141,22 @@ export default function SublimeVentas() {
                   {s.payments.map((p) => posMethod(p.method).label).join(" + ") || "—"}
                 </TableCell>
                 <TableCell className="text-sm">{s.invoice_number ?? "—"}</TableCell>
-                <TableCell><Badge>{statusLabel(s.status)}</Badge></TableCell>
+                <TableCell><Badge variant={statusVariant(s.status) as any}>{statusLabel(s.status)}</Badge></TableCell>
                 <TableCell className="text-right tabular-nums font-semibold">{refFormat(s.total_ref)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button size="sm" variant="outline" onClick={() => setReceiptId(s.id)}>Ver comprobante</Button>
                     <Button size="sm" variant="outline" onClick={() => setOpenId(s.id)}>Ver detalle</Button>
+                    {s.status !== "voided" && s.status !== "returned" && (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => setReturnTarget({ id: s.id, mode: "return" })}>
+                          Devolver
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setReturnTarget({ id: s.id, mode: "void" })}>
+                          Anular
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -163,6 +179,13 @@ export default function SublimeVentas() {
         phone={receipt?.customer_phone}
         open={receipt !== null}
         onOpenChange={(v) => !v && setReceiptId(null)}
+      />
+
+      <SaleReturnDialog
+        sale={returnSale}
+        mode={returnTarget?.mode ?? "return"}
+        open={returnSale !== null}
+        onOpenChange={(v) => !v && setReturnTarget(null)}
       />
     </div>
   );
@@ -194,6 +217,7 @@ function Filter({
 
 export function SaleDetailDialog({ sale, onClose }: { sale: SaleRow | null; onClose: () => void }) {
   const { data: movements = [] } = useSaleInventoryMovements(sale?.sale_number ?? null);
+  const { data: returns = [] } = useSaleReturns(sale?.id ?? null);
 
   return (
     <Dialog open={sale !== null} onOpenChange={(v) => !v && onClose()}>
@@ -283,6 +307,39 @@ export function SaleDetailDialog({ sale, onClose }: { sale: SaleRow | null; onCl
                 ))}
               </div>
             </Section>
+
+            {returns.length > 0 && (
+              <Section title="Devoluciones, anulaciones y cambios">
+                {returns.map((r) => (
+                  <div key={r.id} className="rounded-xl border border-border/60 p-3 space-y-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-semibold font-mono text-xs">{r.return_number}</p>
+                      <Badge variant={r.kind === "void" ? "destructive" : "secondary"}>
+                        {r.kind === "void" ? "Anulación" : r.kind === "exchange" ? "Cambio" : "Devolución"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {dt(r.created_at)} · {r.units} und. · valor {refFormat(r.total_returned_ref)}
+                      {r.reason ? ` · ${r.reason}` : ""}
+                    </p>
+                    {r.items.map((i) => (
+                      <p key={i.id} className="text-xs tabular-nums">
+                        {i.qty} × {i.title} {i.sku ? `· ${i.sku}` : ""}
+                        {i.restocked ? " · devuelto a stock de tienda" : ""}
+                      </p>
+                    ))}
+                    {r.refunds.map((f) => (
+                      <p key={f.id} className="text-xs">
+                        Reembolso {posMethod(f.method as any).label} · {f.currency}{" "}
+                        {f.amount.toLocaleString("es-VE")} ({refFormat(f.amount_ref)})
+                        {f.bank ? ` · ${posBankLabel(f.bank)}` : ""}
+                        {f.reference ? ` · Ref ${f.reference}` : ""}
+                      </p>
+                    ))}
+                  </div>
+                ))}
+              </Section>
+            )}
 
             <p className="text-xs text-muted-foreground">Solo lectura: una venta finalizada no se edita desde esta pantalla.</p>
           </div>

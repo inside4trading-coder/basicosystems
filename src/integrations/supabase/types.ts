@@ -9980,6 +9980,209 @@ export type Database = {
           },
         ]
       }
+      sublime_sale_refunds: {
+        Row: {
+          amount: number
+          amount_ref: number
+          bank: string | null
+          cash_session_id: string | null
+          created_at: string
+          currency: string
+          id: string
+          method: string
+          performed_by: string | null
+          reference: string | null
+          return_id: string
+          sale_id: string
+        }
+        Insert: {
+          amount: number
+          amount_ref?: number
+          bank?: string | null
+          cash_session_id?: string | null
+          created_at?: string
+          currency: string
+          id?: string
+          method: string
+          performed_by?: string | null
+          reference?: string | null
+          return_id: string
+          sale_id: string
+        }
+        Update: {
+          amount?: number
+          amount_ref?: number
+          bank?: string | null
+          cash_session_id?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          method?: string
+          performed_by?: string | null
+          reference?: string | null
+          return_id?: string
+          sale_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_sale_refunds_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_sale_refunds_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_sale_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_sale_refunds_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sublime_sale_return_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total_ref: number
+          qty: number
+          restocked: boolean
+          return_id: string
+          sale_item_id: string
+          sku: string | null
+          title: string
+          unit_ref: number
+          variant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total_ref?: number
+          qty: number
+          restocked?: boolean
+          return_id: string
+          sale_item_id: string
+          sku?: string | null
+          title: string
+          unit_ref?: number
+          variant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total_ref?: number
+          qty?: number
+          restocked?: boolean
+          return_id?: string
+          sale_item_id?: string
+          sku?: string | null
+          title?: string
+          unit_ref?: number
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_sale_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_sale_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_sale_return_items_sale_item_id_fkey"
+            columns: ["sale_item_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_sale_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sublime_sale_returns: {
+        Row: {
+          cash_session_id: string | null
+          created_at: string
+          exchange_sale_id: string | null
+          id: string
+          idempotency_key: string
+          kind: string
+          location_id: string
+          performed_by: string | null
+          reason: string | null
+          register_id: string | null
+          return_number: string
+          sale_id: string
+          total_refund_ref: number
+          total_returned_ref: number
+          units: number
+          updated_at: string
+        }
+        Insert: {
+          cash_session_id?: string | null
+          created_at?: string
+          exchange_sale_id?: string | null
+          id?: string
+          idempotency_key: string
+          kind?: string
+          location_id: string
+          performed_by?: string | null
+          reason?: string | null
+          register_id?: string | null
+          return_number: string
+          sale_id: string
+          total_refund_ref?: number
+          total_returned_ref?: number
+          units?: number
+          updated_at?: string
+        }
+        Update: {
+          cash_session_id?: string | null
+          created_at?: string
+          exchange_sale_id?: string | null
+          id?: string
+          idempotency_key?: string
+          kind?: string
+          location_id?: string
+          performed_by?: string | null
+          reason?: string | null
+          register_id?: string | null
+          return_number?: string
+          sale_id?: string
+          total_refund_ref?: number
+          total_returned_ref?: number
+          units?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublime_sale_returns_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_sale_returns_exchange_sale_id_fkey"
+            columns: ["exchange_sale_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublime_sale_returns_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sublime_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sublime_sales: {
         Row: {
           bcv_rate: number
@@ -11370,6 +11573,10 @@ export type Database = {
         Args: { p_counts: Json; p_note?: string; p_variant_id: string }
         Returns: Json
       }
+      sublime_link_exchange_sale: {
+        Args: { p_new_sale_id: string; p_return_id: string }
+        Returns: Json
+      }
       sublime_open_cash_session: {
         Args: {
           p_cashier_name?: string
@@ -11407,6 +11614,18 @@ export type Database = {
           p_register_code?: string
           p_sale_origin: string
           p_session_code?: string
+        }
+        Returns: Json
+      }
+      sublime_register_sale_return: {
+        Args: {
+          p_cash_session_id?: string
+          p_idempotency_key: string
+          p_items?: Json
+          p_kind: string
+          p_reason?: string
+          p_refunds?: Json
+          p_sale_id: string
         }
         Returns: Json
       }
